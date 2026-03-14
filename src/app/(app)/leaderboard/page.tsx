@@ -75,10 +75,10 @@ export default async function LeaderboardPage() {
     return (
       <div className="space-y-2">
         {showBanner && rows[0] && (
-          <div className="flex items-center gap-3 p-3 rounded-lg bg-yellow-500/10 border border-yellow-500/20 mb-4">
-            <Trophy className="h-5 w-5 text-yellow-500" />
+          <div className="flex items-center gap-3 p-3 rounded-lg bg-gradient-to-r from-amber-500/10 to-amber-600/5 border border-amber-500/20 mb-4">
+            <Trophy className="h-5 w-5 text-amber-500" />
             <div>
-              <p className="text-sm font-semibold text-yellow-400">Manager of the Match</p>
+              <p className="text-sm font-semibold text-amber-400">Manager of the Match</p>
               <p className="text-sm">{rows[0].display_name} &mdash; {rows[0].total_points} pts</p>
             </div>
           </div>
@@ -97,8 +97,8 @@ export default async function LeaderboardPage() {
             <div
               key={row.user_id}
               className={`flex items-center py-2.5 px-3 rounded-lg ${
-                isMe ? "bg-primary/10 border border-primary/20" : i % 2 === 0 ? "bg-accent/20" : ""
-              }`}
+                isMe ? "bg-primary/10 border border-primary/20" : i % 2 === 0 ? "bg-secondary/50" : ""
+              } ${i === 0 ? "border-l-2 border-l-amber-400" : i === 1 ? "border-l-2 border-l-gray-300" : i === 2 ? "border-l-2 border-l-amber-700" : ""}`}
             >
               <span className="w-10 text-sm">
                 {i < 3 ? medals[i] : row.rank}
@@ -139,7 +139,7 @@ export default async function LeaderboardPage() {
         </TabsList>
 
         <TabsContent value="season" className="mt-4">
-          <Card>
+          <Card className="border border-white/[0.06]">
             <CardContent className="pt-4">
               <LeaderTable rows={seasonRows} showMP />
             </CardContent>
@@ -147,7 +147,7 @@ export default async function LeaderboardPage() {
         </TabsContent>
 
         <TabsContent value="this-week" className="mt-4">
-          <Card>
+          <Card className="border border-white/[0.06]">
             <CardContent className="pt-4">
               <LeaderTable rows={thisWeekRows} showBanner />
             </CardContent>
@@ -155,7 +155,7 @@ export default async function LeaderboardPage() {
         </TabsContent>
 
         <TabsContent value="last-week" className="mt-4">
-          <Card>
+          <Card className="border border-white/[0.06]">
             <CardContent className="pt-4">
               <LeaderTable rows={lastWeekRows} showBanner />
             </CardContent>

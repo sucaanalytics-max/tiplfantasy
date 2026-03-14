@@ -4,6 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Trophy, Target, TrendingUp, TrendingDown } from "lucide-react"
 import { ProfileNameForm } from "./name-form"
+import { SignOutButton } from "./sign-out-button"
 
 export default async function ProfilePage() {
   const supabase = await createClient()
@@ -72,7 +73,7 @@ export default async function ProfilePage() {
       </div>
 
       {/* Name editor */}
-      <Card>
+      <Card className="border border-white/[0.06]">
         <CardHeader className="pb-3">
           <CardTitle className="text-base">Display Name</CardTitle>
         </CardHeader>
@@ -84,7 +85,7 @@ export default async function ProfilePage() {
 
       {/* Stats grid */}
       <div className="grid grid-cols-2 gap-4">
-        <Card>
+        <Card className="border border-white/[0.06]">
           <CardContent className="pt-5">
             <div className="flex items-center gap-2.5">
               <Trophy className="h-4 w-4 text-yellow-500" />
@@ -95,7 +96,7 @@ export default async function ProfilePage() {
             </div>
           </CardContent>
         </Card>
-        <Card>
+        <Card className="border border-white/[0.06]">
           <CardContent className="pt-5">
             <div className="flex items-center gap-2.5">
               <Target className="h-4 w-4 text-blue-500" />
@@ -106,7 +107,7 @@ export default async function ProfilePage() {
             </div>
           </CardContent>
         </Card>
-        <Card>
+        <Card className="border border-white/[0.06]">
           <CardContent className="pt-5">
             <div className="flex items-center gap-2.5">
               <TrendingUp className="h-4 w-4 text-green-500" />
@@ -119,7 +120,7 @@ export default async function ProfilePage() {
             </div>
           </CardContent>
         </Card>
-        <Card>
+        <Card className="border border-white/[0.06]">
           <CardContent className="pt-5">
             <div className="flex items-center gap-2.5">
               <TrendingDown className="h-4 w-4 text-red-500" />
@@ -135,7 +136,7 @@ export default async function ProfilePage() {
       </div>
 
       {/* Extra stats */}
-      <Card>
+      <Card className="border border-white/[0.06]">
         <CardContent className="pt-5 space-y-3">
           <div className="flex justify-between text-sm">
             <span className="text-muted-foreground">Matches Played</span>
@@ -164,7 +165,7 @@ export default async function ProfilePage() {
 
       {/* Match history */}
       {matchScores && matchScores.length > 0 && (
-        <Card>
+        <Card className="border border-white/[0.06]">
           <CardHeader className="pb-3">
             <CardTitle className="text-base">Match History</CardTitle>
           </CardHeader>
@@ -180,7 +181,7 @@ export default async function ProfilePage() {
               return (
                 <div
                   key={ms.id}
-                  className="flex items-center justify-between py-2 px-3 rounded-lg bg-accent/20"
+                  className="flex items-center justify-between py-2 px-3 rounded-lg bg-secondary/50"
                 >
                   <div className="flex items-center gap-2">
                     <span className="text-xs text-muted-foreground font-mono w-6">
@@ -204,6 +205,8 @@ export default async function ProfilePage() {
           </CardContent>
         </Card>
       )}
+
+      <SignOutButton />
     </div>
   )
 }

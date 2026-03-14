@@ -3,6 +3,7 @@
 import { createClient } from "@/lib/supabase/client"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { AlertCircle } from "lucide-react"
 import { useSearchParams } from "next/navigation"
 import { Suspense } from "react"
 
@@ -21,27 +22,32 @@ function LoginForm() {
   }
 
   return (
-    <div className="flex min-h-dvh items-center justify-center px-4">
-      <Card className="w-full max-w-sm">
+    <div className="flex min-h-dvh items-center justify-center px-4 bg-gradient-to-b from-background via-background to-primary/5">
+      <Card className="w-full max-w-sm border border-white/[0.08] shadow-2xl shadow-primary/5">
         <CardHeader className="text-center">
-          <div className="mx-auto mb-4 text-4xl font-bold tracking-tight">
+          <div className="flex justify-center gap-2 mb-4">
+            <div className="w-2 h-2 rounded-full bg-primary/40" />
+            <div className="w-2 h-2 rounded-full bg-accent/40" />
+            <div className="w-2 h-2 rounded-full bg-primary/40" />
+          </div>
+          <div className="mx-auto mb-4 text-5xl font-extrabold tracking-tighter text-primary drop-shadow-[0_0_15px_rgba(16,185,129,0.3)]">
             TIPL
           </div>
-          <CardTitle className="text-xl">Fantasy Cricket</CardTitle>
-          <p className="text-sm text-muted-foreground">
+          <CardTitle className="text-xl font-semibold text-foreground/80">Fantasy Cricket</CardTitle>
+          <p className="text-muted-foreground text-sm">
             Office IPL 2026 League
           </p>
         </CardHeader>
         <CardContent className="space-y-4">
           {error && (
-            <p className="text-sm text-center text-destructive">
+            <p className="text-sm text-center text-destructive flex items-center justify-center gap-1.5">
+              <AlertCircle className="h-4 w-4" />
               Authentication failed. Please try again.
             </p>
           )}
           <Button
             onClick={handleGoogleLogin}
-            variant="outline"
-            className="w-full h-12 text-base"
+            className="h-12 w-full bg-white text-gray-900 hover:bg-gray-100 font-medium rounded-lg"
           >
             <svg className="mr-2 h-5 w-5" viewBox="0 0 24 24">
               <path

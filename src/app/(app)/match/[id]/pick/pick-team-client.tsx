@@ -195,7 +195,7 @@ export function PickTeamClient({
               const isCaptain = captainId === player.id
               const isVC = viceCaptainId === player.id
               return (
-                <Card key={player.id} className="p-3">
+                <Card key={player.id} className="p-3 border border-white/[0.06]">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2 min-w-0">
                       <Badge
@@ -220,7 +220,10 @@ export function PickTeamClient({
                       <Button
                         size="sm"
                         variant={isCaptain ? "default" : "outline"}
-                        className="h-8 w-8 p-0 rounded-full"
+                        className={cn(
+                          "h-8 w-8 p-0 rounded-full",
+                          isCaptain && "bg-amber-400 text-black hover:bg-amber-400/90"
+                        )}
                         onClick={() => {
                           if (viceCaptainId === player.id)
                             setViceCaptainId(null)
@@ -232,7 +235,10 @@ export function PickTeamClient({
                       <Button
                         size="sm"
                         variant={isVC ? "default" : "outline"}
-                        className="h-8 w-8 p-0 rounded-full"
+                        className={cn(
+                          "h-8 w-8 p-0 rounded-full",
+                          isVC && "bg-violet-400 text-black hover:bg-violet-400/90"
+                        )}
                         onClick={() => {
                           if (captainId === player.id) setCaptainId(null)
                           setViceCaptainId(isVC ? null : player.id)
@@ -459,7 +465,7 @@ export function PickTeamClient({
                     </Badge>
                   )}
                   {isVC && (
-                    <Badge className="h-4 px-1 text-[9px] bg-blue-500/20 text-blue-500 border-blue-500/30">
+                    <Badge className="h-4 px-1 text-[9px] bg-violet-500/20 text-violet-400 border-violet-500/30">
                       VC
                     </Badge>
                   )}
@@ -547,7 +553,12 @@ export function PickTeamClient({
           <Button
             onClick={handleSubmit}
             disabled={!validation.valid || !captainId || !viceCaptainId || isPending}
-            className="w-full"
+            className={cn(
+              "w-full",
+              validation.valid && captainId && viceCaptainId && !isPending
+                ? "bg-gradient-to-r from-primary to-emerald-400 text-black font-semibold"
+                : ""
+            )}
           >
             {isPending
               ? "Saving..."

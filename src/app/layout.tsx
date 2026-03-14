@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next"
 import { Geist, Geist_Mono } from "next/font/google"
+import { Toaster } from "sonner"
 import { ServiceWorkerRegistration } from "@/components/sw-register"
 import "./globals.css"
 
@@ -44,7 +45,7 @@ export const viewport: Viewport = {
   maximumScale: 1,
   userScalable: false,
   viewportFit: "cover",
-  themeColor: "#1a1a2e",
+  themeColor: "#0A0E1A",
 }
 
 export default function RootLayout({
@@ -62,6 +63,7 @@ export default function RootLayout({
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
         {children}
+        <Toaster theme="dark" richColors position="top-center" />
         <ServiceWorkerRegistration />
       </body>
     </html>
