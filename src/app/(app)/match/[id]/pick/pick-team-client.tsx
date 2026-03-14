@@ -318,29 +318,43 @@ export function PickTeamClient({
         </div>
 
         {/* Composition tracker */}
-        <div className="px-4 pb-2 flex gap-1.5 overflow-x-auto">
+        <div className="px-4 pb-2 flex gap-1.5 overflow-x-auto scrollbar-hide">
+          {/* All tab */}
+          <button
+            onClick={() => setActiveFilter("ALL")}
+            className={cn(
+              "flex items-center gap-1 px-2.5 py-1 rounded-md text-xs border transition-colors whitespace-nowrap",
+              activeFilter === "ALL"
+                ? "border-primary bg-primary text-primary-foreground font-semibold"
+                : "border-border text-muted-foreground"
+            )}
+          >
+            <span className="font-medium">All</span>
+            <span className="tabular-nums">{selectedIds.size}/{11}</span>
+          </button>
           {ROLE_ORDER.map((role) => {
             const [min, max] = ROLE_LIMITS[role]
             const count = roleCount[role]
             const ok = count >= min && count <= max
+            const isActive = activeFilter === role
             return (
               <button
                 key={role}
                 onClick={() =>
-                  setActiveFilter(activeFilter === role ? "ALL" : role)
+                  setActiveFilter(isActive ? "ALL" : role)
                 }
                 className={cn(
-                  "flex items-center gap-1 px-2 py-1 rounded-md text-xs border transition-colors whitespace-nowrap",
-                  activeFilter === role
-                    ? "border-primary bg-primary/10 text-primary"
-                    : "border-border",
-                  count > 0 && ok && "text-green-500 border-green-500/30",
-                  count > 0 && !ok && "text-amber-500 border-amber-500/30"
+                  "flex items-center gap-1 px-2.5 py-1 rounded-md text-xs border transition-colors whitespace-nowrap",
+                  isActive
+                    ? "border-primary bg-primary text-primary-foreground font-semibold"
+                    : "border-border text-muted-foreground",
+                  !isActive && count > 0 && ok && "text-green-500 border-green-500/30",
+                  !isActive && count > 0 && !ok && "text-amber-500 border-amber-500/30"
                 )}
               >
                 <span className="font-medium">{role}</span>
                 <span className="tabular-nums">
-                  {count}/{min}-{max}
+                  {count}/{max}
                 </span>
               </button>
             )

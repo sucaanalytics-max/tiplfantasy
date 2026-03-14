@@ -5,6 +5,7 @@ import { Badge } from "@/components/ui/badge"
 import { Trophy, Target, TrendingUp, TrendingDown } from "lucide-react"
 import { ProfileNameForm } from "./name-form"
 import { SignOutButton } from "./sign-out-button"
+import { ThemeCard } from "./theme-card"
 
 export default async function ProfilePage() {
   const supabase = await createClient()
@@ -162,6 +163,9 @@ export default async function ProfilePage() {
           )}
         </CardContent>
       </Card>
+
+      {/* Theme */}
+      <ThemeCard />
 
       {/* Match history */}
       {matchScores && matchScores.length > 0 && (

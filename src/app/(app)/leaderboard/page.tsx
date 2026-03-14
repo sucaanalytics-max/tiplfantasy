@@ -4,6 +4,23 @@ import { Card, CardContent } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Trophy } from "lucide-react"
 
+const avatarColors = [
+  "bg-emerald-500", "bg-blue-500", "bg-purple-500", "bg-amber-500",
+  "bg-rose-500", "bg-cyan-500", "bg-indigo-500", "bg-orange-500"
+]
+
+function getInitials(name: string): string {
+  const parts = name.trim().split(" ")
+  if (parts.length >= 2) return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase()
+  return name.slice(0, 2).toUpperCase()
+}
+
+function getAvatarColor(name: string): string {
+  let hash = 0
+  for (let i = 0; i < name.length; i++) hash = name.charCodeAt(i) + ((hash << 5) - hash)
+  return avatarColors[Math.abs(hash) % avatarColors.length]
+}
+
 type LeaderRow = {
   user_id: string
   display_name: string
@@ -77,6 +94,9 @@ export default async function LeaderboardPage() {
         {showBanner && rows[0] && (
           <div className="flex items-center gap-3 p-3 rounded-lg bg-gradient-to-r from-amber-500/10 to-amber-600/5 border border-amber-500/20 mb-4">
             <Trophy className="h-5 w-5 text-amber-500" />
+            <div className={`h-7 w-7 rounded-full ${getAvatarColor(rows[0].display_name)} flex items-center justify-center flex-shrink-0`}>
+              <span className="text-white text-xs font-semibold">{getInitials(rows[0].display_name)}</span>
+            </div>
             <div>
               <p className="text-sm font-semibold text-amber-400">Manager of the Match</p>
               <p className="text-sm">{rows[0].display_name} &mdash; {rows[0].total_points} pts</p>
@@ -103,10 +123,15 @@ export default async function LeaderboardPage() {
               <span className="w-10 text-sm">
                 {i < 3 ? medals[i] : row.rank}
               </span>
-              <span className={`flex-1 text-sm ${isMe ? "font-semibold" : ""}`}>
-                {row.display_name}
-                {isMe && " (you)"}
-              </span>
+              <div className={`flex-1 flex items-center gap-2 text-sm ${isMe ? "font-semibold" : ""}`}>
+                <div className={`h-7 w-7 rounded-full ${getAvatarColor(row.display_name)} flex items-center justify-center flex-shrink-0`}>
+                  <span className="text-white text-xs font-semibold">{getInitials(row.display_name)}</span>
+                </div>
+                <span>
+                  {row.display_name}
+                  {isMe && " (you)"}
+                </span>
+              </div>
               {showMP && (
                 <span className="w-12 text-center text-sm text-muted-foreground">
                   {row.matches_played ?? 0}

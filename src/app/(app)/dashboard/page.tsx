@@ -7,6 +7,23 @@ import { Button } from "@/components/ui/button"
 import { format, formatDistanceToNow, isPast, differenceInHours } from "date-fns"
 import { Trophy, Target, TrendingUp, Clock, CheckCircle2 } from "lucide-react"
 
+const avatarColors = [
+  "bg-emerald-500", "bg-blue-500", "bg-purple-500", "bg-amber-500",
+  "bg-rose-500", "bg-cyan-500", "bg-indigo-500", "bg-orange-500"
+]
+
+function getInitials(name: string): string {
+  const parts = name.trim().split(" ")
+  if (parts.length >= 2) return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase()
+  return name.slice(0, 2).toUpperCase()
+}
+
+function getAvatarColor(name: string): string {
+  let hash = 0
+  for (let i = 0; i < name.length; i++) hash = name.charCodeAt(i) + ((hash << 5) - hash)
+  return avatarColors[Math.abs(hash) % avatarColors.length]
+}
+
 export default async function DashboardPage() {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
@@ -245,6 +262,9 @@ export default async function DashboardPage() {
                     <span className="w-6 text-center text-sm">
                       {i < 3 ? medals[i] : `${e.season_rank}`}
                     </span>
+                    <div className={`h-7 w-7 rounded-full ${getAvatarColor(e.display_name)} flex items-center justify-center flex-shrink-0`}>
+                      <span className="text-white text-xs font-semibold">{getInitials(e.display_name)}</span>
+                    </div>
                     <span className={`text-sm ${isMe ? "font-semibold" : ""}`}>
                       {e.display_name}
                       {isMe && " (you)"}
@@ -262,6 +282,9 @@ export default async function DashboardPage() {
                 <div className="flex items-center justify-between py-2 px-3 rounded-lg bg-primary/10 border border-primary/20">
                   <div className="flex items-center gap-3">
                     <span className="w-6 text-center text-sm">{myRank.season_rank}</span>
+                    <div className={`h-7 w-7 rounded-full ${getAvatarColor(myRank.display_name)} flex items-center justify-center flex-shrink-0`}>
+                      <span className="text-white text-xs font-semibold">{getInitials(myRank.display_name)}</span>
+                    </div>
                     <span className="text-sm font-semibold">
                       {myRank.display_name} (you)
                     </span>
