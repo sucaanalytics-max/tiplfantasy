@@ -88,7 +88,7 @@ export function LeagueDetailClient({ league, members, isCreator, leaderboard }: 
   }
 
   return (
-    <div className="p-4 md:p-6 space-y-6 max-w-3xl">
+    <div className="p-4 md:p-6 space-y-6 max-w-3xl lg:max-w-5xl">
       {/* Header */}
       <div className="flex items-center gap-3">
         <Link href="/leagues">
@@ -106,6 +106,10 @@ export function LeagueDetailClient({ league, members, isCreator, leaderboard }: 
           </div>
         </div>
       </div>
+
+      <div className="lg:grid lg:grid-cols-3 lg:gap-6">
+      {/* Left column — invite, members, actions */}
+      <div className="lg:col-span-1 space-y-6">
 
       {/* Invite Code */}
       <Card className="border border-border">
@@ -128,6 +132,92 @@ export function LeagueDetailClient({ league, members, isCreator, leaderboard }: 
           </div>
         </CardContent>
       </Card>
+
+      {/* Members */}
+      <Card className="border border-border">
+        <CardHeader className="pb-3">
+          <CardTitle className="text-base flex items-center gap-2">
+            <Users className="h-4 w-4" />
+            Members
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-2">
+            {members.map((member) => {
+              const prof = Array.isArray(member.profile) ? member.profile[0] : member.profile
+              const name = prof?.display_name ?? "Unknown"
+              const color = getAvatarHexColor(name)
+              const initials = getInitials(name)
+              return (
+                <div
+                  key={member.user_id}
+                  className="flex items-center justify-between py-2 px-3 rounded-lg bg-secondary/50"
+                >
+                  <div className="flex items-center gap-2.5 min-w-0">
+                    <div
+                      className="w-7 h-7 rounded-full flex items-center justify-center text-[10px] font-bold text-white shrink-0"
+                      style={{ backgroundColor: color }}
+                    >
+                      {initials}
+                    </div>
+                    <div className="min-w-0">
+                      <span className="text-sm truncate block">{name}</span>
+                      {member.user_id === league.creator_id && (
+                        <span className="text-[10px] text-muted-foreground">Creator</span>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Actions */}
+      <div className="flex gap-3">
+        {!isCreator && (
+          <Button
+            variant="outline"
+            onClick={handleLeave}
+            disabled={isPending}
+            className="flex-1"
+          >
+            {isPending ? "Leaving..." : "Leave League"}
+          </Button>
+        )}
+        {isCreator && (
+          <Dialog open={deleteOpen} onOpenChange={setDeleteOpen}>
+            <DialogTrigger asChild>
+              <Button variant="destructive" className="flex-1 gap-2">
+                <Trash2 className="h-4 w-4" />
+                Delete League
+              </Button>
+            </DialogTrigger>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>Delete League</DialogTitle>
+                <DialogDescription>
+                  This will permanently delete &quot;{league.name}&quot; and remove all members.
+                  This action cannot be undone.
+                </DialogDescription>
+              </DialogHeader>
+              <DialogFooter className="gap-2">
+                <Button variant="outline" onClick={() => setDeleteOpen(false)}>
+                  Cancel
+                </Button>
+                <Button variant="destructive" onClick={handleDelete} disabled={isPending}>
+                  {isPending ? "Deleting..." : "Delete"}
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
+        )}
+      </div>
+
+      </div>{/* end left column */}
+      {/* Right column — leaderboard */}
+      <div className="lg:col-span-2 space-y-6 mt-6 lg:mt-0">
 
       {/* Leaderboard */}
       <Card className="border border-border">
@@ -199,96 +289,8 @@ export function LeagueDetailClient({ league, members, isCreator, leaderboard }: 
         </CardContent>
       </Card>
 
-      {/* Members */}
-      <Card className="border border-border">
-        <CardHeader className="pb-3">
-          <CardTitle className="text-base flex items-center gap-2">
-            <Users className="h-4 w-4" />
-            Members
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-2">
-            {members.map((member) => {
-              const prof = Array.isArray(member.profile) ? member.profile[0] : member.profile
-              const name = prof?.display_name ?? "Unknown"
-              const color = getAvatarHexColor(name)
-              const initials = getInitials(name)
-              const joinDate = new Date(member.joined_at).toLocaleDateString("en-IN", {
-                day: "numeric",
-                month: "short",
-                year: "numeric",
-              })
-
-              return (
-                <div
-                  key={member.user_id}
-                  className="flex items-center justify-between py-2.5 px-3 rounded-lg bg-secondary/50"
-                >
-                  <div className="flex items-center gap-2.5 min-w-0">
-                    <div
-                      className="w-7 h-7 rounded-full flex items-center justify-center text-[10px] font-bold text-white shrink-0"
-                      style={{ backgroundColor: color }}
-                    >
-                      {initials}
-                    </div>
-                    <div className="min-w-0">
-                      <span className="text-sm truncate block">{name}</span>
-                      {member.user_id === league.creator_id && (
-                        <span className="text-[10px] text-muted-foreground">Creator</span>
-                      )}
-                    </div>
-                  </div>
-                  <span className="text-xs text-muted-foreground shrink-0">
-                    Joined {joinDate}
-                  </span>
-                </div>
-              )
-            })}
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Actions */}
-      <div className="flex gap-3 pb-6">
-        {!isCreator && (
-          <Button
-            variant="outline"
-            onClick={handleLeave}
-            disabled={isPending}
-            className="flex-1"
-          >
-            {isPending ? "Leaving..." : "Leave League"}
-          </Button>
-        )}
-        {isCreator && (
-          <Dialog open={deleteOpen} onOpenChange={setDeleteOpen}>
-            <DialogTrigger asChild>
-              <Button variant="destructive" className="flex-1 gap-2">
-                <Trash2 className="h-4 w-4" />
-                Delete League
-              </Button>
-            </DialogTrigger>
-            <DialogContent>
-              <DialogHeader>
-                <DialogTitle>Delete League</DialogTitle>
-                <DialogDescription>
-                  This will permanently delete &quot;{league.name}&quot; and remove all members.
-                  This action cannot be undone.
-                </DialogDescription>
-              </DialogHeader>
-              <DialogFooter className="gap-2">
-                <Button variant="outline" onClick={() => setDeleteOpen(false)}>
-                  Cancel
-                </Button>
-                <Button variant="destructive" onClick={handleDelete} disabled={isPending}>
-                  {isPending ? "Deleting..." : "Delete"}
-                </Button>
-              </DialogFooter>
-            </DialogContent>
-          </Dialog>
-        )}
-      </div>
+      </div>{/* end right column */}
+      </div>{/* end desktop grid */}
     </div>
   )
 }

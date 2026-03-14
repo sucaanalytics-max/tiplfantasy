@@ -298,9 +298,76 @@ export function PickTeamClient({
     )
   }
 
+  // Inline C/VC selector for desktop
+  const renderDesktopCaptainPicker = () => (
+    <div className="space-y-2">
+      <h3 className="text-sm font-semibold">Captain & Vice-Captain</h3>
+      <p className="text-xs text-muted-foreground">
+        Captain gets 2x points, Vice-Captain gets 1.5x
+      </p>
+      {selectedPlayers.length === 0 ? (
+        <p className="text-xs text-muted-foreground italic py-2">Select players first</p>
+      ) : (
+        <div className="space-y-1.5 max-h-[280px] overflow-y-auto">
+          {selectedPlayers
+            .sort((a, b) => ROLE_ORDER.indexOf(a.role) - ROLE_ORDER.indexOf(b.role))
+            .map((player) => {
+              const isCaptain = captainId === player.id
+              const isVC = viceCaptainId === player.id
+              return (
+                <div key={player.id} className="flex items-center justify-between p-2 rounded-lg border border-border bg-card">
+                  <div className="flex items-center gap-2 min-w-0">
+                    <Badge variant="outline" className="text-[9px] w-9 justify-center shrink-0">
+                      {player.role}
+                    </Badge>
+                    <div className="min-w-0">
+                      <p className="text-xs font-medium truncate">{player.name}</p>
+                      <p className="text-[9px]" style={{ color: player.team.color }}>
+                        {player.team.short_name}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-1.5 shrink-0">
+                    <Button
+                      size="sm"
+                      variant={isCaptain ? "default" : "outline"}
+                      className={cn(
+                        "h-7 w-7 p-0 rounded-full",
+                        isCaptain && "bg-amber-400 text-black hover:bg-amber-400/90"
+                      )}
+                      onClick={() => {
+                        if (viceCaptainId === player.id) setViceCaptainId(null)
+                        setCaptainId(isCaptain ? null : player.id)
+                      }}
+                    >
+                      <span className="text-[10px] font-bold">C</span>
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant={isVC ? "default" : "outline"}
+                      className={cn(
+                        "h-7 w-7 p-0 rounded-full",
+                        isVC && "bg-violet-400 text-black hover:bg-violet-400/90"
+                      )}
+                      onClick={() => {
+                        if (captainId === player.id) setCaptainId(null)
+                        setViceCaptainId(isVC ? null : player.id)
+                      }}
+                    >
+                      <span className="text-[10px] font-bold">VC</span>
+                    </Button>
+                  </div>
+                </div>
+              )
+            })}
+        </div>
+      )}
+    </div>
+  )
+
   // Main player selection view
   return (
-    <div className="min-h-screen pb-40 md:pb-28">
+    <div className="min-h-screen pb-40 md:pb-28 lg:pb-0">
       {/* Header */}
       <div className="sticky top-0 z-30 bg-background/95 backdrop-blur border-b border-border">
         <div className="px-4 py-3">
@@ -448,6 +515,76 @@ export function PickTeamClient({
         )}
       </div>
 
+      {/* Desktop split-panel layout */}
+      <div className="lg:grid lg:grid-cols-12 lg:h-[calc(100dvh-180px)]">
+        {/* Left panel — desktop only: field + C/VC + actions */}
+        <div className="hidden lg:flex lg:flex-col lg:col-span-5 lg:border-r lg:border-border lg:overflow-y-auto lg:p-6 lg:gap-6">
+          <CricketField players={selectedPlayers} captainId={captainId} viceCaptainId={viceCaptainId} size="lg" />
+
+          {renderDesktopCaptainPicker()}
+
+          <Separator />
+
+          {/* Budget & composition summary */}
+          <div className="flex items-center justify-between text-xs text-muted-foreground">
+            <span>Players: {selectedIds.size}/11</span>
+            <span className={cn(
+              "tabular-nums font-medium",
+              remainingBudget < 0 ? "text-destructive" : remainingBudget < 15 ? "text-amber-500" : ""
+            )}>
+              {remainingBudget.toFixed(1)} credits left
+            </span>
+          </div>
+
+          {/* Desktop action buttons */}
+          <div className="space-y-2">
+            {selectedIds.size < 11 && (
+              <button
+                onClick={handleSmartPick}
+                className="flex items-center justify-center gap-1.5 text-xs px-3 py-2 rounded-lg border border-primary/30 text-primary transition-colors hover:bg-primary/5 w-full"
+              >
+                <Sparkles className="h-3.5 w-3.5" />
+                Smart Pick
+              </button>
+            )}
+            {selectedIds.size > 0 && (
+              <button
+                onClick={handleClearAll}
+                className="text-xs text-muted-foreground hover:text-foreground w-full text-center py-1"
+              >
+                Clear all
+              </button>
+            )}
+          </div>
+
+          {error && (
+            <div className="px-3 py-2 bg-destructive/10 border border-destructive/20 rounded-lg flex items-center gap-2">
+              <AlertCircle className="h-3.5 w-3.5 text-destructive shrink-0" />
+              <p className="text-xs text-destructive">{error}</p>
+            </div>
+          )}
+
+          <Button
+            onClick={handleSubmit}
+            disabled={!validation.valid || !captainId || !viceCaptainId || isPending}
+            className={cn(
+              "w-full",
+              validation.valid && captainId && viceCaptainId && !isPending
+                ? "bg-gradient-to-r from-primary to-emerald-400 text-black font-semibold"
+                : ""
+            )}
+          >
+            {isPending
+              ? "Saving..."
+              : initialSelectedIds.length > 0
+                ? "Update Selection"
+                : "Submit Selection"}
+          </Button>
+        </div>
+
+        {/* Right panel — player browser (full-width on mobile) */}
+        <div className="lg:col-span-7 lg:overflow-y-auto">
+
       {/* Player list */}
       {teamFilter === "ALL" ? (
         <div className="grid grid-cols-2 gap-px bg-border">
@@ -585,8 +722,11 @@ export function PickTeamClient({
         </div>
       )}
 
-      {/* Bottom action bar */}
-      <div className="fixed bottom-14 left-0 right-0 md:bottom-0 z-40 border-t border-border bg-background/95 backdrop-blur">
+        </div>{/* end right panel */}
+      </div>{/* end split-panel grid */}
+
+      {/* Bottom action bar — mobile only */}
+      <div className="fixed bottom-14 left-0 right-0 md:bottom-0 z-40 border-t border-border bg-background/95 backdrop-blur lg:hidden">
         {error && (
           <div className="px-4 py-2 bg-destructive/10 border-b border-destructive/20 flex items-center gap-2">
             <AlertCircle className="h-3.5 w-3.5 text-destructive shrink-0" />

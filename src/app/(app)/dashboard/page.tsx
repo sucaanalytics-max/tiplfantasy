@@ -82,12 +82,17 @@ export default async function DashboardPage() {
   const hoursUntilMatch = nextMatch ? differenceInHours(new Date(nextMatch.start_time), new Date()) : null
 
   return (
-    <div className="p-4 md:p-6 space-y-6 max-w-2xl">
+    <div className="p-4 md:p-6 space-y-6 max-w-2xl lg:max-w-5xl">
       {/* Greeting */}
       <div>
         <h1 className="text-2xl font-bold tracking-tight">Hey, {firstName} <span className="inline-block">&#127951;</span></h1>
         <p className="text-primary/60 mt-0.5">TIPL Fantasy 2026</p>
       </div>
+
+      {/* Desktop 2-column layout */}
+      <div className="lg:grid lg:grid-cols-5 lg:gap-6">
+      {/* Left column — main content */}
+      <div className="lg:col-span-3 space-y-6">
 
       {/* Season rank + points */}
       <div className="grid grid-cols-2 gap-4">
@@ -217,6 +222,10 @@ export default async function DashboardPage() {
         </Card>
       )}
 
+      </div>{/* end left column */}
+      {/* Right column — standings & leagues */}
+      <div className="lg:col-span-2 space-y-6 mt-6 lg:mt-0">
+
       {/* Mini leaderboard */}
       <Card className="border border-border">
         <CardHeader className="pb-3">
@@ -324,6 +333,8 @@ export default async function DashboardPage() {
           )}
         </CardContent>
       </Card>
+      </div>{/* end right column */}
+      </div>{/* end desktop grid */}
     </div>
   )
 }

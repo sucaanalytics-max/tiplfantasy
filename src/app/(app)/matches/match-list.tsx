@@ -109,6 +109,7 @@ export function MatchList({
                   {format(new Date(dateKey), "EEEE, MMMM d")}
                   <div className="flex-1 h-px bg-border" />
                 </h2>
+                <div className="lg:grid lg:grid-cols-2 lg:gap-4 space-y-3 lg:space-y-0">
                 {dayMatches.map((match) => {
                   const home = match.team_home
                   const away = match.team_away
@@ -215,6 +216,7 @@ export function MatchList({
                     </Card>
                   )
                 })}
+                </div>{/* end desktop grid */}
               </div>
             ))}
           </TabsContent>

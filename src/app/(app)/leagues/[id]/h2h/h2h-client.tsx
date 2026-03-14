@@ -61,7 +61,7 @@ export function H2HClient({ leagueId, leagueName, members, scores, currentUserId
   const nameB = members.find((m) => m.user_id === playerB)?.display_name ?? "Player B"
 
   return (
-    <div className="p-4 md:p-6 space-y-6 max-w-2xl">
+    <div className="p-4 md:p-6 space-y-6 max-w-2xl lg:max-w-4xl">
       <div>
         <Link
           href={`/leagues/${leagueId}`}
@@ -107,7 +107,7 @@ export function H2HClient({ leagueId, leagueName, members, scores, currentUserId
       )}
 
       {comparison && (
-        <>
+        <div className="lg:grid lg:grid-cols-2 lg:gap-6 space-y-6 lg:space-y-0">
           {/* Summary */}
           <Card className="border border-border">
             <CardContent className="pt-5">
@@ -188,7 +188,7 @@ export function H2HClient({ leagueId, leagueName, members, scores, currentUserId
               )}
             </CardContent>
           </Card>
-        </>
+        </div>
       )}
     </div>
   )

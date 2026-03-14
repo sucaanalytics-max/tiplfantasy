@@ -86,7 +86,7 @@ export default async function ProfilePage() {
   } | null
 
   return (
-    <div className="p-4 md:p-6 space-y-6 max-w-2xl">
+    <div className="p-4 md:p-6 space-y-6 max-w-2xl lg:max-w-4xl">
       <div>
         <h1 className="text-2xl font-bold tracking-tight">Profile</h1>
         <p className="text-muted-foreground mt-0.5">Your account & stats</p>
@@ -104,7 +104,7 @@ export default async function ProfilePage() {
       </Card>
 
       {/* Stats grid */}
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <Card className="border border-border">
           <CardContent className="pt-5">
             <div className="flex items-center gap-2.5">
@@ -155,6 +155,9 @@ export default async function ProfilePage() {
         </Card>
       </div>
 
+      {/* Desktop 2-column layout for detail cards */}
+      <div className="lg:grid lg:grid-cols-2 lg:gap-6 space-y-6 lg:space-y-0">
+      <div className="space-y-6">
       {/* Extra stats */}
       <Card className="border border-border">
         <CardContent className="pt-5 space-y-3">
@@ -250,6 +253,8 @@ export default async function ProfilePage() {
         )
       })()}
 
+      </div>{/* end left detail column */}
+      <div className="space-y-6">
       {/* Role Preferences */}
       {totalPicks > 0 && (
         <Card className="border border-border">
@@ -282,6 +287,8 @@ export default async function ProfilePage() {
 
       {/* Theme */}
       <ThemeCard />
+      </div>{/* end right detail column */}
+      </div>{/* end desktop detail grid */}
 
       {/* Match history */}
       {matchScores && matchScores.length > 0 && (
