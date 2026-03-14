@@ -1,4 +1,5 @@
 import type { PlayerWithTeam } from "./types"
+import { TOTAL_BUDGET } from "./constants"
 
 export type ValidationResult = {
   valid: boolean
@@ -10,6 +11,7 @@ export type ValidationResult = {
     allRounders: boolean
     bowlers: boolean
     maxPerTeam: boolean
+    budgetValid: boolean
     captainValid: boolean
     viceCaptainValid: boolean
     captainNotVC: boolean
@@ -37,6 +39,9 @@ export function validateSelection(
   })
   const maxTeamCount = Math.max(0, ...byTeam.values())
 
+  // Budget
+  const totalCost = players.reduce((sum, p) => sum + (p.credit_cost ?? 0), 0)
+
   const totalPlayers = players.length === 11
   if (!totalPlayers) errors.push(`Select exactly 11 players (have ${players.length})`)
 
@@ -55,6 +60,9 @@ export function validateSelection(
   const maxPerTeam = maxTeamCount <= 7
   if (!maxPerTeam) errors.push(`Max 7 players from one team (have ${maxTeamCount})`)
 
+  const budgetValid = totalCost <= TOTAL_BUDGET
+  if (!budgetValid) errors.push(`Over budget: ${totalCost.toFixed(1)}/${TOTAL_BUDGET} credits`)
+
   const captainValid = !captainId || playerIds.has(captainId)
   if (!captainValid) errors.push("Captain must be in your squad")
 
@@ -71,6 +79,7 @@ export function validateSelection(
     allRounders,
     bowlers,
     maxPerTeam,
+    budgetValid,
     captainValid,
     viceCaptainValid,
     captainNotVC,

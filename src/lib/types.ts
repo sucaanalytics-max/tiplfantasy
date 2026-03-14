@@ -37,6 +37,7 @@ export type Player = {
   role: PlayerRole
   is_active: boolean
   cricapi_id: string | null
+  credit_cost: number
   created_at: string
 }
 

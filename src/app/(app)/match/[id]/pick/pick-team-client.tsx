@@ -11,6 +11,7 @@ import {
   AlertCircle,
   Search,
   X,
+  Eye,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -20,6 +21,10 @@ import { Separator } from "@/components/ui/separator"
 import { cn } from "@/lib/utils"
 import { validateSelection, type ValidationResult } from "@/lib/validation"
 import { submitSelection } from "@/actions/selections"
+import { TOTAL_BUDGET } from "@/lib/constants"
+import { SegmentedProgressBar } from "@/components/segmented-progress-bar"
+import { CricketField } from "@/components/cricket-field"
+import { Drawer, DrawerContent, DrawerTrigger, DrawerTitle } from "@/components/ui/drawer"
 import type { PlayerWithTeam, MatchWithTeams, PlayerRole } from "@/lib/types"
 
 type Props = {
@@ -95,6 +100,12 @@ export function PickTeamClient({
     return counts
   }, [selectedPlayers])
 
+  const totalCost = useMemo(
+    () => selectedPlayers.reduce((sum, p) => sum + (p.credit_cost ?? 0), 0),
+    [selectedPlayers]
+  )
+  const remainingBudget = TOTAL_BUDGET - totalCost
+
   const filteredPlayers = useMemo(() => {
     let list = players
     if (activeFilter !== "ALL") {
@@ -129,13 +140,15 @@ export function PickTeamClient({
           if (viceCaptainId === playerId) setViceCaptainId(null)
         } else {
           if (next.size >= 11) return prev
+          const playerCost = players.find(p => p.id === playerId)?.credit_cost ?? 0
+          if (totalCost + playerCost > TOTAL_BUDGET) return prev
           next.add(playerId)
         }
         return next
       })
       setError(null)
     },
-    [captainId, viceCaptainId]
+    [captainId, viceCaptainId, totalCost, players]
   )
 
   const handleSubmit = () => {
@@ -171,6 +184,54 @@ export function PickTeamClient({
     setError(null)
   }
 
+  const renderPlayerCompact = (player: PlayerWithTeam) => {
+    const isSelected = selectedIds.has(player.id)
+    const isCaptain = captainId === player.id
+    const isVC = viceCaptainId === player.id
+    const isInXI = playingXIIds.includes(player.id)
+    const currentTeamCt = teamCount.get(player.team_id) ?? 0
+    const wouldExceedTeam = !isSelected && currentTeamCt >= 7
+    const isFull = !isSelected && selectedIds.size >= 11
+    const cantAfford = !isSelected && player.credit_cost > remainingBudget
+
+    return (
+      <button
+        key={player.id}
+        onClick={() => {
+          if (!wouldExceedTeam && !isFull && !cantAfford) togglePlayer(player.id)
+        }}
+        disabled={wouldExceedTeam || isFull || cantAfford}
+        className={cn(
+          "w-full flex items-center gap-2 px-2.5 py-2.5 text-left transition-colors",
+          isSelected ? "bg-primary/5" : (wouldExceedTeam || isFull || cantAfford) ? "opacity-40" : "hover:bg-secondary/50",
+          hasPlayingXI && !isInXI && "opacity-50"
+        )}
+      >
+        {/* Selection dot */}
+        <div className={cn(
+          "h-4 w-4 rounded-full border-2 flex items-center justify-center shrink-0",
+          isSelected ? "border-primary bg-primary" : "border-muted-foreground/30"
+        )}>
+          {isSelected && <Check className="h-2.5 w-2.5 text-primary-foreground" />}
+        </div>
+
+        {/* Player info */}
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-1">
+            <span className="text-xs font-medium truncate">{player.name}</span>
+            {isCaptain && <span className="text-[8px] font-bold text-amber-500">C</span>}
+            {isVC && <span className="text-[8px] font-bold text-violet-400">VC</span>}
+            {hasPlayingXI && isInXI && <Shield className="h-2.5 w-2.5 text-green-500 shrink-0" />}
+          </div>
+          <div className="flex items-center gap-1">
+            <Badge variant="outline" className="text-[8px] h-3 px-0.5 py-0">{player.role}</Badge>
+            <span className="text-[9px] text-muted-foreground">{player.credit_cost}</span>
+          </div>
+        </div>
+      </button>
+    )
+  }
+
   // Captain picker view
   if (showCaptainPicker) {
     return (
@@ -184,7 +245,7 @@ export function PickTeamClient({
           </button>
           <h2 className="text-lg font-bold">Choose Captain & Vice-Captain</h2>
           <p className="text-xs text-muted-foreground">
-            Captain gets 2× points, Vice-Captain gets 1.5×
+            Captain gets 2x points, Vice-Captain gets 1.5x
           </p>
         </div>
 
@@ -308,12 +369,15 @@ export function PickTeamClient({
                 {match.venue}
               </p>
             </div>
-            <Badge
-              variant={selectedIds.size === 11 ? "default" : "secondary"}
-              className="text-sm tabular-nums"
-            >
-              {selectedIds.size}/11
-            </Badge>
+            <div className="flex flex-col items-end gap-1">
+              <SegmentedProgressBar filled={selectedIds.size} total={11} />
+              <span className={cn(
+                "text-[10px] tabular-nums font-medium",
+                remainingBudget < 0 ? "text-destructive" : remainingBudget < 15 ? "text-amber-500" : "text-muted-foreground"
+              )}>
+                {remainingBudget.toFixed(1)} credits left
+              </span>
+            </div>
           </div>
         </div>
 
@@ -415,106 +479,149 @@ export function PickTeamClient({
       </div>
 
       {/* Player list */}
-      <div className="divide-y divide-border">
-        {filteredPlayers.map((player) => {
-          const isSelected = selectedIds.has(player.id)
-          const isCaptain = captainId === player.id
-          const isVC = viceCaptainId === player.id
-          const isInXI = playingXIIds.includes(player.id)
-          const isHome = player.team_id === match.team_home_id
-          const teamColor = isHome
-            ? match.team_home.color
-            : match.team_away.color
-
-          // Check if adding this player would violate max team rule
-          const currentTeamCount = teamCount.get(player.team_id) ?? 0
-          const wouldExceedTeam =
-            !isSelected && currentTeamCount >= 7
-          const isFull = !isSelected && selectedIds.size >= 11
-
-          return (
-            <button
-              key={player.id}
-              onClick={() => {
-                if (!wouldExceedTeam && !isFull) togglePlayer(player.id)
-              }}
-              disabled={wouldExceedTeam || isFull}
-              className={cn(
-                "w-full flex items-center gap-3 px-4 py-3 text-left transition-colors",
-                isSelected
-                  ? "bg-primary/5"
-                  : wouldExceedTeam || isFull
-                    ? "opacity-40"
-                    : "hover:bg-secondary/50",
-                hasPlayingXI && !isInXI && "opacity-50"
+      {teamFilter === "ALL" ? (
+        <div className="grid grid-cols-2 gap-px bg-border">
+          {/* Home column */}
+          <div className="bg-background">
+            <div className="px-3 py-1.5 text-center border-b border-border">
+              <span className="text-xs font-semibold" style={{ color: match.team_home.color }}>
+                {match.team_home.short_name}
+              </span>
+            </div>
+            <div className="divide-y divide-border">
+              {filteredPlayers
+                .filter(p => p.team_id === match.team_home_id)
+                .map(player => renderPlayerCompact(player))}
+              {filteredPlayers.filter(p => p.team_id === match.team_home_id).length === 0 && (
+                <div className="py-12 text-center text-sm text-muted-foreground">No players found</div>
               )}
-            >
-              {/* Selection indicator */}
-              <div
+            </div>
+          </div>
+          {/* Away column */}
+          <div className="bg-background">
+            <div className="px-3 py-1.5 text-center border-b border-border">
+              <span className="text-xs font-semibold" style={{ color: match.team_away.color }}>
+                {match.team_away.short_name}
+              </span>
+            </div>
+            <div className="divide-y divide-border">
+              {filteredPlayers
+                .filter(p => p.team_id === match.team_away_id)
+                .map(player => renderPlayerCompact(player))}
+              {filteredPlayers.filter(p => p.team_id === match.team_away_id).length === 0 && (
+                <div className="py-12 text-center text-sm text-muted-foreground">No players found</div>
+              )}
+            </div>
+          </div>
+        </div>
+      ) : (
+        <div className="divide-y divide-border">
+          {filteredPlayers.map((player) => {
+            const isSelected = selectedIds.has(player.id)
+            const isCaptain = captainId === player.id
+            const isVC = viceCaptainId === player.id
+            const isInXI = playingXIIds.includes(player.id)
+            const isHome = player.team_id === match.team_home_id
+            const teamColor = isHome
+              ? match.team_home.color
+              : match.team_away.color
+
+            // Check if adding this player would violate max team rule
+            const currentTeamCount = teamCount.get(player.team_id) ?? 0
+            const wouldExceedTeam =
+              !isSelected && currentTeamCount >= 7
+            const isFull = !isSelected && selectedIds.size >= 11
+            const cantAfford = !isSelected && player.credit_cost > remainingBudget
+
+            return (
+              <button
+                key={player.id}
+                onClick={() => {
+                  if (!wouldExceedTeam && !isFull && !cantAfford) togglePlayer(player.id)
+                }}
+                disabled={wouldExceedTeam || isFull || cantAfford}
                 className={cn(
-                  "h-5 w-5 rounded-full border-2 flex items-center justify-center shrink-0 transition-colors",
+                  "w-full flex items-center gap-3 px-4 py-3 text-left transition-colors",
                   isSelected
-                    ? "border-primary bg-primary"
-                    : "border-muted-foreground/30"
+                    ? "bg-primary/5"
+                    : wouldExceedTeam || isFull || cantAfford
+                      ? "opacity-40"
+                      : "hover:bg-secondary/50",
+                  hasPlayingXI && !isInXI && "opacity-50"
                 )}
               >
-                {isSelected && <Check className="h-3 w-3 text-primary-foreground" />}
-              </div>
-
-              {/* Team color stripe */}
-              <div
-                className="w-0.5 h-8 rounded-full shrink-0"
-                style={{ backgroundColor: teamColor }}
-              />
-
-              {/* Player info */}
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-1.5">
-                  <span className="text-sm font-medium truncate">
-                    {player.name}
-                  </span>
-                  {isCaptain && (
-                    <Badge className="h-4 px-1 text-[9px] bg-amber-500/20 text-amber-500 border-amber-500/30">
-                      C
-                    </Badge>
+                {/* Selection indicator */}
+                <div
+                  className={cn(
+                    "h-5 w-5 rounded-full border-2 flex items-center justify-center shrink-0 transition-colors",
+                    isSelected
+                      ? "border-primary bg-primary"
+                      : "border-muted-foreground/30"
                   )}
-                  {isVC && (
-                    <Badge className="h-4 px-1 text-[9px] bg-violet-500/20 text-violet-400 border-violet-500/30">
-                      VC
-                    </Badge>
-                  )}
-                  {hasPlayingXI && isInXI && (
-                    <Shield className="h-3 w-3 text-green-500 shrink-0" />
-                  )}
+                >
+                  {isSelected && <Check className="h-3 w-3 text-primary-foreground" />}
                 </div>
-                <div className="flex items-center gap-1.5 mt-0.5">
-                  <span className="text-[10px]" style={{ color: teamColor }}>
-                    {player.team.short_name}
-                  </span>
-                  <span className="text-[10px] text-muted-foreground">•</span>
-                  <Badge
-                    variant="outline"
-                    className="text-[9px] h-3.5 px-1 py-0"
-                  >
-                    {player.role}
-                  </Badge>
+
+                {/* Team color stripe */}
+                <div
+                  className="w-0.5 h-8 rounded-full shrink-0"
+                  style={{ backgroundColor: teamColor }}
+                />
+
+                {/* Player info */}
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-sm font-medium truncate">
+                      {player.name}
+                    </span>
+                    {isCaptain && (
+                      <Badge className="h-4 px-1 text-[9px] bg-amber-500/20 text-amber-500 border-amber-500/30">
+                        C
+                      </Badge>
+                    )}
+                    {isVC && (
+                      <Badge className="h-4 px-1 text-[9px] bg-violet-500/20 text-violet-400 border-violet-500/30">
+                        VC
+                      </Badge>
+                    )}
+                    {hasPlayingXI && isInXI && (
+                      <Shield className="h-3 w-3 text-green-500 shrink-0" />
+                    )}
+                  </div>
+                  <div className="flex items-center gap-1.5 mt-0.5">
+                    <span className="text-[10px]" style={{ color: teamColor }}>
+                      {player.team.short_name}
+                    </span>
+                    <span className="text-[10px] text-muted-foreground">•</span>
+                    <Badge
+                      variant="outline"
+                      className="text-[9px] h-3.5 px-1 py-0"
+                    >
+                      {player.role}
+                    </Badge>
+                  </div>
                 </div>
-              </div>
 
-              {/* Star for selected */}
-              {isSelected && (
-                <Star className="h-4 w-4 text-primary shrink-0 fill-primary" />
-              )}
-            </button>
-          )
-        })}
+                {/* Credit cost */}
+                <span className="text-xs font-semibold tabular-nums text-muted-foreground shrink-0 w-8 text-right">
+                  {player.credit_cost}
+                </span>
 
-        {filteredPlayers.length === 0 && (
-          <div className="py-12 text-center text-sm text-muted-foreground">
-            No players found
-          </div>
-        )}
-      </div>
+                {/* Star for selected */}
+                {isSelected && (
+                  <Star className="h-4 w-4 text-primary shrink-0 fill-primary" />
+                )}
+              </button>
+            )
+          })}
+
+          {filteredPlayers.length === 0 && (
+            <div className="py-12 text-center text-sm text-muted-foreground">
+              No players found
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Bottom action bar */}
       <div className="fixed bottom-14 left-0 right-0 md:bottom-0 z-40 border-t border-border bg-background/95 backdrop-blur">
@@ -551,6 +658,32 @@ export function PickTeamClient({
                 </>
               )}
             </button>
+
+            {/* Preview button */}
+            <Drawer>
+              <DrawerTrigger asChild>
+                <button
+                  disabled={selectedIds.size === 0}
+                  className={cn(
+                    "flex items-center gap-1.5 text-xs px-2 py-1 rounded border transition-colors",
+                    selectedIds.size > 0 ? "border-primary/30 text-primary" : "border-border text-muted-foreground"
+                  )}
+                >
+                  <Eye className="h-3 w-3" />
+                  Preview
+                </button>
+              </DrawerTrigger>
+              <DrawerContent className="max-h-[85vh]">
+                <DrawerTitle className="text-center text-sm font-semibold py-2">Team Preview</DrawerTitle>
+                <div className="px-4 pb-6 overflow-y-auto">
+                  <div className="flex items-center justify-between text-xs text-muted-foreground mb-3">
+                    <span>Players: {selectedIds.size}/11</span>
+                    <span>Credits: {totalCost.toFixed(1)}/{TOTAL_BUDGET}</span>
+                  </div>
+                  <CricketField players={selectedPlayers} captainId={captainId} viceCaptainId={viceCaptainId} />
+                </div>
+              </DrawerContent>
+            </Drawer>
 
             <div className="flex-1" />
 
