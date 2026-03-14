@@ -1,6 +1,7 @@
 "use client"
 
 import Link from "next/link"
+import Image from "next/image"
 import { usePathname } from "next/navigation"
 import {
   LayoutDashboard,
@@ -60,7 +61,7 @@ export function NavBar() {
   return (
     <>
       {/* Mobile bottom nav */}
-      <nav className="fixed bottom-0 left-0 right-0 z-50 border-t border-border bg-background/95 backdrop-blur-xl supports-[backdrop-filter]:bg-background/80 pb-[env(safe-area-inset-bottom)] md:hidden">
+      <nav aria-label="Main navigation" className="fixed bottom-0 left-0 right-0 z-50 border-t border-border bg-background/95 backdrop-blur-xl supports-[backdrop-filter]:bg-background/80 pb-[env(safe-area-inset-bottom)] md:hidden">
         <div className="flex items-center justify-around h-14">
           {items.map((item) => {
             const Icon = item.icon
@@ -75,8 +76,10 @@ export function NavBar() {
                     ? "text-primary"
                     : "text-muted-foreground hover:text-foreground"
                 )}
+                aria-label={item.label}
+                aria-current={active ? "page" : undefined}
               >
-                <Icon className="h-5 w-5" />
+                <Icon className="h-5 w-5" aria-hidden="true" />
                 <span className="text-[10px]">{item.label}</span>
                 {active && (
                   <span className="absolute -top-0.5 left-1/2 -translate-x-1/2 w-5 h-0.5 rounded-full bg-primary" />
@@ -88,10 +91,19 @@ export function NavBar() {
       </nav>
 
       {/* Desktop sidebar */}
-      <aside className="hidden md:flex fixed left-0 top-0 bottom-0 z-40 w-56 flex-col border-r border-border bg-background">
-        <div className="p-4 pb-6">
-          <h1 className="text-xl font-bold tracking-tight text-primary">TIPL</h1>
-          <p className="text-xs text-muted-foreground">Fantasy Cricket 2026</p>
+      <aside aria-label="Sidebar navigation" className="hidden md:flex fixed left-0 top-0 bottom-0 z-40 w-56 flex-col border-r border-border bg-background">
+        <div className="p-4 pb-6 flex items-center gap-3">
+          <Image
+            src="/icons/icon-192.png"
+            alt="TIPL"
+            width={36}
+            height={36}
+            className="rounded-lg"
+          />
+          <div>
+            <h1 className="text-xl font-bold tracking-tight text-primary">TIPL</h1>
+            <p className="text-xs text-muted-foreground">Fantasy Cricket 2026</p>
+          </div>
         </div>
         <nav className="flex-1 px-2 space-y-1">
           {items.map((item) => {
@@ -107,8 +119,9 @@ export function NavBar() {
                     ? "bg-primary/10 text-primary border border-primary/20"
                     : "text-muted-foreground hover:bg-secondary hover:text-foreground"
                 )}
+                aria-current={active ? "page" : undefined}
               >
-                <Icon className="h-4 w-4" />
+                <Icon className="h-4 w-4" aria-hidden="true" />
                 {item.label}
               </Link>
             )

@@ -1,5 +1,6 @@
 "use client"
 
+import Image from "next/image"
 import { createClient } from "@/lib/supabase/client"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -25,13 +26,15 @@ function LoginForm() {
     <div className="flex min-h-dvh items-center justify-center px-4 bg-gradient-to-b from-background via-background to-primary/5">
       <Card className="w-full max-w-sm border border-border shadow-2xl shadow-primary/5">
         <CardHeader className="text-center">
-          <div className="flex justify-center gap-2 mb-4">
-            <div className="w-2 h-2 rounded-full bg-primary/40" />
-            <div className="w-2 h-2 rounded-full bg-accent/40" />
-            <div className="w-2 h-2 rounded-full bg-primary/40" />
-          </div>
-          <div className="mx-auto mb-4 text-5xl font-extrabold tracking-tighter text-primary drop-shadow-[0_0_15px_rgba(16,185,129,0.3)]">
-            TIPL
+          <div className="flex justify-center mb-4">
+            <Image
+              src="/icons/icon-192.png"
+              alt="TIPL Fantasy Cricket"
+              width={80}
+              height={80}
+              className="rounded-2xl"
+              priority
+            />
           </div>
           <CardTitle className="text-xl font-semibold text-foreground/80">Fantasy Cricket</CardTitle>
           <p className="text-muted-foreground text-sm">

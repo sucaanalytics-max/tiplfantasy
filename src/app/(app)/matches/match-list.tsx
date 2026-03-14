@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button"
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs"
 import { format } from "date-fns"
 import { useMemo } from "react"
+import { STATUS_CONFIG } from "@/lib/badges"
 
 type Match = {
   id: string
@@ -20,14 +21,6 @@ type Match = {
 }
 
 type TabKey = "upcoming" | "live" | "completed"
-
-const statusConfig: Record<string, { label: string; class: string }> = {
-  upcoming: { label: "Upcoming", class: "bg-primary/10 text-primary" },
-  live: { label: "Live", class: "bg-red-500/15 text-red-400 animate-pulse" },
-  completed: { label: "Completed", class: "bg-zinc-500/10 text-zinc-400 border-zinc-500/20" },
-  no_result: { label: "No Result", class: "bg-red-500/10 text-red-400 border-red-500/20" },
-  abandoned: { label: "Abandoned", class: "bg-red-500/10 text-red-400 border-red-500/20" },
-}
 
 function getTabForStatus(status: string): TabKey {
   if (status === "live") return "live"
@@ -119,7 +112,7 @@ export function MatchList({
                 {dayMatches.map((match) => {
                   const home = match.team_home
                   const away = match.team_away
-                  const status = statusConfig[match.status] ?? statusConfig.upcoming
+                  const status = STATUS_CONFIG[match.status] ?? STATUS_CONFIG.upcoming
                   const hasSubmitted = submittedMatches.has(match.id)
 
                   return (

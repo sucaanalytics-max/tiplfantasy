@@ -12,6 +12,8 @@ import {
   Search,
   X,
   Eye,
+  ArrowUpDown,
+  Sparkles,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -26,6 +28,7 @@ import { SegmentedProgressBar } from "@/components/segmented-progress-bar"
 import { CricketField } from "@/components/cricket-field"
 import { Drawer, DrawerContent, DrawerTrigger, DrawerTitle } from "@/components/ui/drawer"
 import type { PlayerWithTeam, MatchWithTeams, PlayerRole } from "@/lib/types"
+import { CAPTAIN_BADGE, VICE_CAPTAIN_BADGE } from "@/lib/badges"
 
 type Props = {
   match: MatchWithTeams
@@ -72,7 +75,7 @@ export function PickTeamClient({
   const [teamFilter, setTeamFilter] = useState<"ALL" | "HOME" | "AWAY">("ALL")
   const [search, setSearch] = useState("")
   const [error, setError] = useState<string | null>(null)
-  const [showCaptainPicker, setShowCaptainPicker] = useState(false)
+  const [sortBy, setSortBy] = useState<"default" | "credits">("default")
 
   const hasPlayingXI = playingXIIds.length > 0
 
@@ -126,8 +129,71 @@ export function PickTeamClient({
       const rest = list.filter((p) => !playingXIIds.includes(p.id))
       list = [...xi, ...rest]
     }
+    // Sort by credits if selected
+    if (sortBy === "credits") {
+      list = [...list].sort((a, b) => b.credit_cost - a.credit_cost)
+    }
     return list
-  }, [players, activeFilter, teamFilter, search, match, hasPlayingXI, playingXIIds])
+  }, [players, activeFilter, teamFilter, search, match, hasPlayingXI, playingXIIds, sortBy])
+
+  const getDisabledReason = useCallback(
+    (player: PlayerWithTeam): string | null => {
+      if (selectedIds.has(player.id)) return null
+      if (selectedIds.size >= 11) return "Team full (11/11)"
+      const tc = teamCount.get(player.team_id) ?? 0
+      if (tc >= 7) return `Max 7 from ${player.team.short_name}`
+      if (player.credit_cost > remainingBudget) return `Need ${player.credit_cost} cr, only ${remainingBudget.toFixed(1)} left`
+      return null
+    },
+    [selectedIds, teamCount, remainingBudget]
+  )
+
+  const handleSmartPick = useCallback(() => {
+    // Auto-fill remaining slots respecting composition + budget + team limits
+    const current = new Set(selectedIds)
+    let budget = remainingBudget
+    const rCounts = { ...roleCount }
+    const tCounts = new Map(teamCount)
+
+    // Sort available by credit_cost descending (pick best available)
+    const available = players
+      .filter((p) => !current.has(p.id) && (hasPlayingXI ? playingXIIds.includes(p.id) : true))
+      .sort((a, b) => b.credit_cost - a.credit_cost)
+
+    for (const role of ROLE_ORDER) {
+      const [min] = ROLE_LIMITS[role]
+      while (rCounts[role] < min && current.size < 11) {
+        const pick = available.find(
+          (p) => p.role === role && !current.has(p.id) && p.credit_cost <= budget && (tCounts.get(p.team_id) ?? 0) < 7
+        )
+        if (!pick) break
+        current.add(pick.id)
+        budget -= pick.credit_cost
+        rCounts[role]++
+        tCounts.set(pick.team_id, (tCounts.get(pick.team_id) ?? 0) + 1)
+      }
+    }
+
+    // Fill remaining slots with best available within limits
+    while (current.size < 11) {
+      const pick = available.find((p) => {
+        if (current.has(p.id)) return false
+        if (p.credit_cost > budget) return false
+        if ((tCounts.get(p.team_id) ?? 0) >= 7) return false
+        const [, max] = ROLE_LIMITS[p.role]
+        if (rCounts[p.role] >= max) return false
+        return true
+      })
+      if (!pick) break
+      current.add(pick.id)
+      budget -= pick.credit_cost
+      rCounts[pick.role]++
+      tCounts.set(pick.team_id, (tCounts.get(pick.team_id) ?? 0) + 1)
+    }
+
+    setSelectedIds(current)
+    setError(null)
+  }, [selectedIds, remainingBudget, roleCount, teamCount, players, hasPlayingXI, playingXIIds])
 
   const togglePlayer = useCallback(
     (playerId: string) => {
@@ -152,12 +218,10 @@ export function PickTeamClient({
   )
 
   const handleSubmit = () => {
-    if (!validation.valid) {
-      setError(validation.errors[0])
-      return
-    }
-    if (!captainId || !viceCaptainId) {
-      setError("Select both a captain and vice-captain")
+    const allErrors = [...validation.errors]
+    if (!captainId || !viceCaptainId) allErrors.push("Select both a captain and vice-captain")
+    if (allErrors.length > 0) {
+      setError(allErrors.join(" • "))
       return
     }
 
@@ -189,21 +253,20 @@ export function PickTeamClient({
     const isCaptain = captainId === player.id
     const isVC = viceCaptainId === player.id
     const isInXI = playingXIIds.includes(player.id)
-    const currentTeamCt = teamCount.get(player.team_id) ?? 0
-    const wouldExceedTeam = !isSelected && currentTeamCt >= 7
-    const isFull = !isSelected && selectedIds.size >= 11
-    const cantAfford = !isSelected && player.credit_cost > remainingBudget
+    const disabledReason = getDisabledReason(player)
+    const isDisabled = !!disabledReason
 
     return (
       <button
         key={player.id}
         onClick={() => {
-          if (!wouldExceedTeam && !isFull && !cantAfford) togglePlayer(player.id)
+          if (!isDisabled) togglePlayer(player.id)
         }}
-        disabled={wouldExceedTeam || isFull || cantAfford}
+        disabled={isDisabled}
+        title={disabledReason ?? undefined}
         className={cn(
           "w-full flex items-center gap-2 px-2.5 py-2.5 text-left transition-colors",
-          isSelected ? "bg-primary/5" : (wouldExceedTeam || isFull || cantAfford) ? "opacity-40" : "hover:bg-secondary/50",
+          isSelected ? "bg-primary/5" : isDisabled ? "opacity-40" : "hover:bg-secondary/50",
           hasPlayingXI && !isInXI && "opacity-50"
         )}
       >
@@ -227,116 +290,11 @@ export function PickTeamClient({
             <Badge variant="outline" className="text-[8px] h-3 px-0.5 py-0">{player.role}</Badge>
             <span className="text-[9px] text-muted-foreground">{player.credit_cost}</span>
           </div>
+          {isDisabled && (
+            <span className="text-[8px] text-destructive/70">{disabledReason}</span>
+          )}
         </div>
       </button>
-    )
-  }
-
-  // Captain picker view
-  if (showCaptainPicker) {
-    return (
-      <div className="min-h-screen pb-24 md:pb-6">
-        <div className="sticky top-0 z-30 bg-background/95 backdrop-blur border-b border-border px-4 py-3">
-          <button
-            onClick={() => setShowCaptainPicker(false)}
-            className="flex items-center gap-1 text-sm text-muted-foreground mb-2"
-          >
-            <ChevronLeft className="h-4 w-4" /> Back to players
-          </button>
-          <h2 className="text-lg font-bold">Choose Captain & Vice-Captain</h2>
-          <p className="text-xs text-muted-foreground">
-            Captain gets 2x points, Vice-Captain gets 1.5x
-          </p>
-        </div>
-
-        <div className="p-4 space-y-2">
-          {selectedPlayers
-            .sort((a, b) => ROLE_ORDER.indexOf(a.role) - ROLE_ORDER.indexOf(b.role))
-            .map((player) => {
-              const isCaptain = captainId === player.id
-              const isVC = viceCaptainId === player.id
-              return (
-                <Card key={player.id} className="p-3 border border-border">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2 min-w-0">
-                      <Badge
-                        variant="outline"
-                        className="text-[10px] w-10 justify-center shrink-0"
-                      >
-                        {player.role}
-                      </Badge>
-                      <div className="min-w-0">
-                        <p className="text-sm font-medium truncate">
-                          {player.name}
-                        </p>
-                        <p
-                          className="text-[10px]"
-                          style={{ color: player.team.color }}
-                        >
-                          {player.team.short_name}
-                        </p>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-2 shrink-0">
-                      <Button
-                        size="sm"
-                        variant={isCaptain ? "default" : "outline"}
-                        className={cn(
-                          "h-8 w-8 p-0 rounded-full",
-                          isCaptain && "bg-amber-400 text-black hover:bg-amber-400/90"
-                        )}
-                        onClick={() => {
-                          if (viceCaptainId === player.id)
-                            setViceCaptainId(null)
-                          setCaptainId(isCaptain ? null : player.id)
-                        }}
-                      >
-                        <span className="text-xs font-bold">C</span>
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant={isVC ? "default" : "outline"}
-                        className={cn(
-                          "h-8 w-8 p-0 rounded-full",
-                          isVC && "bg-violet-400 text-black hover:bg-violet-400/90"
-                        )}
-                        onClick={() => {
-                          if (captainId === player.id) setCaptainId(null)
-                          setViceCaptainId(isVC ? null : player.id)
-                        }}
-                      >
-                        <span className="text-xs font-bold">VC</span>
-                      </Button>
-                    </div>
-                  </div>
-                </Card>
-              )
-            })}
-        </div>
-
-        {/* Bottom bar */}
-        <div className="fixed bottom-14 left-0 right-0 md:bottom-0 z-40 border-t border-border bg-background p-3">
-          <div className="flex items-center justify-between gap-3 max-w-2xl mx-auto">
-            <div className="text-xs text-muted-foreground">
-              {captainId && viceCaptainId ? (
-                <span className="text-green-500">C & VC selected</span>
-              ) : (
-                <span>
-                  {!captainId && "Pick captain"}{" "}
-                  {!captainId && !viceCaptainId && "&"}{" "}
-                  {!viceCaptainId && "Pick VC"}
-                </span>
-              )}
-            </div>
-            <Button
-              onClick={() => setShowCaptainPicker(false)}
-              disabled={!captainId || !viceCaptainId}
-            >
-              Confirm
-            </Button>
-          </div>
-        </div>
-      </div>
     )
   }
 
@@ -425,7 +383,7 @@ export function PickTeamClient({
           })}
         </div>
 
-        {/* Team filter + search */}
+        {/* Team filter + search + sort */}
         <div className="px-4 pb-2 flex gap-2">
           <div className="flex rounded-md border border-border overflow-hidden text-xs">
             {(
@@ -450,12 +408,13 @@ export function PickTeamClient({
             ))}
           </div>
           <div className="relative flex-1">
-            <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+            <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" aria-hidden="true" />
             <Input
-              placeholder="Search..."
+              placeholder="Search players..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               className="h-7 pl-7 text-xs"
+              aria-label="Search players"
             />
             {search && (
               <button
@@ -466,6 +425,17 @@ export function PickTeamClient({
               </button>
             )}
           </div>
+          <button
+            onClick={() => setSortBy(sortBy === "default" ? "credits" : "default")}
+            className={cn(
+              "flex items-center gap-1 px-2 py-1 rounded border text-xs transition-colors shrink-0",
+              sortBy === "credits" ? "border-primary/30 text-primary" : "border-border text-muted-foreground"
+            )}
+            title={sortBy === "credits" ? "Sort: by credits" : "Sort: default"}
+          >
+            <ArrowUpDown className="h-3 w-3" />
+            {sortBy === "credits" ? "Cr" : ""}
+          </button>
         </div>
 
         {hasPlayingXI && (
@@ -525,26 +495,22 @@ export function PickTeamClient({
             const teamColor = isHome
               ? match.team_home.color
               : match.team_away.color
-
-            // Check if adding this player would violate max team rule
-            const currentTeamCount = teamCount.get(player.team_id) ?? 0
-            const wouldExceedTeam =
-              !isSelected && currentTeamCount >= 7
-            const isFull = !isSelected && selectedIds.size >= 11
-            const cantAfford = !isSelected && player.credit_cost > remainingBudget
+            const disabledReason = getDisabledReason(player)
+            const isDisabled = !!disabledReason
 
             return (
               <button
                 key={player.id}
                 onClick={() => {
-                  if (!wouldExceedTeam && !isFull && !cantAfford) togglePlayer(player.id)
+                  if (!isDisabled) togglePlayer(player.id)
                 }}
-                disabled={wouldExceedTeam || isFull || cantAfford}
+                disabled={isDisabled}
+                title={disabledReason ?? undefined}
                 className={cn(
                   "w-full flex items-center gap-3 px-4 py-3 text-left transition-colors",
                   isSelected
                     ? "bg-primary/5"
-                    : wouldExceedTeam || isFull || cantAfford
+                    : isDisabled
                       ? "opacity-40"
                       : "hover:bg-secondary/50",
                   hasPlayingXI && !isInXI && "opacity-50"
@@ -575,14 +541,10 @@ export function PickTeamClient({
                       {player.name}
                     </span>
                     {isCaptain && (
-                      <Badge className="h-4 px-1 text-[9px] bg-amber-500/20 text-amber-500 border-amber-500/30">
-                        C
-                      </Badge>
+                      <Badge className={`h-4 px-1 text-[9px] ${CAPTAIN_BADGE}`}>C</Badge>
                     )}
                     {isVC && (
-                      <Badge className="h-4 px-1 text-[9px] bg-violet-500/20 text-violet-400 border-violet-500/30">
-                        VC
-                      </Badge>
+                      <Badge className={`h-4 px-1 text-[9px] ${VICE_CAPTAIN_BADGE}`}>VC</Badge>
                     )}
                     {hasPlayingXI && isInXI && (
                       <Shield className="h-3 w-3 text-green-500 shrink-0" />
@@ -633,31 +595,95 @@ export function PickTeamClient({
         )}
         <div className="px-4 py-3">
           <div className="flex items-center gap-2 mb-2">
-            {/* Captain/VC status */}
-            <button
-              onClick={() => {
-                if (selectedIds.size > 0) setShowCaptainPicker(true)
-              }}
-              disabled={selectedIds.size === 0}
-              className={cn(
-                "flex items-center gap-1.5 text-xs px-2 py-1 rounded border transition-colors",
-                captainId && viceCaptainId
-                  ? "border-green-500/30 text-green-500"
-                  : "border-amber-500/30 text-amber-500"
-              )}
-            >
-              {captainId && viceCaptainId ? (
-                <>
-                  <Check className="h-3 w-3" />
-                  C & VC set
-                </>
-              ) : (
-                <>
-                  <AlertCircle className="h-3 w-3" />
-                  Set C & VC
-                </>
-              )}
-            </button>
+            {/* Captain/VC picker as Drawer */}
+            <Drawer>
+              <DrawerTrigger asChild>
+                <button
+                  disabled={selectedIds.size === 0}
+                  className={cn(
+                    "flex items-center gap-1.5 text-xs px-2 py-1 rounded border transition-colors",
+                    captainId && viceCaptainId
+                      ? "border-green-500/30 text-green-500"
+                      : "border-amber-500/30 text-amber-500"
+                  )}
+                >
+                  {captainId && viceCaptainId ? (
+                    <>
+                      <Check className="h-3 w-3" />
+                      C & VC set
+                    </>
+                  ) : (
+                    <>
+                      <AlertCircle className="h-3 w-3" />
+                      Set C & VC
+                    </>
+                  )}
+                </button>
+              </DrawerTrigger>
+              <DrawerContent className="max-h-[85vh]">
+                <DrawerTitle className="text-center text-sm font-semibold py-2">
+                  Captain & Vice-Captain
+                </DrawerTitle>
+                <p className="text-xs text-muted-foreground text-center mb-3">
+                  Captain gets 2x points, Vice-Captain gets 1.5x
+                </p>
+                <div className="px-4 pb-6 space-y-2 overflow-y-auto">
+                  {selectedPlayers
+                    .sort((a, b) => ROLE_ORDER.indexOf(a.role) - ROLE_ORDER.indexOf(b.role))
+                    .map((player) => {
+                      const isCaptain = captainId === player.id
+                      const isVC = viceCaptainId === player.id
+                      return (
+                        <Card key={player.id} className="p-3 border border-border">
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-2 min-w-0">
+                              <Badge variant="outline" className="text-[10px] w-10 justify-center shrink-0">
+                                {player.role}
+                              </Badge>
+                              <div className="min-w-0">
+                                <p className="text-sm font-medium truncate">{player.name}</p>
+                                <p className="text-[10px]" style={{ color: player.team.color }}>
+                                  {player.team.short_name}
+                                </p>
+                              </div>
+                            </div>
+                            <div className="flex items-center gap-2 shrink-0">
+                              <Button
+                                size="sm"
+                                variant={isCaptain ? "default" : "outline"}
+                                className={cn(
+                                  "h-8 w-8 p-0 rounded-full",
+                                  isCaptain && "bg-amber-400 text-black hover:bg-amber-400/90"
+                                )}
+                                onClick={() => {
+                                  if (viceCaptainId === player.id) setViceCaptainId(null)
+                                  setCaptainId(isCaptain ? null : player.id)
+                                }}
+                              >
+                                <span className="text-xs font-bold">C</span>
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant={isVC ? "default" : "outline"}
+                                className={cn(
+                                  "h-8 w-8 p-0 rounded-full",
+                                  isVC && "bg-violet-400 text-black hover:bg-violet-400/90"
+                                )}
+                                onClick={() => {
+                                  if (captainId === player.id) setCaptainId(null)
+                                  setViceCaptainId(isVC ? null : player.id)
+                                }}
+                              >
+                                <span className="text-xs font-bold">VC</span>
+                              </Button>
+                            </div>
+                          </div>
+                        </Card>
+                      )
+                    })}
+                </div>
+              </DrawerContent>
+            </Drawer>
 
             {/* Preview button */}
             <Drawer>
@@ -684,6 +710,17 @@ export function PickTeamClient({
                 </div>
               </DrawerContent>
             </Drawer>
+
+            {/* Smart Pick */}
+            {selectedIds.size < 11 && (
+              <button
+                onClick={handleSmartPick}
+                className="flex items-center gap-1 text-xs px-2 py-1 rounded border border-primary/30 text-primary transition-colors hover:bg-primary/5"
+              >
+                <Sparkles className="h-3 w-3" />
+                Smart Pick
+              </button>
+            )}
 
             <div className="flex-1" />
 

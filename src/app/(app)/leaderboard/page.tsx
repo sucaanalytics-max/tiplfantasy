@@ -5,23 +5,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Trophy } from "lucide-react"
 import { getMyLeagues, getLeagueLeaderboard } from "@/actions/leagues"
 import { LeaderboardSelector } from "./leaderboard-selector"
-
-const avatarColors = [
-  "bg-emerald-500", "bg-blue-500", "bg-purple-500", "bg-amber-500",
-  "bg-rose-500", "bg-cyan-500", "bg-indigo-500", "bg-orange-500"
-]
-
-function getInitials(name: string): string {
-  const parts = name.trim().split(" ")
-  if (parts.length >= 2) return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase()
-  return name.slice(0, 2).toUpperCase()
-}
-
-function getAvatarColor(name: string): string {
-  let hash = 0
-  for (let i = 0; i < name.length; i++) hash = name.charCodeAt(i) + ((hash << 5) - hash)
-  return avatarColors[Math.abs(hash) % avatarColors.length]
-}
+import { getInitials, getAvatarColor } from "@/lib/avatar"
 
 type LeaderRow = {
   user_id: string

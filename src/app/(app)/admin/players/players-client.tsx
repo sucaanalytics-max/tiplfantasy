@@ -7,15 +7,9 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { updatePlayer } from "@/actions/players"
 import type { PlayerWithTeam, PlayerRole, Team } from "@/lib/types"
+import { ROLE_COLORS } from "@/lib/badges"
 
 const ROLES: PlayerRole[] = ["WK", "BAT", "AR", "BOWL"]
-
-const ROLE_COLORS: Record<PlayerRole, string> = {
-  WK: "bg-yellow-500/10 text-yellow-400 border-yellow-500/20",
-  BAT: "bg-blue-500/10 text-blue-400 border-blue-500/20",
-  AR: "bg-green-500/10 text-green-400 border-green-500/20",
-  BOWL: "bg-purple-500/10 text-purple-400 border-purple-500/20",
-}
 
 type Props = {
   players: PlayerWithTeam[]

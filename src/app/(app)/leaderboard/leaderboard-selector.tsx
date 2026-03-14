@@ -26,11 +26,12 @@ export function LeaderboardSelector({
 
   return (
     <div className="flex items-center gap-2">
-      <Users className="h-4 w-4 text-muted-foreground" />
+      <Users className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
       <select
         value={currentLeagueId ?? "overall"}
         onChange={handleChange}
         className="text-sm bg-secondary border border-border rounded-md px-2 py-1.5 text-foreground"
+        aria-label="Select leaderboard scope"
       >
         <option value="overall">Overall</option>
         {leagues.map((l) => (

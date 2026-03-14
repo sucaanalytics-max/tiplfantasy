@@ -18,6 +18,7 @@ import {
 } from "@/components/ui/dialog"
 import { leaveLeague, deleteLeague } from "@/actions/leagues"
 import type { League, LeagueLeaderboardEntry } from "@/lib/types"
+import { getInitials, getAvatarHexColor } from "@/lib/avatar"
 
 type MemberProfile = {
   user_id: string
@@ -30,32 +31,6 @@ type Props = {
   members: MemberProfile[]
   isCreator: boolean
   leaderboard: LeagueLeaderboardEntry[]
-}
-
-const AVATAR_COLORS = [
-  "#ef4444",
-  "#f97316",
-  "#eab308",
-  "#22c55e",
-  "#06b6d4",
-  "#3b82f6",
-  "#8b5cf6",
-  "#ec4899",
-]
-
-function getAvatarColor(name: string): string {
-  let hash = 0
-  for (const c of name) hash = c.charCodeAt(0) + ((hash << 5) - hash)
-  return AVATAR_COLORS[Math.abs(hash) % AVATAR_COLORS.length]
-}
-
-function getInitials(name: string): string {
-  return name
-    .split(" ")
-    .map((w) => w[0])
-    .join("")
-    .slice(0, 2)
-    .toUpperCase()
 }
 
 const MEDALS = ["\u{1F947}", "\u{1F948}", "\u{1F949}"]
@@ -189,7 +164,7 @@ export function LeagueDetailClient({ league, members, isCreator, leaderboard }: 
               {leaderboard.map((entry, i) => {
                 const rank = i + 1
                 const displayName = entry.display_name ?? "Unknown"
-                const color = getAvatarColor(displayName)
+                const color = getAvatarHexColor(displayName)
                 const initials = getInitials(displayName)
 
                 return (
@@ -237,7 +212,7 @@ export function LeagueDetailClient({ league, members, isCreator, leaderboard }: 
             {members.map((member) => {
               const prof = Array.isArray(member.profile) ? member.profile[0] : member.profile
               const name = prof?.display_name ?? "Unknown"
-              const color = getAvatarColor(name)
+              const color = getAvatarHexColor(name)
               const initials = getInitials(name)
               const joinDate = new Date(member.joined_at).toLocaleDateString("en-IN", {
                 day: "numeric",
