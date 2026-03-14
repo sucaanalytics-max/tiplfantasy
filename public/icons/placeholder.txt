@@ -1,0 +1,3 @@
+Place icon-192.png and icon-512.png here.
+Generate from any 512x512 PNG using:
+  npx pwa-asset-generator logo.png public/icons --padding "20%"

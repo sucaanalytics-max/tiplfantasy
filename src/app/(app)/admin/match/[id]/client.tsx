@@ -1,0 +1,501 @@
+"use client"
+
+import { useState, useTransition } from "react"
+import { useRouter } from "next/navigation"
+import { Button } from "@/components/ui/button"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Badge } from "@/components/ui/badge"
+import { Input } from "@/components/ui/input"
+import { Separator } from "@/components/ui/separator"
+import { format } from "date-fns"
+import type { MatchWithTeams, PlayerWithTeam, MatchPlayerScore } from "@/lib/types"
+import type { PlayerStats } from "@/lib/scoring"
+import { lockMatch, markNoResult, fetchPlayingXI, fetchMatchScorecard } from "@/actions/matches"
+import { savePlayerScores, calculateMatchPoints } from "@/actions/scoring"
+import { formatMatchMessage } from "@/lib/whatsapp"
+
+type UserScoreRow = {
+  user_id: string
+  total_points: number
+  rank: number | null
+  captain_points: number
+  vc_points: number
+  displayName: string
+}
+
+type Props = {
+  match: MatchWithTeams
+  players: PlayerWithTeam[]
+  playingXIIds: string[]
+  existingScores: MatchPlayerScore[]
+  userScores: UserScoreRow[]
+  seasonTop5: Array<{ displayName: string; totalPoints: number }>
+  selectionCount: number
+}
+
+type ScoreEntry = Record<string, PlayerStats>
+
+const emptyStats = (): PlayerStats => ({
+  runs: 0,
+  balls_faced: 0,
+  fours: 0,
+  sixes: 0,
+  wickets: 0,
+  overs_bowled: 0,
+  runs_conceded: 0,
+  maidens: 0,
+  catches: 0,
+  stumpings: 0,
+  run_outs: 0,
+})
+
+export function AdminMatchClient({
+  match,
+  players,
+  playingXIIds: initialXIIds,
+  existingScores,
+  userScores,
+  seasonTop5,
+  selectionCount,
+}: Props) {
+  const router = useRouter()
+  const [isPending, startTransition] = useTransition()
+  const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null)
+  const [playingXIIds, setPlayingXIIds] = useState<string[]>(initialXIIds)
+
+  // Initialize score entries from existing scores or empty
+  const initScores = (): ScoreEntry => {
+    const entries: ScoreEntry = {}
+    const scoreMap = new Map(existingScores.map((s) => [s.player_id, s]))
+
+    // Use playing XI if available, else all players
+    const playerList = playingXIIds.length > 0
+      ? players.filter((p) => playingXIIds.includes(p.id))
+      : players
+
+    for (const p of playerList) {
+      const existing = scoreMap.get(p.id)
+      if (existing) {
+        entries[p.id] = {
+          runs: existing.runs,
+          balls_faced: existing.balls_faced,
+          fours: existing.fours,
+          sixes: existing.sixes,
+          wickets: existing.wickets,
+          overs_bowled: existing.overs_bowled,
+          runs_conceded: existing.runs_conceded,
+          maidens: existing.maidens,
+          catches: existing.catches,
+          stumpings: existing.stumpings,
+          run_outs: existing.run_outs,
+        }
+      } else {
+        entries[p.id] = emptyStats()
+      }
+    }
+    return entries
+  }
+
+  const [scores, setScores] = useState<ScoreEntry>(initScores)
+
+  function updateScore(playerId: string, field: keyof PlayerStats, value: number) {
+    setScores((prev) => ({
+      ...prev,
+      [playerId]: { ...prev[playerId], [field]: value },
+    }))
+  }
+
+  function showMsg(type: "success" | "error", text: string) {
+    setMessage({ type, text })
+    setTimeout(() => setMessage(null), 5000)
+  }
+
+  // --- Actions ---
+
+  function handleFetchXI() {
+    if (!match.cricapi_match_id) {
+      showMsg("error", "No CricAPI match ID set")
+      return
+    }
+    startTransition(async () => {
+      const res = await fetchPlayingXI(match.id, match.cricapi_match_id!)
+      if (res.error) {
+        showMsg("error", res.error)
+      } else {
+        showMsg("success", `Matched ${res.matched} players. ${res.unmatched?.length ? `Unmatched: ${res.unmatched.join(", ")}` : ""}`)
+        router.refresh()
+      }
+    })
+  }
+
+  function handleLock() {
+    startTransition(async () => {
+      const res = await lockMatch(match.id)
+      if (res.error) showMsg("error", res.error)
+      else {
+        showMsg("success", "Match locked")
+        router.refresh()
+      }
+    })
+  }
+
+  function handleNoResult() {
+    if (!confirm("Mark as no result? All users get 15 pts.")) return
+    startTransition(async () => {
+      const res = await markNoResult(match.id)
+      if (res.error) showMsg("error", res.error)
+      else {
+        showMsg("success", "Marked no result")
+        router.refresh()
+      }
+    })
+  }
+
+  function handleFetchScorecard() {
+    if (!match.cricapi_match_id) {
+      showMsg("error", "No CricAPI match ID set")
+      return
+    }
+    startTransition(async () => {
+      const res = await fetchMatchScorecard(match.id, match.cricapi_match_id!)
+      if (res.error) {
+        showMsg("error", res.error)
+      } else if (res.scores) {
+        const newScores: ScoreEntry = { ...scores }
+        for (const s of res.scores) {
+          newScores[s.playerId] = s.stats
+        }
+        setScores(newScores)
+        showMsg("success", `Loaded ${res.scores.length} player scores. ${res.unmatched?.length ? `Unmatched: ${res.unmatched.join(", ")}` : ""}`)
+      }
+    })
+  }
+
+  function handleSaveScores() {
+    const scoreArr = Object.entries(scores).map(([playerId, stats]) => ({
+      playerId,
+      stats,
+    }))
+    startTransition(async () => {
+      const res = await savePlayerScores(match.id, scoreArr)
+      if (res.error) showMsg("error", res.error)
+      else {
+        showMsg("success", "Scores saved")
+        router.refresh()
+      }
+    })
+  }
+
+  function handleCalculatePoints() {
+    startTransition(async () => {
+      const res = await calculateMatchPoints(match.id)
+      if (res.error) showMsg("error", res.error)
+      else {
+        showMsg("success", "Points calculated")
+        router.refresh()
+      }
+    })
+  }
+
+  function handleWhatsApp() {
+    const matchTitle = `${match.team_home.short_name} vs ${match.team_away.short_name}`
+    const results = userScores.map((s) => ({
+      displayName: s.displayName,
+      totalPoints: s.total_points,
+      rank: s.rank ?? 0,
+    }))
+    const msg = formatMatchMessage(matchTitle, match.match_number, results, seasonTop5)
+    navigator.clipboard.writeText(msg)
+    showMsg("success", "WhatsApp message copied to clipboard!")
+  }
+
+  const statusColor: Record<string, string> = {
+    upcoming: "bg-blue-500/10 text-blue-400 border-blue-500/20",
+    live: "bg-green-500/10 text-green-400 border-green-500/20",
+    completed: "bg-zinc-500/10 text-zinc-400 border-zinc-500/20",
+    no_result: "bg-yellow-500/10 text-yellow-400 border-yellow-500/20",
+  }
+
+  const playingPlayers = playingXIIds.length > 0
+    ? players.filter((p) => playingXIIds.includes(p.id))
+    : []
+
+  // Group by team
+  const homePlayers = playingPlayers.filter((p) => p.team_id === match.team_home_id)
+  const awayPlayers = playingPlayers.filter((p) => p.team_id === match.team_away_id)
+
+  const statFields: Array<{ key: keyof PlayerStats; label: string; short: string }> = [
+    { key: "runs", label: "Runs", short: "R" },
+    { key: "balls_faced", label: "Balls", short: "B" },
+    { key: "fours", label: "4s", short: "4s" },
+    { key: "sixes", label: "6s", short: "6s" },
+    { key: "wickets", label: "Wkts", short: "W" },
+    { key: "overs_bowled", label: "Overs", short: "Ov" },
+    { key: "runs_conceded", label: "Runs Con.", short: "RC" },
+    { key: "maidens", label: "Maidens", short: "M" },
+    { key: "catches", label: "Catches", short: "C" },
+    { key: "stumpings", label: "Stumpings", short: "St" },
+    { key: "run_outs", label: "Run Outs", short: "RO" },
+  ]
+
+  return (
+    <div className="p-4 md:p-6 space-y-6 max-w-5xl">
+      {/* Header */}
+      <div className="flex items-start justify-between">
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight">
+            Match #{match.match_number}
+          </h1>
+          <p className="text-lg mt-1">
+            <span style={{ color: match.team_home.color }}>{match.team_home.short_name}</span>
+            {" vs "}
+            <span style={{ color: match.team_away.color }}>{match.team_away.short_name}</span>
+          </p>
+          <p className="text-sm text-muted-foreground mt-1">
+            {match.venue} &middot; {format(new Date(match.start_time), "MMM d, yyyy h:mm a")}
+          </p>
+          <p className="text-sm text-muted-foreground">
+            {selectionCount} selection{selectionCount !== 1 ? "s" : ""}
+          </p>
+        </div>
+        <Badge variant="outline" className={statusColor[match.status] ?? ""}>
+          {match.status}
+        </Badge>
+      </div>
+
+      {/* Status message */}
+      {message && (
+        <div
+          className={`rounded-lg px-4 py-3 text-sm ${
+            message.type === "success"
+              ? "bg-green-500/10 text-green-400 border border-green-500/20"
+              : "bg-red-500/10 text-red-400 border border-red-500/20"
+          }`}
+        >
+          {message.text}
+        </div>
+      )}
+
+      {/* Action buttons */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">Match Actions</CardTitle>
+        </CardHeader>
+        <CardContent className="flex flex-wrap gap-3">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleFetchXI}
+            disabled={isPending || !match.cricapi_match_id}
+          >
+            Fetch Playing XI
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleLock}
+            disabled={isPending || match.status !== "upcoming"}
+          >
+            Lock Match
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleNoResult}
+            disabled={isPending || match.status === "completed"}
+          >
+            No Result
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleFetchScorecard}
+            disabled={isPending || !match.cricapi_match_id}
+          >
+            Fetch Scorecard
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleSaveScores}
+            disabled={isPending || Object.keys(scores).length === 0}
+          >
+            Save Scores
+          </Button>
+          <Button
+            size="sm"
+            onClick={handleCalculatePoints}
+            disabled={isPending || existingScores.length === 0}
+          >
+            Calculate Points
+          </Button>
+          {userScores.length > 0 && (
+            <Button variant="secondary" size="sm" onClick={handleWhatsApp}>
+              Copy WhatsApp Message
+            </Button>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Playing XI */}
+      {playingXIIds.length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">
+              Playing XI ({playingXIIds.length} players)
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <h3
+                  className="text-sm font-semibold mb-2"
+                  style={{ color: match.team_home.color }}
+                >
+                  {match.team_home.short_name} ({homePlayers.length})
+                </h3>
+                <div className="space-y-1">
+                  {homePlayers.map((p) => (
+                    <div key={p.id} className="text-sm flex items-center gap-2">
+                      <Badge variant="outline" className="text-[10px] w-10 justify-center">
+                        {p.role}
+                      </Badge>
+                      {p.name}
+                    </div>
+                  ))}
+                </div>
+              </div>
+              <div>
+                <h3
+                  className="text-sm font-semibold mb-2"
+                  style={{ color: match.team_away.color }}
+                >
+                  {match.team_away.short_name} ({awayPlayers.length})
+                </h3>
+                <div className="space-y-1">
+                  {awayPlayers.map((p) => (
+                    <div key={p.id} className="text-sm flex items-center gap-2">
+                      <Badge variant="outline" className="text-[10px] w-10 justify-center">
+                        {p.role}
+                      </Badge>
+                      {p.name}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Score entry table */}
+      {Object.keys(scores).length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">Player Scores</CardTitle>
+          </CardHeader>
+          <CardContent className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-border">
+                  <th className="text-left py-2 px-1 font-medium sticky left-0 bg-card min-w-[120px]">
+                    Player
+                  </th>
+                  {statFields.map((f) => (
+                    <th key={f.key} className="text-center py-2 px-1 font-medium min-w-[50px]">
+                      {f.short}
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {[...homePlayers, ...awayPlayers].map((player) => {
+                  const s = scores[player.id]
+                  if (!s) return null
+                  return (
+                    <tr key={player.id} className="border-b border-border/50">
+                      <td className="py-2 px-1 sticky left-0 bg-card">
+                        <div className="flex items-center gap-1.5">
+                          <div
+                            className="w-1 h-4 rounded-full"
+                            style={{ backgroundColor: player.team.color }}
+                          />
+                          <span className="truncate max-w-[100px]">{player.name}</span>
+                        </div>
+                      </td>
+                      {statFields.map((f) => (
+                        <td key={f.key} className="py-1 px-0.5 text-center">
+                          <Input
+                            type="number"
+                            min={0}
+                            step={f.key === "overs_bowled" ? 0.1 : 1}
+                            value={s[f.key]}
+                            onChange={(e) =>
+                              updateScore(
+                                player.id,
+                                f.key,
+                                parseFloat(e.target.value) || 0
+                              )
+                            }
+                            className="h-8 w-14 text-center text-xs px-1 [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+                          />
+                        </td>
+                      ))}
+                    </tr>
+                  )
+                })}
+              </tbody>
+            </table>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* User scores / results */}
+      {userScores.length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">Results</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-2">
+              {userScores.map((s, i) => {
+                const medals = ["🥇", "🥈", "🥉"]
+                const prefix =
+                  i < 3
+                    ? medals[i]
+                    : i === userScores.length - 1 && userScores.length > 3
+                    ? "🥄"
+                    : `${s.rank ?? i + 1}.`
+
+                return (
+                  <div
+                    key={s.user_id}
+                    className="flex items-center justify-between py-2 px-3 rounded-lg bg-accent/30"
+                  >
+                    <div className="flex items-center gap-3">
+                      <span className="w-8 text-center">{prefix}</span>
+                      <span className="font-medium">{s.displayName}</span>
+                    </div>
+                    <div className="flex items-center gap-4 text-sm">
+                      {s.captain_points > 0 && (
+                        <span className="text-muted-foreground">
+                          C: {s.captain_points}
+                        </span>
+                      )}
+                      {s.vc_points > 0 && (
+                        <span className="text-muted-foreground">
+                          VC: {s.vc_points}
+                        </span>
+                      )}
+                      <span className="font-bold text-lg">{s.total_points}</span>
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+    </div>
+  )
+}
