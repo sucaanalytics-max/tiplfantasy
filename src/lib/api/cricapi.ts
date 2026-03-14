@@ -1,10 +1,54 @@
 export type CricAPIMatch = {
   id: string
   name: string
+  matchType: string
   status: string
+  venue: string
+  date: string
+  dateTimeGMT: string
+  teams: string[]
+  series_id: string
+  fantasyEnabled: boolean
+  score?: Array<{ r: number; w: number; o: number; inning: string }>
+}
+
+export type CricAPIMatchInfo = {
+  id: string
+  name: string
+  matchType: string
+  status: string
+  venue: string
+  date: string
   dateTimeGMT: string
   teams: string[]
   score?: Array<{ r: number; w: number; o: number; inning: string }>
+  tossWinner?: string
+  tossChoice?: string
+  matchWinner?: string
+}
+
+export type CricAPISeries = {
+  id: string
+  name: string
+  startDate: string
+  endDate: string
+  odi: number
+  t20: number
+  test: number
+  squads: number
+  matches: number
+}
+
+export type CricAPISeriesMatch = {
+  id: string
+  name: string
+  matchType: string
+  status: string
+  venue: string
+  date: string
+  dateTimeGMT: string
+  teams: string[]
+  fantasyEnabled: boolean
 }
 
 export type CricAPIScorecard = {
@@ -39,10 +83,68 @@ function apiKey() {
   return key
 }
 
-export async function fetchMatches(): Promise<CricAPIMatch[] | null> {
+/** Search for a series by name (e.g. "IPL") */
+export async function searchSeries(query: string): Promise<CricAPISeries[] | null> {
+  try {
+    const res = await fetch(
+      `${BASE_URL}/series?apikey=${apiKey()}&offset=0&search=${encodeURIComponent(query)}`
+    )
+    if (!res.ok) return null
+    const json = await res.json()
+    return json.data ?? null
+  } catch {
+    return null
+  }
+}
+
+/** Get all matches for a series */
+export async function fetchSeriesMatches(seriesId: string): Promise<CricAPISeriesMatch[] | null> {
+  try {
+    const res = await fetch(
+      `${BASE_URL}/series_info?apikey=${apiKey()}&id=${seriesId}`
+    )
+    if (!res.ok) return null
+    const json = await res.json()
+    return json.data?.matchList ?? null
+  } catch {
+    return null
+  }
+}
+
+/** Get detailed info for a single match */
+export async function fetchMatchInfo(matchId: string): Promise<CricAPIMatchInfo | null> {
+  try {
+    const res = await fetch(
+      `${BASE_URL}/match_info?apikey=${apiKey()}&id=${matchId}`
+    )
+    if (!res.ok) return null
+    const json = await res.json()
+    return json.data ?? null
+  } catch {
+    return null
+  }
+}
+
+/** Get current live/recent matches */
+export async function fetchCurrentMatches(): Promise<CricAPIMatch[] | null> {
   try {
     const res = await fetch(
       `${BASE_URL}/currentMatches?apikey=${apiKey()}&offset=0`,
+      { next: { revalidate: 300 } }
+    )
+    if (!res.ok) return null
+    const json = await res.json()
+    return json.data ?? null
+  } catch {
+    return null
+  }
+}
+
+/** Get all matches (paginated) */
+export async function fetchMatches(offset = 0): Promise<CricAPIMatch[] | null> {
+  try {
+    const res = await fetch(
+      `${BASE_URL}/matches?apikey=${apiKey()}&offset=${offset}`,
       { next: { revalidate: 300 } }
     )
     if (!res.ok) return null

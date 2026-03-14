@@ -25,6 +25,15 @@ export async function updateSession(request: NextRequest) {
     }
   )
 
+  // Handle PKCE code exchange — when Supabase redirects to Site URL with ?code=xxx
+  // instead of /auth/callback, forward the code to the dedicated callback handler
+  const code = request.nextUrl.searchParams.get("code")
+  if (code && !request.nextUrl.pathname.startsWith("/auth")) {
+    const callbackUrl = request.nextUrl.clone()
+    callbackUrl.pathname = "/auth/callback"
+    return NextResponse.redirect(callbackUrl)
+  }
+
   // Refresh the auth token
   const {
     data: { user },

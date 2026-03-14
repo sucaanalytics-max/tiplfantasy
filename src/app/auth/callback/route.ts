@@ -12,6 +12,7 @@ export async function GET(request: Request) {
     if (!error) {
       return NextResponse.redirect(`${origin}${next}`)
     }
+    console.error("Auth callback error:", error.message, error)
   }
 
   // Auth error — redirect to login with error
