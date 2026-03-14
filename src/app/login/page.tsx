@@ -23,7 +23,7 @@ function LoginForm() {
 
   return (
     <div className="flex min-h-dvh items-center justify-center px-4 bg-gradient-to-b from-background via-background to-primary/5">
-      <Card className="w-full max-w-sm border border-white/[0.08] shadow-2xl shadow-primary/5">
+      <Card className="w-full max-w-sm border border-border shadow-2xl shadow-primary/5">
         <CardHeader className="text-center">
           <div className="flex justify-center gap-2 mb-4">
             <div className="w-2 h-2 rounded-full bg-primary/40" />

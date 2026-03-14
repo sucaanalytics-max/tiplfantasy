@@ -73,7 +73,7 @@ export default async function ProfilePage() {
       </div>
 
       {/* Name editor */}
-      <Card className="border border-white/[0.06]">
+      <Card className="border border-border">
         <CardHeader className="pb-3">
           <CardTitle className="text-base">Display Name</CardTitle>
         </CardHeader>
@@ -85,7 +85,7 @@ export default async function ProfilePage() {
 
       {/* Stats grid */}
       <div className="grid grid-cols-2 gap-4">
-        <Card className="border border-white/[0.06]">
+        <Card className="border border-border">
           <CardContent className="pt-5">
             <div className="flex items-center gap-2.5">
               <Trophy className="h-4 w-4 text-yellow-500" />
@@ -96,7 +96,7 @@ export default async function ProfilePage() {
             </div>
           </CardContent>
         </Card>
-        <Card className="border border-white/[0.06]">
+        <Card className="border border-border">
           <CardContent className="pt-5">
             <div className="flex items-center gap-2.5">
               <Target className="h-4 w-4 text-blue-500" />
@@ -107,7 +107,7 @@ export default async function ProfilePage() {
             </div>
           </CardContent>
         </Card>
-        <Card className="border border-white/[0.06]">
+        <Card className="border border-border">
           <CardContent className="pt-5">
             <div className="flex items-center gap-2.5">
               <TrendingUp className="h-4 w-4 text-green-500" />
@@ -120,7 +120,7 @@ export default async function ProfilePage() {
             </div>
           </CardContent>
         </Card>
-        <Card className="border border-white/[0.06]">
+        <Card className="border border-border">
           <CardContent className="pt-5">
             <div className="flex items-center gap-2.5">
               <TrendingDown className="h-4 w-4 text-red-500" />
@@ -136,7 +136,7 @@ export default async function ProfilePage() {
       </div>
 
       {/* Extra stats */}
-      <Card className="border border-white/[0.06]">
+      <Card className="border border-border">
         <CardContent className="pt-5 space-y-3">
           <div className="flex justify-between text-sm">
             <span className="text-muted-foreground">Matches Played</span>
@@ -165,7 +165,7 @@ export default async function ProfilePage() {
 
       {/* Match history */}
       {matchScores && matchScores.length > 0 && (
-        <Card className="border border-white/[0.06]">
+        <Card className="border border-border">
           <CardHeader className="pb-3">
             <CardTitle className="text-base">Match History</CardTitle>
           </CardHeader>

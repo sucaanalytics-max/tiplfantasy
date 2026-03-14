@@ -77,14 +77,14 @@ export default async function ScoresPage({
       </div>
 
       {match.result_summary && (
-        <div className="text-sm text-muted-foreground bg-secondary border border-white/[0.06] rounded-lg px-4 py-3">
+        <div className="text-sm text-muted-foreground bg-secondary border border-border rounded-lg px-4 py-3">
           {match.result_summary}
         </div>
       )}
 
       {/* Match Leaderboard */}
       {userScores && userScores.length > 0 && (
-        <Card className="border border-white/[0.06]">
+        <Card className="border border-border">
           <CardHeader className="pb-3">
             <CardTitle className="text-base">Match Leaderboard</CardTitle>
           </CardHeader>
@@ -133,7 +133,7 @@ export default async function ScoresPage({
 
       {/* Player Score Breakdown */}
       {playerScores && playerScores.length > 0 && (
-        <Card className="border border-white/[0.06]">
+        <Card className="border border-border">
           <CardHeader className="pb-3">
             <CardTitle className="text-base">Player Breakdown</CardTitle>
           </CardHeader>
@@ -210,7 +210,7 @@ export default async function ScoresPage({
       )}
 
       {(!playerScores || playerScores.length === 0) && (
-        <Card className="border border-white/[0.06]">
+        <Card className="border border-border">
           <CardContent className="py-12 text-center">
             <p className="text-muted-foreground">Scores not yet available for this match.</p>
           </CardContent>

@@ -51,7 +51,7 @@ export default async function MatchesPage() {
         <div key={dateKey} className="space-y-3">
           <h2 className="flex items-center gap-3 text-sm font-semibold text-muted-foreground uppercase tracking-wide">
             {format(new Date(dateKey), "EEEE, MMMM d")}
-            <div className="flex-1 h-px bg-white/[0.06]" />
+            <div className="flex-1 h-px bg-border" />
           </h2>
           {dayMatches.map((match) => {
             const home = match.team_home as unknown as { short_name: string; color: string }
@@ -60,7 +60,7 @@ export default async function MatchesPage() {
             const hasSubmitted = submittedMatches.has(match.id)
 
             return (
-              <Card key={match.id} className={`border border-white/[0.06] ${status.borderClass}`}>
+              <Card key={match.id} className={`border border-border ${status.borderClass}`}>
                 <CardContent className="py-4 px-4">
                   <div className="flex items-center justify-between mb-3">
                     <span className="text-xs text-muted-foreground font-mono">

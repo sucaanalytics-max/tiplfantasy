@@ -195,7 +195,7 @@ export function PickTeamClient({
               const isCaptain = captainId === player.id
               const isVC = viceCaptainId === player.id
               return (
-                <Card key={player.id} className="p-3 border border-white/[0.06]">
+                <Card key={player.id} className="p-3 border border-border">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2 min-w-0">
                       <Badge

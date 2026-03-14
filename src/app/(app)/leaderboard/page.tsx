@@ -139,7 +139,7 @@ export default async function LeaderboardPage() {
         </TabsList>
 
         <TabsContent value="season" className="mt-4">
-          <Card className="border border-white/[0.06]">
+          <Card className="border border-border">
             <CardContent className="pt-4">
               <LeaderTable rows={seasonRows} showMP />
             </CardContent>
@@ -147,7 +147,7 @@ export default async function LeaderboardPage() {
         </TabsContent>
 
         <TabsContent value="this-week" className="mt-4">
-          <Card className="border border-white/[0.06]">
+          <Card className="border border-border">
             <CardContent className="pt-4">
               <LeaderTable rows={thisWeekRows} showBanner />
             </CardContent>
@@ -155,7 +155,7 @@ export default async function LeaderboardPage() {
         </TabsContent>
 
         <TabsContent value="last-week" className="mt-4">
-          <Card className="border border-white/[0.06]">
+          <Card className="border border-border">
             <CardContent className="pt-4">
               <LeaderTable rows={lastWeekRows} showBanner />
             </CardContent>

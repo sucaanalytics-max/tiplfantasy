@@ -86,7 +86,7 @@ export default async function DashboardPage() {
 
       {/* Season rank + points */}
       <div className="grid grid-cols-2 gap-4">
-        <Card className="border border-white/[0.06]">
+        <Card className="border border-border">
           <CardContent className="pt-6">
             <div className="flex items-center gap-3">
               <div className="rounded-full bg-amber-500/15 p-2.5">
@@ -101,7 +101,7 @@ export default async function DashboardPage() {
             </div>
           </CardContent>
         </Card>
-        <Card className="border border-white/[0.06]">
+        <Card className="border border-border">
           <CardContent className="pt-6">
             <div className="flex items-center gap-3">
               <div className="rounded-full bg-blue-500/15 p-2.5">
@@ -120,7 +120,7 @@ export default async function DashboardPage() {
 
       {/* Next match card — hero element */}
       {nextMatch && (
-        <Card className="bg-gradient-to-br from-primary/5 via-card to-accent/5 border border-white/[0.06]">
+        <Card className="bg-gradient-to-br from-primary/5 via-card to-accent/5 border border-border">
           <CardHeader className="pb-3">
             <div className="flex items-center justify-between">
               <CardTitle className="text-base flex items-center gap-2">
@@ -179,7 +179,7 @@ export default async function DashboardPage() {
 
       {/* Last match result */}
       {lastMatch && lastMatchScore && (
-        <Card className="border border-white/[0.06]">
+        <Card className="border border-border">
           <CardHeader className="pb-3">
             <div className="flex items-center justify-between">
               <CardTitle className="text-base">Last Match</CardTitle>
@@ -213,7 +213,7 @@ export default async function DashboardPage() {
       )}
 
       {/* Mini leaderboard */}
-      <Card className="border border-white/[0.06]">
+      <Card className="border border-border">
         <CardHeader className="pb-3">
           <div className="flex items-center justify-between">
             <CardTitle className="text-base flex items-center gap-2">
