@@ -182,3 +182,36 @@ export type SelectionWithPlayers = Selection & {
 export type MatchPlayerScoreWithPlayer = MatchPlayerScore & {
   player: PlayerWithTeam
 }
+
+// ============================================================
+// League types
+// ============================================================
+
+export type League = {
+  id: string
+  name: string
+  invite_code: string
+  creator_id: string
+  created_at: string
+}
+
+export type LeagueMember = {
+  id: string
+  league_id: string
+  user_id: string
+  joined_at: string
+}
+
+export type LeagueWithMemberCount = League & {
+  member_count: number
+}
+
+export type LeagueLeaderboardEntry = {
+  user_id: string
+  display_name: string
+  avatar_url: string | null
+  total_points: number
+  matches_played: number
+  avg_points: number
+  season_rank: number
+}

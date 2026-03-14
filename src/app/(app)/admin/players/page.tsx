@@ -1,8 +1,27 @@
-export default function AdminPlayersPage() {
-  return (
-    <div className="p-4 md:p-6">
-      <h1 className="text-2xl font-bold tracking-tight">Manage Players</h1>
-      <p className="text-muted-foreground mt-1">Player database and roles</p>
-    </div>
-  )
+import { createClient } from "@/lib/supabase/server"
+import { redirect } from "next/navigation"
+import { PlayersClient } from "./players-client"
+import type { PlayerWithTeam } from "@/lib/types"
+
+export default async function AdminPlayersPage() {
+  const supabase = await createClient()
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+  if (!user) redirect("/login")
+
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("is_admin")
+    .eq("id", user.id)
+    .single()
+
+  if (!profile?.is_admin) redirect("/")
+
+  const { data: players } = await supabase
+    .from("players")
+    .select("*, team:teams(*)")
+    .order("name")
+
+  return <PlayersClient players={(players ?? []) as unknown as PlayerWithTeam[]} />
 }

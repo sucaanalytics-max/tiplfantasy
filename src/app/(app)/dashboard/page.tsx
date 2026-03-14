@@ -5,7 +5,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { format, formatDistanceToNow, isPast, differenceInHours } from "date-fns"
-import { Trophy, Target, TrendingUp, Clock, CheckCircle2 } from "lucide-react"
+import { Trophy, Target, TrendingUp, Clock, CheckCircle2, Users } from "lucide-react"
+import { getMyLeagues } from "@/actions/leagues"
 
 const avatarColors = [
   "bg-emerald-500", "bg-blue-500", "bg-purple-500", "bg-amber-500",
@@ -89,6 +90,9 @@ export default async function DashboardPage() {
     .select("*")
     .order("season_rank", { ascending: true })
     .limit(5)
+
+  // Fetch user's leagues
+  const myLeagues = await getMyLeagues()
 
   const firstName = profile?.display_name?.split(" ")[0] ?? "Player"
   const hoursUntilMatch = nextMatch ? differenceInHours(new Date(nextMatch.start_time), new Date()) : null
@@ -294,6 +298,46 @@ export default async function DashboardPage() {
               </>
             )}
           </div>
+        </CardContent>
+      </Card>
+
+      {/* My Leagues */}
+      <Card className="border border-border">
+        <CardHeader className="pb-3">
+          <div className="flex items-center justify-between">
+            <CardTitle className="text-base flex items-center gap-2">
+              <Users className="h-4 w-4 text-muted-foreground" />
+              My Leagues
+            </CardTitle>
+            <Link href="/leagues">
+              <Badge variant="outline" className="text-xs cursor-pointer hover:bg-accent">
+                {myLeagues.length > 0 ? "View All" : "Create / Join"}
+              </Badge>
+            </Link>
+          </div>
+        </CardHeader>
+        <CardContent>
+          {myLeagues.length === 0 ? (
+            <p className="text-sm text-muted-foreground text-center py-4">
+              No leagues yet. Create one or join with an invite code.
+            </p>
+          ) : (
+            <div className="space-y-2">
+              {myLeagues.slice(0, 3).map((league) => (
+                <Link key={league.id} href={`/leagues/${league.id}`}>
+                  <div className="flex items-center justify-between py-2 px-3 rounded-lg bg-secondary/50 hover:bg-secondary transition-colors">
+                    <div className="flex items-center gap-2">
+                      <Users className="h-4 w-4 text-primary" />
+                      <span className="text-sm font-medium">{league.name}</span>
+                    </div>
+                    <Badge variant="outline" className="text-[10px]">
+                      {league.member_count} members
+                    </Badge>
+                  </div>
+                </Link>
+              ))}
+            </div>
+          )}
         </CardContent>
       </Card>
     </div>

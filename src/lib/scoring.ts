@@ -63,8 +63,8 @@ export function calculatePlayerPoints(
     const sr = (stats.runs / stats.balls_faced) * 100
     if (sr >= 170) add("sr_above_170")
     else if (sr >= 150) add("sr_150_170")
-    else if (sr < 50) add("sr_below_50")
-    else if (sr < 60) add("sr_50_60")
+    else if (sr < 70) add("sr_below_70")
+    else if (sr < 80) add("sr_70_80")
   }
 
   // Bowling
@@ -81,8 +81,8 @@ export function calculatePlayerPoints(
     const economy = stats.runs_conceded / stats.overs_bowled
     if (economy <= 5) add("econ_below_5")
     else if (economy <= 6) add("econ_5_6")
-    else if (economy >= 12) add("econ_above_12")
-    else if (economy >= 10) add("econ_10_12")
+    else if (economy > 11) add("econ_above_11")
+    else if (economy >= 10) add("econ_10_11")
   }
 
   // Fielding

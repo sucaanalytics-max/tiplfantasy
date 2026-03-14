@@ -6,6 +6,7 @@ import {
   LayoutDashboard,
   Swords,
   Trophy,
+  Users,
   User,
   Shield,
   LogOut,
@@ -19,6 +20,7 @@ import { ThemeToggle } from "@/components/theme-toggle"
 const navItems = [
   { href: "/dashboard", label: "Home", icon: LayoutDashboard },
   { href: "/matches", label: "Matches", icon: Swords },
+  { href: "/leagues", label: "Leagues", icon: Users },
   { href: "/leaderboard", label: "Board", icon: Trophy },
   { href: "/profile", label: "Profile", icon: User },
 ]

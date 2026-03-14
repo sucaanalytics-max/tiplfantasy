@@ -3,6 +3,8 @@ import { redirect } from "next/navigation"
 import { Card, CardContent } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Trophy } from "lucide-react"
+import { getMyLeagues, getLeagueLeaderboard } from "@/actions/leagues"
+import { LeaderboardSelector } from "./leaderboard-selector"
 
 const avatarColors = [
   "bg-emerald-500", "bg-blue-500", "bg-purple-500", "bg-amber-500",
@@ -29,16 +31,50 @@ type LeaderRow = {
   matches_played?: number
 }
 
-export default async function LeaderboardPage() {
+export default async function LeaderboardPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ league?: string }>
+}) {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect("/login")
 
-  // Season leaderboard
-  const { data: seasonData } = await supabase
-    .from("season_leaderboard")
-    .select("*")
-    .order("season_rank", { ascending: true })
+  const { league: leagueId } = await searchParams
+  const myLeagues = await getMyLeagues()
+
+  // Season leaderboard — either overall or league-specific
+  let seasonRows: LeaderRow[] = []
+
+  if (leagueId) {
+    const leagueData = await getLeagueLeaderboard(leagueId)
+    seasonRows = leagueData.map((e) => ({
+      user_id: e.user_id,
+      display_name: e.display_name,
+      total_points: e.total_points,
+      rank: e.season_rank,
+      matches_played: e.matches_played,
+    }))
+  } else {
+    const { data: seasonData } = await supabase
+      .from("season_leaderboard")
+      .select("*")
+      .order("season_rank", { ascending: true })
+
+    seasonRows = (seasonData ?? []).map((e) => {
+      const entry = e as unknown as {
+        user_id: string; display_name: string; total_points: number
+        season_rank: number; matches_played: number
+      }
+      return {
+        user_id: entry.user_id,
+        display_name: entry.display_name,
+        total_points: entry.total_points,
+        rank: entry.season_rank,
+        matches_played: entry.matches_played,
+      }
+    })
+  }
 
   // Last two completed matches
   const { data: completedMatches } = await supabase
@@ -52,6 +88,30 @@ export default async function LeaderboardPage() {
   const prevMatch = completedMatches?.[1] ?? null
 
   async function getMatchScores(matchId: string): Promise<LeaderRow[]> {
+    if (leagueId) {
+      // Filter match scores to league members
+      const { data: members } = await supabase
+        .from("league_members")
+        .select("user_id")
+        .eq("league_id", leagueId)
+      const memberIds = (members ?? []).map((m) => m.user_id)
+      if (memberIds.length === 0) return []
+
+      const { data } = await supabase
+        .from("user_match_scores")
+        .select("user_id, total_points, rank, profile:profiles(display_name)")
+        .eq("match_id", matchId)
+        .in("user_id", memberIds)
+        .order("total_points", { ascending: false })
+
+      return (data ?? []).map((s, i) => ({
+        user_id: s.user_id,
+        total_points: s.total_points,
+        rank: i + 1,
+        display_name: (s.profile as unknown as { display_name: string })?.display_name ?? "Unknown",
+      }))
+    }
+
     const { data } = await supabase
       .from("user_match_scores")
       .select("user_id, total_points, rank, profile:profiles(display_name)")
@@ -67,20 +127,6 @@ export default async function LeaderboardPage() {
 
   const thisWeekRows = lastMatch ? await getMatchScores(lastMatch.id) : []
   const lastWeekRows = prevMatch ? await getMatchScores(prevMatch.id) : []
-
-  const seasonRows: LeaderRow[] = (seasonData ?? []).map((e) => {
-    const entry = e as unknown as {
-      user_id: string; display_name: string; total_points: number
-      season_rank: number; matches_played: number
-    }
-    return {
-      user_id: entry.user_id,
-      display_name: entry.display_name,
-      total_points: entry.total_points,
-      rank: entry.season_rank,
-      matches_played: entry.matches_played,
-    }
-  })
 
   const medals = ["\ud83e\udd47", "\ud83e\udd48", "\ud83e\udd49"]
 
@@ -147,9 +193,17 @@ export default async function LeaderboardPage() {
 
   return (
     <div className="p-4 md:p-6 space-y-6 max-w-2xl">
-      <div>
-        <h1 className="text-2xl font-bold tracking-tight">Leaderboard</h1>
-        <p className="text-muted-foreground mt-0.5">Fantasy rankings</p>
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight">Leaderboard</h1>
+          <p className="text-muted-foreground mt-0.5">Fantasy rankings</p>
+        </div>
+        {myLeagues.length > 0 && (
+          <LeaderboardSelector
+            leagues={myLeagues.map((l) => ({ id: l.id, name: l.name }))}
+            currentLeagueId={leagueId ?? null}
+          />
+        )}
       </div>
 
       <Tabs defaultValue="season">
