@@ -27,6 +27,7 @@ export async function updatePlayer(
     role?: PlayerRole
     is_active?: boolean
     credit_cost?: number
+    howstat_id?: number | null
   }
 ) {
   await requireAdmin()
@@ -39,4 +40,36 @@ export async function updatePlayer(
 
   if (error) return { error: error.message }
   return { success: true }
+}
+
+export async function syncPlayerStats(playerId?: string) {
+  await requireAdmin()
+  const admin = createAdminClient()
+
+  const projectUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY
+
+  if (!projectUrl || !serviceKey) {
+    return { error: "Missing Supabase config" }
+  }
+
+  const body: Record<string, string> = {}
+  if (playerId) body.player_id = playerId
+
+  const res = await fetch(`${projectUrl}/functions/v1/sync-player-stats`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${serviceKey}`,
+    },
+    body: JSON.stringify(body),
+  })
+
+  if (!res.ok) {
+    const text = await res.text()
+    return { error: `Sync failed: ${text}` }
+  }
+
+  const data = await res.json()
+  return { success: true, data }
 }

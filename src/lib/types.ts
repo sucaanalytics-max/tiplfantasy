@@ -39,6 +39,25 @@ export type Player = {
   cricapi_id: string | null
   credit_cost: number
   created_at: string
+  // IPL Career Stats
+  ipl_matches: number | null
+  ipl_innings: number | null
+  ipl_runs: number | null
+  ipl_batting_avg: number | null
+  ipl_strike_rate: number | null
+  ipl_highest_score: string | null
+  ipl_fifties: number | null
+  ipl_hundreds: number | null
+  ipl_fours: number | null
+  ipl_sixes: number | null
+  ipl_wickets: number | null
+  ipl_bowling_avg: number | null
+  ipl_economy: number | null
+  ipl_best_bowling: string | null
+  ipl_catches: number | null
+  ipl_recent_scores: number[] | null
+  howstat_id: number | null
+  stats_updated_at: string | null
 }
 
 export type Match = {

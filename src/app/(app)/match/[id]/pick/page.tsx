@@ -75,6 +75,22 @@ export default async function PickTeamPage({
     selectedPlayerIds = (selPlayers ?? []).map((sp) => sp.player_id)
   }
 
+  // Fetch last 5 TIPL fantasy scores for all players in this match
+  const playerIds = (players ?? []).map((p: { id: string }) => p.id)
+  const { data: tiplScoresRaw } = await supabase
+    .from("match_player_scores")
+    .select("player_id, fantasy_points")
+    .in("player_id", playerIds)
+    .order("created_at", { ascending: false })
+
+  const tiplScoreMap: Record<string, number[]> = {}
+  for (const s of tiplScoresRaw ?? []) {
+    if (!tiplScoreMap[s.player_id]) tiplScoreMap[s.player_id] = []
+    if (tiplScoreMap[s.player_id].length < 5) {
+      tiplScoreMap[s.player_id].push(s.fantasy_points)
+    }
+  }
+
   return (
     <PickTeamClient
       match={typedMatch}
@@ -83,6 +99,7 @@ export default async function PickTeamPage({
       initialSelectedIds={selectedPlayerIds}
       initialCaptainId={existingSelection?.captain_id ?? null}
       initialViceCaptainId={existingSelection?.vice_captain_id ?? null}
+      tiplScores={tiplScoreMap}
     />
   )
 }

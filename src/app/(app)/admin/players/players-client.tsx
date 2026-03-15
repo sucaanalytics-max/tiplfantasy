@@ -5,7 +5,7 @@ import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { updatePlayer } from "@/actions/players"
+import { updatePlayer, syncPlayerStats } from "@/actions/players"
 import type { PlayerWithTeam, PlayerRole, Team } from "@/lib/types"
 import { ROLE_COLORS } from "@/lib/badges"
 
@@ -21,8 +21,13 @@ export function PlayersClient({ players: initialPlayers }: Props) {
   const [teamFilter, setTeamFilter] = useState<string>("all")
   const [editingCost, setEditingCost] = useState<string | null>(null)
   const [costValue, setCostValue] = useState("")
+  const [editingHowstat, setEditingHowstat] = useState<string | null>(null)
+  const [howstatValue, setHowstatValue] = useState("")
+  const [syncing, setSyncing] = useState(false)
+  const [syncResult, setSyncResult] = useState<string | null>(null)
   const [isPending, startTransition] = useTransition()
   const costInputRef = useRef<HTMLInputElement>(null)
+  const howstatInputRef = useRef<HTMLInputElement>(null)
 
   // Derive unique teams from players
   const teams = Array.from(
@@ -119,13 +124,75 @@ export function PlayersClient({ players: initialPlayers }: Props) {
     }
   }
 
+  function handleHowstatClick(playerId: string, currentId: number | null) {
+    setEditingHowstat(playerId)
+    setHowstatValue(currentId !== null ? String(currentId) : "")
+    setTimeout(() => howstatInputRef.current?.select(), 0)
+  }
+
+  function handleHowstatSave(playerId: string) {
+    const newId = howstatValue.trim() === "" ? null : parseInt(howstatValue, 10)
+    if (howstatValue.trim() !== "" && (isNaN(newId!) || newId! < 0)) {
+      setEditingHowstat(null)
+      return
+    }
+
+    setEditingHowstat(null)
+    setPlayers((prev) =>
+      prev.map((p) => (p.id === playerId ? { ...p, howstat_id: newId } : p))
+    )
+    startTransition(async () => {
+      const result = await updatePlayer(playerId, { howstat_id: newId })
+      if (result.error) {
+        // Revert — just refetch would be better but keep simple
+        setPlayers((prev) =>
+          prev.map((p) => (p.id === playerId ? { ...p, howstat_id: p.howstat_id } : p))
+        )
+      }
+    })
+  }
+
+  function handleHowstatKeyDown(e: React.KeyboardEvent, playerId: string) {
+    if (e.key === "Enter") handleHowstatSave(playerId)
+    else if (e.key === "Escape") setEditingHowstat(null)
+  }
+
+  async function handleSyncStats() {
+    setSyncing(true)
+    setSyncResult(null)
+    const result = await syncPlayerStats()
+    setSyncing(false)
+    if (result.error) {
+      setSyncResult(`Error: ${result.error}`)
+    } else {
+      const data = result.data as { synced: number; results: { name: string; status: string }[] }
+      const ok = data.results.filter((r) => r.status === "ok").length
+      setSyncResult(`Synced ${ok}/${data.synced} players`)
+    }
+  }
+
   return (
     <div className="p-4 md:p-6 space-y-4">
-      <div>
-        <h1 className="text-2xl font-bold tracking-tight">Manage Players</h1>
-        <p className="text-muted-foreground mt-1">
-          {players.length} players across {teams.length} teams
-        </p>
+      <div className="flex items-start justify-between">
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight">Manage Players</h1>
+          <p className="text-muted-foreground mt-1">
+            {players.length} players across {teams.length} teams
+          </p>
+        </div>
+        <div className="flex items-center gap-2">
+          <Button
+            onClick={handleSyncStats}
+            disabled={syncing}
+            variant="outline"
+            size="sm"
+          >
+            {syncing ? "Syncing..." : "Sync Stats"}
+          </Button>
+          {syncResult && (
+            <span className="text-xs text-muted-foreground">{syncResult}</span>
+          )}
+        </div>
       </div>
 
       {/* Filters */}
@@ -204,8 +271,31 @@ export function PlayersClient({ players: initialPlayers }: Props) {
                       </div>
                     </div>
 
-                    {/* Right: cost + active toggle */}
+                    {/* Right: howstat + cost + active toggle */}
                     <div className="flex items-center gap-3 shrink-0">
+                      {/* Howstat ID - click to edit */}
+                      {editingHowstat === player.id ? (
+                        <Input
+                          ref={howstatInputRef}
+                          type="number"
+                          min="0"
+                          value={howstatValue}
+                          onChange={(e) => setHowstatValue(e.target.value)}
+                          onBlur={() => handleHowstatSave(player.id)}
+                          onKeyDown={(e) => handleHowstatKeyDown(e, player.id)}
+                          className="w-20 h-7 text-sm text-center"
+                          placeholder="ID"
+                        />
+                      ) : (
+                        <button
+                          onClick={() => handleHowstatClick(player.id, player.howstat_id)}
+                          className="text-[10px] font-mono text-muted-foreground hover:text-foreground transition-colors px-1.5 py-0.5 rounded hover:bg-accent"
+                          title={player.stats_updated_at ? `Stats updated: ${new Date(player.stats_updated_at).toLocaleDateString()}` : "Click to set howstat ID"}
+                        >
+                          {player.howstat_id !== null ? `#${player.howstat_id}` : "—"}
+                        </button>
+                      )}
+
                       {/* Credit cost - click to edit */}
                       {editingCost === player.id ? (
                         <Input

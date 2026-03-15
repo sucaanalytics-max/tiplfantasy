@@ -26,6 +26,7 @@ import { TOTAL_BUDGET } from "@/lib/constants"
 import { SegmentedProgressBar } from "@/components/segmented-progress-bar"
 import { CricketField } from "@/components/cricket-field"
 import { Drawer, DrawerContent, DrawerTrigger, DrawerTitle } from "@/components/ui/drawer"
+import { PlayerStatsDrawer } from "@/components/player-stats-drawer"
 import type { PlayerWithTeam, MatchWithTeams, PlayerRole } from "@/lib/types"
 import { CAPTAIN_BADGE, VICE_CAPTAIN_BADGE } from "@/lib/badges"
 
@@ -36,6 +37,7 @@ type Props = {
   initialSelectedIds: string[]
   initialCaptainId: string | null
   initialViceCaptainId: string | null
+  tiplScores: Record<string, number[]>
 }
 
 const ROLE_ORDER: PlayerRole[] = ["WK", "BAT", "AR", "BOWL"]
@@ -59,6 +61,7 @@ export function PickTeamClient({
   initialSelectedIds,
   initialCaptainId,
   initialViceCaptainId,
+  tiplScores,
 }: Props) {
   const router = useRouter()
   const [isPending, startTransition] = useTransition()
@@ -75,6 +78,9 @@ export function PickTeamClient({
   const [search, setSearch] = useState("")
   const [error, setError] = useState<string | null>(null)
   const [sortBy, setSortBy] = useState<"default" | "credits">("default")
+  const [statsPlayerId, setStatsPlayerId] = useState<string | null>(null)
+
+  const statsPlayer = statsPlayerId ? players.find((p) => p.id === statsPlayerId) ?? null : null
 
   const hasPlayingXI = playingXIIds.length > 0
 
@@ -280,7 +286,12 @@ export function PickTeamClient({
         {/* Player info */}
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-1">
-            <span className="text-xs font-medium truncate">{player.name}</span>
+            <span
+              className="text-xs font-medium truncate cursor-pointer underline-offset-2 hover:underline text-foreground"
+              onClick={(e) => { e.stopPropagation(); setStatsPlayerId(player.id) }}
+            >
+              {player.name}
+            </span>
             {isCaptain && <span className="text-[8px] font-bold text-amber-500">C</span>}
             {isVC && <span className="text-[8px] font-bold text-violet-400">VC</span>}
             {hasPlayingXI && isInXI && <Shield className="h-2.5 w-2.5 text-green-500 shrink-0" />}
@@ -330,7 +341,12 @@ export function PickTeamClient({
                         style={{ backgroundColor: player.team.color }}
                       />
                       <div className="flex-1 min-w-0">
-                        <p className="text-xs font-medium truncate">{player.name}</p>
+                        <p
+                          className="text-xs font-medium truncate cursor-pointer underline-offset-2 hover:underline"
+                          onClick={(e) => { e.stopPropagation(); setStatsPlayerId(player.id) }}
+                        >
+                          {player.name}
+                        </p>
                         <div className="flex items-center gap-1">
                           <span className="text-[9px]" style={{ color: player.team.color }}>
                             {player.team.short_name}
@@ -685,7 +701,10 @@ export function PickTeamClient({
                 {/* Player info */}
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-1.5">
-                    <span className="text-sm font-medium truncate">
+                    <span
+                      className="text-sm font-medium truncate cursor-pointer underline-offset-2 hover:underline text-foreground"
+                      onClick={(e) => { e.stopPropagation(); setStatsPlayerId(player.id) }}
+                    >
                       {player.name}
                     </span>
                     {isCaptain && (
@@ -903,6 +922,14 @@ export function PickTeamClient({
           </Button>
         </div>
       </div>
+
+      {/* Player Stats Drawer */}
+      <PlayerStatsDrawer
+        player={statsPlayer}
+        tiplScores={statsPlayerId ? tiplScores[statsPlayerId] ?? [] : []}
+        open={!!statsPlayerId}
+        onClose={() => setStatsPlayerId(null)}
+      />
     </div>
   )
 }
