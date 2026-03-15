@@ -597,7 +597,7 @@ export function PickTeamClient({
             className={cn(
               "w-full",
               validation.valid && captainId && viceCaptainId && !isPending
-                ? "bg-gradient-to-r from-primary to-emerald-400 text-black font-semibold"
+                ? "bg-gradient-to-r from-primary to-sky-400 text-black font-semibold"
                 : ""
             )}
           >
@@ -910,7 +910,7 @@ export function PickTeamClient({
             className={cn(
               "w-full",
               validation.valid && captainId && viceCaptainId && !isPending
-                ? "bg-gradient-to-r from-primary to-emerald-400 text-black font-semibold"
+                ? "bg-gradient-to-r from-primary to-sky-400 text-black font-semibold"
                 : ""
             )}
           >

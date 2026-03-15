@@ -57,8 +57,8 @@
   --popover: oklch(1 0 0);
   --popover-foreground: oklch(0.15 0.02 260);
 
-  /* Emerald green primary — matches dark theme */
-  --primary: oklch(0.55 0.17 162.48);
+  /* Cyan primary — sporty broadcast aesthetic */
+  --primary: oklch(0.55 0.15 220);
   --primary-foreground: oklch(0.99 0 0);
 
   /* Light gray surfaces */
@@ -74,9 +74,9 @@
   --destructive: oklch(0.55 0.245 27.325);
   --border: oklch(0.90 0.01 260);
   --input: oklch(0.90 0.01 260);
-  --ring: oklch(0.55 0.17 162.48);
+  --ring: oklch(0.55 0.15 220);
 
-  --chart-1: oklch(0.55 0.17 162.48);
+  --chart-1: oklch(0.55 0.15 220);
   --chart-2: oklch(0.65 0.19 47.604);
   --chart-3: oklch(0.55 0.15 264);
   --chart-4: oklch(0.70 0.18 84.429);
@@ -84,12 +84,12 @@
 
   --sidebar: oklch(0.97 0.005 260);
   --sidebar-foreground: oklch(0.15 0.02 260);
-  --sidebar-primary: oklch(0.55 0.17 162.48);
+  --sidebar-primary: oklch(0.55 0.15 220);
   --sidebar-primary-foreground: oklch(0.99 0 0);
   --sidebar-accent: oklch(0.94 0.01 260);
   --sidebar-accent-foreground: oklch(0.20 0.02 260);
   --sidebar-border: oklch(0.90 0.01 260);
-  --sidebar-ring: oklch(0.55 0.17 162.48);
+  --sidebar-ring: oklch(0.55 0.15 220);
 }
 
 .dark {
@@ -101,9 +101,9 @@
   --popover: oklch(0.18 0.02 260);
   --popover-foreground: oklch(0.985 0.003 260);
 
-  /* Emerald green primary — sporty, energetic */
-  --primary: oklch(0.696 0.17 162.48);
-  --primary-foreground: oklch(0.145 0.03 162);
+  /* Cyan primary — sporty broadcast aesthetic */
+  --primary: oklch(0.75 0.15 220);
+  --primary-foreground: oklch(0.145 0.03 220);
 
   /* Dark blue-grey surfaces */
   --secondary: oklch(0.23 0.02 260);
@@ -118,9 +118,9 @@
   --destructive: oklch(0.577 0.245 27.325);
   --border: oklch(0.25 0.015 260);
   --input: oklch(0.25 0.015 260);
-  --ring: oklch(0.696 0.17 162.48);
+  --ring: oklch(0.75 0.15 220);
 
-  --chart-1: oklch(0.696 0.17 162.48);
+  --chart-1: oklch(0.75 0.15 220);
   --chart-2: oklch(0.705 0.191 47.604);
   --chart-3: oklch(0.769 0.188 70.08);
   --chart-4: oklch(0.627 0.265 303.9);
@@ -128,21 +128,21 @@
 
   --sidebar: oklch(0.13 0.02 260);
   --sidebar-foreground: oklch(0.985 0.003 260);
-  --sidebar-primary: oklch(0.696 0.17 162.48);
+  --sidebar-primary: oklch(0.75 0.15 220);
   --sidebar-primary-foreground: oklch(0.985 0.003 260);
   --sidebar-accent: oklch(0.23 0.02 260);
   --sidebar-accent-foreground: oklch(0.985 0.003 260);
   --sidebar-border: oklch(0.25 0.015 260);
-  --sidebar-ring: oklch(0.696 0.17 162.48);
+  --sidebar-ring: oklch(0.75 0.15 220);
 
   /* Glass effect tokens */
-  --glass-bg: oklch(0.20 0.02 260 / 0.4);
-  --glass-bg-hover: oklch(0.22 0.02 260 / 0.5);
-  --glass-border: oklch(1 0 0 / 0.08);
-  --glass-border-hover: oklch(1 0 0 / 0.12);
+  --glass-bg: oklch(0.12 0.02 220 / 0.7);
+  --glass-bg-hover: oklch(0.14 0.02 220 / 0.75);
+  --glass-border: oklch(1 0 0 / 0.10);
+  --glass-border-hover: oklch(1 0 0 / 0.14);
   --glass-shadow: 0 8px 32px oklch(0 0 0 / 0.4);
   --glass-shadow-lg: 0 16px 48px oklch(0 0 0 / 0.5);
-  --glow-primary: 0 0 20px oklch(0.696 0.17 162.48 / 0.3);
+  --glow-primary: 0 0 20px oklch(0.75 0.15 220 / 0.3);
   --glow-accent: 0 0 20px oklch(0.705 0.191 47.604 / 0.3);
 }
 
@@ -167,10 +167,15 @@
   /* Glass card base */
   .glass {
     background: var(--glass-bg);
-    backdrop-filter: blur(16px);
-    -webkit-backdrop-filter: blur(16px);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
     border: 1px solid var(--glass-border);
     box-shadow: var(--glass-shadow);
+  }
+
+  /* Display font for headings and scores */
+  .font-display {
+    font-family: var(--font-rajdhani), var(--font-geist-sans), sans-serif;
   }
 
   .glass-hover:hover {
@@ -187,7 +192,7 @@
 }
 
 /* Glass fallback for browsers without backdrop-filter */
-@supports not (backdrop-filter: blur(16px)) {
+@supports not (backdrop-filter: blur(12px)) {
   .glass {
     background: var(--card);
     border: 1px solid var(--border);

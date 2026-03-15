@@ -174,7 +174,7 @@ export function MatchList({
                                     Edit Pick
                                   </Button>
                                 ) : (
-                                  <Button size="sm" className="bg-gradient-to-r from-primary to-emerald-400 text-black font-semibold hover:opacity-90">
+                                  <Button size="sm" className="bg-gradient-to-r from-primary to-sky-400 text-black font-semibold hover:opacity-90">
                                     Pick Team
                                   </Button>
                                 )}

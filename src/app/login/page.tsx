@@ -36,7 +36,7 @@ function LoginForm() {
               priority
             />
           </div>
-          <CardTitle className="text-xl font-semibold text-foreground/80">Fantasy Cricket</CardTitle>
+          <CardTitle className="text-xl font-semibold text-foreground/80 font-display">Fantasy Cricket</CardTitle>
           <p className="text-muted-foreground text-sm">
             Office IPL 2026 League
           </p>

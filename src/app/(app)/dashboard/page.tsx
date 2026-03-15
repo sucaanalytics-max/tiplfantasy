@@ -85,7 +85,7 @@ export default async function DashboardPage() {
     <div className="p-4 md:p-6 space-y-6 max-w-2xl lg:max-w-5xl">
       {/* Greeting */}
       <div>
-        <h1 className="text-2xl font-bold tracking-tight">Hey, {firstName} <span className="inline-block">&#127951;</span></h1>
+        <h1 className="text-2xl font-bold tracking-tight font-display">Hey, {firstName} <span className="inline-block">&#127951;</span></h1>
         <p className="text-primary/60 mt-0.5">TIPL Fantasy 2026</p>
       </div>
 
@@ -103,7 +103,7 @@ export default async function DashboardPage() {
                 <Trophy className="h-5 w-5 text-yellow-500" />
               </div>
               <div>
-                <p className="text-2xl font-bold">
+                <p className="text-2xl font-bold font-display">
                   {myRank ? `#${myRank.season_rank}` : "\u2014"}
                 </p>
                 <p className="text-xs text-muted-foreground">Season Rank</p>
@@ -118,7 +118,7 @@ export default async function DashboardPage() {
                 <Target className="h-5 w-5 text-blue-500" />
               </div>
               <div>
-                <p className="text-2xl font-bold">
+                <p className="text-2xl font-bold font-display">
                   {myRank?.total_points ?? 0}
                 </p>
                 <p className="text-xs text-muted-foreground">Total Points</p>
@@ -138,8 +138,8 @@ export default async function DashboardPage() {
                 Next Match
                 {!isPast(new Date(nextMatch.start_time)) && (
                   <span className="relative flex h-2.5 w-2.5">
-                    <span className={`animate-ping absolute inline-flex h-full w-full rounded-full opacity-75 ${hoursUntilMatch !== null && hoursUntilMatch < 24 ? 'bg-orange-400' : 'bg-emerald-400'}`} />
-                    <span className={`relative inline-flex rounded-full h-2.5 w-2.5 ${hoursUntilMatch !== null && hoursUntilMatch < 24 ? 'bg-orange-500' : 'bg-emerald-500'}`} />
+                    <span className={`animate-ping absolute inline-flex h-full w-full rounded-full opacity-75 ${hoursUntilMatch !== null && hoursUntilMatch < 24 ? 'bg-orange-400' : 'bg-cyan-400'}`} />
+                    <span className={`relative inline-flex rounded-full h-2.5 w-2.5 ${hoursUntilMatch !== null && hoursUntilMatch < 24 ? 'bg-orange-500' : 'bg-cyan-500'}`} />
                   </span>
                 )}
               </CardTitle>
@@ -177,7 +177,7 @@ export default async function DashboardPage() {
                 </div>
               ) : (
                 <Link href={`/match/${nextMatch.id}/pick`}>
-                  <Button size="sm" className="bg-gradient-to-r from-primary to-emerald-400 hover:from-primary/90 hover:to-emerald-400/90 text-black font-semibold">
+                  <Button size="sm" className="bg-gradient-to-r from-primary to-sky-400 hover:from-primary/90 hover:to-sky-400/90 text-black font-semibold">
                     Pick Your Team
                   </Button>
                 </Link>

@@ -116,7 +116,7 @@ export function NavBar() {
                 className={cn(
                   "flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm transition-colors",
                   active
-                    ? "bg-primary/10 text-primary border border-primary/20 shadow-[0_0_12px_oklch(0.696_0.17_162.48/0.15)]"
+                    ? "bg-primary/10 text-primary border border-primary/20 shadow-[0_0_12px_oklch(0.75_0.15_220/0.15)]"
                     : "text-muted-foreground hover:bg-secondary hover:text-foreground"
                 )}
                 aria-current={active ? "page" : undefined}

@@ -25,4 +25,4 @@ export const STATUS_CONFIG: Record<string, { label: string; class: string }> = {
 }
 
 export const CAPTAIN_BADGE = "bg-amber-500/20 text-amber-500 border-amber-500/30"
-export const VICE_CAPTAIN_BADGE = "bg-violet-500/20 text-violet-400 border-violet-500/30"
+export const VICE_CAPTAIN_BADGE = "bg-gray-600/20 text-gray-400 border-gray-600/30"

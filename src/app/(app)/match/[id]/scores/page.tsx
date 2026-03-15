@@ -65,7 +65,7 @@ export default async function ScoresPage({
           </Button>
         </Link>
         <div>
-          <h1 className="text-xl font-bold tracking-tight">
+          <h1 className="text-xl font-bold tracking-tight font-display">
             Match #{match.match_number} Scores
           </h1>
           <p className="text-sm">
@@ -179,7 +179,7 @@ export default async function ScoresPage({
                             </Badge>
                           )}
                           {isVC && (
-                            <Badge variant="outline" className="text-[9px] px-1 py-0 h-4 bg-blue-500/10 text-blue-400 border-blue-500/20">
+                            <Badge variant="outline" className="text-[9px] px-1 py-0 h-4 bg-gray-600/10 text-gray-400 border-gray-600/20">
                               VC
                             </Badge>
                           )}
