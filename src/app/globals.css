@@ -134,6 +134,16 @@
   --sidebar-accent-foreground: oklch(0.985 0.003 260);
   --sidebar-border: oklch(0.25 0.015 260);
   --sidebar-ring: oklch(0.696 0.17 162.48);
+
+  /* Glass effect tokens */
+  --glass-bg: oklch(0.20 0.02 260 / 0.4);
+  --glass-bg-hover: oklch(0.22 0.02 260 / 0.5);
+  --glass-border: oklch(1 0 0 / 0.08);
+  --glass-border-hover: oklch(1 0 0 / 0.12);
+  --glass-shadow: 0 8px 32px oklch(0 0 0 / 0.4);
+  --glass-shadow-lg: 0 16px 48px oklch(0 0 0 / 0.5);
+  --glow-primary: 0 0 20px oklch(0.696 0.17 162.48 / 0.3);
+  --glow-accent: 0 0 20px oklch(0.705 0.191 47.604 / 0.3);
 }
 
 @layer base {
@@ -152,5 +162,56 @@
   }
   .scrollbar-hide::-webkit-scrollbar {
     display: none;
+  }
+
+  /* Glass card base */
+  .glass {
+    background: var(--glass-bg);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border: 1px solid var(--glass-border);
+    box-shadow: var(--glass-shadow);
+  }
+
+  .glass-hover:hover {
+    background: var(--glass-bg-hover);
+    border-color: var(--glass-border-hover);
+  }
+
+  .glow-primary {
+    box-shadow: var(--glow-primary);
+  }
+  .glow-accent {
+    box-shadow: var(--glow-accent);
+  }
+}
+
+/* Glass fallback for browsers without backdrop-filter */
+@supports not (backdrop-filter: blur(16px)) {
+  .glass {
+    background: var(--card);
+    border: 1px solid var(--border);
+    box-shadow: none;
+  }
+}
+
+/* Ambient gradient orb animations */
+@keyframes drift-1 {
+  0%, 100% { transform: translate(0, 0); }
+  50% { transform: translate(30px, 20px); }
+}
+@keyframes drift-2 {
+  0%, 100% { transform: translate(0, 0); }
+  50% { transform: translate(-20px, -30px); }
+}
+@keyframes drift-3 {
+  0%, 100% { transform: translate(0, 0); }
+  50% { transform: translate(15px, -15px); }
+}
+
+/* Disable ambient gradient animations for reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  .ambient-orb {
+    animation: none !important;
   }
 }

@@ -146,9 +146,9 @@ export default async function LeaderboardPage({
           return (
             <div
               key={row.user_id}
-              className={`flex items-center py-2.5 px-3 rounded-lg ${
+              className={`flex items-center py-2.5 px-3 rounded-lg transition-all ${
                 isMe ? "bg-primary/10 border border-primary/20" : i % 2 === 0 ? "bg-secondary/50" : ""
-              } ${i === 0 ? "border-l-2 border-l-amber-400" : i === 1 ? "border-l-2 border-l-gray-300" : i === 2 ? "border-l-2 border-l-amber-700" : ""}`}
+              } ${i === 0 ? "border-l-2 border-l-amber-400 dark:shadow-[0_0_12px_oklch(0.75_0.15_85/0.15)]" : i === 1 ? "border-l-2 border-l-gray-300 dark:shadow-[0_0_8px_oklch(0.7_0.01_260/0.1)]" : i === 2 ? "border-l-2 border-l-amber-700 dark:shadow-[0_0_8px_oklch(0.55_0.10_55/0.1)]" : ""}`}
             >
               <span className="w-10 text-sm">
                 {i < 3 ? medals[i] : row.rank}

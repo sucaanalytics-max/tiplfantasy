@@ -96,7 +96,7 @@ export default async function DashboardPage() {
 
       {/* Season rank + points */}
       <div className="grid grid-cols-2 gap-4">
-        <Card className="border border-border">
+        <Card className="border border-border overflow-hidden relative bg-gradient-to-br from-amber-500/10 via-transparent to-transparent">
           <CardContent className="pt-6">
             <div className="flex items-center gap-3">
               <div className="rounded-full bg-amber-500/15 p-2.5">
@@ -111,7 +111,7 @@ export default async function DashboardPage() {
             </div>
           </CardContent>
         </Card>
-        <Card className="border border-border">
+        <Card className="border border-border overflow-hidden relative bg-gradient-to-br from-primary/10 via-transparent to-transparent">
           <CardContent className="pt-6">
             <div className="flex items-center gap-3">
               <div className="rounded-full bg-blue-500/15 p-2.5">

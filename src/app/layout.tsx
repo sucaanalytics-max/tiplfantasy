@@ -3,6 +3,7 @@ import { Geist, Geist_Mono } from "next/font/google"
 import { Toaster } from "sonner"
 import { ThemeProvider } from "@/components/theme-provider"
 import { ServiceWorkerRegistration } from "@/components/sw-register"
+import { AmbientGradient } from "@/components/ambient-gradient"
 import "./globals.css"
 
 const geistSans = Geist({
@@ -69,6 +70,7 @@ export default function RootLayout({
           enableSystem
           disableTransitionOnChange
         >
+          <AmbientGradient />
           {children}
           <Toaster richColors position="top-center" />
         </ThemeProvider>

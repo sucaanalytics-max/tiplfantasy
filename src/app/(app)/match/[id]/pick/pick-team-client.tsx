@@ -19,7 +19,6 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Card } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
-import { Separator } from "@/components/ui/separator"
 import { cn } from "@/lib/utils"
 import { validateSelection, type ValidationResult } from "@/lib/validation"
 import { submitSelection } from "@/actions/selections"
@@ -298,69 +297,85 @@ export function PickTeamClient({
     )
   }
 
-  // Inline C/VC selector for desktop
-  const renderDesktopCaptainPicker = () => (
-    <div className="space-y-2">
-      <h3 className="text-sm font-semibold">Captain & Vice-Captain</h3>
-      <p className="text-xs text-muted-foreground">
-        Captain gets 2x points, Vice-Captain gets 1.5x
-      </p>
+  // Role-segmented selected players list for desktop left panel
+  const renderDesktopSelectedPlayers = () => (
+    <div className="flex-1 overflow-y-auto space-y-1">
+      <div className="flex items-center justify-between mb-2">
+        <h3 className="text-sm font-semibold">Your Team ({selectedIds.size}/11)</h3>
+        <span className="text-[10px] text-muted-foreground">
+          C = 2x pts · VC = 1.5x pts
+        </span>
+      </div>
       {selectedPlayers.length === 0 ? (
-        <p className="text-xs text-muted-foreground italic py-2">Select players first</p>
+        <p className="text-xs text-muted-foreground italic py-8 text-center">
+          Select players from the right panel
+        </p>
       ) : (
-        <div className="space-y-1.5 max-h-[280px] overflow-y-auto">
-          {selectedPlayers
-            .sort((a, b) => ROLE_ORDER.indexOf(a.role) - ROLE_ORDER.indexOf(b.role))
-            .map((player) => {
-              const isCaptain = captainId === player.id
-              const isVC = viceCaptainId === player.id
-              return (
-                <div key={player.id} className="flex items-center justify-between p-2 rounded-lg border border-border bg-card">
-                  <div className="flex items-center gap-2 min-w-0">
-                    <Badge variant="outline" className="text-[9px] w-9 justify-center shrink-0">
-                      {player.role}
-                    </Badge>
-                    <div className="min-w-0">
-                      <p className="text-xs font-medium truncate">{player.name}</p>
-                      <p className="text-[9px]" style={{ color: player.team.color }}>
-                        {player.team.short_name}
-                      </p>
+        ROLE_ORDER.map((role) => {
+          const rolePlayers = selectedPlayers.filter((p) => p.role === role)
+          if (rolePlayers.length === 0) return null
+          return (
+            <div key={role} className="mb-3">
+              <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-1">
+                {ROLE_LABELS[role]}s · {rolePlayers.length}
+              </p>
+              <div className="space-y-1">
+                {rolePlayers.map((player) => {
+                  const isCaptain = captainId === player.id
+                  const isVC = viceCaptainId === player.id
+                  return (
+                    <div key={player.id} className="flex items-center gap-2 py-1.5 px-2 rounded-lg bg-secondary/50">
+                      <div
+                        className="w-1 h-6 rounded-full shrink-0"
+                        style={{ backgroundColor: player.team.color }}
+                      />
+                      <div className="flex-1 min-w-0">
+                        <p className="text-xs font-medium truncate">{player.name}</p>
+                        <div className="flex items-center gap-1">
+                          <span className="text-[9px]" style={{ color: player.team.color }}>
+                            {player.team.short_name}
+                          </span>
+                          <span className="text-[9px] text-muted-foreground">·</span>
+                          <span className="text-[9px] text-muted-foreground">{player.credit_cost} cr</span>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-1 shrink-0">
+                        <button
+                          className={cn(
+                            "h-6 w-6 rounded-full text-[9px] font-bold flex items-center justify-center border transition-colors",
+                            isCaptain
+                              ? "bg-amber-400 text-black border-amber-400"
+                              : "border-border text-muted-foreground hover:border-amber-400/50 hover:text-amber-400"
+                          )}
+                          onClick={() => {
+                            if (viceCaptainId === player.id) setViceCaptainId(null)
+                            setCaptainId(isCaptain ? null : player.id)
+                          }}
+                        >
+                          C
+                        </button>
+                        <button
+                          className={cn(
+                            "h-6 w-6 rounded-full text-[9px] font-bold flex items-center justify-center border transition-colors",
+                            isVC
+                              ? "bg-violet-400 text-black border-violet-400"
+                              : "border-border text-muted-foreground hover:border-violet-400/50 hover:text-violet-400"
+                          )}
+                          onClick={() => {
+                            if (captainId === player.id) setCaptainId(null)
+                            setViceCaptainId(isVC ? null : player.id)
+                          }}
+                        >
+                          VC
+                        </button>
+                      </div>
                     </div>
-                  </div>
-                  <div className="flex items-center gap-1.5 shrink-0">
-                    <Button
-                      size="sm"
-                      variant={isCaptain ? "default" : "outline"}
-                      className={cn(
-                        "h-7 w-7 p-0 rounded-full",
-                        isCaptain && "bg-amber-400 text-black hover:bg-amber-400/90"
-                      )}
-                      onClick={() => {
-                        if (viceCaptainId === player.id) setViceCaptainId(null)
-                        setCaptainId(isCaptain ? null : player.id)
-                      }}
-                    >
-                      <span className="text-[10px] font-bold">C</span>
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant={isVC ? "default" : "outline"}
-                      className={cn(
-                        "h-7 w-7 p-0 rounded-full",
-                        isVC && "bg-violet-400 text-black hover:bg-violet-400/90"
-                      )}
-                      onClick={() => {
-                        if (captainId === player.id) setCaptainId(null)
-                        setViceCaptainId(isVC ? null : player.id)
-                      }}
-                    >
-                      <span className="text-[10px] font-bold">VC</span>
-                    </Button>
-                  </div>
-                </div>
-              )
-            })}
-        </div>
+                  )
+                })}
+              </div>
+            </div>
+          )
+        })
       )}
     </div>
   )
@@ -519,11 +534,7 @@ export function PickTeamClient({
       <div className="lg:grid lg:grid-cols-12 lg:h-[calc(100dvh-180px)]">
         {/* Left panel — desktop only: field + C/VC + actions */}
         <div className="hidden lg:flex lg:flex-col lg:col-span-5 lg:border-r lg:border-border lg:overflow-y-auto lg:p-6 lg:gap-6">
-          <CricketField players={selectedPlayers} captainId={captainId} viceCaptainId={viceCaptainId} size="lg" />
-
-          {renderDesktopCaptainPicker()}
-
-          <Separator />
+          {renderDesktopSelectedPlayers()}
 
           {/* Budget & composition summary */}
           <div className="flex items-center justify-between text-xs text-muted-foreground">

@@ -61,7 +61,7 @@ export function NavBar() {
   return (
     <>
       {/* Mobile bottom nav */}
-      <nav aria-label="Main navigation" className="fixed bottom-0 left-0 right-0 z-50 border-t border-border bg-background/95 backdrop-blur-xl supports-[backdrop-filter]:bg-background/80 pb-[env(safe-area-inset-bottom)] md:hidden">
+      <nav aria-label="Main navigation" className="fixed bottom-0 left-0 right-0 z-50 border-t border-white/[0.06] bg-background/90 backdrop-blur-xl supports-[backdrop-filter]:bg-background/70 pb-[env(safe-area-inset-bottom)] md:hidden">
         <div className="flex items-center justify-around h-14">
           {items.map((item) => {
             const Icon = item.icon
@@ -91,7 +91,7 @@ export function NavBar() {
       </nav>
 
       {/* Desktop sidebar */}
-      <aside aria-label="Sidebar navigation" className="hidden md:flex fixed left-0 top-0 bottom-0 z-40 w-56 flex-col border-r border-border bg-background">
+      <aside aria-label="Sidebar navigation" className="hidden md:flex fixed left-0 top-0 bottom-0 z-40 w-56 flex-col border-r border-white/[0.06] bg-background/60 backdrop-blur-xl">
         <div className="p-4 pb-6 flex items-center gap-3">
           <Image
             src="/icons/icon-192.png"
@@ -116,7 +116,7 @@ export function NavBar() {
                 className={cn(
                   "flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm transition-colors",
                   active
-                    ? "bg-primary/10 text-primary border border-primary/20"
+                    ? "bg-primary/10 text-primary border border-primary/20 shadow-[0_0_12px_oklch(0.696_0.17_162.48/0.15)]"
                     : "text-muted-foreground hover:bg-secondary hover:text-foreground"
                 )}
                 aria-current={active ? "page" : undefined}
@@ -127,7 +127,7 @@ export function NavBar() {
             )
           })}
         </nav>
-        <div className="p-2 border-t border-border space-y-1">
+        <div className="p-2 border-t border-white/[0.06] space-y-1">
           <ThemeToggle showLabel className="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm text-muted-foreground hover:bg-secondary hover:text-foreground transition-colors w-full" />
           <button
             onClick={handleSignOut}
