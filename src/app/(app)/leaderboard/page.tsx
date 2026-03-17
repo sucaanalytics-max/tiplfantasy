@@ -10,6 +10,7 @@ import { getInitials, getAvatarColor } from "@/lib/avatar"
 import { RankBadge } from "@/components/rank-badge"
 import { Podium } from "@/components/podium"
 import { EmptyState } from "@/components/empty-state"
+import { PageTransition } from "@/components/page-transition"
 
 type LeaderRow = {
   user_id: string
@@ -193,6 +194,9 @@ export default async function LeaderboardPage({
                   className={`flex items-center py-2.5 px-3 rounded-lg transition-all border-b border-border/30 last:border-b-0 ${
                     isMe
                       ? "bg-primary/10 border border-primary/20"
+                      : displayRank === 1 ? "bg-emerald-500/5"
+                      : displayRank === 2 ? "bg-amber-500/5"
+                      : displayRank === 3 ? "bg-orange-700/5"
                       : ""
                   }`}
                 >
@@ -231,6 +235,7 @@ export default async function LeaderboardPage({
   }
 
   return (
+    <PageTransition>
     <div className="p-4 md:p-6 space-y-6 max-w-2xl lg:max-w-4xl">
       <div className="flex items-center justify-between">
         <div>
@@ -281,5 +286,6 @@ export default async function LeaderboardPage({
         </TabsContent>
       </Tabs>
     </div>
+    </PageTransition>
   )
 }

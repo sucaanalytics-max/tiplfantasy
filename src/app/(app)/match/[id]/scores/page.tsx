@@ -11,6 +11,7 @@ import { Podium } from "@/components/podium"
 import { TeamBadge, VsBadge } from "@/components/team-badge"
 import { EmptyState } from "@/components/empty-state"
 import { getInitials, getAvatarColor } from "@/lib/avatar"
+import { PageTransition } from "@/components/page-transition"
 
 export default async function ScoresPage({
   params,
@@ -69,9 +70,15 @@ export default async function ScoresPage({
     : null
 
   return (
+    <PageTransition>
     <div className="p-4 md:p-6 space-y-6 max-w-3xl">
-      {/* Header */}
-      <div className="flex items-center gap-3">
+      {/* Header with team gradient */}
+      <div
+        className="flex items-center gap-3 p-4 -mx-4 -mt-4 md:-mx-6 md:-mt-6 rounded-b-[24px]"
+        style={{
+          background: `linear-gradient(to right, ${home.color}10, transparent 40%, transparent 60%, ${away.color}10)`,
+        }}
+      >
         <Link href="/matches">
           <Button variant="ghost" size="sm" className="h-9 w-9 p-0">
             <ArrowLeft className="h-4 w-4" />
@@ -82,9 +89,9 @@ export default async function ScoresPage({
             Match #{match.match_number} Scores
           </h1>
           <div className="flex items-center gap-1.5 mt-0.5">
-            <TeamBadge shortName={home.short_name} color={home.color} logoUrl={home.logo_url} size="sm" />
-            <VsBadge className="scale-75" />
-            <TeamBadge shortName={away.short_name} color={away.color} logoUrl={away.logo_url} size="sm" />
+            <TeamBadge shortName={home.short_name} color={home.color} logoUrl={home.logo_url} size="md" />
+            <VsBadge />
+            <TeamBadge shortName={away.short_name} color={away.color} logoUrl={away.logo_url} size="md" />
           </div>
         </div>
       </div>
@@ -295,5 +302,6 @@ export default async function ScoresPage({
         </Card>
       )}
     </div>
+    </PageTransition>
   )
 }

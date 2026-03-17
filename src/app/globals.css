@@ -210,8 +210,8 @@
   --glass-bg-hover: oklch(0.15 0.03 275 / 0.80);
   --glass-border: oklch(1 0 0 / 0.08);
   --glass-border-hover: oklch(1 0 0 / 0.12);
-  --glass-shadow: 0 8px 32px oklch(0 0 0 / 0.5);
-  --glass-shadow-lg: 0 16px 48px oklch(0 0 0 / 0.6);
+  --glass-shadow: 0 4px 16px oklch(0 0 0 / 0.4), 0 8px 32px oklch(0 0 0 / 0.3);
+  --glass-shadow-lg: 0 8px 24px oklch(0 0 0 / 0.5), 0 16px 48px oklch(0 0 0 / 0.4);
   --glow-primary: 0 0 20px oklch(0.68 0.16 265 / 0.3);
   --glow-accent: 0 0 20px oklch(0.70 0.20 40 / 0.3);
 }

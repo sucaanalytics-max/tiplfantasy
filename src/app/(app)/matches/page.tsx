@@ -1,6 +1,7 @@
 import { createClient } from "@/lib/supabase/server"
 import { redirect } from "next/navigation"
 import { MatchList } from "./match-list"
+import { PageTransition } from "@/components/page-transition"
 
 export default async function MatchesPage() {
   const supabase = await createClient()
@@ -33,6 +34,7 @@ export default async function MatchesPage() {
   }))
 
   return (
+    <PageTransition>
     <div className="p-4 md:p-6 space-y-6 max-w-2xl lg:max-w-5xl">
       <div>
         <h1 className="text-2xl font-bold tracking-tight">Matches</h1>
@@ -41,5 +43,6 @@ export default async function MatchesPage() {
 
       <MatchList matches={normalizedMatches} submittedMatchIds={submittedMatchIds} />
     </div>
+    </PageTransition>
   )
 }

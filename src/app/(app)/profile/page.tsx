@@ -9,6 +9,7 @@ import { StatCard } from "@/components/stat-card"
 import { RankBadge } from "@/components/rank-badge"
 import { TeamBadge } from "@/components/team-badge"
 import { getInitials, getAvatarColor } from "@/lib/avatar"
+import { PageTransition } from "@/components/page-transition"
 
 export default async function ProfilePage() {
   const supabase = await createClient()
@@ -89,6 +90,7 @@ export default async function ProfilePage() {
   } | null
 
   return (
+    <PageTransition>
     <div className="p-4 md:p-6 space-y-6 max-w-2xl lg:max-w-4xl">
       {/* Hero section */}
       <div className="flex flex-col items-center text-center py-4 space-y-3">
@@ -316,5 +318,6 @@ export default async function ProfilePage() {
 
       <SignOutButton />
     </div>
+    </PageTransition>
   )
 }

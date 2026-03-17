@@ -11,6 +11,7 @@ import { Trophy, Target, TrendingUp, Clock, CheckCircle2, Users, ChevronRight } 
 import { getMyLeagues } from "@/actions/leagues"
 import { getInitials, getAvatarColor } from "@/lib/avatar"
 import { RankBadge } from "@/components/rank-badge"
+import { PageTransition } from "@/components/page-transition"
 
 export default async function DashboardPage() {
   const supabase = await createClient()
@@ -112,6 +113,7 @@ export default async function DashboardPage() {
   const hoursUntilMatch = nextMatch ? differenceInHours(new Date(nextMatch.start_time), new Date()) : null
 
   return (
+    <PageTransition>
     <div className="p-4 md:p-6 space-y-6 max-w-2xl lg:max-w-5xl">
       {/* Greeting */}
       <div>
@@ -171,6 +173,13 @@ export default async function DashboardPage() {
         const away = nextMatch.team_away as unknown as { short_name: string; color: string; logo_url: string | null }
         return (
           <Card className="border border-border overflow-hidden relative">
+            {/* Team color gradient background */}
+            <div
+              className="absolute inset-0 opacity-[0.06] pointer-events-none"
+              style={{
+                background: `linear-gradient(135deg, ${home.color} 0%, transparent 40%, transparent 60%, ${away.color} 100%)`,
+              }}
+            />
             {/* Team color gradient bar */}
             <div
               className="absolute top-0 left-0 right-0 h-1"
@@ -447,5 +456,6 @@ export default async function DashboardPage() {
       </div>{/* end right column */}
       </div>{/* end desktop grid */}
     </div>
+    </PageTransition>
   )
 }

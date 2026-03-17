@@ -34,7 +34,7 @@ export function TeamBadge({
 
   return (
     <div
-      className={`${sizeClasses[size]} relative flex items-center justify-center rounded-full font-bold font-display shrink-0 ring-1 ring-white/10`}
+      className={`${sizeClasses[size]} relative flex items-center justify-center rounded-full font-bold font-display shrink-0 ring-1 ring-white/10 transition-transform hover:scale-105`}
       style={{ backgroundColor: color }}
     >
       {logoUrl ? (
