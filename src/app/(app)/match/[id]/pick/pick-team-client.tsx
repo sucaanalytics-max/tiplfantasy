@@ -1,8 +1,9 @@
 "use client"
 
-import { useState, useTransition, useMemo, useCallback } from "react"
+import { useState, useTransition, useMemo, useCallback, useRef } from "react"
 import { useRouter } from "next/navigation"
 import { format } from "date-fns"
+import { CountdownTimer } from "@/components/countdown-timer"
 import {
   Shield,
   Star,
@@ -14,6 +15,7 @@ import {
   Eye,
   ArrowUpDown,
   Sparkles,
+  Info,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -27,6 +29,7 @@ import { SegmentedProgressBar } from "@/components/segmented-progress-bar"
 import { CricketField } from "@/components/cricket-field"
 import { Drawer, DrawerContent, DrawerTrigger, DrawerTitle } from "@/components/ui/drawer"
 import { PlayerStatsDrawer } from "@/components/player-stats-drawer"
+import { Confetti } from "@/components/confetti"
 import type { PlayerWithTeam, MatchWithTeams, PlayerRole } from "@/lib/types"
 import { CAPTAIN_BADGE, VICE_CAPTAIN_BADGE } from "@/lib/badges"
 
@@ -77,6 +80,7 @@ export function PickTeamClient({
   const [teamFilter, setTeamFilter] = useState<"ALL" | "HOME" | "AWAY">("ALL")
   const [search, setSearch] = useState("")
   const [error, setError] = useState<string | null>(null)
+  const [showConfetti, setShowConfetti] = useState(false)
   const [sortBy, setSortBy] = useState<"default" | "credits">("default")
   const [statsPlayerId, setStatsPlayerId] = useState<string | null>(null)
 
@@ -202,6 +206,7 @@ export function PickTeamClient({
 
   const togglePlayer = useCallback(
     (playerId: string) => {
+      if (typeof navigator !== "undefined" && navigator.vibrate) navigator.vibrate(10)
       setSelectedIds((prev) => {
         const next = new Set(prev)
         if (next.has(playerId)) {
@@ -240,8 +245,11 @@ export function PickTeamClient({
       if (result.error) {
         setError(result.error)
       } else {
-        router.push("/matches")
-        router.refresh()
+        setShowConfetti(true)
+        setTimeout(() => {
+          router.push("/matches")
+          router.refresh()
+        }, 1500)
       }
     })
   }
@@ -287,21 +295,22 @@ export function PickTeamClient({
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-1">
             <span
-              className="text-xs font-medium truncate cursor-pointer underline-offset-2 hover:underline text-foreground"
+              className="text-xs font-medium truncate cursor-pointer underline-offset-2 hover:underline text-foreground inline-flex items-center gap-0.5"
               onClick={(e) => { e.stopPropagation(); setStatsPlayerId(player.id) }}
             >
               {player.name}
+              <Info className="h-2.5 w-2.5 text-muted-foreground/50 shrink-0 inline ml-0.5" />
             </span>
             {isCaptain && <span className="text-[8px] font-bold text-amber-500">C</span>}
             {isVC && <span className="text-[8px] font-bold text-violet-400">VC</span>}
-            {hasPlayingXI && isInXI && <Shield className="h-2.5 w-2.5 text-green-500 shrink-0" />}
+            {hasPlayingXI && isInXI && <Shield className="h-2.5 w-2.5 text-status-success shrink-0" />}
           </div>
           <div className="flex items-center gap-1">
             <Badge variant="outline" className="text-[8px] h-3 px-0.5 py-0">{player.role}</Badge>
             <span className="text-[9px] text-muted-foreground">{player.credit_cost}</span>
           </div>
           {isDisabled && (
-            <span className="text-[8px] text-destructive/70">{disabledReason}</span>
+            <span className="text-[10px] text-status-danger">{disabledReason}</span>
           )}
         </div>
       </button>
@@ -399,6 +408,7 @@ export function PickTeamClient({
   // Main player selection view
   return (
     <div className="min-h-screen pb-40 md:pb-28 lg:pb-0">
+      {showConfetti && <Confetti />}
       {/* Header */}
       <div className="sticky top-0 z-30 bg-background/95 backdrop-blur border-b border-border">
         <div className="px-4 py-3">
@@ -424,6 +434,7 @@ export function PickTeamClient({
                 {format(new Date(match.start_time), "EEE d MMM, h:mm a")} •{" "}
                 {match.venue}
               </p>
+              <CountdownTimer targetTime={match.start_time} variant="compact" />
             </div>
             <div className="flex flex-col items-end gap-1">
               <SegmentedProgressBar filled={selectedIds.size} total={11} />
@@ -468,8 +479,8 @@ export function PickTeamClient({
                   isActive
                     ? "border-primary bg-primary text-primary-foreground font-semibold"
                     : "border-border text-muted-foreground",
-                  !isActive && count > 0 && ok && "text-green-500 border-green-500/30",
-                  !isActive && count > 0 && !ok && "text-amber-500 border-amber-500/30"
+                  !isActive && count > 0 && ok && "text-status-success border-status-success/30",
+                  !isActive && count > 0 && !ok && "text-status-warning border-status-warning/30"
                 )}
               >
                 <span className="font-medium">{role}</span>
@@ -538,7 +549,7 @@ export function PickTeamClient({
 
         {hasPlayingXI && (
           <div className="px-4 pb-2">
-            <p className="text-[10px] text-green-500 flex items-center gap-1">
+            <p className="text-[10px] text-status-success flex items-center gap-1">
               <Shield className="h-3 w-3" /> Playing XI announced — confirmed
               players shown first
             </p>
@@ -597,7 +608,7 @@ export function PickTeamClient({
             className={cn(
               "w-full",
               validation.valid && captainId && viceCaptainId && !isPending
-                ? "bg-gradient-to-r from-primary to-sky-400 text-black font-semibold"
+                ? "bg-gradient-to-r from-primary to-blue-400 text-black font-semibold"
                 : ""
             )}
           >
@@ -702,10 +713,11 @@ export function PickTeamClient({
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-1.5">
                     <span
-                      className="text-sm font-medium truncate cursor-pointer underline-offset-2 hover:underline text-foreground"
+                      className="text-sm font-medium truncate cursor-pointer underline-offset-2 hover:underline text-foreground inline-flex items-center gap-0.5"
                       onClick={(e) => { e.stopPropagation(); setStatsPlayerId(player.id) }}
                     >
                       {player.name}
+                      <Info className="h-2.5 w-2.5 text-muted-foreground/50 shrink-0 inline ml-0.5" />
                     </span>
                     {isCaptain && (
                       <Badge className={`h-4 px-1 text-[9px] ${CAPTAIN_BADGE}`}>C</Badge>
@@ -714,7 +726,7 @@ export function PickTeamClient({
                       <Badge className={`h-4 px-1 text-[9px] ${VICE_CAPTAIN_BADGE}`}>VC</Badge>
                     )}
                     {hasPlayingXI && isInXI && (
-                      <Shield className="h-3 w-3 text-green-500 shrink-0" />
+                      <Shield className="h-3 w-3 text-status-success shrink-0" />
                     )}
                   </div>
                   <div className="flex items-center gap-1.5 mt-0.5">
@@ -729,6 +741,9 @@ export function PickTeamClient({
                       {player.role}
                     </Badge>
                   </div>
+                  {isDisabled && disabledReason && (
+                    <p className="text-[10px] text-status-danger mt-0.5">{disabledReason}</p>
+                  )}
                 </div>
 
                 {/* Credit cost */}
@@ -773,8 +788,8 @@ export function PickTeamClient({
                   className={cn(
                     "flex items-center gap-1.5 text-xs px-2 py-1 rounded border transition-colors",
                     captainId && viceCaptainId
-                      ? "border-green-500/30 text-green-500"
-                      : "border-amber-500/30 text-amber-500"
+                      ? "border-status-success/30 text-status-success"
+                      : "border-status-warning/30 text-status-warning"
                   )}
                 >
                   {captainId && viceCaptainId ? (
@@ -910,7 +925,7 @@ export function PickTeamClient({
             className={cn(
               "w-full",
               validation.valid && captainId && viceCaptainId && !isPending
-                ? "bg-gradient-to-r from-primary to-sky-400 text-black font-semibold"
+                ? "bg-gradient-to-r from-primary to-blue-400 text-black font-semibold"
                 : ""
             )}
           >

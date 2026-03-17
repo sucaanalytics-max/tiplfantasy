@@ -160,7 +160,7 @@ export function PlayerStatsDrawer({
           {hasTiplScores && (
             <>
               <SectionHeader>TIPL Fantasy</SectionHeader>
-              <MiniBarChart scores={tiplScores} color="oklch(0.75 0.15 220)" />
+              <MiniBarChart scores={tiplScores} color="oklch(0.68 0.16 265)" />
               <p className="text-xs text-muted-foreground mt-1.5 text-center">
                 Avg: <span className="text-foreground font-semibold">{tiplAvg} pts</span>
                 {" "}(last {tiplScores.length})

@@ -210,10 +210,10 @@ export function AdminMatchClient({
   }
 
   const statusColor: Record<string, string> = {
-    upcoming: "bg-blue-500/10 text-blue-400 border-blue-500/20",
-    live: "bg-green-500/10 text-green-400 border-green-500/20",
-    completed: "bg-zinc-500/10 text-zinc-400 border-zinc-500/20",
-    no_result: "bg-yellow-500/10 text-yellow-400 border-yellow-500/20",
+    upcoming: "bg-status-upcoming-bg text-status-upcoming border-status-upcoming/20",
+    live: "bg-status-live-bg text-status-live border-status-live/20",
+    completed: "bg-status-completed-bg text-status-completed border-status-completed/20",
+    no_result: "bg-status-warning-bg text-status-warning border-status-warning/20",
   }
 
   const playingPlayers = playingXIIds.length > 0
@@ -268,8 +268,8 @@ export function AdminMatchClient({
         <div
           className={`rounded-lg px-4 py-3 text-sm ${
             message.type === "success"
-              ? "bg-green-500/10 text-green-400 border border-green-500/20"
-              : "bg-red-500/10 text-red-400 border border-red-500/20"
+              ? "bg-status-success-bg text-status-success border border-status-success/20"
+              : "bg-status-danger-bg text-status-danger border border-status-danger/20"
           }`}
         >
           {message.text}

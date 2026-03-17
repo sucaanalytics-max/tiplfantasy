@@ -109,7 +109,7 @@ export function LeaguesClient({ leagues }: LeaguesClientProps) {
                 maxLength={40}
                 onKeyDown={(e) => { if (e.key === "Enter") handleCreate() }}
               />
-              {error && <p className="text-sm text-red-400">{error}</p>}
+              {error && <p className="text-sm text-status-danger">{error}</p>}
             </div>
             <DialogFooter>
               <Button onClick={handleCreate} disabled={isPending || !leagueName.trim()}>
@@ -142,7 +142,7 @@ export function LeaguesClient({ leagues }: LeaguesClientProps) {
                 className="uppercase tracking-widest text-center font-mono text-lg"
                 onKeyDown={(e) => { if (e.key === "Enter") handleJoin() }}
               />
-              {error && <p className="text-sm text-red-400">{error}</p>}
+              {error && <p className="text-sm text-status-danger">{error}</p>}
             </div>
             <DialogFooter>
               <Button onClick={handleJoin} disabled={isPending || inviteCode.trim().length !== 6}>
@@ -193,7 +193,7 @@ export function LeaguesClient({ leagues }: LeaguesClientProps) {
                           <Badge variant="outline" className="font-mono text-xs gap-1 cursor-pointer">
                             {league.invite_code}
                             {copiedId === league.id ? (
-                              <Check className="h-3 w-3 text-green-400" />
+                              <Check className="h-3 w-3 text-status-success" />
                             ) : (
                               <Copy className="h-3 w-3" />
                             )}

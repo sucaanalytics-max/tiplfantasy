@@ -1,5 +1,5 @@
-import { PageLoading } from "@/components/page-loading"
+import { PickTeamLoading } from "@/components/page-loading"
 
 export default function Loading() {
-  return <PageLoading />
+  return <PickTeamLoading />
 }

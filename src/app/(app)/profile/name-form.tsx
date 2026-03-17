@@ -46,7 +46,7 @@ export function ProfileNameForm({ currentName }: { currentName: string }) {
         </Button>
       </div>
       {message && (
-        <p className={`text-xs ${message.type === "success" ? "text-green-400" : "text-red-400"}`}>
+        <p className={`text-xs ${message.type === "success" ? "text-status-success" : "text-status-danger"}`}>
           {message.text}
         </p>
       )}

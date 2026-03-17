@@ -4,8 +4,8 @@
   "description": "Office IPL 2026 Fantasy Cricket",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#0f172a",
-  "theme_color": "#0f172a",
+  "background_color": "#0b0f1e",
+  "theme_color": "#0b0f1e",
   "orientation": "portrait",
   "icons": [
     {

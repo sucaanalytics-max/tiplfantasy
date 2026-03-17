@@ -4,7 +4,8 @@ import Link from "next/link"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { format, formatDistanceToNow, isPast, differenceInHours } from "date-fns"
+import { format, isPast, differenceInHours } from "date-fns"
+import { CountdownTimer } from "@/components/countdown-timer"
 import { Trophy, Target, TrendingUp, Clock, CheckCircle2, Users } from "lucide-react"
 import { getMyLeagues } from "@/actions/leagues"
 import { getInitials, getAvatarColor } from "@/lib/avatar"
@@ -78,6 +79,29 @@ export default async function DashboardPage() {
   // Fetch user's leagues
   const myLeagues = await getMyLeagues()
 
+  // Calculate submission streak (consecutive completed matches with a selection)
+  const { data: completedMatches } = await supabase
+    .from("matches")
+    .select("id")
+    .in("status", ["completed", "live"])
+    .order("start_time", { ascending: false })
+    .limit(20)
+
+  let streak = 0
+  if (completedMatches && completedMatches.length > 0) {
+    const matchIds = completedMatches.map((m) => m.id)
+    const { data: userSelections } = await supabase
+      .from("selections")
+      .select("match_id")
+      .eq("user_id", user.id)
+      .in("match_id", matchIds)
+    const selectionSet = new Set((userSelections ?? []).map((s) => s.match_id))
+    for (const m of completedMatches) {
+      if (selectionSet.has(m.id)) streak++
+      else break
+    }
+  }
+
   const firstName = profile?.display_name?.split(" ")[0] ?? "Player"
   const hoursUntilMatch = nextMatch ? differenceInHours(new Date(nextMatch.start_time), new Date()) : null
 
@@ -85,7 +109,14 @@ export default async function DashboardPage() {
     <div className="p-4 md:p-6 space-y-6 max-w-2xl lg:max-w-5xl">
       {/* Greeting */}
       <div>
-        <h1 className="text-2xl font-bold tracking-tight font-display">Hey, {firstName} <span className="inline-block">&#127951;</span></h1>
+        <h1 className="text-2xl font-bold tracking-tight font-display">
+          Hey, {firstName} <span className="inline-block">&#127951;</span>
+          {streak > 1 && (
+            <span className="ml-2 text-base font-semibold text-status-warning">
+              &#128293; {streak} match streak
+            </span>
+          )}
+        </h1>
         <p className="text-primary/60 mt-0.5">TIPL Fantasy 2026</p>
       </div>
 
@@ -138,8 +169,8 @@ export default async function DashboardPage() {
                 Next Match
                 {!isPast(new Date(nextMatch.start_time)) && (
                   <span className="relative flex h-2.5 w-2.5">
-                    <span className={`animate-ping absolute inline-flex h-full w-full rounded-full opacity-75 ${hoursUntilMatch !== null && hoursUntilMatch < 24 ? 'bg-orange-400' : 'bg-cyan-400'}`} />
-                    <span className={`relative inline-flex rounded-full h-2.5 w-2.5 ${hoursUntilMatch !== null && hoursUntilMatch < 24 ? 'bg-orange-500' : 'bg-cyan-500'}`} />
+                    <span className={`animate-ping absolute inline-flex h-full w-full rounded-full opacity-75 ${hoursUntilMatch !== null && hoursUntilMatch < 24 ? 'bg-orange-400' : 'bg-blue-400'}`} />
+                    <span className={`relative inline-flex rounded-full h-2.5 w-2.5 ${hoursUntilMatch !== null && hoursUntilMatch < 24 ? 'bg-orange-500' : 'bg-blue-500'}`} />
                   </span>
                 )}
               </CardTitle>
@@ -164,20 +195,20 @@ export default async function DashboardPage() {
                 {format(new Date(nextMatch.start_time), "EEE, MMM d \u00b7 h:mm a")}
               </p>
               {!isPast(new Date(nextMatch.start_time)) && (
-                <p className={`text-xs mt-1 font-medium ${hoursUntilMatch !== null && hoursUntilMatch < 24 ? 'text-orange-400' : 'text-muted-foreground'}`}>
-                  {formatDistanceToNow(new Date(nextMatch.start_time), { addSuffix: true })}
-                </p>
+                <div className="mt-2">
+                  <CountdownTimer targetTime={nextMatch.start_time} variant="full" />
+                </div>
               )}
             </div>
             <div className="flex justify-center">
               {hasSubmitted ? (
-                <div className="flex items-center gap-2 bg-green-500/10 border border-green-500/20 rounded-full px-4 py-2">
-                  <CheckCircle2 className="h-4 w-4 text-green-400" />
-                  <span className="text-sm font-semibold text-green-400">Team Submitted</span>
+                <div className="flex items-center gap-2 bg-status-success-bg border border-status-success/20 rounded-full px-4 py-2">
+                  <CheckCircle2 className="h-4 w-4 text-status-success" />
+                  <span className="text-sm font-semibold text-status-success">Team Submitted</span>
                 </div>
               ) : (
                 <Link href={`/match/${nextMatch.id}/pick`}>
-                  <Button size="sm" className="bg-gradient-to-r from-primary to-sky-400 hover:from-primary/90 hover:to-sky-400/90 text-black font-semibold">
+                  <Button size="sm" className="bg-gradient-to-r from-primary to-blue-400 hover:from-primary/90 hover:to-blue-400/90 text-black font-semibold">
                     Pick Your Team
                   </Button>
                 </Link>
@@ -311,9 +342,12 @@ export default async function DashboardPage() {
         </CardHeader>
         <CardContent>
           {myLeagues.length === 0 ? (
-            <p className="text-sm text-muted-foreground text-center py-4">
-              No leagues yet. Create one or join with an invite code.
-            </p>
+            <div className="flex flex-col items-center py-6 gap-2">
+              <Users className="h-10 w-10 text-muted-foreground/30" />
+              <p className="text-sm text-muted-foreground text-center">
+                No leagues yet. Create one or join with an invite code.
+              </p>
+            </div>
           ) : (
             <div className="space-y-2">
               {myLeagues.slice(0, 3).map((league) => (

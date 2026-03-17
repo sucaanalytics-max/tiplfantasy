@@ -17,7 +17,7 @@ export function SegmentedProgressBar({
             key={i}
             className={cn(
               "h-2 w-4 rounded-sm transition-colors",
-              i < filled ? "bg-cyan-500" : "bg-muted"
+              i < filled ? "bg-blue-500" : "bg-muted"
             )}
           />
         ))}

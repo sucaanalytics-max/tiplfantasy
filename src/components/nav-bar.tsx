@@ -15,7 +15,6 @@ import {
 import { cn } from "@/lib/utils"
 import { createClient } from "@/lib/supabase/client"
 import { useRouter } from "next/navigation"
-import { useEffect, useState } from "react"
 import { ThemeToggle } from "@/components/theme-toggle"
 
 const navItems = [
@@ -28,25 +27,9 @@ const navItems = [
 
 const adminItem = { href: "/admin", label: "Admin", icon: Shield }
 
-export function NavBar() {
+export function NavBar({ isAdmin = false }: { isAdmin?: boolean }) {
   const pathname = usePathname()
   const router = useRouter()
-  const [isAdmin, setIsAdmin] = useState(false)
-
-  useEffect(() => {
-    const supabase = createClient()
-    supabase.auth.getUser().then(({ data: { user } }) => {
-      if (!user) return
-      supabase
-        .from("profiles")
-        .select("is_admin")
-        .eq("id", user.id)
-        .single()
-        .then(({ data }) => {
-          if (data?.is_admin) setIsAdmin(true)
-        })
-    })
-  }, [])
 
   const isActive = (href: string) => pathname.startsWith(href)
 
@@ -116,7 +99,7 @@ export function NavBar() {
                 className={cn(
                   "flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm transition-colors",
                   active
-                    ? "bg-primary/10 text-primary border border-primary/20 shadow-[0_0_12px_oklch(0.75_0.15_220/0.15)]"
+                    ? "bg-primary/10 text-primary border border-primary/20 shadow-[0_0_12px_oklch(0.68_0.16_265/0.15)]"
                     : "text-muted-foreground hover:bg-secondary hover:text-foreground"
                 )}
                 aria-current={active ? "page" : undefined}

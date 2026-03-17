@@ -194,7 +194,7 @@ export default async function ProfilePage() {
         const stdDev = Math.sqrt(points.reduce((sum, p) => sum + (p - avg) ** 2, 0) / points.length)
         const cv = avg > 0 ? stdDev / avg : 0
         const consistencyLabel = cv < 0.15 ? "Very Consistent" : cv < 0.3 ? "Consistent" : cv < 0.5 ? "Variable" : "Unpredictable"
-        const consistencyColor = cv < 0.15 ? "text-green-500" : cv < 0.3 ? "text-cyan-400" : cv < 0.5 ? "text-amber-400" : "text-red-400"
+        const consistencyColor = cv < 0.15 ? "text-green-500" : cv < 0.3 ? "text-blue-400" : cv < 0.5 ? "text-amber-400" : "text-red-400"
 
         // Streaks
         const ranks = [...matchScores].reverse().map((ms) => ms.rank ?? 999)

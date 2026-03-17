@@ -1,5 +1,6 @@
 "use client"
 
+import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { AlertCircle } from "lucide-react"
 
@@ -13,17 +14,12 @@ const SAFE_MESSAGES: Record<string, string> = {
 }
 
 function getSafeMessage(error: Error): string {
-  // Check if the error message is in our safe list
   if (error.message && SAFE_MESSAGES[error.message]) {
     return SAFE_MESSAGES[error.message]
   }
-
-  // For digest errors (server-side), show generic message
   if ((error as Error & { digest?: string }).digest) {
     return "An unexpected error occurred. Please try again."
   }
-
-  // Don't expose raw error messages — they may contain DB schema info
   return "Something went wrong. Please try again or contact support."
 }
 
@@ -37,15 +33,22 @@ export function PageError({
   const message = getSafeMessage(error)
 
   return (
-    <div className="flex flex-col items-center justify-center min-h-[50vh] gap-4 p-4">
-      <AlertCircle className="h-10 w-10 text-muted-foreground" />
+    <div className="flex flex-col items-center justify-center min-h-[50vh] gap-4 p-4 animate-slide-up">
+      <AlertCircle className="h-12 w-12 text-status-danger" />
       <div className="text-center space-y-2">
         <h2 className="text-lg font-semibold">Something went wrong</h2>
         <p className="text-sm text-muted-foreground max-w-sm">{message}</p>
       </div>
-      <Button onClick={reset} variant="outline" size="sm">
-        Try again
-      </Button>
+      <div className="flex items-center gap-3">
+        <Button onClick={reset} variant="outline" size="sm">
+          Try again
+        </Button>
+        <Link href="/dashboard">
+          <Button variant="ghost" size="sm">
+            Go to Dashboard
+          </Button>
+        </Link>
+      </div>
     </div>
   )
 }

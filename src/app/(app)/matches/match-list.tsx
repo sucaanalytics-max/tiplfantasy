@@ -6,6 +6,8 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs"
 import { format } from "date-fns"
+import { CountdownTimer } from "@/components/countdown-timer"
+import { Swords } from "lucide-react"
 import { useMemo } from "react"
 import { STATUS_CONFIG } from "@/lib/badges"
 
@@ -76,7 +78,7 @@ export function MatchList({
         <TabsTrigger value="live" className="gap-1.5">
           Live
           {counts.live > 0 && (
-            <Badge variant="secondary" className="ml-1 h-5 px-1.5 text-[10px] font-semibold bg-red-500/15 text-red-400">
+            <Badge variant="secondary" className="ml-1 h-5 px-1.5 text-[10px] font-semibold bg-status-live-bg text-status-live">
               {counts.live}
             </Badge>
           )}
@@ -99,8 +101,12 @@ export function MatchList({
         return (
           <TabsContent key={tab} value={tab} className="space-y-6 mt-4">
             {grouped.size === 0 && (
-              <div className="text-center py-12 text-muted-foreground text-sm">
-                No {tab} matches
+              <div className="flex flex-col items-center text-center py-16 gap-3">
+                <Swords className="h-12 w-12 text-muted-foreground/30" />
+                <div>
+                  <p className="font-medium text-muted-foreground">No {tab} matches</p>
+                  <p className="text-xs text-muted-foreground/60 mt-0.5">Check back later for updates</p>
+                </div>
               </div>
             )}
             {Array.from(grouped.entries()).map(([dateKey, dayMatches]) => (
@@ -117,7 +123,7 @@ export function MatchList({
                   const hasSubmitted = submittedMatches.has(match.id)
 
                   return (
-                    <Card key={match.id} className={`border border-border overflow-hidden ${match.status === "live" ? "dark:border-red-500/20 dark:shadow-[0_0_16px_oklch(0.55_0.25_27/0.15)]" : ""}`}>
+                    <Card key={match.id} className={`border border-border overflow-hidden ${match.status === "live" ? "border-status-live/20 shadow-[0_0_16px_oklch(0.55_0.25_27/0.15)]" : ""}`}>
                       {/* Team color gradient bar */}
                       <div
                         className="h-1"
@@ -130,7 +136,7 @@ export function MatchList({
                           <span className="text-xs text-muted-foreground font-mono">
                             Match #{match.match_number}
                           </span>
-                          <Badge variant="outline" className={status.class}>
+                          <Badge variant={status.variant}>
                             {status.label}
                           </Badge>
                         </div>
@@ -155,6 +161,9 @@ export function MatchList({
                           <div className="text-right text-xs text-muted-foreground">
                             <p>{format(new Date(match.start_time), "h:mm a")}</p>
                             <p className="truncate max-w-[160px]">{match.venue}</p>
+                            {match.status === "upcoming" && (
+                              <CountdownTimer targetTime={match.start_time} variant="compact" />
+                            )}
                           </div>
                         </div>
 
@@ -162,7 +171,7 @@ export function MatchList({
                           {match.status === "upcoming" && (
                             <>
                               {hasSubmitted ? (
-                                <Badge className="bg-green-500/10 text-green-400 border-green-500/20">
+                                <Badge variant="success">
                                   Submitted
                                 </Badge>
                               ) : (
@@ -174,7 +183,7 @@ export function MatchList({
                                     Edit Pick
                                   </Button>
                                 ) : (
-                                  <Button size="sm" className="bg-gradient-to-r from-primary to-sky-400 text-black font-semibold hover:opacity-90">
+                                  <Button size="sm" className="bg-gradient-to-r from-primary to-blue-400 text-black font-semibold hover:opacity-90">
                                     Pick Team
                                   </Button>
                                 )}
@@ -184,16 +193,16 @@ export function MatchList({
                           {match.status === "live" && (
                             <>
                               {hasSubmitted ? (
-                                <Badge className="bg-green-500/10 text-green-400 border-green-500/20">
+                                <Badge variant="success">
                                   Submitted
                                 </Badge>
                               ) : (
-                                <Badge className="bg-red-500/10 text-red-400 border-red-500/20">
+                                <Badge variant="danger">
                                   Missed
                                 </Badge>
                               )}
-                              <span className="inline-flex items-center gap-1.5 text-xs text-red-400">
-                                <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse" /> Live
+                              <span className="inline-flex items-center gap-1.5 text-xs text-status-live">
+                                <span className="w-2 h-2 rounded-full bg-status-live animate-pulse" /> Live
                               </span>
                             </>
                           )}

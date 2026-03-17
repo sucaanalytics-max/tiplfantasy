@@ -112,11 +112,21 @@ export default async function LeaderboardPage({
   const thisWeekRows = lastMatch ? await getMatchScores(lastMatch.id) : []
   const lastWeekRows = prevMatch ? await getMatchScores(prevMatch.id) : []
 
+  const seasonRankMap = new Map(seasonRows.map((r) => [r.user_id, r.rank]))
+
   const medals = ["\ud83e\udd47", "\ud83e\udd48", "\ud83e\udd49"]
 
-  function LeaderTable({ rows, showMP, showBanner }: { rows: LeaderRow[]; showMP?: boolean; showBanner?: boolean }) {
+  function LeaderTable({ rows, showMP, showBanner, seasonRankMap }: { rows: LeaderRow[]; showMP?: boolean; showBanner?: boolean; seasonRankMap?: Map<string, number> }) {
     if (rows.length === 0) {
-      return <p className="text-sm text-muted-foreground text-center py-8">No data yet</p>
+      return (
+        <div className="flex flex-col items-center py-12 gap-3">
+          <Trophy className="h-12 w-12 text-muted-foreground/30" />
+          <div className="text-center">
+            <p className="font-medium text-muted-foreground">No data yet</p>
+            <p className="text-xs text-muted-foreground/60 mt-0.5">Rankings will appear after the first match</p>
+          </div>
+        </div>
+      )
     }
 
     return (
@@ -161,6 +171,9 @@ export default async function LeaderboardPage({
                   {row.display_name}
                   {isMe && " (you)"}
                 </span>
+                {showBanner && seasonRankMap?.has(row.user_id) && (
+                  <span className="text-[10px] text-muted-foreground ml-1">#{seasonRankMap.get(row.user_id)}</span>
+                )}
               </div>
               {showMP && (
                 <span className="w-12 text-center text-sm text-muted-foreground">
@@ -212,7 +225,7 @@ export default async function LeaderboardPage({
         <TabsContent value="this-week" className="mt-4">
           <Card className="border border-border">
             <CardContent className="pt-4">
-              <LeaderTable rows={thisWeekRows} showBanner />
+              <LeaderTable rows={thisWeekRows} showBanner seasonRankMap={seasonRankMap} />
             </CardContent>
           </Card>
         </TabsContent>
@@ -220,7 +233,7 @@ export default async function LeaderboardPage({
         <TabsContent value="last-week" className="mt-4">
           <Card className="border border-border">
             <CardContent className="pt-4">
-              <LeaderTable rows={lastWeekRows} showBanner />
+              <LeaderTable rows={lastWeekRows} showBanner seasonRankMap={seasonRankMap} />
             </CardContent>
           </Card>
         </TabsContent>

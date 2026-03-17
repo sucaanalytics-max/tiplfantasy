@@ -5,7 +5,7 @@ import Link from "next/link"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { ArrowLeft } from "lucide-react"
+import { ArrowLeft, Trophy } from "lucide-react"
 
 export default async function ScoresPage({
   params,
@@ -103,9 +103,10 @@ export default async function ScoresPage({
                 return (
                   <div
                     key={s.user_id}
-                    className={`flex items-center justify-between py-2.5 px-3 rounded-lg ${
+                    className={`flex items-center justify-between py-2.5 px-3 rounded-lg animate-slide-up ${
                       isMe ? "bg-primary/10 border border-primary/20" : "bg-secondary/50"
                     }`}
+                    style={{ animationDelay: `${i * 60}ms`, animationFillMode: "backwards" }}
                   >
                     <div className="flex items-center gap-3">
                       <span className="w-8 text-center text-sm">{prefix}</span>
@@ -121,7 +122,7 @@ export default async function ScoresPage({
                       {s.vc_points > 0 && (
                         <span className="text-muted-foreground text-xs">VC: +{s.vc_points}</span>
                       )}
-                      <span className="font-bold text-lg">{s.total_points}</span>
+                      <span className="font-bold text-lg animate-count-up">{s.total_points}</span>
                     </div>
                   </div>
                 )
@@ -137,82 +138,143 @@ export default async function ScoresPage({
           <CardHeader className="pb-3">
             <CardTitle className="text-base">Player Breakdown</CardTitle>
           </CardHeader>
-          <CardContent className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-border text-xs text-muted-foreground">
-                  <th className="text-left py-2 px-2 font-medium">Player</th>
-                  <th className="text-center py-2 px-1 font-medium">R</th>
-                  <th className="text-center py-2 px-1 font-medium">B</th>
-                  <th className="text-center py-2 px-1 font-medium">4s</th>
-                  <th className="text-center py-2 px-1 font-medium">6s</th>
-                  <th className="text-center py-2 px-1 font-medium">W</th>
-                  <th className="text-center py-2 px-1 font-medium">Ov</th>
-                  <th className="text-center py-2 px-1 font-medium">C</th>
-                  <th className="text-right py-2 px-2 font-medium">Pts</th>
-                </tr>
-              </thead>
-              <tbody>
-                {playerScores.map((ps) => {
-                  const player = ps.player as unknown as {
-                    name: string
-                    role: string
-                    team_id: string
-                    team: { short_name: string; color: string }
-                  }
-                  const isCaptain = mySelection?.captain_id === ps.player_id
-                  const isVC = mySelection?.vice_captain_id === ps.player_id
-                  const multiplier = isCaptain ? 2 : isVC ? 1.5 : 1
+          <CardContent>
+            {/* Mobile card layout */}
+            <div className="space-y-2 lg:hidden">
+              {playerScores.map((ps) => {
+                const player = ps.player as unknown as {
+                  name: string
+                  role: string
+                  team_id: string
+                  team: { short_name: string; color: string }
+                }
+                const isCaptain = mySelection?.captain_id === ps.player_id
+                const isVC = mySelection?.vice_captain_id === ps.player_id
+                const multiplier = isCaptain ? 2 : isVC ? 1.5 : 1
 
-                  return (
-                    <tr key={ps.id} className="border-b border-border/50">
-                      <td className="py-2 px-2">
-                        <div className="flex items-center gap-1.5">
-                          <div
-                            className="w-1 h-4 rounded-full shrink-0"
-                            style={{ backgroundColor: player.team?.color }}
-                          />
-                          <span className="truncate max-w-[100px]">{player.name}</span>
-                          {isCaptain && (
-                            <Badge variant="outline" className="text-[9px] px-1 py-0 h-4 bg-yellow-500/10 text-yellow-400 border-yellow-500/20">
-                              C
-                            </Badge>
-                          )}
-                          {isVC && (
-                            <Badge variant="outline" className="text-[9px] px-1 py-0 h-4 bg-gray-600/10 text-gray-400 border-gray-600/20">
-                              VC
-                            </Badge>
-                          )}
-                        </div>
-                      </td>
-                      <td className="text-center py-2 px-1">{ps.runs}</td>
-                      <td className="text-center py-2 px-1">{ps.balls_faced}</td>
-                      <td className="text-center py-2 px-1">{ps.fours}</td>
-                      <td className="text-center py-2 px-1">{ps.sixes}</td>
-                      <td className="text-center py-2 px-1">{ps.wickets}</td>
-                      <td className="text-center py-2 px-1">{ps.overs_bowled}</td>
-                      <td className="text-center py-2 px-1">{ps.catches}</td>
-                      <td className="text-right py-2 px-2">
-                        <span className="font-semibold">{ps.fantasy_points}</span>
-                        {multiplier > 1 && (
-                          <span className="text-xs text-muted-foreground ml-1">
-                            ({multiplier}x)
-                          </span>
+                return (
+                  <div key={ps.id} className="flex items-center gap-3 py-2.5 px-3 rounded-lg bg-secondary/50">
+                    <div
+                      className="w-1 h-8 rounded-full flex-shrink-0"
+                      style={{ backgroundColor: player.team?.color }}
+                    />
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-sm font-medium truncate">{player.name}</span>
+                        {isCaptain && (
+                          <Badge variant="outline" className="text-[9px] px-1 py-0 h-4 bg-yellow-500/10 text-yellow-400 border-yellow-500/20">
+                            C
+                          </Badge>
                         )}
-                      </td>
-                    </tr>
-                  )
-                })}
-              </tbody>
-            </table>
+                        {isVC && (
+                          <Badge variant="outline" className="text-[9px] px-1 py-0 h-4 bg-gray-600/10 text-gray-400 border-gray-600/20">
+                            VC
+                          </Badge>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-2 mt-0.5 text-[10px] text-muted-foreground">
+                        {ps.runs > 0 && <span>{ps.runs}r ({ps.balls_faced}b)</span>}
+                        {ps.wickets > 0 && <span>{ps.wickets}w</span>}
+                        {(ps.catches + ps.stumpings + ps.run_outs) > 0 && (
+                          <span>{ps.catches + ps.stumpings + ps.run_outs}c</span>
+                        )}
+                      </div>
+                    </div>
+                    <div className="text-right shrink-0">
+                      <span className="text-lg font-bold font-display">{ps.fantasy_points}</span>
+                      {multiplier > 1 && (
+                        <span className="text-xs text-muted-foreground ml-1">
+                          ({multiplier}x)
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+
+            {/* Desktop table layout */}
+            <div className="hidden lg:block overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-border text-xs text-muted-foreground">
+                    <th className="text-left py-2 px-2 font-medium">Player</th>
+                    <th className="text-center py-2 px-1 font-medium">R</th>
+                    <th className="text-center py-2 px-1 font-medium">B</th>
+                    <th className="text-center py-2 px-1 font-medium">4s</th>
+                    <th className="text-center py-2 px-1 font-medium">6s</th>
+                    <th className="text-center py-2 px-1 font-medium">W</th>
+                    <th className="text-center py-2 px-1 font-medium">Ov</th>
+                    <th className="text-center py-2 px-1 font-medium">C</th>
+                    <th className="text-right py-2 px-2 font-medium">Pts</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {playerScores.map((ps) => {
+                    const player = ps.player as unknown as {
+                      name: string
+                      role: string
+                      team_id: string
+                      team: { short_name: string; color: string }
+                    }
+                    const isCaptain = mySelection?.captain_id === ps.player_id
+                    const isVC = mySelection?.vice_captain_id === ps.player_id
+                    const multiplier = isCaptain ? 2 : isVC ? 1.5 : 1
+
+                    return (
+                      <tr key={ps.id} className="border-b border-border/50">
+                        <td className="py-2 px-2">
+                          <div className="flex items-center gap-1.5">
+                            <div
+                              className="w-1 h-4 rounded-full shrink-0"
+                              style={{ backgroundColor: player.team?.color }}
+                            />
+                            <span className="truncate max-w-[100px]">{player.name}</span>
+                            {isCaptain && (
+                              <Badge variant="outline" className="text-[9px] px-1 py-0 h-4 bg-yellow-500/10 text-yellow-400 border-yellow-500/20">
+                                C
+                              </Badge>
+                            )}
+                            {isVC && (
+                              <Badge variant="outline" className="text-[9px] px-1 py-0 h-4 bg-gray-600/10 text-gray-400 border-gray-600/20">
+                                VC
+                              </Badge>
+                            )}
+                          </div>
+                        </td>
+                        <td className="text-center py-2 px-1">{ps.runs}</td>
+                        <td className="text-center py-2 px-1">{ps.balls_faced}</td>
+                        <td className="text-center py-2 px-1">{ps.fours}</td>
+                        <td className="text-center py-2 px-1">{ps.sixes}</td>
+                        <td className="text-center py-2 px-1">{ps.wickets}</td>
+                        <td className="text-center py-2 px-1">{ps.overs_bowled}</td>
+                        <td className="text-center py-2 px-1">{ps.catches}</td>
+                        <td className="text-right py-2 px-2">
+                          <span className="font-semibold">{ps.fantasy_points}</span>
+                          {multiplier > 1 && (
+                            <span className="text-xs text-muted-foreground ml-1">
+                              ({multiplier}x)
+                            </span>
+                          )}
+                        </td>
+                      </tr>
+                    )
+                  })}
+                </tbody>
+              </table>
+            </div>
           </CardContent>
         </Card>
       )}
 
       {(!playerScores || playerScores.length === 0) && (
         <Card className="border border-border">
-          <CardContent className="py-12 text-center">
-            <p className="text-muted-foreground">Scores not yet available for this match.</p>
+          <CardContent className="py-16 flex flex-col items-center gap-3">
+            <Trophy className="h-12 w-12 text-muted-foreground/30" />
+            <div className="text-center">
+              <p className="font-medium text-muted-foreground">Scores not yet available</p>
+              <p className="text-xs text-muted-foreground/60 mt-0.5">Check back after the match is completed</p>
+            </div>
           </CardContent>
         </Card>
       )}
