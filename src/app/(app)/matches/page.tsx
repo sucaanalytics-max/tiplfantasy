@@ -9,7 +9,7 @@ export default async function MatchesPage() {
 
   const { data: matches } = await supabase
     .from("matches")
-    .select("*, team_home:teams!matches_team_home_id_fkey(short_name, color), team_away:teams!matches_team_away_id_fkey(short_name, color)")
+    .select("*, team_home:teams!matches_team_home_id_fkey(short_name, color, logo_url), team_away:teams!matches_team_away_id_fkey(short_name, color, logo_url)")
     .order("start_time", { ascending: true })
 
   // Get user's selections
@@ -28,8 +28,8 @@ export default async function MatchesPage() {
     venue: match.venue,
     status: match.status,
     result_summary: match.result_summary,
-    team_home: match.team_home as unknown as { short_name: string; color: string },
-    team_away: match.team_away as unknown as { short_name: string; color: string },
+    team_home: match.team_home as unknown as { short_name: string; color: string; logo_url: string | null },
+    team_away: match.team_away as unknown as { short_name: string; color: string; logo_url: string | null },
   }))
 
   return (

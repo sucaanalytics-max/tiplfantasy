@@ -458,9 +458,9 @@ export function PickTeamClient({
               <div className="flex items-center gap-2">
                 <h1 className="text-lg font-bold">Match {match.match_number}</h1>
                 <div className="flex items-center gap-1.5">
-                  <TeamBadge shortName={match.team_home.short_name} color={match.team_home.color} size="sm" />
+                  <TeamBadge shortName={match.team_home.short_name} color={match.team_home.color} logoUrl={match.team_home.logo_url} size="sm" />
                   <span className="text-xs text-muted-foreground">vs</span>
-                  <TeamBadge shortName={match.team_away.short_name} color={match.team_away.color} size="sm" />
+                  <TeamBadge shortName={match.team_away.short_name} color={match.team_away.color} logoUrl={match.team_away.logo_url} size="sm" />
                 </div>
               </div>
               <p className="text-xs text-muted-foreground">

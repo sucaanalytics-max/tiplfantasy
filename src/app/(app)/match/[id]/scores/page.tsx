@@ -27,14 +27,14 @@ export default async function ScoresPage({
   // Match with teams
   const { data: match } = await admin
     .from("matches")
-    .select("*, team_home:teams!matches_team_home_id_fkey(short_name, color), team_away:teams!matches_team_away_id_fkey(short_name, color)")
+    .select("*, team_home:teams!matches_team_home_id_fkey(short_name, color, logo_url), team_away:teams!matches_team_away_id_fkey(short_name, color, logo_url)")
     .eq("id", id)
     .single()
 
   if (!match) redirect("/matches")
 
-  const home = match.team_home as unknown as { short_name: string; color: string }
-  const away = match.team_away as unknown as { short_name: string; color: string }
+  const home = match.team_home as unknown as { short_name: string; color: string; logo_url: string | null }
+  const away = match.team_away as unknown as { short_name: string; color: string; logo_url: string | null }
 
   // Player scores with player + team info
   const { data: playerScores } = await admin
@@ -82,9 +82,9 @@ export default async function ScoresPage({
             Match #{match.match_number} Scores
           </h1>
           <div className="flex items-center gap-1.5 mt-0.5">
-            <TeamBadge shortName={home.short_name} color={home.color} size="sm" />
+            <TeamBadge shortName={home.short_name} color={home.color} logoUrl={home.logo_url} size="sm" />
             <VsBadge className="scale-75" />
-            <TeamBadge shortName={away.short_name} color={away.color} size="sm" />
+            <TeamBadge shortName={away.short_name} color={away.color} logoUrl={away.logo_url} size="sm" />
           </div>
         </div>
       </div>

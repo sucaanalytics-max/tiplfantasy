@@ -34,7 +34,7 @@ export default async function DashboardPage() {
   // Fetch next 5 upcoming matches
   const { data: upcomingMatches } = await supabase
     .from("matches")
-    .select("*, team_home:teams!matches_team_home_id_fkey(short_name, color), team_away:teams!matches_team_away_id_fkey(short_name, color)")
+    .select("*, team_home:teams!matches_team_home_id_fkey(short_name, color, logo_url), team_away:teams!matches_team_away_id_fkey(short_name, color, logo_url)")
     .eq("status", "upcoming")
     .order("start_time", { ascending: true })
     .limit(5)
@@ -58,7 +58,7 @@ export default async function DashboardPage() {
   // Fetch last completed match result
   const { data: lastMatch } = await supabase
     .from("matches")
-    .select("*, team_home:teams!matches_team_home_id_fkey(short_name, color), team_away:teams!matches_team_away_id_fkey(short_name, color)")
+    .select("*, team_home:teams!matches_team_home_id_fkey(short_name, color, logo_url), team_away:teams!matches_team_away_id_fkey(short_name, color, logo_url)")
     .eq("status", "completed")
     .order("start_time", { ascending: false })
     .limit(1)
@@ -167,8 +167,8 @@ export default async function DashboardPage() {
 
       {/* Hero match card */}
       {nextMatch && (() => {
-        const home = nextMatch.team_home as unknown as { short_name: string; color: string }
-        const away = nextMatch.team_away as unknown as { short_name: string; color: string }
+        const home = nextMatch.team_home as unknown as { short_name: string; color: string; logo_url: string | null }
+        const away = nextMatch.team_away as unknown as { short_name: string; color: string; logo_url: string | null }
         return (
           <Card className="border border-border overflow-hidden relative">
             {/* Team color gradient bar */}
@@ -199,14 +199,14 @@ export default async function DashboardPage() {
               {/* Team badges + VS */}
               <div className="flex items-center justify-center gap-5">
                 <div className="flex flex-col items-center gap-1.5">
-                  <TeamBadge shortName={home.short_name} color={home.color} size="lg" />
+                  <TeamBadge shortName={home.short_name} color={home.color} logoUrl={home.logo_url} size="lg" />
                   <span className="text-sm font-bold font-display" style={{ color: home.color }}>
                     {home.short_name}
                   </span>
                 </div>
                 <VsBadge />
                 <div className="flex flex-col items-center gap-1.5">
-                  <TeamBadge shortName={away.short_name} color={away.color} size="lg" />
+                  <TeamBadge shortName={away.short_name} color={away.color} logoUrl={away.logo_url} size="lg" />
                   <span className="text-sm font-bold font-display" style={{ color: away.color }}>
                     {away.short_name}
                   </span>
@@ -257,8 +257,8 @@ export default async function DashboardPage() {
           </div>
           <div className="flex gap-3 overflow-x-auto scrollbar-hide snap-x-mandatory pb-1">
             {moreMatches.map((match) => {
-              const home = match.team_home as unknown as { short_name: string; color: string }
-              const away = match.team_away as unknown as { short_name: string; color: string }
+              const home = match.team_home as unknown as { short_name: string; color: string; logo_url: string | null }
+              const away = match.team_away as unknown as { short_name: string; color: string; logo_url: string | null }
               const submitted = submittedMatchIds.has(match.id)
               return (
                 <Link key={match.id} href={`/match/${match.id}/pick`} className="snap-start">
@@ -276,9 +276,9 @@ export default async function DashboardPage() {
                         {submitted && <CheckCircle2 className="h-3.5 w-3.5 text-status-success" />}
                       </div>
                       <div className="flex items-center justify-center gap-2">
-                        <TeamBadge shortName={home.short_name} color={home.color} size="sm" />
+                        <TeamBadge shortName={home.short_name} color={home.color} logoUrl={home.logo_url} size="sm" />
                         <VsBadge className="scale-75" />
-                        <TeamBadge shortName={away.short_name} color={away.color} size="sm" />
+                        <TeamBadge shortName={away.short_name} color={away.color} logoUrl={away.logo_url} size="sm" />
                       </div>
                       <div className="text-center">
                         <p className="text-[10px] text-muted-foreground">
@@ -296,8 +296,8 @@ export default async function DashboardPage() {
 
       {/* Last match result */}
       {lastMatch && lastMatchScore && (() => {
-        const home = lastMatch.team_home as unknown as { short_name: string; color: string }
-        const away = lastMatch.team_away as unknown as { short_name: string; color: string }
+        const home = lastMatch.team_home as unknown as { short_name: string; color: string; logo_url: string | null }
+        const away = lastMatch.team_away as unknown as { short_name: string; color: string; logo_url: string | null }
         return (
           <Card className="border border-border">
             <CardHeader className="pb-3">
@@ -314,9 +314,9 @@ export default async function DashboardPage() {
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
                   <div className="flex items-center gap-1.5">
-                    <TeamBadge shortName={home.short_name} color={home.color} size="sm" />
+                    <TeamBadge shortName={home.short_name} color={home.color} logoUrl={home.logo_url} size="sm" />
                     <span className="text-xs text-muted-foreground">vs</span>
-                    <TeamBadge shortName={away.short_name} color={away.color} size="sm" />
+                    <TeamBadge shortName={away.short_name} color={away.color} logoUrl={away.logo_url} size="sm" />
                   </div>
                   <span className="text-xs text-muted-foreground">
                     #{lastMatch.match_number}

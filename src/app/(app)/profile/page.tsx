@@ -36,7 +36,7 @@ export default async function ProfilePage() {
     .order("created_at", { ascending: false })
 
   // Get teams for display
-  const { data: teams } = await supabase.from("teams").select("id, short_name, color")
+  const { data: teams } = await supabase.from("teams").select("id, short_name, color, logo_url")
   const teamMap = new Map(teams?.map((t) => [t.id, t]) ?? [])
 
   // Best and worst match
@@ -298,11 +298,11 @@ export default async function ProfilePage() {
                     </span>
                     <div className="flex items-center gap-1">
                       {homeTeam && (
-                        <TeamBadge shortName={homeTeam.short_name} color={homeTeam.color} size="sm" />
+                        <TeamBadge shortName={homeTeam.short_name} color={homeTeam.color} logoUrl={homeTeam.logo_url} size="sm" />
                       )}
                       <span className="text-[10px] text-muted-foreground">vs</span>
                       {awayTeam && (
-                        <TeamBadge shortName={awayTeam.short_name} color={awayTeam.color} size="sm" />
+                        <TeamBadge shortName={awayTeam.short_name} color={awayTeam.color} logoUrl={awayTeam.logo_url} size="sm" />
                       )}
                     </div>
                   </div>

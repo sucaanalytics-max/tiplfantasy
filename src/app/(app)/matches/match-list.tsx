@@ -19,8 +19,8 @@ type Match = {
   venue: string
   status: string
   result_summary: string | null
-  team_home: { short_name: string; color: string }
-  team_away: { short_name: string; color: string }
+  team_home: { short_name: string; color: string; logo_url: string | null }
+  team_away: { short_name: string; color: string; logo_url: string | null }
 }
 
 type TabKey = "upcoming" | "live" | "completed"
@@ -145,14 +145,14 @@ export function MatchList({
                         <div className="flex items-center justify-between">
                           <div className="flex items-center gap-3">
                             <div className="flex flex-col items-center gap-0.5">
-                              <TeamBadge shortName={home.short_name} color={home.color} size="md" />
+                              <TeamBadge shortName={home.short_name} color={home.color} logoUrl={home.logo_url} size="md" />
                               <span className="text-[10px] font-bold font-display" style={{ color: home.color }}>
                                 {home.short_name}
                               </span>
                             </div>
                             <VsBadge />
                             <div className="flex flex-col items-center gap-0.5">
-                              <TeamBadge shortName={away.short_name} color={away.color} size="md" />
+                              <TeamBadge shortName={away.short_name} color={away.color} logoUrl={away.logo_url} size="md" />
                               <span className="text-[10px] font-bold font-display" style={{ color: away.color }}>
                                 {away.short_name}
                               </span>
