@@ -260,6 +260,15 @@
     box-shadow: var(--glow-accent);
   }
 
+  /* Horizontal scroll carousel */
+  .snap-x-mandatory {
+    scroll-snap-type: x mandatory;
+    -webkit-overflow-scrolling: touch;
+  }
+  .snap-start {
+    scroll-snap-align: start;
+  }
+
   /* Animation utilities */
   .animate-shimmer {
     background: linear-gradient(90deg, transparent 33%, var(--muted) 50%, transparent 67%);

@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button"
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs"
 import { format } from "date-fns"
 import { CountdownTimer } from "@/components/countdown-timer"
+import { TeamBadge, VsBadge } from "@/components/team-badge"
 import { Swords } from "lucide-react"
 import { useMemo } from "react"
 import { STATUS_CONFIG } from "@/lib/badges"
@@ -143,18 +144,18 @@ export function MatchList({
 
                         <div className="flex items-center justify-between">
                           <div className="flex items-center gap-3">
-                            <div
-                              className="text-xl font-bold min-w-[48px] text-center"
-                              style={{ color: home.color }}
-                            >
-                              {home.short_name}
+                            <div className="flex flex-col items-center gap-0.5">
+                              <TeamBadge shortName={home.short_name} color={home.color} size="md" />
+                              <span className="text-[10px] font-bold font-display" style={{ color: home.color }}>
+                                {home.short_name}
+                              </span>
                             </div>
-                            <span className="text-muted-foreground text-sm">vs</span>
-                            <div
-                              className="text-xl font-bold min-w-[48px] text-center"
-                              style={{ color: away.color }}
-                            >
-                              {away.short_name}
+                            <VsBadge />
+                            <div className="flex flex-col items-center gap-0.5">
+                              <TeamBadge shortName={away.short_name} color={away.color} size="md" />
+                              <span className="text-[10px] font-bold font-display" style={{ color: away.color }}>
+                                {away.short_name}
+                              </span>
                             </div>
                           </div>
 

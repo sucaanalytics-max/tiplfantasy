@@ -30,15 +30,18 @@ function LoginForm() {
             <Image
               src="/icons/icon-192.png"
               alt="TIPL Fantasy Cricket"
-              width={80}
-              height={80}
-              className="rounded-2xl"
+              width={96}
+              height={96}
+              className="rounded-2xl animate-slide-up"
               priority
             />
           </div>
           <CardTitle className="text-xl font-semibold text-foreground/80 font-display">Fantasy Cricket</CardTitle>
           <p className="text-muted-foreground text-sm">
-            Office IPL 2026 League
+            Fantasy Cricket for Your Office
+          </p>
+          <p className="text-muted-foreground/60 text-xs">
+            IPL 2026
           </p>
         </CardHeader>
         <CardContent className="space-y-4">

@@ -19,13 +19,21 @@ import { createClient } from "@/lib/supabase/client"
 import { useRouter } from "next/navigation"
 import { ThemeToggle } from "@/components/theme-toggle"
 
-const navItems = [
+const mobileNavItems = [
+  { href: "/dashboard", label: "Home", icon: LayoutDashboard },
+  { href: "/matches", label: "Matches", icon: Swords },
+  { href: "/leaderboard", label: "Board", icon: Trophy },
+  { href: "/leagues", label: "Leagues", icon: Users },
+  { href: "/profile", label: "Profile", icon: User },
+]
+
+const sidebarNavItems = [
   { href: "/dashboard", label: "Home", icon: LayoutDashboard },
   { href: "/matches", label: "Matches", icon: Swords },
   { href: "/leagues", label: "Leagues", icon: Users },
   { href: "/predictions", label: "Predict", icon: Award },
   { href: "/h2h", label: "H2H", icon: Coins },
-  { href: "/leaderboard", label: "Board", icon: Trophy },
+  { href: "/leaderboard", label: "Leaderboard", icon: Trophy },
   { href: "/profile", label: "Profile", icon: User },
 ]
 
@@ -37,7 +45,8 @@ export function NavBar({ isAdmin = false }: { isAdmin?: boolean }) {
 
   const isActive = (href: string) => pathname.startsWith(href)
 
-  const items = isAdmin ? [...navItems, adminItem] : navItems
+  const mobileItems = isAdmin ? [...mobileNavItems, adminItem] : mobileNavItems
+  const sidebarItems = isAdmin ? [...sidebarNavItems, adminItem] : sidebarNavItems
 
   const handleSignOut = async () => {
     const supabase = createClient()
@@ -50,7 +59,7 @@ export function NavBar({ isAdmin = false }: { isAdmin?: boolean }) {
       {/* Mobile bottom nav */}
       <nav aria-label="Main navigation" className="fixed bottom-0 left-0 right-0 z-50 border-t border-white/[0.06] bg-background/90 backdrop-blur-xl supports-[backdrop-filter]:bg-background/70 pb-[env(safe-area-inset-bottom)] md:hidden">
         <div className="flex items-center justify-around h-14">
-          {items.map((item) => {
+          {mobileItems.map((item) => {
             const Icon = item.icon
             const active = isActive(item.href)
             return (
@@ -93,7 +102,7 @@ export function NavBar({ isAdmin = false }: { isAdmin?: boolean }) {
           </div>
         </div>
         <nav className="flex-1 px-2 space-y-1">
-          {items.map((item) => {
+          {sidebarItems.map((item) => {
             const Icon = item.icon
             const active = isActive(item.href)
             return (
