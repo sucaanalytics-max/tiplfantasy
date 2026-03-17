@@ -6,6 +6,11 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { ArrowLeft, Trophy } from "lucide-react"
+import { RankBadge } from "@/components/rank-badge"
+import { Podium } from "@/components/podium"
+import { TeamBadge, VsBadge } from "@/components/team-badge"
+import { EmptyState } from "@/components/empty-state"
+import { getInitials, getAvatarColor } from "@/lib/avatar"
 
 export default async function ScoresPage({
   params,
@@ -53,7 +58,15 @@ export default async function ScoresPage({
     .eq("match_id", id)
     .single()
 
-  const medals = ["\ud83e\udd47", "\ud83e\udd48", "\ud83e\udd49"]
+  // Build podium entries from top 3
+  const podiumEntries = userScores && userScores.length >= 3
+    ? userScores.slice(0, 3).map((s, i) => ({
+        name: (s.profile as unknown as { display_name: string })?.display_name ?? "Unknown",
+        points: s.total_points,
+        rank: i + 1,
+        isCurrentUser: s.user_id === user.id,
+      }))
+    : null
 
   return (
     <div className="p-4 md:p-6 space-y-6 max-w-3xl">
@@ -68,11 +81,11 @@ export default async function ScoresPage({
           <h1 className="text-xl font-bold tracking-tight font-display">
             Match #{match.match_number} Scores
           </h1>
-          <p className="text-sm">
-            <span style={{ color: home.color }}>{home.short_name}</span>
-            {" vs "}
-            <span style={{ color: away.color }}>{away.short_name}</span>
-          </p>
+          <div className="flex items-center gap-1.5 mt-0.5">
+            <TeamBadge shortName={home.short_name} color={home.color} size="sm" />
+            <VsBadge className="scale-75" />
+            <TeamBadge shortName={away.short_name} color={away.color} size="sm" />
+          </div>
         </div>
       </div>
 
@@ -89,27 +102,29 @@ export default async function ScoresPage({
             <CardTitle className="text-base">Match Leaderboard</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="space-y-2">
-              {userScores.map((s, i) => {
+            {/* Podium for top 3 */}
+            {podiumEntries && <Podium entries={podiumEntries} />}
+
+            {/* Remaining rows */}
+            <div className="space-y-2 mt-2">
+              {userScores.slice(podiumEntries ? 3 : 0).map((s, i) => {
                 const profile = s.profile as unknown as { display_name: string }
                 const isMe = s.user_id === user.id
-                const prefix =
-                  i < 3
-                    ? medals[i]
-                    : i === userScores.length - 1 && userScores.length > 3
-                    ? "\ud83e\udd44"
-                    : `${s.rank ?? i + 1}.`
+                const rank = s.rank ?? (podiumEntries ? i + 4 : i + 1)
 
                 return (
                   <div
                     key={s.user_id}
-                    className={`flex items-center justify-between py-2.5 px-3 rounded-lg animate-slide-up ${
-                      isMe ? "bg-primary/10 border border-primary/20" : "bg-secondary/50"
+                    className={`flex items-center justify-between py-2.5 px-3 rounded-lg animate-slide-up border-b border-border/30 last:border-b-0 ${
+                      isMe ? "bg-primary/10 border border-primary/20" : ""
                     }`}
                     style={{ animationDelay: `${i * 60}ms`, animationFillMode: "backwards" }}
                   >
-                    <div className="flex items-center gap-3">
-                      <span className="w-8 text-center text-sm">{prefix}</span>
+                    <div className="flex items-center gap-2.5">
+                      <RankBadge rank={rank} size="sm" />
+                      <div className={`h-7 w-7 rounded-full ${getAvatarColor(profile?.display_name ?? "U")} flex items-center justify-center flex-shrink-0`}>
+                        <span className="text-white text-xs font-semibold">{getInitials(profile?.display_name ?? "U")}</span>
+                      </div>
                       <span className={`text-sm ${isMe ? "font-semibold" : ""}`}>
                         {profile?.display_name ?? "Unknown"}
                         {isMe && " (you)"}
@@ -122,7 +137,7 @@ export default async function ScoresPage({
                       {s.vc_points > 0 && (
                         <span className="text-muted-foreground text-xs">VC: +{s.vc_points}</span>
                       )}
-                      <span className="font-bold text-lg animate-count-up">{s.total_points}</span>
+                      <span className="font-bold text-lg font-display animate-count-up">{s.total_points}</span>
                     </div>
                   </div>
                 )
@@ -269,12 +284,13 @@ export default async function ScoresPage({
 
       {(!playerScores || playerScores.length === 0) && (
         <Card className="border border-border">
-          <CardContent className="py-16 flex flex-col items-center gap-3">
-            <Trophy className="h-12 w-12 text-muted-foreground/30" />
-            <div className="text-center">
-              <p className="font-medium text-muted-foreground">Scores not yet available</p>
-              <p className="text-xs text-muted-foreground/60 mt-0.5">Check back after the match is completed</p>
-            </div>
+          <CardContent>
+            <EmptyState
+              icon={Trophy}
+              title="Scores not yet available"
+              description="Check back after the match is completed and scores are published"
+              action={{ label: "Back to Matches", href: "/matches" }}
+            />
           </CardContent>
         </Card>
       )}

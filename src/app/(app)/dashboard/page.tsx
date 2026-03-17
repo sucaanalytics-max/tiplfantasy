@@ -10,6 +10,7 @@ import { TeamBadge, VsBadge } from "@/components/team-badge"
 import { Trophy, Target, TrendingUp, Clock, CheckCircle2, Users, ChevronRight } from "lucide-react"
 import { getMyLeagues } from "@/actions/leagues"
 import { getInitials, getAvatarColor } from "@/lib/avatar"
+import { RankBadge } from "@/components/rank-badge"
 
 export default async function DashboardPage() {
   const supabase = await createClient()
@@ -357,19 +358,15 @@ export default async function DashboardPage() {
             {(top5 ?? []).map((entry, i) => {
               const e = entry as unknown as { user_id: string; display_name: string; total_points: number; season_rank: number }
               const isMe = e.user_id === user.id
-              const medals = ["\ud83e\udd47", "\ud83e\udd48", "\ud83e\udd49"]
-              const medalBorders = ["border-l-2 border-l-amber-400", "border-l-2 border-l-gray-300", "border-l-2 border-l-amber-700"]
               return (
                 <div
                   key={e.user_id}
-                  className={`flex items-center justify-between py-2 px-3 rounded-lg ${
-                    isMe ? "bg-primary/10 border border-primary/20" : i < 3 ? `bg-secondary/50 ${medalBorders[i]}` : "bg-secondary/50"
+                  className={`flex items-center justify-between py-2 px-3 rounded-lg border-b border-border/30 last:border-b-0 ${
+                    isMe ? "bg-primary/10 border border-primary/20" : ""
                   }`}
                 >
-                  <div className="flex items-center gap-3">
-                    <span className="w-6 text-center text-sm">
-                      {i < 3 ? medals[i] : `${e.season_rank}`}
-                    </span>
+                  <div className="flex items-center gap-2.5">
+                    <RankBadge rank={e.season_rank} size="sm" />
                     <div className={`h-7 w-7 rounded-full ${getAvatarColor(e.display_name)} flex items-center justify-center flex-shrink-0`}>
                       <span className="text-white text-xs font-semibold">{getInitials(e.display_name)}</span>
                     </div>
@@ -378,7 +375,7 @@ export default async function DashboardPage() {
                       {isMe && " (you)"}
                     </span>
                   </div>
-                  <span className="font-semibold text-sm">{e.total_points} pts</span>
+                  <span className="font-bold text-sm font-display">{e.total_points} pts</span>
                 </div>
               )
             })}
@@ -388,8 +385,8 @@ export default async function DashboardPage() {
               <>
                 <div className="text-center text-xs text-muted-foreground py-1">&middot;&middot;&middot;</div>
                 <div className="flex items-center justify-between py-2 px-3 rounded-lg bg-primary/10 border border-primary/20">
-                  <div className="flex items-center gap-3">
-                    <span className="w-6 text-center text-sm">{myRank.season_rank}</span>
+                  <div className="flex items-center gap-2.5">
+                    <RankBadge rank={myRank.season_rank} size="sm" />
                     <div className={`h-7 w-7 rounded-full ${getAvatarColor(myRank.display_name)} flex items-center justify-center flex-shrink-0`}>
                       <span className="text-white text-xs font-semibold">{getInitials(myRank.display_name)}</span>
                     </div>
@@ -397,7 +394,7 @@ export default async function DashboardPage() {
                       {myRank.display_name} (you)
                     </span>
                   </div>
-                  <span className="font-semibold text-sm">{myRank.total_points} pts</span>
+                  <span className="font-bold text-sm font-display">{myRank.total_points} pts</span>
                 </div>
               </>
             )}

@@ -1,11 +1,14 @@
 import { createClient } from "@/lib/supabase/server"
 import { redirect } from "next/navigation"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
 import { Trophy, Target, TrendingUp, TrendingDown } from "lucide-react"
 import { ProfileNameForm } from "./name-form"
 import { SignOutButton } from "./sign-out-button"
 import { ThemeCard } from "./theme-card"
+import { StatCard } from "@/components/stat-card"
+import { RankBadge } from "@/components/rank-badge"
+import { TeamBadge } from "@/components/team-badge"
+import { getInitials, getAvatarColor } from "@/lib/avatar"
 
 export default async function ProfilePage() {
   const supabase = await createClient()
@@ -87,72 +90,49 @@ export default async function ProfilePage() {
 
   return (
     <div className="p-4 md:p-6 space-y-6 max-w-2xl lg:max-w-4xl">
-      <div>
-        <h1 className="text-2xl font-bold tracking-tight">Profile</h1>
-        <p className="text-muted-foreground mt-0.5">Your account & stats</p>
-      </div>
-
-      {/* Name editor */}
-      <Card className="border border-border">
-        <CardHeader className="pb-3">
-          <CardTitle className="text-base">Display Name</CardTitle>
-        </CardHeader>
-        <CardContent>
+      {/* Hero section */}
+      <div className="flex flex-col items-center text-center py-4 space-y-3">
+        <div className={`h-20 w-20 rounded-full ${getAvatarColor(profile?.display_name ?? "U")} flex items-center justify-center ring-2 ring-border`}>
+          <span className="text-white text-2xl font-bold font-display">
+            {getInitials(profile?.display_name ?? "U")}
+          </span>
+        </div>
+        <div>
           <ProfileNameForm currentName={profile?.display_name ?? ""} />
-          <p className="text-xs text-muted-foreground mt-2">{user.email}</p>
-        </CardContent>
-      </Card>
+          <p className="text-xs text-muted-foreground mt-1">{user.email}</p>
+        </div>
+      </div>
 
       {/* Stats grid */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <Card className="border border-border">
-          <CardContent className="pt-5">
-            <div className="flex items-center gap-2.5">
-              <Trophy className="h-4 w-4 text-yellow-500" />
-              <div>
-                <p className="text-xl font-bold">{rankEntry ? `#${rankEntry.season_rank}` : "\u2014"}</p>
-                <p className="text-xs text-muted-foreground">Season Rank</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-        <Card className="border border-border">
-          <CardContent className="pt-5">
-            <div className="flex items-center gap-2.5">
-              <Target className="h-4 w-4 text-blue-500" />
-              <div>
-                <p className="text-xl font-bold">{rankEntry?.total_points ?? 0}</p>
-                <p className="text-xs text-muted-foreground">Total Points</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-        <Card className="border border-border">
-          <CardContent className="pt-5">
-            <div className="flex items-center gap-2.5">
-              <TrendingUp className="h-4 w-4 text-green-500" />
-              <div>
-                <p className="text-xl font-bold">
-                  {bestMatch ? bestMatch.total_points : "\u2014"}
-                </p>
-                <p className="text-xs text-muted-foreground">Best Match</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-        <Card className="border border-border">
-          <CardContent className="pt-5">
-            <div className="flex items-center gap-2.5">
-              <TrendingDown className="h-4 w-4 text-red-500" />
-              <div>
-                <p className="text-xl font-bold">
-                  {worstMatch ? worstMatch.total_points : "\u2014"}
-                </p>
-                <p className="text-xs text-muted-foreground">Worst Match</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+        <StatCard
+          icon={Trophy}
+          value={rankEntry ? `#${rankEntry.season_rank}` : "\u2014"}
+          label="Season Rank"
+          gradient="from-amber-500/10"
+          iconColor="bg-amber-500/15 text-yellow-500"
+        />
+        <StatCard
+          icon={Target}
+          value={rankEntry?.total_points ?? 0}
+          label="Total Points"
+          gradient="from-primary/10"
+          iconColor="bg-blue-500/15 text-blue-500"
+        />
+        <StatCard
+          icon={TrendingUp}
+          value={bestMatch ? bestMatch.total_points : "\u2014"}
+          label="Best Match"
+          gradient="from-green-500/10"
+          iconColor="bg-green-500/15 text-green-500"
+        />
+        <StatCard
+          icon={TrendingDown}
+          value={worstMatch ? worstMatch.total_points : "\u2014"}
+          label="Worst Match"
+          gradient="from-red-500/10"
+          iconColor="bg-red-500/15 text-red-500"
+        />
       </div>
 
       {/* Desktop 2-column layout for detail cards */}
@@ -216,13 +196,13 @@ export default async function ProfilePage() {
               {/* Sparkline */}
               <div>
                 <p className="text-xs text-muted-foreground mb-2">Last {points.length} matches</p>
-                <div className="flex items-end gap-1 h-16">
+                <div className="flex items-end gap-1 h-24">
                   {points.map((p, i) => (
                     <div key={i} className="flex-1 flex flex-col items-center gap-1">
                       <span className="text-[8px] text-muted-foreground">{p}</span>
                       <div
-                        className="w-full rounded-t-sm bg-primary/70 min-h-[2px]"
-                        style={{ height: `${(p / maxPts) * 48}px` }}
+                        className="w-full rounded-t-sm bg-gradient-to-t from-primary/50 to-primary min-h-[2px]"
+                        style={{ height: `${(p / maxPts) * 80}px` }}
                       />
                     </div>
                   ))}
@@ -304,28 +284,29 @@ export default async function ProfilePage() {
               }
               const homeTeam = teamMap.get(m.team_home_id)
               const awayTeam = teamMap.get(m.team_away_id)
+              const rank = ms.rank ?? 999
 
               return (
                 <div
                   key={ms.id}
-                  className="flex items-center justify-between py-2 px-3 rounded-lg bg-secondary/50"
+                  className="flex items-center justify-between py-2.5 px-3 rounded-lg border-b border-border/30 last:border-b-0"
                 >
-                  <div className="flex items-center gap-2">
-                    <span className="text-xs text-muted-foreground font-mono w-6">
+                  <div className="flex items-center gap-2.5">
+                    <RankBadge rank={rank} size="sm" />
+                    <span className="text-[10px] text-muted-foreground font-mono">
                       #{m.match_number}
                     </span>
-                    <span className="text-sm">
-                      <span style={{ color: homeTeam?.color }}>{homeTeam?.short_name}</span>
-                      {" vs "}
-                      <span style={{ color: awayTeam?.color }}>{awayTeam?.short_name}</span>
-                    </span>
+                    <div className="flex items-center gap-1">
+                      {homeTeam && (
+                        <TeamBadge shortName={homeTeam.short_name} color={homeTeam.color} size="sm" />
+                      )}
+                      <span className="text-[10px] text-muted-foreground">vs</span>
+                      {awayTeam && (
+                        <TeamBadge shortName={awayTeam.short_name} color={awayTeam.color} size="sm" />
+                      )}
+                    </div>
                   </div>
-                  <div className="flex items-center gap-2">
-                    <Badge variant="outline" className="text-xs">
-                      #{ms.rank ?? "\u2014"}
-                    </Badge>
-                    <span className="font-semibold text-sm w-10 text-right">{ms.total_points}</span>
-                  </div>
+                  <span className="font-bold text-sm font-display">{ms.total_points} pts</span>
                 </div>
               )
             })}

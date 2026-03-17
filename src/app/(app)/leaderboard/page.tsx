@@ -1,11 +1,15 @@
 import { createClient } from "@/lib/supabase/server"
 import { redirect } from "next/navigation"
 import { Card, CardContent } from "@/components/ui/card"
+import { Badge } from "@/components/ui/badge"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Trophy } from "lucide-react"
 import { getMyLeagues, getLeagueLeaderboard } from "@/actions/leagues"
 import { LeaderboardSelector } from "./leaderboard-selector"
 import { getInitials, getAvatarColor } from "@/lib/avatar"
+import { RankBadge } from "@/components/rank-badge"
+import { Podium } from "@/components/podium"
+import { EmptyState } from "@/components/empty-state"
 
 type LeaderRow = {
   user_id: string
@@ -73,7 +77,6 @@ export default async function LeaderboardPage({
 
   async function getMatchScores(matchId: string): Promise<LeaderRow[]> {
     if (leagueId) {
-      // Filter match scores to league members
       const { data: members } = await supabase
         .from("league_members")
         .select("user_id")
@@ -114,76 +117,115 @@ export default async function LeaderboardPage({
 
   const seasonRankMap = new Map(seasonRows.map((r) => [r.user_id, r.rank]))
 
-  const medals = ["\ud83e\udd47", "\ud83e\udd48", "\ud83e\udd49"]
-
-  function LeaderTable({ rows, showMP, showBanner, seasonRankMap }: { rows: LeaderRow[]; showMP?: boolean; showBanner?: boolean; seasonRankMap?: Map<string, number> }) {
+  function LeaderTable({
+    rows,
+    showMP,
+    showBanner,
+    showPodium,
+    seasonRankMap,
+  }: {
+    rows: LeaderRow[]
+    showMP?: boolean
+    showBanner?: boolean
+    showPodium?: boolean
+    seasonRankMap?: Map<string, number>
+  }) {
     if (rows.length === 0) {
       return (
-        <div className="flex flex-col items-center py-12 gap-3">
-          <Trophy className="h-12 w-12 text-muted-foreground/30" />
-          <div className="text-center">
-            <p className="font-medium text-muted-foreground">No data yet</p>
-            <p className="text-xs text-muted-foreground/60 mt-0.5">Rankings will appear after the first match</p>
-          </div>
-        </div>
+        <EmptyState
+          icon={Trophy}
+          title="No data yet"
+          description="Rankings will appear after the first match"
+        />
       )
     }
 
+    const podiumEntries = showPodium && rows.length >= 3
+      ? rows.slice(0, 3).map((r) => ({
+          name: r.display_name,
+          points: r.total_points,
+          rank: r.rank,
+          isCurrentUser: r.user_id === user!.id,
+        }))
+      : null
+
+    const tableRows = podiumEntries ? rows.slice(3) : rows
+    const startRank = podiumEntries ? 4 : 1
+
     return (
       <div className="space-y-2">
+        {/* Manager of the Match banner */}
         {showBanner && rows[0] && (
-          <div className="flex items-center gap-3 p-3 rounded-lg bg-gradient-to-r from-amber-500/10 to-amber-600/5 border border-amber-500/20 mb-4">
-            <Trophy className="h-5 w-5 text-amber-500" />
-            <div className={`h-7 w-7 rounded-full ${getAvatarColor(rows[0].display_name)} flex items-center justify-center flex-shrink-0`}>
-              <span className="text-white text-xs font-semibold">{getInitials(rows[0].display_name)}</span>
+          <div className="flex items-center gap-3 p-4 rounded-xl bg-gradient-to-r from-amber-500/15 via-amber-400/5 to-transparent border border-amber-500/20 mb-4">
+            <div className="rounded-full bg-amber-500/20 p-2">
+              <Trophy className="h-6 w-6 text-amber-500" />
             </div>
-            <div>
-              <p className="text-sm font-semibold text-amber-400">Manager of the Match</p>
-              <p className="text-sm">{rows[0].display_name} &mdash; {rows[0].total_points} pts</p>
+            <div className={`h-9 w-9 rounded-full ${getAvatarColor(rows[0].display_name)} flex items-center justify-center flex-shrink-0 ring-2 ring-amber-500/30`}>
+              <span className="text-white text-sm font-semibold">{getInitials(rows[0].display_name)}</span>
             </div>
+            <div className="flex-1">
+              <p className="text-sm font-bold text-amber-400">Manager of the Match</p>
+              <p className="text-sm">{rows[0].display_name}</p>
+            </div>
+            <p className="text-xl font-bold font-display text-amber-400">{rows[0].total_points} pts</p>
           </div>
         )}
 
-        <div className="flex items-center py-2 px-3 text-xs font-medium text-muted-foreground uppercase tracking-wide">
-          <span className="w-10">#</span>
-          <span className="flex-1">Name</span>
-          {showMP && <span className="w-12 text-center">MP</span>}
-          <span className="w-16 text-right">Points</span>
-        </div>
+        {/* Podium */}
+        {podiumEntries && <Podium entries={podiumEntries} />}
 
-        {rows.map((row, i) => {
-          const isMe = row.user_id === user!.id
-          return (
-            <div
-              key={row.user_id}
-              className={`flex items-center py-2.5 px-3 rounded-lg transition-all ${
-                isMe ? "bg-primary/10 border border-primary/20" : i % 2 === 0 ? "bg-secondary/50" : ""
-              } ${i === 0 ? "border-l-2 border-l-amber-400 dark:shadow-[0_0_12px_oklch(0.75_0.15_85/0.15)]" : i === 1 ? "border-l-2 border-l-gray-300 dark:shadow-[0_0_8px_oklch(0.7_0.01_260/0.1)]" : i === 2 ? "border-l-2 border-l-amber-700 dark:shadow-[0_0_8px_oklch(0.55_0.10_55/0.1)]" : ""}`}
-            >
-              <span className="w-10 text-sm">
-                {i < 3 ? medals[i] : row.rank}
-              </span>
-              <div className={`flex-1 flex items-center gap-2 text-sm ${isMe ? "font-semibold" : ""}`}>
-                <div className={`h-7 w-7 rounded-full ${getAvatarColor(row.display_name)} flex items-center justify-center flex-shrink-0`}>
-                  <span className="text-white text-xs font-semibold">{getInitials(row.display_name)}</span>
-                </div>
-                <span>
-                  {row.display_name}
-                  {isMe && " (you)"}
-                </span>
-                {showBanner && seasonRankMap?.has(row.user_id) && (
-                  <span className="text-[10px] text-muted-foreground ml-1">#{seasonRankMap.get(row.user_id)}</span>
-                )}
-              </div>
-              {showMP && (
-                <span className="w-12 text-center text-sm text-muted-foreground">
-                  {row.matches_played ?? 0}
-                </span>
-              )}
-              <span className="w-16 text-right font-semibold text-sm">{row.total_points}</span>
+        {/* Table header */}
+        {tableRows.length > 0 && (
+          <>
+            <div className="flex items-center py-2 px-3 text-xs font-medium text-muted-foreground uppercase tracking-wide mt-2">
+              <span className="w-10">#</span>
+              <span className="flex-1">Name</span>
+              {showMP && <span className="w-12 text-center">MP</span>}
+              <span className="w-16 text-right">Points</span>
             </div>
-          )
-        })}
+
+            {tableRows.map((row, i) => {
+              const isMe = row.user_id === user!.id
+              const displayRank = podiumEntries ? row.rank : i + startRank
+              return (
+                <div
+                  key={row.user_id}
+                  className={`flex items-center py-2.5 px-3 rounded-lg transition-all border-b border-border/30 last:border-b-0 ${
+                    isMe
+                      ? "bg-primary/10 border border-primary/20"
+                      : ""
+                  }`}
+                >
+                  <span className="w-10">
+                    <RankBadge rank={displayRank} size="sm" />
+                  </span>
+                  <div className={`flex-1 flex items-center gap-2 text-sm ${isMe ? "font-semibold" : ""}`}>
+                    <div className={`h-7 w-7 rounded-full ${getAvatarColor(row.display_name)} flex items-center justify-center flex-shrink-0`}>
+                      <span className="text-white text-xs font-semibold">{getInitials(row.display_name)}</span>
+                    </div>
+                    <span>
+                      {row.display_name}
+                      {isMe && (
+                        <Badge variant="outline" className="ml-1.5 text-[9px] px-1.5 py-0 h-4 border-primary/30 text-primary">
+                          You
+                        </Badge>
+                      )}
+                    </span>
+                    {showBanner && seasonRankMap?.has(row.user_id) && (
+                      <span className="text-[10px] text-muted-foreground ml-1">#{seasonRankMap.get(row.user_id)}</span>
+                    )}
+                  </div>
+                  {showMP && (
+                    <span className="w-12 text-center text-sm text-muted-foreground">
+                      {row.matches_played ?? 0}
+                    </span>
+                  )}
+                  <span className="w-16 text-right font-bold text-sm font-display">{row.total_points}</span>
+                </div>
+              )
+            })}
+          </>
+        )}
       </div>
     )
   }
@@ -217,7 +259,7 @@ export default async function LeaderboardPage({
         <TabsContent value="season" className="mt-4">
           <Card className="border border-border">
             <CardContent className="pt-4">
-              <LeaderTable rows={seasonRows} showMP />
+              <LeaderTable rows={seasonRows} showMP showPodium />
             </CardContent>
           </Card>
         </TabsContent>
@@ -225,7 +267,7 @@ export default async function LeaderboardPage({
         <TabsContent value="this-week" className="mt-4">
           <Card className="border border-border">
             <CardContent className="pt-4">
-              <LeaderTable rows={thisWeekRows} showBanner seasonRankMap={seasonRankMap} />
+              <LeaderTable rows={thisWeekRows} showBanner showPodium seasonRankMap={seasonRankMap} />
             </CardContent>
           </Card>
         </TabsContent>
@@ -233,7 +275,7 @@ export default async function LeaderboardPage({
         <TabsContent value="last-week" className="mt-4">
           <Card className="border border-border">
             <CardContent className="pt-4">
-              <LeaderTable rows={lastWeekRows} showBanner seasonRankMap={seasonRankMap} />
+              <LeaderTable rows={lastWeekRows} showBanner showPodium seasonRankMap={seasonRankMap} />
             </CardContent>
           </Card>
         </TabsContent>
