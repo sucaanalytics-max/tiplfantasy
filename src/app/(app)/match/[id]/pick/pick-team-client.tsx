@@ -5,7 +5,6 @@ import { useRouter } from "next/navigation"
 import { format } from "date-fns"
 import { CountdownTimer } from "@/components/countdown-timer"
 import {
-  Shield,
   Star,
   Check,
   ChevronLeft,
@@ -16,9 +15,9 @@ import {
   ArrowUpDown,
   Sparkles,
   Info,
-  Flame,
-  Snowflake,
 } from "lucide-react"
+import { FormIcon } from "@/components/form-icon"
+import { TeamBadge } from "@/components/team-badge"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Card } from "@/components/ui/card"
@@ -46,6 +45,7 @@ type Props = {
   venueStats: Record<string, PlayerVenueStats>
   vsTeamStats: Record<string, PlayerVsTeamStats>
   seasonStats: Record<string, PlayerSeasonStats[]>
+  selectionPcts: Record<string, number>
 }
 
 const ROLE_ORDER: PlayerRole[] = ["WK", "BAT", "AR", "BOWL"]
@@ -73,6 +73,7 @@ export function PickTeamClient({
   venueStats,
   vsTeamStats,
   seasonStats,
+  selectionPcts,
 }: Props) {
   const router = useRouter()
   const [isPending, startTransition] = useTransition()
@@ -328,17 +329,19 @@ export function PickTeamClient({
               {player.name}
               <Info className="h-2.5 w-2.5 text-muted-foreground/50 shrink-0 inline ml-0.5" />
             </span>
-            {formIndicator === "hot" && <Flame className="h-2.5 w-2.5 text-orange-500 shrink-0" />}
-            {formIndicator === "cold" && <Snowflake className="h-2.5 w-2.5 text-blue-400 shrink-0" />}
+            <FormIcon indicator={formIndicator as "hot" | "cold" | null} />
             {isCaptain && <span className="text-[8px] font-bold text-amber-500">C</span>}
             {isVC && <span className="text-[8px] font-bold text-violet-400">VC</span>}
-            {hasPlayingXI && isInXI && <Shield className="h-2.5 w-2.5 text-status-success shrink-0" />}
+            {hasPlayingXI && isInXI && <span className="h-2 w-2 rounded-full bg-status-success shrink-0" />}
           </div>
           <div className="flex items-center gap-1">
             <Badge variant="outline" className="text-[8px] h-3 px-0.5 py-0">{player.role}</Badge>
             <span className="text-[9px] text-muted-foreground">{player.credit_cost}</span>
             {matchupChip && (
               <span className="text-[8px] text-emerald-500 truncate">{matchupChip}</span>
+            )}
+            {selectionPcts[player.id] != null && selectionPcts[player.id] > 0 && (
+              <span className="text-[8px] text-muted-foreground/70">Sel {selectionPcts[player.id]}%</span>
             )}
           </div>
           {isDisabled && (
@@ -378,7 +381,7 @@ export function PickTeamClient({
                   return (
                     <div key={player.id} className="flex items-center gap-2 py-1.5 px-2 rounded-lg bg-secondary/50">
                       <div
-                        className="w-1 h-6 rounded-full shrink-0"
+                        className="w-1.5 h-6 rounded-full shrink-0"
                         style={{ backgroundColor: player.team.color }}
                       />
                       <div className="flex-1 min-w-0">
@@ -399,9 +402,9 @@ export function PickTeamClient({
                       <div className="flex items-center gap-1 shrink-0">
                         <button
                           className={cn(
-                            "h-6 w-6 rounded-full text-[9px] font-bold flex items-center justify-center border transition-colors",
+                            "h-7 w-7 rounded-full text-[9px] font-bold flex items-center justify-center border transition-all",
                             isCaptain
-                              ? "bg-amber-400 text-black border-amber-400"
+                              ? "bg-gradient-to-br from-amber-400 to-amber-600 text-black border-amber-400 shadow-sm shadow-amber-500/30"
                               : "border-border text-muted-foreground hover:border-amber-400/50 hover:text-amber-400"
                           )}
                           onClick={() => {
@@ -413,9 +416,9 @@ export function PickTeamClient({
                         </button>
                         <button
                           className={cn(
-                            "h-6 w-6 rounded-full text-[9px] font-bold flex items-center justify-center border transition-colors",
+                            "h-7 w-7 rounded-full text-[9px] font-bold flex items-center justify-center border transition-all",
                             isVC
-                              ? "bg-violet-400 text-black border-violet-400"
+                              ? "bg-gradient-to-br from-violet-400 to-violet-600 text-white border-violet-400 shadow-sm shadow-violet-500/30"
                               : "border-border text-muted-foreground hover:border-violet-400/50 hover:text-violet-400"
                           )}
                           onClick={() => {
@@ -452,16 +455,14 @@ export function PickTeamClient({
           </button>
           <div className="flex items-center justify-between">
             <div>
-              <h1 className="text-lg font-bold">
-                Match {match.match_number}:{" "}
-                <span style={{ color: match.team_home.color }}>
-                  {match.team_home.short_name}
-                </span>{" "}
-                vs{" "}
-                <span style={{ color: match.team_away.color }}>
-                  {match.team_away.short_name}
-                </span>
-              </h1>
+              <div className="flex items-center gap-2">
+                <h1 className="text-lg font-bold">Match {match.match_number}</h1>
+                <div className="flex items-center gap-1.5">
+                  <TeamBadge shortName={match.team_home.short_name} color={match.team_home.color} size="sm" />
+                  <span className="text-xs text-muted-foreground">vs</span>
+                  <TeamBadge shortName={match.team_away.short_name} color={match.team_away.color} size="sm" />
+                </div>
+              </div>
               <p className="text-xs text-muted-foreground">
                 {format(new Date(match.start_time), "EEE d MMM, h:mm a")} •{" "}
                 {match.venue}
@@ -500,6 +501,9 @@ export function PickTeamClient({
             const count = roleCount[role]
             const ok = count >= min && count <= max
             const isActive = activeFilter === role
+            const roleColors: Record<PlayerRole, string> = {
+              WK: "bg-role-wk", BAT: "bg-role-bat", AR: "bg-role-ar", BOWL: "bg-role-bowl",
+            }
             return (
               <button
                 key={role}
@@ -507,7 +511,7 @@ export function PickTeamClient({
                   setActiveFilter(isActive ? "ALL" : role)
                 }
                 className={cn(
-                  "flex items-center gap-1 px-2.5 py-1 rounded-md text-xs border transition-colors whitespace-nowrap",
+                  "flex flex-col items-center px-2.5 py-1 rounded-md text-xs border transition-colors whitespace-nowrap gap-0.5",
                   isActive
                     ? "border-primary bg-primary text-primary-foreground font-semibold"
                     : "border-border text-muted-foreground",
@@ -515,10 +519,20 @@ export function PickTeamClient({
                   !isActive && count > 0 && !ok && "text-status-warning border-status-warning/30"
                 )}
               >
-                <span className="font-medium">{role}</span>
-                <span className="tabular-nums">
-                  {count}/{max}
-                </span>
+                <div className="flex items-center gap-1">
+                  <span className="font-medium">{role}</span>
+                  <span className="tabular-nums">
+                    {count}/{max}
+                  </span>
+                  {count >= min && <Check className="h-2.5 w-2.5" />}
+                </div>
+                {/* Progress bar */}
+                <div className="w-full h-[2px] rounded-full bg-border/50 overflow-hidden">
+                  <div
+                    className={cn("h-full rounded-full transition-all", isActive ? "bg-primary-foreground/70" : roleColors[role])}
+                    style={{ width: `${Math.min((count / max) * 100, 100)}%` }}
+                  />
+                </div>
               </button>
             )
           })}
@@ -581,9 +595,8 @@ export function PickTeamClient({
 
         {hasPlayingXI && (
           <div className="px-4 pb-2">
-            <p className="text-[10px] text-status-success flex items-center gap-1">
-              <Shield className="h-3 w-3" /> Playing XI announced — confirmed
-              players shown first
+            <p className="text-[10px] text-status-success flex items-center gap-1.5">
+              <span className="h-2 w-2 rounded-full bg-status-success shrink-0" /> Playing XI announced — confirmed players shown first
             </p>
           </div>
         )}
@@ -753,8 +766,7 @@ export function PickTeamClient({
                       {player.name}
                       <Info className="h-2.5 w-2.5 text-muted-foreground/50 shrink-0 inline ml-0.5" />
                     </span>
-                    {formIndicator === "hot" && <Flame className="h-3 w-3 text-orange-500 shrink-0" />}
-                    {formIndicator === "cold" && <Snowflake className="h-3 w-3 text-blue-400 shrink-0" />}
+                    <FormIcon indicator={formIndicator as "hot" | "cold" | null} />
                     {isCaptain && (
                       <Badge className={`h-4 px-1 text-[9px] ${CAPTAIN_BADGE}`}>C</Badge>
                     )}
@@ -762,7 +774,7 @@ export function PickTeamClient({
                       <Badge className={`h-4 px-1 text-[9px] ${VICE_CAPTAIN_BADGE}`}>VC</Badge>
                     )}
                     {hasPlayingXI && isInXI && (
-                      <Shield className="h-3 w-3 text-status-success shrink-0" />
+                      <span className="h-2.5 w-2.5 rounded-full bg-status-success shrink-0" />
                     )}
                   </div>
                   <div className="flex items-center gap-1.5 mt-0.5">

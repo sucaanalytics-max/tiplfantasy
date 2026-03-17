@@ -132,6 +132,28 @@ export default async function PickTeamPage({
     seasonStatsMap[ss.player_id].push(ss as PlayerSeasonStats)
   }
 
+  // Fetch selection percentages — how many users picked each player
+  const { count: totalSelections } = await supabase
+    .from("selections")
+    .select("id", { count: "exact", head: true })
+    .eq("match_id", matchId)
+
+  const selectionPcts: Record<string, number> = {}
+  if (totalSelections && totalSelections > 0) {
+    const { data: playerCounts } = await supabase
+      .from("selection_players")
+      .select("player_id, selection:selections!inner(match_id)")
+      .eq("selection.match_id", matchId)
+
+    const countMap = new Map<string, number>()
+    for (const pc of playerCounts ?? []) {
+      countMap.set(pc.player_id, (countMap.get(pc.player_id) ?? 0) + 1)
+    }
+    for (const [pid, count] of countMap) {
+      selectionPcts[pid] = Math.round((count / totalSelections) * 100)
+    }
+  }
+
   return (
     <PickTeamClient
       match={typedMatch}
@@ -144,6 +166,7 @@ export default async function PickTeamPage({
       venueStats={venueStatsMap}
       vsTeamStats={vsTeamStatsMap}
       seasonStats={seasonStatsMap}
+      selectionPcts={selectionPcts}
     />
   )
 }
