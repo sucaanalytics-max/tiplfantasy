@@ -58,6 +58,7 @@ export type Player = {
   ipl_recent_scores: number[] | null
   howstat_id: number | null
   stats_updated_at: string | null
+  form_indicator: string | null
 }
 
 export type Match = {
@@ -161,6 +162,57 @@ export type Notification = {
   is_read: boolean
   metadata: Record<string, unknown> | null
   created_at: string
+}
+
+// ============================================================
+// Rich stats table types (season/venue/vs-team breakdowns)
+// ============================================================
+
+export type PlayerSeasonStats = {
+  id: string
+  player_id: string
+  season: number
+  matches: number
+  innings: number
+  runs: number
+  balls_faced: number
+  fours: number
+  sixes: number
+  highest_score: number
+  fifties: number
+  hundreds: number
+  not_outs: number
+  overs_bowled: number
+  runs_conceded: number
+  wickets: number
+  maidens: number
+  catches: number
+  stumpings: number
+  run_outs: number
+}
+
+export type PlayerVenueStats = {
+  id: string
+  player_id: string
+  venue: string
+  matches: number
+  runs: number
+  balls_faced: number
+  wickets: number
+  overs_bowled: number
+  runs_conceded: number
+}
+
+export type PlayerVsTeamStats = {
+  id: string
+  player_id: string
+  opponent_team: string
+  matches: number
+  runs: number
+  balls_faced: number
+  wickets: number
+  overs_bowled: number
+  runs_conceded: number
 }
 
 // ============================================================

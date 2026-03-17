@@ -160,5 +160,21 @@ export async function calculateMatchPoints(matchId: string) {
   // Refresh leaderboard
   await admin.rpc("refresh_leaderboard")
 
+  // Fire-and-forget: update player stats tables (season/venue/vs-team)
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY
+  if (supabaseUrl && serviceKey) {
+    fetch(`${supabaseUrl}/functions/v1/update-player-stats`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${serviceKey}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ match_id: matchId }),
+    }).catch(() => {
+      // Non-critical — don't fail scoring if stats update fails
+    })
+  }
+
   return { success: true, results: userScores }
 }

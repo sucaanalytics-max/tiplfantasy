@@ -9,7 +9,7 @@ import {
 } from "@/components/ui/drawer"
 import { Badge } from "@/components/ui/badge"
 import { ROLE_COLORS, ROLE_LABELS } from "@/lib/badges"
-import type { PlayerWithTeam } from "@/lib/types"
+import type { PlayerWithTeam, PlayerVenueStats, PlayerVsTeamStats, PlayerSeasonStats } from "@/lib/types"
 
 function StatCell({ label, value }: { label: string; value: string | number | null }) {
   if (value === null || value === undefined) return null
@@ -56,11 +56,21 @@ function SectionHeader({ children }: { children: React.ReactNode }) {
 export function PlayerStatsDrawer({
   player,
   tiplScores,
+  venueStats,
+  vsTeamStats,
+  seasonStats,
+  matchVenue,
+  opponentTeamName,
   open,
   onClose,
 }: {
   player: PlayerWithTeam | null
   tiplScores: number[]
+  venueStats: PlayerVenueStats | null
+  vsTeamStats: PlayerVsTeamStats | null
+  seasonStats: PlayerSeasonStats[]
+  matchVenue: string
+  opponentTeamName: string
   open: boolean
   onClose: () => void
 }) {
@@ -73,6 +83,8 @@ export function PlayerStatsDrawer({
   const tiplAvg = hasTiplScores
     ? (tiplScores.reduce((a, b) => a + b, 0) / tiplScores.length).toFixed(1)
     : null
+  const hasMatchContext = venueStats || vsTeamStats
+  const hasSeasonStats = seasonStats.length > 0
 
   return (
     <Drawer open={open} onOpenChange={(o) => !o && onClose()}>
@@ -101,10 +113,130 @@ export function PlayerStatsDrawer({
         </DrawerHeader>
 
         <div className="px-4 pb-6 overflow-y-auto">
-          {!hasStats && !hasTiplScores && (
+          {!hasStats && !hasTiplScores && !hasMatchContext && !hasSeasonStats && (
             <div className="text-center py-8 text-muted-foreground text-sm">
               No stats available
             </div>
+          )}
+
+          {/* Match Context — vs opponent + at venue */}
+          {hasMatchContext && (
+            <>
+              <SectionHeader>Match Context</SectionHeader>
+              <div className="grid grid-cols-2 gap-3">
+                {vsTeamStats && (
+                  <div className="rounded-lg border border-border p-2.5">
+                    <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground mb-2">
+                      vs {opponentTeamName}
+                    </p>
+                    <div className="grid grid-cols-2 gap-2">
+                      <StatCell
+                        label="Avg"
+                        value={vsTeamStats.balls_faced > 0
+                          ? (vsTeamStats.runs / Math.max(vsTeamStats.matches, 1)).toFixed(1)
+                          : null}
+                      />
+                      <StatCell
+                        label="SR"
+                        value={vsTeamStats.balls_faced > 0
+                          ? ((vsTeamStats.runs / vsTeamStats.balls_faced) * 100).toFixed(1)
+                          : null}
+                      />
+                      <StatCell label="Wkts" value={vsTeamStats.wickets || null} />
+                      <StatCell
+                        label="Econ"
+                        value={Number(vsTeamStats.overs_bowled) > 0
+                          ? (vsTeamStats.runs_conceded / Number(vsTeamStats.overs_bowled)).toFixed(1)
+                          : null}
+                      />
+                    </div>
+                    <p className="text-[9px] text-muted-foreground text-center mt-1">
+                      {vsTeamStats.matches} mat
+                    </p>
+                  </div>
+                )}
+                {venueStats && (
+                  <div className="rounded-lg border border-border p-2.5">
+                    <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground mb-2 truncate">
+                      At {matchVenue.split(",")[0]}
+                    </p>
+                    <div className="grid grid-cols-2 gap-2">
+                      <StatCell
+                        label="Avg"
+                        value={venueStats.balls_faced > 0
+                          ? (venueStats.runs / Math.max(venueStats.matches, 1)).toFixed(1)
+                          : null}
+                      />
+                      <StatCell
+                        label="SR"
+                        value={venueStats.balls_faced > 0
+                          ? ((venueStats.runs / venueStats.balls_faced) * 100).toFixed(1)
+                          : null}
+                      />
+                      <StatCell label="Wkts" value={venueStats.wickets || null} />
+                      <StatCell
+                        label="Econ"
+                        value={Number(venueStats.overs_bowled) > 0
+                          ? (venueStats.runs_conceded / Number(venueStats.overs_bowled)).toFixed(1)
+                          : null}
+                      />
+                    </div>
+                    <p className="text-[9px] text-muted-foreground text-center mt-1">
+                      {venueStats.matches} mat
+                    </p>
+                  </div>
+                )}
+              </div>
+            </>
+          )}
+
+          {/* Season Breakdown */}
+          {hasSeasonStats && (
+            <>
+              <SectionHeader>Season Breakdown</SectionHeader>
+              <div className="overflow-x-auto">
+                <table className="w-full text-xs">
+                  <thead>
+                    <tr className="text-[10px] uppercase tracking-wide text-muted-foreground">
+                      <th className="text-left py-1 font-semibold">Year</th>
+                      <th className="text-center py-1 font-semibold">Mat</th>
+                      <th className="text-center py-1 font-semibold">Runs</th>
+                      <th className="text-center py-1 font-semibold">Avg</th>
+                      <th className="text-center py-1 font-semibold">SR</th>
+                      <th className="text-center py-1 font-semibold">Wkts</th>
+                      <th className="text-center py-1 font-semibold">Econ</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {seasonStats.map((ss, i) => {
+                      const battingAvg = ss.innings > 0
+                        ? (ss.runs / Math.max(ss.innings - ss.not_outs, 1)).toFixed(1)
+                        : "-"
+                      const sr = ss.balls_faced > 0
+                        ? ((ss.runs / ss.balls_faced) * 100).toFixed(1)
+                        : "-"
+                      const econ = Number(ss.overs_bowled) > 0
+                        ? (ss.runs_conceded / Number(ss.overs_bowled)).toFixed(1)
+                        : "-"
+                      return (
+                        <tr
+                          key={ss.season}
+                          className={i % 2 === 0 ? "bg-muted/30" : ""}
+                        >
+                          <td className="py-1.5 pl-1 font-medium text-foreground">{ss.season}</td>
+                          <td className="text-center py-1.5">{ss.matches}</td>
+                          <td className="text-center py-1.5">{ss.runs}</td>
+                          <td className="text-center py-1.5">{battingAvg}</td>
+                          <td className="text-center py-1.5">{sr}</td>
+                          <td className="text-center py-1.5">{ss.wickets || "-"}</td>
+                          <td className="text-center py-1.5">{econ}</td>
+                        </tr>
+                      )
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            </>
           )}
 
           {/* IPL Career Batting */}

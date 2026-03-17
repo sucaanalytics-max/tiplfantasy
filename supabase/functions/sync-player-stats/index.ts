@@ -25,35 +25,31 @@ interface PlayerStats {
 }
 
 function parseNumber(text: string): number | null {
-  const cleaned = text.replace(/[^0-9.-]/g, "")
+  const cleaned = text.replace(/<[^>]*>/g, "").replace(/[^0-9.-]/g, "").trim()
   const n = parseFloat(cleaned)
   return isNaN(n) ? null : n
 }
 
-function extractTableRows(html: string, tableIndex: number): string[][] {
-  // Find all TableLined tables
-  const tableRegex = /<table[^>]*class="TableLined"[^>]*>([\s\S]*?)<\/table>/gi
-  const tables: string[] = []
-  let match
-  while ((match = tableRegex.exec(html)) !== null) {
-    tables.push(match[1])
-  }
-  if (tableIndex >= tables.length) return []
+// Extract a field value from howstat's FieldName2/FieldValue pattern
+// Looks for: <span class="FieldName2">label:</span> ... <td class="FieldValue">value</td>
+function extractField(html: string, label: string): string | null {
+  // Match the label followed by its value cell (FieldValue or FieldValueAsterisk)
+  const escaped = label.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")
+  const regex = new RegExp(
+    `<span[^>]*class="FieldName2"[^>]*>${escaped}:?</span>[\\s\\S]*?<td[^>]*class="FieldValue(?:Asterisk)?"[^>]*>([\\s\\S]*?)</td>`,
+    "i"
+  )
+  const match = regex.exec(html)
+  if (!match) return null
+  // Strip HTML tags and trim
+  return match[1].replace(/<[^>]*>/g, "").trim() || null
+}
 
-  const tableHtml = tables[tableIndex]
-  const rows: string[][] = []
-  const rowRegex = /<tr[^>]*>([\s\S]*?)<\/tr>/gi
-  let rowMatch
-  while ((rowMatch = rowRegex.exec(tableHtml)) !== null) {
-    const cells: string[] = []
-    const cellRegex = /<t[dh][^>]*>([\s\S]*?)<\/t[dh]>/gi
-    let cellMatch
-    while ((cellMatch = cellRegex.exec(rowMatch[1])) !== null) {
-      cells.push(cellMatch[1].replace(/<[^>]*>/g, "").trim())
-    }
-    if (cells.length > 0) rows.push(cells)
-  }
-  return rows
+// Extract Matches from the profile section (uses FieldName class, not FieldName2)
+function extractMatches(html: string): number | null {
+  const regex = /<td[^>]*class="FieldName"[^>]*>Matches:<\/td>\s*<td[^>]*>\s*(\d+)/i
+  const match = regex.exec(html)
+  return match ? parseNumber(match[1]) : null
 }
 
 function parseStats(html: string): PlayerStats {
@@ -76,51 +72,39 @@ function parseStats(html: string): PlayerStats {
     ipl_recent_scores: null,
   }
 
-  // Batting stats table (usually first TableLined)
-  const battingRows = extractTableRows(html, 0)
-  // Look for the "Overall" or last data row in batting
-  for (const row of battingRows) {
-    if (row[0]?.toLowerCase().includes("overall") || row[0]?.toLowerCase().includes("total")) {
-      stats.ipl_matches = parseNumber(row[1] ?? "")
-      stats.ipl_innings = parseNumber(row[2] ?? "")
-      stats.ipl_runs = parseNumber(row[4] ?? "")
-      stats.ipl_highest_score = row[5]?.trim() || null
-      stats.ipl_batting_avg = parseNumber(row[6] ?? "")
-      stats.ipl_strike_rate = parseNumber(row[8] ?? "")
-      stats.ipl_hundreds = parseNumber(row[9] ?? "")
-      stats.ipl_fifties = parseNumber(row[10] ?? "")
-      stats.ipl_fours = parseNumber(row[11] ?? "")
-      stats.ipl_sixes = parseNumber(row[12] ?? "")
-      stats.ipl_catches = parseNumber(row[13] ?? "")
-      break
+  // Matches from profile section
+  stats.ipl_matches = extractMatches(html)
+
+  // Batting stats
+  stats.ipl_innings = parseNumber(extractField(html, "Innings") ?? "")
+  stats.ipl_runs = parseNumber(extractField(html, "Aggregate") ?? "")
+  stats.ipl_highest_score = extractField(html, "Highest Score")
+  stats.ipl_batting_avg = parseNumber(extractField(html, "Average") ?? "")
+  stats.ipl_strike_rate = parseNumber(extractField(html, "Scoring Rate") ?? "")
+  stats.ipl_fifties = parseNumber(extractField(html, "50s") ?? "")
+  stats.ipl_hundreds = parseNumber(extractField(html, "100s") ?? "")
+  stats.ipl_fours = parseNumber(extractField(html, "4s") ?? "")
+  stats.ipl_sixes = parseNumber(extractField(html, "6s") ?? "")
+
+  // Bowling stats — these labels appear after the "Bowling" section header
+  // Extract bowling section to avoid conflicting with batting "Average"
+  const bowlingSectionMatch = html.match(/background-color:\s*#a5d3ca[^>]*>\s*Bowling[\s\S]*?(?:background-color:\s*#a5d3ca|$)/i)
+  if (bowlingSectionMatch) {
+    const bowlingHtml = bowlingSectionMatch[0]
+    stats.ipl_wickets = parseNumber(extractField(bowlingHtml, "Wickets") ?? "")
+    // Bowling average — extract from bowling section
+    const bowlAvgMatch = bowlingHtml.match(/<span[^>]*class="FieldName2"[^>]*>Average:?<\/span>[\s\S]*?<td[^>]*class="FieldValue[^"]*"[^>]*>([\s\S]*?)<\/td>/i)
+    if (bowlAvgMatch) {
+      stats.ipl_bowling_avg = parseNumber(bowlAvgMatch[1].replace(/<[^>]*>/g, ""))
     }
+    stats.ipl_economy = parseNumber(extractField(bowlingHtml, "Economy Rate") ?? "")
+    stats.ipl_best_bowling = extractField(bowlingHtml, "Best")
   }
 
-  // Bowling stats table (usually second TableLined)
-  const bowlingRows = extractTableRows(html, 1)
-  for (const row of bowlingRows) {
-    if (row[0]?.toLowerCase().includes("overall") || row[0]?.toLowerCase().includes("total")) {
-      stats.ipl_wickets = parseNumber(row[5] ?? "")
-      stats.ipl_bowling_avg = parseNumber(row[6] ?? "")
-      stats.ipl_economy = parseNumber(row[7] ?? "")
-      stats.ipl_best_bowling = row[9]?.trim() || null
-      break
-    }
-  }
-
-  // Recent scores — try to parse from innings table (usually third or fourth)
-  const inningsRows = extractTableRows(html, 2)
-  if (inningsRows.length > 1) {
-    const recentScores: number[] = []
-    // Skip header row, take last 5 innings
-    for (let i = 1; i < inningsRows.length && recentScores.length < 5; i++) {
-      const scoreStr = inningsRows[i][3] ?? inningsRows[i][2] ?? ""
-      const score = parseNumber(scoreStr)
-      if (score !== null) recentScores.push(score)
-    }
-    if (recentScores.length > 0) {
-      stats.ipl_recent_scores = recentScores
-    }
+  // Fielding stats — extract from Fielding section
+  const fieldingSectionMatch = html.match(/background-color:\s*#a5d3ca[^>]*>\s*Fielding[\s\S]*?(?:background-color:\s*#a5d3ca|$)/i)
+  if (fieldingSectionMatch) {
+    stats.ipl_catches = parseNumber(extractField(fieldingSectionMatch[0], "Catches") ?? "")
   }
 
   return stats

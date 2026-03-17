@@ -16,6 +16,8 @@ import {
   ArrowUpDown,
   Sparkles,
   Info,
+  Flame,
+  Snowflake,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -30,7 +32,7 @@ import { CricketField } from "@/components/cricket-field"
 import { Drawer, DrawerContent, DrawerTrigger, DrawerTitle } from "@/components/ui/drawer"
 import { PlayerStatsDrawer } from "@/components/player-stats-drawer"
 import { Confetti } from "@/components/confetti"
-import type { PlayerWithTeam, MatchWithTeams, PlayerRole } from "@/lib/types"
+import type { PlayerWithTeam, MatchWithTeams, PlayerRole, PlayerVenueStats, PlayerVsTeamStats, PlayerSeasonStats } from "@/lib/types"
 import { CAPTAIN_BADGE, VICE_CAPTAIN_BADGE } from "@/lib/badges"
 
 type Props = {
@@ -41,6 +43,9 @@ type Props = {
   initialCaptainId: string | null
   initialViceCaptainId: string | null
   tiplScores: Record<string, number[]>
+  venueStats: Record<string, PlayerVenueStats>
+  vsTeamStats: Record<string, PlayerVsTeamStats>
+  seasonStats: Record<string, PlayerSeasonStats[]>
 }
 
 const ROLE_ORDER: PlayerRole[] = ["WK", "BAT", "AR", "BOWL"]
@@ -65,6 +70,9 @@ export function PickTeamClient({
   initialCaptainId,
   initialViceCaptainId,
   tiplScores,
+  venueStats,
+  vsTeamStats,
+  seasonStats,
 }: Props) {
   const router = useRouter()
   const [isPending, startTransition] = useTransition()
@@ -85,6 +93,23 @@ export function PickTeamClient({
   const [statsPlayerId, setStatsPlayerId] = useState<string | null>(null)
 
   const statsPlayer = statsPlayerId ? players.find((p) => p.id === statsPlayerId) ?? null : null
+
+  const getMatchupChip = useCallback((player: PlayerWithTeam): string | null => {
+    const opponentShort = player.team_id === match.team_home_id
+      ? match.team_away.short_name
+      : match.team_home.short_name
+    const vs = vsTeamStats[player.id]
+    if (!vs || vs.matches < 3) return null
+    if (vs.balls_faced > 0) {
+      const avg = vs.runs / Math.max(vs.matches, 1)
+      if (avg >= 35) return `${avg.toFixed(0)} avg vs ${opponentShort}`
+    }
+    if (Number(vs.overs_bowled) > 0) {
+      const econ = vs.runs_conceded / Number(vs.overs_bowled)
+      if (econ <= 7) return `${econ.toFixed(1)} econ vs ${opponentShort}`
+    }
+    return null
+  }, [match, vsTeamStats])
 
   const hasPlayingXI = playingXIIds.length > 0
 
@@ -268,6 +293,8 @@ export function PickTeamClient({
     const isInXI = playingXIIds.includes(player.id)
     const disabledReason = getDisabledReason(player)
     const isDisabled = !!disabledReason
+    const formIndicator = player.form_indicator
+    const matchupChip = getMatchupChip(player)
 
     return (
       <button
@@ -301,6 +328,8 @@ export function PickTeamClient({
               {player.name}
               <Info className="h-2.5 w-2.5 text-muted-foreground/50 shrink-0 inline ml-0.5" />
             </span>
+            {formIndicator === "hot" && <Flame className="h-2.5 w-2.5 text-orange-500 shrink-0" />}
+            {formIndicator === "cold" && <Snowflake className="h-2.5 w-2.5 text-blue-400 shrink-0" />}
             {isCaptain && <span className="text-[8px] font-bold text-amber-500">C</span>}
             {isVC && <span className="text-[8px] font-bold text-violet-400">VC</span>}
             {hasPlayingXI && isInXI && <Shield className="h-2.5 w-2.5 text-status-success shrink-0" />}
@@ -308,6 +337,9 @@ export function PickTeamClient({
           <div className="flex items-center gap-1">
             <Badge variant="outline" className="text-[8px] h-3 px-0.5 py-0">{player.role}</Badge>
             <span className="text-[9px] text-muted-foreground">{player.credit_cost}</span>
+            {matchupChip && (
+              <span className="text-[8px] text-emerald-500 truncate">{matchupChip}</span>
+            )}
           </div>
           {isDisabled && (
             <span className="text-[10px] text-status-danger">{disabledReason}</span>
@@ -672,6 +704,8 @@ export function PickTeamClient({
               : match.team_away.color
             const disabledReason = getDisabledReason(player)
             const isDisabled = !!disabledReason
+            const formIndicator = player.form_indicator
+            const matchupChip = getMatchupChip(player)
 
             return (
               <button
@@ -719,6 +753,8 @@ export function PickTeamClient({
                       {player.name}
                       <Info className="h-2.5 w-2.5 text-muted-foreground/50 shrink-0 inline ml-0.5" />
                     </span>
+                    {formIndicator === "hot" && <Flame className="h-3 w-3 text-orange-500 shrink-0" />}
+                    {formIndicator === "cold" && <Snowflake className="h-3 w-3 text-blue-400 shrink-0" />}
                     {isCaptain && (
                       <Badge className={`h-4 px-1 text-[9px] ${CAPTAIN_BADGE}`}>C</Badge>
                     )}
@@ -740,6 +776,9 @@ export function PickTeamClient({
                     >
                       {player.role}
                     </Badge>
+                    {matchupChip && (
+                      <span className="text-[9px] text-emerald-500">{matchupChip}</span>
+                    )}
                   </div>
                   {isDisabled && disabledReason && (
                     <p className="text-[10px] text-status-danger mt-0.5">{disabledReason}</p>
@@ -942,6 +981,17 @@ export function PickTeamClient({
       <PlayerStatsDrawer
         player={statsPlayer}
         tiplScores={statsPlayerId ? tiplScores[statsPlayerId] ?? [] : []}
+        venueStats={statsPlayerId ? venueStats[statsPlayerId] ?? null : null}
+        vsTeamStats={statsPlayerId ? vsTeamStats[statsPlayerId] ?? null : null}
+        seasonStats={statsPlayerId ? seasonStats[statsPlayerId] ?? [] : []}
+        matchVenue={match.venue}
+        opponentTeamName={
+          statsPlayer
+            ? statsPlayer.team_id === match.team_home_id
+              ? match.team_away.short_name
+              : match.team_home.short_name
+            : ""
+        }
         open={!!statsPlayerId}
         onClose={() => setStatsPlayerId(null)}
       />

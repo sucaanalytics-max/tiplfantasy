@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation"
 import { createClient } from "@/lib/supabase/server"
-import type { PlayerWithTeam, MatchWithTeams } from "@/lib/types"
+import type { PlayerWithTeam, MatchWithTeams, PlayerVenueStats, PlayerVsTeamStats, PlayerSeasonStats } from "@/lib/types"
 import { PickTeamClient } from "./pick-team-client"
 
 export default async function PickTeamPage({
@@ -91,6 +91,47 @@ export default async function PickTeamPage({
     }
   }
 
+  // Fetch venue stats for this match's venue
+  const { data: venueStatsRaw } = await supabase
+    .from("player_venue_stats")
+    .select("*")
+    .eq("venue", typedMatch.venue)
+    .in("player_id", playerIds)
+
+  const venueStatsMap: Record<string, PlayerVenueStats> = {}
+  for (const vs of venueStatsRaw ?? []) {
+    venueStatsMap[vs.player_id] = vs as PlayerVenueStats
+  }
+
+  // Fetch vs-team stats for both opponents
+  const homeShort = typedMatch.team_home.short_name
+  const awayShort = typedMatch.team_away.short_name
+  const { data: vsTeamStatsRaw } = await supabase
+    .from("player_vs_team_stats")
+    .select("*")
+    .in("opponent_team", [homeShort, awayShort])
+    .in("player_id", playerIds)
+
+  const vsTeamStatsMap: Record<string, PlayerVsTeamStats> = {}
+  for (const vt of vsTeamStatsRaw ?? []) {
+    vsTeamStatsMap[vt.player_id] = vt as PlayerVsTeamStats
+  }
+
+  // Fetch last 3 seasons of stats
+  const currentYear = new Date().getFullYear()
+  const { data: seasonStatsRaw } = await supabase
+    .from("player_season_stats")
+    .select("*")
+    .in("player_id", playerIds)
+    .gte("season", currentYear - 2)
+    .order("season", { ascending: false })
+
+  const seasonStatsMap: Record<string, PlayerSeasonStats[]> = {}
+  for (const ss of seasonStatsRaw ?? []) {
+    if (!seasonStatsMap[ss.player_id]) seasonStatsMap[ss.player_id] = []
+    seasonStatsMap[ss.player_id].push(ss as PlayerSeasonStats)
+  }
+
   return (
     <PickTeamClient
       match={typedMatch}
@@ -100,6 +141,9 @@ export default async function PickTeamPage({
       initialCaptainId={existingSelection?.captain_id ?? null}
       initialViceCaptainId={existingSelection?.vice_captain_id ?? null}
       tiplScores={tiplScoreMap}
+      venueStats={venueStatsMap}
+      vsTeamStats={vsTeamStatsMap}
+      seasonStats={seasonStatsMap}
     />
   )
 }
