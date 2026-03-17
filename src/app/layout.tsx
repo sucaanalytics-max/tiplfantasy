@@ -26,6 +26,9 @@ export const metadata: Metadata = {
   title: "TIPL Fantasy",
   description: "Office IPL 2026 Fantasy Cricket",
   manifest: "/manifest.json",
+  formatDetection: {
+    telephone: false,
+  },
   appleWebApp: {
     capable: true,
     statusBarStyle: "black-translucent",
@@ -53,7 +56,10 @@ export const viewport: Viewport = {
   maximumScale: 1,
   userScalable: false,
   viewportFit: "cover",
-  themeColor: "#0b0f1e",
+  themeColor: [
+    { media: "(prefers-color-scheme: light)", color: "#f5f5f7" },
+    { media: "(prefers-color-scheme: dark)", color: "#0b0f1e" },
+  ],
 }
 
 export default function RootLayout({
