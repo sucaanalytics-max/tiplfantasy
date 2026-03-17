@@ -56,7 +56,8 @@ export async function markNoResult(matchId: string): Promise<{ success?: boolean
       breakdown: null,
     }))
 
-    await admin.from("user_match_scores").insert(rows)
+    const { error: insertError } = await admin.from("user_match_scores").insert(rows)
+    if (insertError) return { error: `Failed to insert scores: ${insertError.message}` }
   }
 
   await admin
@@ -85,7 +86,7 @@ export async function fetchPlayingXI(matchId: string, cricapiMatchId: string) {
 
   const { data: dbPlayers } = await admin
     .from("players")
-    .select("id, name")
+    .select("id, name, team_id")
     .in("team_id", [match.team_home_id, match.team_away_id])
 
   if (!dbPlayers) return { error: "Failed to load players" }
@@ -110,26 +111,42 @@ export async function fetchPlayingXI(matchId: string, cricapiMatchId: string) {
     }
   }
 
-  if (matched.length > 0) {
-    await admin.from("playing_xi").delete().eq("match_id", matchId)
+  // Deduplicate — fuzzyMatchName can map multiple API names to the same DB player
+  const deduped = [...new Set(matched)]
 
-    const { data: matchedPlayers } = await admin
-      .from("players")
-      .select("id, team_id")
-      .in("id", matched)
+  if (deduped.length === 0) {
+    return { error: "No players matched from API response" }
+  }
 
-    if (matchedPlayers) {
-      await admin.from("playing_xi").insert(
-        matchedPlayers.map((p) => ({
-          match_id: matchId,
-          player_id: p.id,
-          team_id: p.team_id,
-        }))
-      )
+  // Validate: must be exactly 11 per team (22 total) — not full squad
+  const playerTeamMap = new Map(dbPlayers.map((p) => [p.id, p.team_id]))
+  const byTeam = new Map<string, string[]>()
+  for (const pid of deduped) {
+    const tid = playerTeamMap.get(pid)
+    if (!tid) continue
+    const list = byTeam.get(tid) ?? []
+    list.push(pid)
+    byTeam.set(tid, list)
+  }
+
+  const teamCounts = [...byTeam.values()].map((v) => v.length)
+  if (teamCounts.length !== 2 || teamCounts.some((c) => c !== 11)) {
+    return {
+      error: `Squad data returned (${deduped.length} players: ${teamCounts.join(" + ")}), not confirmed Playing XI (11+11). Try again after toss.`,
     }
   }
 
-  return { success: true, matched: matched.length, unmatched }
+  await admin.from("playing_xi").delete().eq("match_id", matchId)
+  const { error: insertError } = await admin.from("playing_xi").insert(
+    deduped.map((pid) => ({
+      match_id: matchId,
+      player_id: pid,
+      team_id: playerTeamMap.get(pid)!,
+    }))
+  )
+  if (insertError) return { error: `Failed to insert Playing XI: ${insertError.message}` }
+
+  return { success: true, matched: deduped.length, unmatched }
 }
 
 export async function fetchMatchScorecard(

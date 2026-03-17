@@ -29,25 +29,29 @@ export default async function DashboardPage() {
     .eq("user_id", user.id)
     .single()
 
-  // Fetch next upcoming match
-  const { data: nextMatch } = await supabase
+  // Fetch next 5 upcoming matches
+  const { data: upcomingMatches } = await supabase
     .from("matches")
     .select("*, team_home:teams!matches_team_home_id_fkey(short_name, color), team_away:teams!matches_team_away_id_fkey(short_name, color)")
     .eq("status", "upcoming")
     .order("start_time", { ascending: true })
-    .limit(1)
-    .single()
+    .limit(5)
 
-  // Check if user has submitted for next match
-  let hasSubmitted = false
-  if (nextMatch) {
-    const { count } = await supabase
+  const nextMatch = upcomingMatches?.[0] ?? null
+  const moreMatches = upcomingMatches?.slice(1) ?? []
+
+  // Check which upcoming matches user has submitted for
+  const submittedMatchIds = new Set<string>()
+  if (upcomingMatches && upcomingMatches.length > 0) {
+    const matchIds = upcomingMatches.map((m) => m.id)
+    const { data: subs } = await supabase
       .from("selections")
-      .select("id", { count: "exact", head: true })
+      .select("match_id")
       .eq("user_id", user.id)
-      .eq("match_id", nextMatch.id)
-    hasSubmitted = (count ?? 0) > 0
+      .in("match_id", matchIds)
+    for (const s of subs ?? []) submittedMatchIds.add(s.match_id)
   }
+  const hasSubmitted = nextMatch ? submittedMatchIds.has(nextMatch.id) : false
 
   // Fetch last completed match result
   const { data: lastMatch } = await supabase
@@ -216,6 +220,46 @@ export default async function DashboardPage() {
             </div>
           </CardContent>
         </Card>
+      )}
+
+      {/* More upcoming matches */}
+      {moreMatches.length > 0 && (
+        <div className="space-y-2">
+          <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Upcoming</p>
+          {moreMatches.map((match) => {
+            const home = match.team_home as unknown as { short_name: string; color: string }
+            const away = match.team_away as unknown as { short_name: string; color: string }
+            const submitted = submittedMatchIds.has(match.id)
+            return (
+              <Link key={match.id} href={`/match/${match.id}/pick`}>
+                <div className="flex items-center justify-between py-2.5 px-3 rounded-lg bg-secondary/50 hover:bg-secondary transition-colors">
+                  <div className="flex items-center gap-3">
+                    <Badge variant="outline" className="text-[10px] w-8 justify-center">
+                      {match.match_number}
+                    </Badge>
+                    <span className="text-sm font-medium">
+                      <span style={{ color: home.color }}>{home.short_name}</span>
+                      <span className="text-muted-foreground"> vs </span>
+                      <span style={{ color: away.color }}>{away.short_name}</span>
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs text-muted-foreground">
+                      {format(new Date(match.start_time), "MMM d, h:mm a")}
+                    </span>
+                    {submitted ? (
+                      <CheckCircle2 className="h-4 w-4 text-status-success" />
+                    ) : (
+                      <Badge variant="outline" className="text-[10px] bg-primary/10 text-primary border-primary/20">
+                        Pick
+                      </Badge>
+                    )}
+                  </div>
+                </div>
+              </Link>
+            )
+          })}
+        </div>
       )}
 
       {/* Last match result */}

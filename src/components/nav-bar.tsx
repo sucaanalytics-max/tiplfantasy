@@ -11,6 +11,8 @@ import {
   User,
   Shield,
   LogOut,
+  Award,
+  Coins,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { createClient } from "@/lib/supabase/client"
@@ -21,6 +23,8 @@ const navItems = [
   { href: "/dashboard", label: "Home", icon: LayoutDashboard },
   { href: "/matches", label: "Matches", icon: Swords },
   { href: "/leagues", label: "Leagues", icon: Users },
+  { href: "/predictions", label: "Predict", icon: Award },
+  { href: "/h2h", label: "H2H", icon: Coins },
   { href: "/leaderboard", label: "Board", icon: Trophy },
   { href: "/profile", label: "Profile", icon: User },
 ]

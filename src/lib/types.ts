@@ -286,3 +286,53 @@ export type LeagueLeaderboardEntry = {
   avg_points: number
   season_rank: number
 }
+
+// Season Predictions
+export type SeasonPrediction = {
+  id: string
+  user_id: string
+  category: "purple_cap" | "orange_cap" | "mvp"
+  player_id: string
+  created_at: string
+  updated_at: string
+}
+
+export type PredictionCategory = SeasonPrediction["category"]
+
+export type AwardStanding = {
+  player_id: string
+  player_name: string
+  team_short_name: string
+  team_color: string
+  stat_value: number
+  matches_played: number
+}
+
+// H2H Tokens
+export type UserTokens = {
+  user_id: string
+  balance: number
+  updated_at: string
+}
+
+export type TokenTransaction = {
+  id: string
+  user_id: string
+  amount: number
+  type: "admin_grant" | "h2h_wager" | "h2h_win" | "h2h_refund"
+  reference_id: string | null
+  note: string | null
+  created_at: string
+}
+
+export type H2HChallenge = {
+  id: string
+  match_id: string
+  challenger_id: string
+  opponent_id: string | null
+  wager: number
+  status: "open" | "accepted" | "completed" | "cancelled" | "expired"
+  winner_id: string | null
+  created_at: string
+  resolved_at: string | null
+}
