@@ -401,6 +401,13 @@ export function PickTeamClient({
                       </div>
                       <div className="flex items-center gap-1 shrink-0">
                         <button
+                          className="h-5 w-5 rounded-full flex items-center justify-center text-muted-foreground/50 hover:text-destructive hover:bg-destructive/10 transition-colors"
+                          onClick={() => togglePlayer(player.id)}
+                          title="Remove player"
+                        >
+                          <X className="h-3 w-3" />
+                        </button>
+                        <button
                           className={cn(
                             "h-7 w-7 rounded-full text-[9px] font-bold flex items-center justify-center border transition-all",
                             isCaptain
@@ -668,155 +675,87 @@ export function PickTeamClient({
         {/* Right panel — player browser (full-width on mobile) */}
         <div className="lg:col-span-7 lg:overflow-y-auto">
 
-      {/* Player list */}
-      {teamFilter === "ALL" ? (
-        <div className="grid grid-cols-2 gap-px bg-border">
-          {/* Home column */}
-          <div className="bg-background">
-            <div className="px-3 py-1.5 text-center border-b border-border">
-              <span className="text-xs font-semibold" style={{ color: match.team_home.color }}>
-                {match.team_home.short_name}
-              </span>
-            </div>
-            <div className="divide-y divide-border">
-              {filteredPlayers
-                .filter(p => p.team_id === match.team_home_id)
-                .map(player => renderPlayerCompact(player))}
-              {filteredPlayers.filter(p => p.team_id === match.team_home_id).length === 0 && (
-                <div className="py-12 text-center text-sm text-muted-foreground">No players found</div>
-              )}
-            </div>
-          </div>
-          {/* Away column */}
-          <div className="bg-background">
-            <div className="px-3 py-1.5 text-center border-b border-border">
-              <span className="text-xs font-semibold" style={{ color: match.team_away.color }}>
-                {match.team_away.short_name}
-              </span>
-            </div>
-            <div className="divide-y divide-border">
-              {filteredPlayers
-                .filter(p => p.team_id === match.team_away_id)
-                .map(player => renderPlayerCompact(player))}
-              {filteredPlayers.filter(p => p.team_id === match.team_away_id).length === 0 && (
-                <div className="py-12 text-center text-sm text-muted-foreground">No players found</div>
-              )}
-            </div>
-          </div>
-        </div>
-      ) : (
-        <div className="divide-y divide-border">
-          {filteredPlayers.map((player) => {
-            const isSelected = selectedIds.has(player.id)
-            const isCaptain = captainId === player.id
-            const isVC = viceCaptainId === player.id
-            const isInXI = playingXIIds.includes(player.id)
-            const isHome = player.team_id === match.team_home_id
-            const teamColor = isHome
-              ? match.team_home.color
-              : match.team_away.color
-            const disabledReason = getDisabledReason(player)
-            const isDisabled = !!disabledReason
-            const formIndicator = player.form_indicator
-            const matchupChip = getMatchupChip(player)
+      {/* Player list — segmented by role */}
+      {(() => {
+        const rolesToShow = activeFilter === "ALL" ? ROLE_ORDER : [activeFilter]
+        const showHeaders = activeFilter === "ALL"
 
-            return (
-              <button
-                key={player.id}
-                onClick={() => {
-                  if (!isDisabled) togglePlayer(player.id)
-                }}
-                disabled={isDisabled}
-                title={disabledReason ?? undefined}
-                className={cn(
-                  "w-full flex items-center gap-3 px-4 py-3 text-left transition-colors",
-                  isSelected
-                    ? "bg-primary/5"
-                    : isDisabled
-                      ? "opacity-40"
-                      : "hover:bg-secondary/50",
-                  hasPlayingXI && !isInXI && "opacity-50"
-                )}
-              >
-                {/* Selection indicator */}
-                <div
-                  className={cn(
-                    "h-5 w-5 rounded-full border-2 flex items-center justify-center shrink-0 transition-colors",
-                    isSelected
-                      ? "border-primary bg-primary"
-                      : "border-muted-foreground/30"
+        return (
+          <div>
+            {rolesToShow.map((role) => {
+              const rolePlayers = filteredPlayers.filter((p) => p.role === role)
+              if (rolePlayers.length === 0 && !showHeaders) return null
+
+              const homePlayers = rolePlayers.filter((p) => p.team_id === match.team_home_id)
+              const awayPlayers = rolePlayers.filter((p) => p.team_id === match.team_away_id)
+              const maxLen = Math.max(homePlayers.length, awayPlayers.length)
+
+              return (
+                <div key={role}>
+                  {/* Role header */}
+                  {showHeaders && (
+                    <div className="sticky top-0 z-10 px-4 py-1.5 bg-secondary/80 backdrop-blur-sm border-b border-border flex items-center justify-between">
+                      <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                        {ROLE_LABELS[role]}s
+                      </span>
+                      <span className="text-[10px] text-muted-foreground tabular-nums">
+                        {roleCount[role]}/{ROLE_LIMITS[role][1]}
+                      </span>
+                    </div>
                   )}
-                >
-                  {isSelected && <Check className="h-3 w-3 text-primary-foreground" />}
-                </div>
 
-                {/* Team color stripe */}
-                <div
-                  className="w-0.5 h-8 rounded-full shrink-0"
-                  style={{ backgroundColor: teamColor }}
-                />
-
-                {/* Player info */}
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-1.5">
-                    <span
-                      className="text-sm font-medium truncate cursor-pointer underline-offset-2 hover:underline text-foreground inline-flex items-center gap-0.5"
-                      onClick={(e) => { e.stopPropagation(); setStatsPlayerId(player.id) }}
-                    >
-                      {player.name}
-                      <Info className="h-2.5 w-2.5 text-muted-foreground/50 shrink-0 inline ml-0.5" />
-                    </span>
-                    <FormIcon indicator={formIndicator as "hot" | "cold" | null} />
-                    {isCaptain && (
-                      <Badge className={`h-4 px-1 text-[9px] ${CAPTAIN_BADGE}`}>C</Badge>
-                    )}
-                    {isVC && (
-                      <Badge className={`h-4 px-1 text-[9px] ${VICE_CAPTAIN_BADGE}`}>VC</Badge>
-                    )}
-                    {hasPlayingXI && isInXI && (
-                      <span className="h-2.5 w-2.5 rounded-full bg-status-success shrink-0" />
-                    )}
-                  </div>
-                  <div className="flex items-center gap-1.5 mt-0.5">
-                    <span className="text-[10px]" style={{ color: teamColor }}>
-                      {player.team.short_name}
-                    </span>
-                    <span className="text-[10px] text-muted-foreground">•</span>
-                    <Badge
-                      variant="outline"
-                      className="text-[9px] h-3.5 px-1 py-0"
-                    >
-                      {player.role}
-                    </Badge>
-                    {matchupChip && (
-                      <span className="text-[9px] text-emerald-500">{matchupChip}</span>
-                    )}
-                  </div>
-                  {isDisabled && disabledReason && (
-                    <p className="text-[10px] text-status-danger mt-0.5">{disabledReason}</p>
+                  {teamFilter === "ALL" ? (
+                    /* 2-column home/away grid */
+                    <div className="grid grid-cols-2 gap-px bg-border">
+                      <div className="bg-background">
+                        {role === rolesToShow[0] && (
+                          <div className="px-3 py-1 text-center border-b border-border">
+                            <span className="text-[10px] font-semibold" style={{ color: match.team_home.color }}>
+                              {match.team_home.short_name}
+                            </span>
+                          </div>
+                        )}
+                        <div className="divide-y divide-border">
+                          {homePlayers.map((player) => renderPlayerCompact(player))}
+                          {homePlayers.length === 0 && (
+                            <div className="py-4 text-center text-[10px] text-muted-foreground">—</div>
+                          )}
+                        </div>
+                      </div>
+                      <div className="bg-background">
+                        {role === rolesToShow[0] && (
+                          <div className="px-3 py-1 text-center border-b border-border">
+                            <span className="text-[10px] font-semibold" style={{ color: match.team_away.color }}>
+                              {match.team_away.short_name}
+                            </span>
+                          </div>
+                        )}
+                        <div className="divide-y divide-border">
+                          {awayPlayers.map((player) => renderPlayerCompact(player))}
+                          {awayPlayers.length === 0 && (
+                            <div className="py-4 text-center text-[10px] text-muted-foreground">—</div>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  ) : (
+                    /* Single column for HOME/AWAY filter */
+                    <div className="divide-y divide-border">
+                      {rolePlayers.map((player) => renderPlayerCompact(player))}
+                    </div>
                   )}
                 </div>
+              )
+            })}
 
-                {/* Credit cost */}
-                <span className="text-xs font-semibold tabular-nums text-muted-foreground shrink-0 w-8 text-right">
-                  {player.credit_cost}
-                </span>
-
-                {/* Star for selected */}
-                {isSelected && (
-                  <Star className="h-4 w-4 text-primary shrink-0 fill-primary" />
-                )}
-              </button>
-            )
-          })}
-
-          {filteredPlayers.length === 0 && (
-            <div className="py-12 text-center text-sm text-muted-foreground">
-              No players found
-            </div>
-          )}
-        </div>
-      )}
+            {filteredPlayers.length === 0 && (
+              <div className="py-12 text-center text-sm text-muted-foreground">
+                No players found
+              </div>
+            )}
+          </div>
+        )
+      })()}
 
         </div>{/* end right panel */}
       </div>{/* end split-panel grid */}
