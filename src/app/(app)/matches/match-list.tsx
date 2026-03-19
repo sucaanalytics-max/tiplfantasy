@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button"
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs"
 import { format } from "date-fns"
 import { CountdownTimer } from "@/components/countdown-timer"
-import { TeamBadge, VsBadge } from "@/components/team-badge"
+import { TeamLogo } from "@/components/team-logo"
 import { Swords } from "lucide-react"
 import { useMemo } from "react"
 import { STATUS_CONFIG } from "@/lib/badges"
@@ -124,7 +124,7 @@ export function MatchList({
                   const hasSubmitted = submittedMatches.has(match.id)
 
                   return (
-                    <Card key={match.id} className={`border border-border overflow-hidden ${match.status === "live" ? "border-status-live/20 shadow-[0_0_16px_oklch(0.55_0.25_27/0.15)]" : ""}`}>
+                    <Card key={match.id} className={`border border-border overflow-hidden ${match.status === "live" ? "border-status-live/20 live-glow" : ""}`}>
                       {/* Team color gradient bar */}
                       <div
                         className="h-1"
@@ -145,14 +145,16 @@ export function MatchList({
                         <div className="flex items-center justify-between">
                           <div className="flex items-center gap-3">
                             <div className="flex flex-col items-center gap-0.5">
-                              <TeamBadge shortName={home.short_name} color={home.color} logoUrl={home.logo_url} size="md" />
+                              <TeamLogo team={home} size="md" />
                               <span className="text-[10px] font-bold font-display" style={{ color: home.color }}>
                                 {home.short_name}
                               </span>
                             </div>
-                            <VsBadge />
+                            <span className="inline-flex items-center justify-center rounded-full bg-primary/15 text-primary text-[10px] font-bold font-display h-6 w-6 ring-1 ring-primary/20">
+                              VS
+                            </span>
                             <div className="flex flex-col items-center gap-0.5">
-                              <TeamBadge shortName={away.short_name} color={away.color} logoUrl={away.logo_url} size="md" />
+                              <TeamLogo team={away} size="md" />
                               <span className="text-[10px] font-bold font-display" style={{ color: away.color }}>
                                 {away.short_name}
                               </span>

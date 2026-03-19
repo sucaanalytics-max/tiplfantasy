@@ -8,10 +8,11 @@ import { Button } from "@/components/ui/button"
 import { ArrowLeft, Trophy } from "lucide-react"
 import { RankBadge } from "@/components/rank-badge"
 import { Podium } from "@/components/podium"
-import { TeamBadge, VsBadge } from "@/components/team-badge"
+import { TeamLogo } from "@/components/team-logo"
 import { EmptyState } from "@/components/empty-state"
 import { getInitials, getAvatarColor } from "@/lib/avatar"
 import { PageTransition } from "@/components/page-transition"
+import { CricketBall } from "@/components/icons/cricket-ball"
 
 export default async function ScoresPage({
   params,
@@ -51,6 +52,8 @@ export default async function ScoresPage({
     .eq("match_id", id)
     .order("rank", { ascending: true })
 
+  const myScore = userScores?.find((s) => s.user_id === user.id) ?? null
+
   // Get user's own selection for this match
   const { data: mySelection } = await supabase
     .from("selections")
@@ -88,10 +91,10 @@ export default async function ScoresPage({
           <h1 className="text-xl font-bold tracking-tight font-display">
             Match #{match.match_number} Scores
           </h1>
-          <div className="flex items-center gap-1.5 mt-0.5">
-            <TeamBadge shortName={home.short_name} color={home.color} logoUrl={home.logo_url} size="md" />
-            <VsBadge />
-            <TeamBadge shortName={away.short_name} color={away.color} logoUrl={away.logo_url} size="md" />
+          <div className="flex items-center gap-2 mt-1">
+            <TeamLogo team={home} size="md" />
+            <span className="text-xs font-bold text-muted-foreground">VS</span>
+            <TeamLogo team={away} size="md" />
           </div>
         </div>
       </div>
@@ -100,6 +103,40 @@ export default async function ScoresPage({
         <div className="text-sm text-muted-foreground bg-secondary border border-border rounded-lg px-4 py-3">
           {match.result_summary}
         </div>
+      )}
+
+      {/* Your Match Score — Hero Section */}
+      {myScore && (
+        <Card className="border border-border overflow-hidden relative bg-gradient-to-br from-primary/8 via-transparent to-transparent">
+          <CardContent className="pt-5 pb-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="rounded-full bg-primary/15 p-2.5 shrink-0">
+                  <CricketBall className="h-5 w-5" />
+                </div>
+                <div>
+                  <p className="text-xs text-muted-foreground mb-0.5">Your Match Points</p>
+                  <p className="text-3xl font-bold font-display animate-count-up">
+                    {myScore.total_points}
+                  </p>
+                  {(myScore.captain_points > 0 || myScore.vc_points > 0) && (
+                    <p className="text-[10px] text-muted-foreground mt-0.5">
+                      {myScore.captain_points > 0 && `C +${myScore.captain_points}`}
+                      {myScore.captain_points > 0 && myScore.vc_points > 0 && " · "}
+                      {myScore.vc_points > 0 && `VC +${myScore.vc_points}`}
+                    </p>
+                  )}
+                </div>
+              </div>
+              {myScore.rank != null && (
+                <div className="text-center">
+                  <p className="text-xs text-muted-foreground mb-1">Rank</p>
+                  <RankBadge rank={myScore.rank} size="lg" />
+                </div>
+              )}
+            </div>
+          </CardContent>
+        </Card>
       )}
 
       {/* Match Leaderboard */}
@@ -174,12 +211,10 @@ export default async function ScoresPage({
                 const isVC = mySelection?.vice_captain_id === ps.player_id
                 const multiplier = isCaptain ? 2 : isVC ? 1.5 : 1
 
+                const roleAccent = { WK: "border-l-[3px] border-l-amber-400", BAT: "border-l-[3px] border-l-blue-400", AR: "border-l-[3px] border-l-emerald-400", BOWL: "border-l-[3px] border-l-purple-400" }
+                const roleBorder = roleAccent[player.role as keyof typeof roleAccent] ?? "border-l-[3px] border-l-border"
                 return (
-                  <div key={ps.id} className="flex items-center gap-3 py-2.5 px-3 rounded-lg bg-secondary/50">
-                    <div
-                      className="w-1 h-8 rounded-full flex-shrink-0"
-                      style={{ backgroundColor: player.team?.color }}
-                    />
+                  <div key={ps.id} className={`flex items-center gap-3 py-2.5 px-3 rounded-lg bg-secondary/50 ${roleBorder}`}>
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-1.5">
                         <span className="text-sm font-medium truncate">{player.name}</span>

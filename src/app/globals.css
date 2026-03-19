@@ -354,3 +354,54 @@
     animation: none !important;
   }
 }
+
+/* ============================================================
+   Cricket Design Tokens
+   ============================================================ */
+
+@layer utilities {
+  /* Subtle cricket field green radial at the bottom of dark pages */
+  .cricket-field-bg {
+    background-image: radial-gradient(
+      ellipse 90% 40% at 50% 110%,
+      oklch(0.22 0.06 150 / 0.12) 0%,
+      transparent 70%
+    );
+  }
+
+  /* Live match card glow — stronger red-orange ring */
+  .live-glow {
+    box-shadow:
+      0 0 0 1px oklch(0.65 0.22 30 / 0.35),
+      0 0 24px oklch(0.65 0.22 30 / 0.18);
+  }
+
+  /* Medal ring utilities for leaderboard top 3 */
+  .ring-gold {
+    box-shadow: 0 0 0 2px oklch(0.78 0.17 86);
+  }
+  .ring-silver {
+    box-shadow: 0 0 0 2px oklch(0.72 0.01 260);
+  }
+  .ring-bronze {
+    box-shadow: 0 0 0 2px oklch(0.63 0.10 55);
+  }
+
+  /* Role accent utilities for player cards */
+  .role-wk {
+    border-left: 4px solid oklch(0.78 0.17 86);
+    background-color: oklch(0.78 0.17 86 / 0.05);
+  }
+  .role-bat {
+    border-left: 4px solid oklch(0.68 0.16 265);
+    background-color: oklch(0.68 0.16 265 / 0.05);
+  }
+  .role-ar {
+    border-left: 4px solid oklch(0.65 0.20 145);
+    background-color: oklch(0.65 0.20 145 / 0.05);
+  }
+  .role-bowl {
+    border-left: 4px solid oklch(0.65 0.20 304);
+    background-color: oklch(0.65 0.20 304 / 0.05);
+  }
+}

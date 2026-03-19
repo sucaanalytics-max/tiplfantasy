@@ -99,3 +99,27 @@ export async function getAllPredictions() {
 
   return data ?? []
 }
+
+export async function getCommunityVotes(): Promise<Record<PredictionCategory, { player_id: string; count: number }[]>> {
+  const admin = createAdminClient()
+  const { data } = await admin
+    .from("season_predictions")
+    .select("category, player_id")
+
+  const empty = { purple_cap: [], orange_cap: [], mvp: [] } as Record<PredictionCategory, { player_id: string; count: number }[]>
+  if (!data) return empty
+
+  const counts: Record<string, Record<string, number>> = {}
+  for (const row of data) {
+    if (!counts[row.category]) counts[row.category] = {}
+    counts[row.category][row.player_id] = (counts[row.category][row.player_id] ?? 0) + 1
+  }
+
+  const result = { ...empty }
+  for (const cat of ["purple_cap", "orange_cap", "mvp"] as PredictionCategory[]) {
+    result[cat] = Object.entries(counts[cat] ?? {})
+      .map(([player_id, count]) => ({ player_id, count }))
+      .sort((a, b) => b.count - a.count)
+  }
+  return result
+}

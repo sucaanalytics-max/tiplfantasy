@@ -17,7 +17,7 @@ import {
   Info,
 } from "lucide-react"
 import { FormIcon } from "@/components/form-icon"
-import { TeamBadge } from "@/components/team-badge"
+import { TeamLogo } from "@/components/team-logo"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Card } from "@/components/ui/card"
@@ -49,6 +49,14 @@ type Props = {
 }
 
 const ROLE_ORDER: PlayerRole[] = ["WK", "BAT", "AR", "BOWL"]
+
+const ROLE_ACCENT: Record<PlayerRole, string> = {
+  WK:   "border-l-[3px] border-l-amber-400",
+  BAT:  "border-l-[3px] border-l-blue-400",
+  AR:   "border-l-[3px] border-l-emerald-400",
+  BOWL: "border-l-[3px] border-l-purple-400",
+}
+
 const ROLE_LABELS: Record<PlayerRole, string> = {
   WK: "Wicket-keeper",
   BAT: "Batsman",
@@ -307,10 +315,13 @@ export function PickTeamClient({
         title={disabledReason ?? undefined}
         className={cn(
           "w-full flex items-center gap-2 px-2.5 py-2.5 text-left transition-colors",
+          ROLE_ACCENT[player.role],
           isSelected ? "bg-primary/5" : isDisabled ? "opacity-40" : "hover:bg-secondary/50",
           hasPlayingXI && !isInXI && "opacity-50"
         )}
       >
+        {/* Team logo */}
+        <TeamLogo team={player.team} size="sm" className="shrink-0" />
         {/* Selection dot */}
         <div className={cn(
           "h-4 w-4 rounded-full border-2 flex items-center justify-center shrink-0",
@@ -465,9 +476,9 @@ export function PickTeamClient({
               <div className="flex items-center gap-2">
                 <h1 className="text-lg font-bold">Match {match.match_number}</h1>
                 <div className="flex items-center gap-1.5">
-                  <TeamBadge shortName={match.team_home.short_name} color={match.team_home.color} logoUrl={match.team_home.logo_url} size="sm" />
+                  <TeamLogo team={match.team_home} size="sm" />
                   <span className="text-xs text-muted-foreground">vs</span>
-                  <TeamBadge shortName={match.team_away.short_name} color={match.team_away.color} logoUrl={match.team_away.logo_url} size="sm" />
+                  <TeamLogo team={match.team_away} size="sm" />
                 </div>
               </div>
               <p className="text-xs text-muted-foreground">

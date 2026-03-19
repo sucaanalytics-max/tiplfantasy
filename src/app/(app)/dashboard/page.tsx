@@ -3,11 +3,11 @@ import { redirect } from "next/navigation"
 import Link from "next/link"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { Button } from "@/components/ui/button"
-import { format, isPast, differenceInHours } from "date-fns"
-import { CountdownTimer } from "@/components/countdown-timer"
-import { TeamBadge, VsBadge } from "@/components/team-badge"
-import { Trophy, Target, TrendingUp, Clock, CheckCircle2, Users, ChevronRight } from "lucide-react"
+import { format } from "date-fns"
+import { TeamBadge } from "@/components/team-badge"
+import { MatchCard } from "@/components/match-card"
+import { Target, Users, ChevronRight } from "lucide-react"
+import { Trophy } from "@/components/icons/trophy"
 import { getMyLeagues } from "@/actions/leagues"
 import { getInitials, getAvatarColor } from "@/lib/avatar"
 import { RankBadge } from "@/components/rank-badge"
@@ -110,7 +110,6 @@ export default async function DashboardPage() {
   }
 
   const firstName = profile?.display_name?.split(" ")[0] ?? "Player"
-  const hoursUntilMatch = nextMatch ? differenceInHours(new Date(nextMatch.start_time), new Date()) : null
 
   return (
     <PageTransition>
@@ -168,92 +167,12 @@ export default async function DashboardPage() {
       </div>
 
       {/* Hero match card */}
-      {nextMatch && (() => {
-        const home = nextMatch.team_home as unknown as { short_name: string; color: string; logo_url: string | null }
-        const away = nextMatch.team_away as unknown as { short_name: string; color: string; logo_url: string | null }
-        return (
-          <Card className="border border-border overflow-hidden relative">
-            {/* Team color gradient background */}
-            <div
-              className="absolute inset-0 opacity-[0.06] pointer-events-none"
-              style={{
-                background: `linear-gradient(135deg, ${home.color} 0%, transparent 40%, transparent 60%, ${away.color} 100%)`,
-              }}
-            />
-            {/* Team color gradient bar */}
-            <div
-              className="absolute top-0 left-0 right-0 h-1"
-              style={{
-                background: `linear-gradient(to right, ${home.color}, transparent 40%, transparent 60%, ${away.color})`,
-              }}
-            />
-            <CardHeader className="pb-2 pt-5">
-              <div className="flex items-center justify-between">
-                <CardTitle className="text-sm flex items-center gap-2 text-muted-foreground">
-                  <Clock className="h-3.5 w-3.5" />
-                  Next Match
-                  {!isPast(new Date(nextMatch.start_time)) && (
-                    <span className="relative flex h-2 w-2">
-                      <span className={`animate-ping absolute inline-flex h-full w-full rounded-full opacity-75 ${hoursUntilMatch !== null && hoursUntilMatch < 24 ? "bg-orange-400" : "bg-blue-400"}`} />
-                      <span className={`relative inline-flex rounded-full h-2 w-2 ${hoursUntilMatch !== null && hoursUntilMatch < 24 ? "bg-orange-500" : "bg-blue-500"}`} />
-                    </span>
-                  )}
-                </CardTitle>
-                <Badge variant="outline" className="text-[10px]">
-                  #{nextMatch.match_number}
-                </Badge>
-              </div>
-            </CardHeader>
-            <CardContent className="space-y-4 pb-5">
-              {/* Team badges + VS */}
-              <div className="flex items-center justify-center gap-5">
-                <div className="flex flex-col items-center gap-1.5">
-                  <TeamBadge shortName={home.short_name} color={home.color} logoUrl={home.logo_url} size="lg" />
-                  <span className="text-sm font-bold font-display" style={{ color: home.color }}>
-                    {home.short_name}
-                  </span>
-                </div>
-                <VsBadge />
-                <div className="flex flex-col items-center gap-1.5">
-                  <TeamBadge shortName={away.short_name} color={away.color} logoUrl={away.logo_url} size="lg" />
-                  <span className="text-sm font-bold font-display" style={{ color: away.color }}>
-                    {away.short_name}
-                  </span>
-                </div>
-              </div>
-
-              {/* Venue + time + countdown */}
-              <div className="text-center space-y-1">
-                <p className="text-xs text-muted-foreground">{nextMatch.venue}</p>
-                <p className="text-sm font-medium">
-                  {format(new Date(nextMatch.start_time), "EEE, MMM d \u00b7 h:mm a")}
-                </p>
-                {!isPast(new Date(nextMatch.start_time)) && (
-                  <div className="pt-1">
-                    <CountdownTimer targetTime={nextMatch.start_time} variant="full" />
-                  </div>
-                )}
-              </div>
-
-              {/* CTA */}
-              <div className="flex justify-center">
-                {hasSubmitted ? (
-                  <div className="flex items-center gap-2 bg-status-success-bg border border-status-success/20 rounded-full px-4 py-2">
-                    <CheckCircle2 className="h-4 w-4 text-status-success" />
-                    <span className="text-sm font-semibold text-status-success">Team Submitted</span>
-                  </div>
-                ) : (
-                  <Link href={`/match/${nextMatch.id}/pick`}>
-                    <Button size="sm" className="bg-gradient-to-r from-primary to-blue-400 hover:from-primary/90 hover:to-blue-400/90 text-black font-semibold">
-                      Pick Your Team
-                    </Button>
-                  </Link>
-                )}
-              </div>
-            </CardContent>
-          </Card>
-        )
-      })()}
+      {nextMatch && (
+        <MatchCard
+          match={nextMatch as unknown as Parameters<typeof MatchCard>[0]["match"]}
+          hasSubmitted={hasSubmitted}
+        />
+      )}
 
       {/* Upcoming matches — horizontal carousel */}
       {moreMatches.length > 0 && (
@@ -265,40 +184,14 @@ export default async function DashboardPage() {
             </Link>
           </div>
           <div className="flex gap-3 overflow-x-auto scrollbar-hide snap-x-mandatory pb-1">
-            {moreMatches.map((match) => {
-              const home = match.team_home as unknown as { short_name: string; color: string; logo_url: string | null }
-              const away = match.team_away as unknown as { short_name: string; color: string; logo_url: string | null }
-              const submitted = submittedMatchIds.has(match.id)
-              return (
-                <Link key={match.id} href={`/match/${match.id}/pick`} className="snap-start">
-                  <Card className="border border-border min-w-[160px] w-[160px] hover:border-primary/30 transition-colors relative overflow-hidden">
-                    {/* Mini team gradient */}
-                    <div
-                      className="absolute top-0 left-0 right-0 h-0.5"
-                      style={{
-                        background: `linear-gradient(to right, ${home.color}, ${away.color})`,
-                      }}
-                    />
-                    <CardContent className="p-3 pt-3.5 space-y-2">
-                      <div className="flex items-center justify-between">
-                        <span className="text-[10px] text-muted-foreground">#{match.match_number}</span>
-                        {submitted && <CheckCircle2 className="h-3.5 w-3.5 text-status-success" />}
-                      </div>
-                      <div className="flex items-center justify-center gap-2">
-                        <TeamBadge shortName={home.short_name} color={home.color} logoUrl={home.logo_url} size="sm" />
-                        <VsBadge className="scale-75" />
-                        <TeamBadge shortName={away.short_name} color={away.color} logoUrl={away.logo_url} size="sm" />
-                      </div>
-                      <div className="text-center">
-                        <p className="text-[10px] text-muted-foreground">
-                          {format(new Date(match.start_time), "MMM d, h:mm a")}
-                        </p>
-                      </div>
-                    </CardContent>
-                  </Card>
-                </Link>
-              )
-            })}
+            {moreMatches.map((match) => (
+              <MatchCard
+                key={match.id}
+                match={match as unknown as Parameters<typeof MatchCard>[0]["match"]}
+                hasSubmitted={submittedMatchIds.has(match.id)}
+                compact
+              />
+            ))}
           </div>
         </div>
       )}
@@ -352,7 +245,7 @@ export default async function DashboardPage() {
         <CardHeader className="pb-3">
           <div className="flex items-center justify-between">
             <CardTitle className="text-base flex items-center gap-2">
-              <TrendingUp className="h-4 w-4 text-muted-foreground" />
+              <Trophy className="h-4 w-4" />
               Season Standings
             </CardTitle>
             <Link href="/leaderboard">

@@ -1,14 +1,16 @@
 "use client"
 
 import { useState, useMemo, useTransition } from "react"
+import { motion } from "framer-motion"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { CountdownTimer } from "@/components/countdown-timer"
+import { TeamLogo } from "@/components/team-logo"
 import { submitPrediction } from "@/actions/predictions"
 import { useRouter } from "next/navigation"
-import { Award, Target, Zap, Search, Check, Lock, ChevronDown, ChevronUp } from "lucide-react"
+import { Award, Target, Zap, Search, Check, Lock, Users } from "lucide-react"
 import type { PredictionCategory, AwardStanding } from "@/lib/types"
 
 type Player = {
@@ -29,11 +31,14 @@ type PredictionRecord = {
   } | null
 }
 
+type CommunityVote = { player_id: string; count: number }
+
 const CATEGORIES: {
   key: PredictionCategory
   label: string
   icon: typeof Award
   color: string
+  bgColor: string
   statLabel: string
   description: string
 }[] = [
@@ -42,7 +47,8 @@ const CATEGORIES: {
     label: "Purple Cap",
     icon: Award,
     color: "text-purple-400",
-    statLabel: "Wickets",
+    bgColor: "from-purple-500/10",
+    statLabel: "wkts",
     description: "Highest wicket-taker",
   },
   {
@@ -50,7 +56,8 @@ const CATEGORIES: {
     label: "Orange Cap",
     icon: Target,
     color: "text-orange-400",
-    statLabel: "Runs",
+    bgColor: "from-orange-500/10",
+    statLabel: "runs",
     description: "Top run-scorer",
   },
   {
@@ -58,7 +65,8 @@ const CATEGORIES: {
     label: "MVP",
     icon: Zap,
     color: "text-yellow-400",
-    statLabel: "Fantasy Pts",
+    bgColor: "from-yellow-500/10",
+    statLabel: "pts",
     description: "Most fantasy points",
   },
 ]
@@ -68,11 +76,13 @@ export function PredictionsClient({
   myPredictions,
   deadline,
   standings,
+  communityVotes,
 }: {
   players: Player[]
   myPredictions: PredictionRecord[]
   deadline: string | null
   standings: Record<PredictionCategory, AwardStanding[]>
+  communityVotes: Record<PredictionCategory, CommunityVote[]>
 }) {
   const router = useRouter()
   const [isPending, startTransition] = useTransition()
@@ -122,6 +132,7 @@ export function PredictionsClient({
           players={players}
           currentPick={predictionMap.get(cat.key) ?? null}
           standings={standings[cat.key]}
+          votes={communityVotes[cat.key]}
           isLocked={isLocked}
           isPending={isPending}
           onSubmit={(playerId) => {
@@ -150,6 +161,7 @@ function PredictionCard({
   players,
   currentPick,
   standings,
+  votes,
   isLocked,
   isPending,
   onSubmit,
@@ -158,13 +170,13 @@ function PredictionCard({
   players: Player[]
   currentPick: PredictionRecord | null
   standings: AwardStanding[]
+  votes: CommunityVote[]
   isLocked: boolean
   isPending: boolean
   onSubmit: (playerId: string) => void
 }) {
   const [isEditing, setIsEditing] = useState(false)
   const [search, setSearch] = useState("")
-  const [showStandings, setShowStandings] = useState(false)
   const Icon = category.icon
 
   const filtered = useMemo(() => {
@@ -177,8 +189,46 @@ function PredictionCard({
     ).slice(0, 20)
   }, [search, players])
 
+  // Merge votes with standings to build poll rows
+  const pollRows = useMemo(() => {
+    const totalVotes = votes.reduce((sum, v) => sum + v.count, 0)
+    const voteMap = new Map(votes.map((v) => [v.player_id, v.count]))
+    const standingMap = new Map(standings.map((s) => [s.player_id, s]))
+
+    // Collect all player IDs: standings + voted players not in top 5 standings
+    const allIds = new Set([
+      ...standings.map((s) => s.player_id),
+      ...votes.map((v) => v.player_id),
+    ])
+
+    const rows = Array.from(allIds).map((pid) => {
+      const standing = standingMap.get(pid)
+      const voteCount = voteMap.get(pid) ?? 0
+      const pct = totalVotes > 0 ? Math.round((voteCount / totalVotes) * 100) : 0
+      return {
+        player_id: pid,
+        player_name: standing?.player_name ?? "Unknown",
+        team_short_name: standing?.team_short_name ?? null,
+        team_color: standing?.team_color ?? null,
+        stat_value: standing?.stat_value ?? null,
+        vote_count: voteCount,
+        pct,
+      }
+    })
+
+    // Sort by vote count desc, then by stat value desc
+    rows.sort((a, b) =>
+      b.vote_count !== a.vote_count
+        ? b.vote_count - a.vote_count
+        : (b.stat_value ?? 0) - (a.stat_value ?? 0)
+    )
+
+    // Show top 5 (or all if fewer)
+    return { rows: rows.slice(0, 5), total: totalVotes }
+  }, [votes, standings])
+
   return (
-    <Card className="border border-border">
+    <Card className={`border border-border bg-gradient-to-br ${category.bgColor} via-transparent to-transparent`}>
       <CardHeader className="pb-3">
         <div className="flex items-center justify-between">
           <CardTitle className="text-base flex items-center gap-2">
@@ -188,12 +238,14 @@ function PredictionCard({
           <span className="text-xs text-muted-foreground">{category.description}</span>
         </div>
       </CardHeader>
-      <CardContent className="space-y-3">
-        {/* Current pick */}
+      <CardContent className="space-y-4">
+        {/* Current pick / picker */}
         {currentPick && !isEditing ? (
-          <div className="flex items-center justify-between bg-secondary/50 rounded-lg px-4 py-3">
+          <div className="flex items-center justify-between bg-primary/10 border border-primary/20 rounded-lg px-4 py-3">
             <div className="flex items-center gap-3">
-              <Check className="h-4 w-4 text-status-success" />
+              <div className="rounded-full bg-primary/20 p-1">
+                <Check className="h-3.5 w-3.5 text-primary" />
+              </div>
               <div>
                 <p className="font-medium text-sm">{currentPick.player?.name}</p>
                 <p className="text-xs text-muted-foreground">
@@ -206,7 +258,7 @@ function PredictionCard({
                 variant="outline"
                 size="sm"
                 onClick={() => setIsEditing(true)}
-                className="text-xs"
+                className="text-xs border-primary/30 text-primary hover:bg-primary/10"
               >
                 Change
               </Button>
@@ -235,9 +287,14 @@ function PredictionCard({
                   }}
                   className="w-full flex items-center justify-between px-3 py-2 rounded-md hover:bg-secondary transition-colors text-left disabled:opacity-50"
                 >
-                  <div>
-                    <p className="text-sm font-medium">{player.name}</p>
-                    <p className="text-xs text-muted-foreground">{player.role}</p>
+                  <div className="flex items-center gap-2">
+                    {player.team && (
+                      <TeamLogo team={player.team} size="sm" />
+                    )}
+                    <div>
+                      <p className="text-sm font-medium">{player.name}</p>
+                      <p className="text-xs text-muted-foreground">{player.role}</p>
+                    </div>
                   </div>
                   {player.team && (
                     <Badge
@@ -269,37 +326,98 @@ function PredictionCard({
           <p className="text-sm text-muted-foreground py-2">No prediction made</p>
         )}
 
-        {/* Standings toggle */}
-        {standings.length > 0 && (
-          <div>
-            <button
-              onClick={() => setShowStandings(!showStandings)}
-              className="flex items-center gap-1 text-xs text-muted-foreground hover:text-primary transition-colors"
-            >
-              {showStandings ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
-              Current Standings
-            </button>
-            {showStandings && (
-              <div className="mt-2 space-y-1">
-                {standings.map((s, i) => (
-                  <div
-                    key={s.player_id}
-                    className="flex items-center justify-between py-1.5 px-3 rounded-md bg-secondary/30 text-sm"
-                  >
-                    <div className="flex items-center gap-2">
-                      <span className="w-5 text-center text-xs text-muted-foreground">
-                        {i + 1}.
+        {/* Opinion poll */}
+        {(pollRows.rows.length > 0 || standings.length > 0) && (
+          <div className="space-y-1.5">
+            <div className="flex items-center justify-between mb-2">
+              <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                <Users className="h-3 w-3" />
+                <span>
+                  {pollRows.total > 0
+                    ? `${pollRows.total} pick${pollRows.total !== 1 ? "s" : ""}`
+                    : "No picks yet"}
+                </span>
+              </div>
+              {standings.length > 0 && standings[0] && (
+                <span className="text-xs text-muted-foreground">
+                  Leading: {standings[0].player_name} — {standings[0].stat_value} {category.statLabel}
+                </span>
+              )}
+            </div>
+
+            {/* Show standings if no votes yet */}
+            {pollRows.total === 0 && standings.length > 0 ? (
+              <div className="space-y-1.5">
+                {standings.map((s, i) => {
+                  const isMyPick = currentPick?.player_id === s.player_id
+                  return (
+                    <div
+                      key={s.player_id}
+                      className={`flex items-center gap-2.5 py-2 px-3 rounded-lg text-sm ${
+                        isMyPick ? "bg-primary/10 border border-primary/20" : "bg-secondary/30"
+                      }`}
+                    >
+                      <span className="w-4 text-center text-xs text-muted-foreground font-mono">{i + 1}</span>
+                      {s.team_color && (
+                        <TeamLogo
+                          team={{ short_name: s.team_short_name ?? "", color: s.team_color }}
+                          size="sm"
+                        />
+                      )}
+                      <span className={`flex-1 truncate ${isMyPick ? "font-semibold" : ""}`}>
+                        {s.player_name}
+                        {isMyPick && (
+                          <Check className="inline h-3 w-3 text-primary ml-1.5" />
+                        )}
                       </span>
-                      <span className="font-medium">{s.player_name}</span>
-                      <span className="text-xs text-muted-foreground" style={{ color: s.team_color }}>
-                        {s.team_short_name}
+                      <span className="text-xs font-semibold tabular-nums">
+                        {s.stat_value} {category.statLabel}
                       </span>
                     </div>
-                    <span className="font-semibold text-xs">
-                      {s.stat_value} {category.statLabel.toLowerCase()}
-                    </span>
-                  </div>
-                ))}
+                  )
+                })}
+              </div>
+            ) : (
+              <div className="space-y-2">
+                {pollRows.rows.map((row) => {
+                  const isMyPick = currentPick?.player_id === row.player_id
+                  const standing = standings.find((s) => s.player_id === row.player_id)
+                  return (
+                    <div key={row.player_id} className="space-y-1">
+                      <div className="flex items-center gap-2">
+                        {row.team_color && (
+                          <TeamLogo
+                            team={{ short_name: row.team_short_name ?? "", color: row.team_color }}
+                            size="sm"
+                          />
+                        )}
+                        <span className={`flex-1 text-sm truncate ${isMyPick ? "font-semibold" : ""}`}>
+                          {row.player_name}
+                          {isMyPick && (
+                            <Check className="inline h-3 w-3 text-primary ml-1.5" />
+                          )}
+                        </span>
+                        {standing && (
+                          <span className="text-xs text-muted-foreground tabular-nums shrink-0">
+                            {standing.stat_value} {category.statLabel}
+                          </span>
+                        )}
+                        <span className={`text-xs font-semibold tabular-nums w-8 text-right ${isMyPick ? "text-primary" : ""}`}>
+                          {row.pct}%
+                        </span>
+                      </div>
+                      {/* Animated progress bar */}
+                      <div className="h-1.5 w-full rounded-full bg-secondary overflow-hidden">
+                        <motion.div
+                          className={`h-full rounded-full ${isMyPick ? "bg-primary" : "bg-muted-foreground/40"}`}
+                          initial={{ width: 0 }}
+                          animate={{ width: `${row.pct}%` }}
+                          transition={{ duration: 0.8, ease: "easeOut", delay: 0.1 }}
+                        />
+                      </div>
+                    </div>
+                  )
+                })}
               </div>
             )}
           </div>

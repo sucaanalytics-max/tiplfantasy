@@ -3,7 +3,8 @@ import { redirect } from "next/navigation"
 import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Trophy } from "lucide-react"
+import { Trophy as TrophyIcon } from "lucide-react"
+import { Trophy } from "@/components/icons/trophy"
 import { getMyLeagues, getLeagueLeaderboard } from "@/actions/leagues"
 import { LeaderboardSelector } from "./leaderboard-selector"
 import { getInitials, getAvatarColor } from "@/lib/avatar"
@@ -134,7 +135,7 @@ export default async function LeaderboardPage({
     if (rows.length === 0) {
       return (
         <EmptyState
-          icon={Trophy}
+          icon={TrophyIcon}
           title="No data yet"
           description="Rankings will appear after the first match"
         />
@@ -159,7 +160,7 @@ export default async function LeaderboardPage({
         {showBanner && rows[0] && (
           <div className="flex items-center gap-3 p-4 rounded-xl bg-gradient-to-r from-amber-500/15 via-amber-400/5 to-transparent border border-amber-500/20 mb-4">
             <div className="rounded-full bg-amber-500/20 p-2">
-              <Trophy className="h-6 w-6 text-amber-500" />
+              <TrophyIcon className="h-6 w-6 text-amber-500" />
             </div>
             <div className={`h-9 w-9 rounded-full ${getAvatarColor(rows[0].display_name)} flex items-center justify-center flex-shrink-0 ring-2 ring-amber-500/30`}>
               <span className="text-white text-sm font-semibold">{getInitials(rows[0].display_name)}</span>
@@ -204,7 +205,9 @@ export default async function LeaderboardPage({
                     <RankBadge rank={displayRank} size="sm" />
                   </span>
                   <div className={`flex-1 flex items-center gap-2 text-sm ${isMe ? "font-semibold" : ""}`}>
-                    <div className={`h-7 w-7 rounded-full ${getAvatarColor(row.display_name)} flex items-center justify-center flex-shrink-0`}>
+                    <div className={`h-7 w-7 rounded-full ${getAvatarColor(row.display_name)} flex items-center justify-center flex-shrink-0 ${
+                      displayRank === 1 ? "ring-gold" : displayRank === 2 ? "ring-silver" : displayRank === 3 ? "ring-bronze" : ""
+                    }`}>
                       <span className="text-white text-xs font-semibold">{getInitials(row.display_name)}</span>
                     </div>
                     <span>
@@ -239,7 +242,10 @@ export default async function LeaderboardPage({
     <div className="p-4 md:p-6 space-y-6 max-w-2xl lg:max-w-4xl">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight font-display">Leaderboard</h1>
+          <h1 className="text-2xl font-bold tracking-tight font-display flex items-center gap-2">
+            <Trophy className="h-6 w-6 shrink-0" />
+            Leaderboard
+          </h1>
           <p className="text-muted-foreground mt-0.5">Fantasy rankings</p>
         </div>
         {myLeagues.length > 0 && (

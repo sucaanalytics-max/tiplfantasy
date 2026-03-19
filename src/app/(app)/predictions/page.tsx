@@ -1,6 +1,6 @@
 import { createClient } from "@/lib/supabase/server"
 import { redirect } from "next/navigation"
-import { getMyPredictions, getPredictionDeadline, getAwardStandings } from "@/actions/predictions"
+import { getMyPredictions, getPredictionDeadline, getAwardStandings, getCommunityVotes } from "@/actions/predictions"
 import { PredictionsClient } from "./predictions-client"
 
 export default async function PredictionsPage() {
@@ -24,11 +24,12 @@ export default async function PredictionsPage() {
   const myPredictions = await getMyPredictions()
   const deadline = await getPredictionDeadline()
 
-  // Fetch current standings for all 3 categories
-  const [purpleStandings, orangeStandings, mvpStandings] = await Promise.all([
+  // Fetch current standings and community votes in parallel
+  const [purpleStandings, orangeStandings, mvpStandings, communityVotes] = await Promise.all([
     getAwardStandings("purple_cap", 5),
     getAwardStandings("orange_cap", 5),
     getAwardStandings("mvp", 5),
+    getCommunityVotes(),
   ])
 
   return (
@@ -41,6 +42,7 @@ export default async function PredictionsPage() {
         orange_cap: orangeStandings,
         mvp: mvpStandings,
       }}
+      communityVotes={communityVotes}
     />
   )
 }
