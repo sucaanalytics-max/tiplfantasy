@@ -145,6 +145,11 @@ export default async function DashboardPage() {
                   {myRank ? `#${myRank.season_rank}` : "\u2014"}
                 </p>
                 <p className="text-xs text-muted-foreground">Season Rank</p>
+                {(myRank as unknown as { matches_played?: number })?.matches_played != null && (
+                  <p className="text-[10px] text-muted-foreground/70 tabular-nums">
+                    {(myRank as unknown as { matches_played: number }).matches_played} MP
+                  </p>
+                )}
               </div>
             </div>
           </CardContent>
@@ -152,14 +157,19 @@ export default async function DashboardPage() {
         <Card className="border border-border overflow-hidden relative bg-gradient-to-br from-primary/10 via-transparent to-transparent">
           <CardContent className="pt-6">
             <div className="flex items-center gap-3">
-              <div className="rounded-full bg-blue-500/15 p-2.5">
-                <Target className="h-5 w-5 text-blue-500" />
+              <div className="rounded-full bg-primary/15 p-2.5">
+                <Target className="h-5 w-5 text-primary" />
               </div>
               <div>
                 <p className="text-2xl font-bold font-display">
                   {myRank?.total_points ?? 0}
                 </p>
                 <p className="text-xs text-muted-foreground">Total Points</p>
+                {(myRank as unknown as { avg_points?: number })?.avg_points != null && (
+                  <p className="text-[10px] text-muted-foreground/70 tabular-nums">
+                    avg {(myRank as unknown as { avg_points: number }).avg_points.toFixed(1)}/match
+                  </p>
+                )}
               </div>
             </div>
           </CardContent>

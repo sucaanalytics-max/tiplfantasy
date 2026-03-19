@@ -119,13 +119,17 @@ export default async function ScoresPage({
                   <p className="text-3xl font-bold font-display animate-count-up">
                     {myScore.total_points}
                   </p>
-                  {(myScore.captain_points > 0 || myScore.vc_points > 0) && (
-                    <p className="text-[10px] text-muted-foreground mt-0.5">
-                      {myScore.captain_points > 0 && `C +${myScore.captain_points}`}
-                      {myScore.captain_points > 0 && myScore.vc_points > 0 && " · "}
-                      {myScore.vc_points > 0 && `VC +${myScore.vc_points}`}
-                    </p>
-                  )}
+                  {/* Score breakdown */}
+                  {(myScore.captain_points > 0 || myScore.vc_points > 0) && (() => {
+                    const basePoints = myScore.total_points - myScore.captain_points - myScore.vc_points
+                    return (
+                      <div className="mt-1.5 space-y-0.5 text-[10px] text-muted-foreground tabular-nums">
+                        <p>Base: {basePoints} pts</p>
+                        {myScore.captain_points > 0 && <p>Captain (2×): +{myScore.captain_points}</p>}
+                        {myScore.vc_points > 0 && <p>VC (1.5×): +{myScore.vc_points}</p>}
+                      </div>
+                    )
+                  })()}
                 </div>
               </div>
               {myScore.rank != null && (

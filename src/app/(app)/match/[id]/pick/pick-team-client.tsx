@@ -351,10 +351,32 @@ export function PickTeamClient({
             {matchupChip && (
               <span className="text-[8px] text-emerald-500 truncate">{matchupChip}</span>
             )}
-            {selectionPcts[player.id] != null && selectionPcts[player.id] > 0 && (
-              <span className="text-[8px] text-muted-foreground/70">Sel {selectionPcts[player.id]}%</span>
-            )}
+            {(() => {
+              const scores = tiplScores[player.id] ?? []
+              const avgPts = scores.length > 0 ? Math.round(scores.reduce((a, b) => a + b, 0) / scores.length) : null
+              const lastPts = scores.length > 0 ? scores[scores.length - 1] : null
+              if (avgPts == null) return null
+              return (
+                <span className="text-[8px] text-muted-foreground/70 tabular-nums">
+                  avg {avgPts}{lastPts != null ? ` · last ${lastPts}` : ""}
+                </span>
+              )
+            })()}
           </div>
+          {/* Selection % bar */}
+          {selectionPcts[player.id] != null && selectionPcts[player.id] > 0 && (
+            <div className="flex items-center gap-1 mt-0.5">
+              <div className="flex-1 h-[3px] rounded-full bg-border overflow-hidden">
+                <div
+                  className={cn("h-full rounded-full transition-all", isSelected ? "bg-primary" : "bg-muted-foreground/40")}
+                  style={{ width: `${selectionPcts[player.id]}%` }}
+                />
+              </div>
+              <span className={cn("text-[8px] tabular-nums shrink-0", isSelected ? "text-primary" : "text-muted-foreground/60")}>
+                {selectionPcts[player.id]}%
+              </span>
+            </div>
+          )}
           {isDisabled && (
             <span className="text-[10px] text-status-danger">{disabledReason}</span>
           )}
@@ -671,7 +693,7 @@ export function PickTeamClient({
             className={cn(
               "w-full",
               validation.valid && captainId && viceCaptainId && !isPending
-                ? "bg-gradient-to-r from-primary to-blue-400 text-black font-semibold"
+                ? "bg-gradient-to-r from-primary to-emerald-400 text-black font-semibold"
                 : ""
             )}
           >
@@ -926,7 +948,7 @@ export function PickTeamClient({
             className={cn(
               "w-full",
               validation.valid && captainId && viceCaptainId && !isPending
-                ? "bg-gradient-to-r from-primary to-blue-400 text-black font-semibold"
+                ? "bg-gradient-to-r from-primary to-emerald-400 text-black font-semibold"
                 : ""
             )}
           >

@@ -112,7 +112,7 @@ export function NavBar({ isAdmin = false }: { isAdmin?: boolean }) {
                 className={cn(
                   "flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm transition-colors",
                   active
-                    ? "bg-primary/10 text-primary border border-primary/20 border-l-2 border-l-primary shadow-[0_0_16px_oklch(0.68_0.16_265/0.25)]"
+                    ? "bg-primary/10 text-primary border border-primary/20 border-l-2 border-l-primary shadow-[0_0_16px_oklch(0.62_0.22_145/0.25)]"
                     : "text-muted-foreground hover:bg-secondary hover:text-foreground"
                 )}
                 aria-current={active ? "page" : undefined}

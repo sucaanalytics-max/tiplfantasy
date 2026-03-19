@@ -211,7 +211,7 @@ export function MatchCard({ match, userPoints, userRank, hasSubmitted, compact =
               </div>
             ) : (
               <Link href={href}>
-                <Button size="sm" className="bg-gradient-to-r from-primary to-blue-400 hover:from-primary/90 hover:to-blue-400/90 text-black font-semibold">
+                <Button size="sm" className="bg-gradient-to-r from-primary to-emerald-400 hover:from-primary/90 hover:to-emerald-400/90 text-black font-semibold">
                   Pick Your Team
                 </Button>
               </Link>
