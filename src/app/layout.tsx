@@ -29,6 +29,18 @@ export const metadata: Metadata = {
   formatDetection: {
     telephone: false,
   },
+  openGraph: {
+    title: "TIPL Fantasy",
+    description: "Office IPL 2026 Fantasy Cricket — Pick your team, compete with colleagues",
+    type: "website",
+    url: "https://tiplfantasy.vercel.app",
+    siteName: "TIPL Fantasy",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "TIPL Fantasy",
+    description: "Office IPL 2026 Fantasy Cricket — Pick your team, compete with colleagues",
+  },
   appleWebApp: {
     capable: true,
     statusBarStyle: "black-translucent",

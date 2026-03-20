@@ -1,6 +1,7 @@
 import { createClient } from "@/lib/supabase/server"
 import { redirect } from "next/navigation"
 import Link from "next/link"
+import Image from "next/image"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { format } from "date-fns"
@@ -116,6 +117,10 @@ export default async function DashboardPage() {
     <div className="p-4 md:p-6 space-y-6 max-w-2xl lg:max-w-5xl">
       {/* Greeting */}
       <div>
+        <div className="flex items-center gap-2.5 mb-2">
+          <Image src="/icons/icon-192.png" alt="TIPL" width={28} height={28} />
+          <span className="text-xs text-muted-foreground font-medium tracking-widest uppercase">TIPL Fantasy 2026</span>
+        </div>
         <h1 className="text-2xl font-bold tracking-tight font-display">
           Hey, {firstName} &#127951;
           {streak > 1 && (
@@ -124,7 +129,6 @@ export default async function DashboardPage() {
             </span>
           )}
         </h1>
-        <p className="text-primary/60 mt-0.5">TIPL Fantasy 2026</p>
       </div>
 
       {/* Desktop 2-column layout */}
