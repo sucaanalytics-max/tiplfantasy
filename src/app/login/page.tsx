@@ -65,23 +65,18 @@ function LoginForm() {
 
         {/* Logo section */}
         <div className="flex flex-col items-center gap-5 text-center">
-          {/* Logo with glow ring */}
+          {/* Logo with glow */}
           <div className="relative flex items-center justify-center">
-            {/* Outer soft glow */}
-            <div className="absolute w-32 h-32 rounded-full bg-primary/20 blur-2xl" />
-            {/* Ring */}
-            <div className="relative rounded-full p-[2px] bg-gradient-to-br from-primary/60 via-primary/20 to-accent/40">
-              <div className="rounded-full bg-[#060d18] p-2">
-                <Image
-                  src="/icons/icon-192.png"
-                  alt="TIPL Fantasy"
-                  width={96}
-                  height={96}
-                  className="drop-shadow-[0_0_16px_oklch(0.68_0.22_35/0.6)]"
-                  priority
-                />
-              </div>
-            </div>
+            {/* Ambient glow behind logo */}
+            <div className="absolute w-40 h-40 bg-primary/20 blur-3xl rounded-full" />
+            <Image
+              src="/icons/icon-192.png"
+              alt="TIPL Fantasy"
+              width={120}
+              height={120}
+              className="relative drop-shadow-[0_4px_24px_oklch(0.68_0.22_35/0.55)]"
+              priority
+            />
           </div>
 
           {/* Brand name */}

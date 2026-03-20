@@ -92,8 +92,8 @@ export function NavBar({ isAdmin = false }: { isAdmin?: boolean }) {
           <Image
             src="/icons/icon-192.png"
             alt="TIPL"
-            width={40}
-            height={40}
+            width={44}
+            height={44}
           />
           <div>
             <h1 className="text-xl font-bold italic tracking-tight text-primary font-display">TIPL <span className="not-italic text-foreground/80">Fantasy</span></h1>
