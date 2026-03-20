@@ -287,6 +287,16 @@ export type LeagueLeaderboardEntry = {
   season_rank: number
 }
 
+export type LeagueMemberStats = {
+  user_id: string
+  display_name: string
+  highest_score: number
+  matchday_wins: number
+  total_captain_points: number
+  outside_top4: number
+  matches_played: number
+}
+
 // Season Predictions
 export type SeasonPrediction = {
   id: string

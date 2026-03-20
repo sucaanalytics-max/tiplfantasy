@@ -1,5 +1,5 @@
 import { redirect } from "next/navigation"
-import { getLeagueWithMembers, getLeagueLeaderboard } from "@/actions/leagues"
+import { getLeagueWithMembers, getLeagueLeaderboard, getLeagueAwards } from "@/actions/leagues"
 import { LeagueDetailClient } from "./league-detail-client"
 
 export default async function LeagueDetailPage({
@@ -8,10 +8,12 @@ export default async function LeagueDetailPage({
   params: Promise<{ id: string }>
 }) {
   const { id } = await params
-  const leagueData = await getLeagueWithMembers(id)
+  const [leagueData, leaderboard, awards] = await Promise.all([
+    getLeagueWithMembers(id),
+    getLeagueLeaderboard(id),
+    getLeagueAwards(id),
+  ])
   if (!leagueData) redirect("/leagues")
-
-  const leaderboard = await getLeagueLeaderboard(id)
 
   return (
     <LeagueDetailClient
@@ -19,6 +21,7 @@ export default async function LeagueDetailPage({
       members={leagueData.members}
       isCreator={leagueData.isCreator}
       leaderboard={leaderboard}
+      awards={awards}
     />
   )
 }

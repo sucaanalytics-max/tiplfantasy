@@ -2,7 +2,7 @@
 
 import { createClient } from "@/lib/supabase/server"
 import { createAdminClient } from "@/lib/supabase/admin"
-import type { LeagueWithMemberCount, LeagueLeaderboardEntry } from "@/lib/types"
+import type { LeagueWithMemberCount, LeagueLeaderboardEntry, LeagueMemberStats } from "@/lib/types"
 import crypto from "crypto"
 
 function generateInviteCode(): string {
@@ -220,4 +220,13 @@ export async function getLeagueLeaderboard(
   })
   if (error) return []
   return (data ?? []) as LeagueLeaderboardEntry[]
+}
+
+export async function getLeagueAwards(leagueId: string): Promise<LeagueMemberStats[]> {
+  const admin = createAdminClient()
+  const { data, error } = await admin.rpc("get_league_awards", {
+    p_league_id: leagueId,
+  })
+  if (error) return []
+  return (data ?? []) as LeagueMemberStats[]
 }
