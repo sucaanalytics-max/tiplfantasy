@@ -97,8 +97,8 @@ export function NavBar({ isAdmin = false }: { isAdmin?: boolean }) {
             className="rounded-lg"
           />
           <div>
-            <h1 className="text-xl font-bold tracking-tight text-primary">TIPL</h1>
-            <p className="text-xs text-muted-foreground">Fantasy Cricket 2026</p>
+            <h1 className="text-xl font-bold italic tracking-tight text-primary font-display">TIPL <span className="not-italic text-foreground/80">Fantasy</span></h1>
+            <p className="text-xs text-muted-foreground">Cricket 2026</p>
           </div>
         </div>
         <nav className="flex-1 px-2 space-y-1">
@@ -112,7 +112,7 @@ export function NavBar({ isAdmin = false }: { isAdmin?: boolean }) {
                 className={cn(
                   "flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm transition-colors",
                   active
-                    ? "bg-primary/10 text-primary border border-primary/20 border-l-2 border-l-primary shadow-[0_0_16px_oklch(0.62_0.22_145/0.25)]"
+                    ? "bg-primary/10 text-primary border border-primary/20 border-l-2 border-l-primary shadow-[0_0_16px_oklch(0.68_0.22_35/0.25)]"
                     : "text-muted-foreground hover:bg-secondary hover:text-foreground"
                 )}
                 aria-current={active ? "page" : undefined}

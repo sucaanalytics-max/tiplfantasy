@@ -67,49 +67,49 @@
 :root {
   --radius: 1.5rem;
 
-  /* Cool off-white with faint green hint */
-  --background: oklch(0.97 0.005 160);
-  --foreground: oklch(0.12 0.02 160);
+  /* Clean off-white, very faint navy tint */
+  --background: oklch(0.97 0.005 255);
+  --foreground: oklch(0.12 0.02 255);
 
   /* White cards */
   --card: oklch(1 0 0);
-  --card-foreground: oklch(0.12 0.02 160);
+  --card-foreground: oklch(0.12 0.02 255);
   --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.12 0.02 160);
+  --popover-foreground: oklch(0.12 0.02 255);
 
-  /* Deep cricket green primary */
-  --primary: oklch(0.42 0.20 145);
+  /* TIPL orange — the action/energy color from brand */
+  --primary: oklch(0.52 0.22 35);
   --primary-foreground: oklch(0.99 0 0);
 
-  /* Light green-gray surfaces */
-  --secondary: oklch(0.94 0.008 160);
-  --secondary-foreground: oklch(0.18 0.02 160);
-  --muted: oklch(0.94 0.008 160);
-  --muted-foreground: oklch(0.45 0.02 160);
+  /* Light navy-tinted surfaces */
+  --secondary: oklch(0.94 0.008 255);
+  --secondary-foreground: oklch(0.18 0.02 255);
+  --muted: oklch(0.94 0.008 255);
+  --muted-foreground: oklch(0.45 0.015 255);
 
-  /* Warm orange-red accent — IPL #EF4123 family */
-  --accent: oklch(0.63 0.22 35);
-  --accent-foreground: oklch(0.99 0 0);
+  /* TIPL gold — prestige/achievement */
+  --accent: oklch(0.68 0.17 86);
+  --accent-foreground: oklch(0.12 0.01 86);
 
   --destructive: oklch(0.55 0.245 27.325);
-  --border: oklch(0.89 0.010 160);
-  --input: oklch(0.89 0.010 160);
-  --ring: oklch(0.42 0.20 145);
+  --border: oklch(0.88 0.010 255);
+  --input: oklch(0.88 0.010 255);
+  --ring: oklch(0.52 0.22 35);
 
-  --chart-1: oklch(0.42 0.20 145);
-  --chart-2: oklch(0.63 0.22 35);
+  --chart-1: oklch(0.52 0.22 35);
+  --chart-2: oklch(0.68 0.17 86);
   --chart-3: oklch(0.55 0.15 145);
   --chart-4: oklch(0.70 0.18 84);
   --chart-5: oklch(0.60 0.20 304);
 
-  --sidebar: oklch(0.96 0.005 160);
-  --sidebar-foreground: oklch(0.12 0.02 160);
-  --sidebar-primary: oklch(0.42 0.20 145);
+  --sidebar: oklch(0.96 0.005 255);
+  --sidebar-foreground: oklch(0.12 0.02 255);
+  --sidebar-primary: oklch(0.52 0.22 35);
   --sidebar-primary-foreground: oklch(0.99 0 0);
-  --sidebar-accent: oklch(0.93 0.01 160);
-  --sidebar-accent-foreground: oklch(0.18 0.02 160);
-  --sidebar-border: oklch(0.89 0.010 160);
-  --sidebar-ring: oklch(0.42 0.20 145);
+  --sidebar-accent: oklch(0.93 0.01 255);
+  --sidebar-accent-foreground: oklch(0.18 0.02 255);
+  --sidebar-border: oklch(0.88 0.010 255);
+  --sidebar-ring: oklch(0.52 0.22 35);
 
   /* Semantic status tokens (light mode) */
   --status-live: oklch(0.55 0.24 25);
@@ -134,56 +134,56 @@
   /* Light mode glass/elevation */
   --glass-bg: oklch(1 0 0 / 0.80);
   --glass-bg-hover: oklch(1 0 0 / 0.90);
-  --glass-border: oklch(0.13 0.03 270 / 0.06);
-  --glass-border-hover: oklch(0.13 0.03 270 / 0.10);
-  --glass-shadow: 0 4px 16px oklch(0.13 0.03 270 / 0.08);
-  --glass-shadow-lg: 0 8px 32px oklch(0.13 0.03 270 / 0.12);
-  --glow-primary: 0 0 16px oklch(0.50 0.18 265 / 0.15);
-  --glow-accent: 0 0 16px oklch(0.63 0.22 35 / 0.15);
+  --glass-border: oklch(0.12 0.02 255 / 0.06);
+  --glass-border-hover: oklch(0.12 0.02 255 / 0.10);
+  --glass-shadow: 0 4px 16px oklch(0.12 0.02 255 / 0.08);
+  --glass-shadow-lg: 0 8px 32px oklch(0.12 0.02 255 / 0.12);
+  --glow-primary: 0 0 16px oklch(0.52 0.22 35 / 0.20);
+  --glow-accent: 0 0 16px oklch(0.68 0.17 86 / 0.20);
 }
 
 .dark {
-  /* Dark charcoal-green — Sportsbuzz cricket aesthetic */
-  --background: oklch(0.10 0.015 160);
-  --foreground: oklch(0.97 0.005 160);
-  --card: oklch(0.15 0.015 160);
-  --card-foreground: oklch(0.97 0.005 160);
-  --popover: oklch(0.15 0.015 160);
-  --popover-foreground: oklch(0.97 0.005 160);
+  /* TIPL brand: very dark navy — matches the shield/logo background */
+  --background: oklch(0.10 0.025 255);
+  --foreground: oklch(0.97 0.005 255);
+  --card: oklch(0.15 0.025 255);
+  --card-foreground: oklch(0.97 0.005 255);
+  --popover: oklch(0.15 0.025 255);
+  --popover-foreground: oklch(0.97 0.005 255);
 
-  /* Vivid cricket green primary */
-  --primary: oklch(0.62 0.22 145);
-  --primary-foreground: oklch(0.08 0.01 160);
+  /* TIPL orange — the FANTASY ribbon, batsman uniform, primary action color */
+  --primary: oklch(0.68 0.22 35);
+  --primary-foreground: oklch(0.99 0 0);
 
-  /* Dark green-tinted surfaces */
-  --secondary: oklch(0.20 0.015 160);
-  --secondary-foreground: oklch(0.97 0.005 160);
-  --muted: oklch(0.20 0.015 160);
-  --muted-foreground: oklch(0.60 0.02 160);
+  /* Dark navy surfaces */
+  --secondary: oklch(0.20 0.020 255);
+  --secondary-foreground: oklch(0.97 0.005 255);
+  --muted: oklch(0.20 0.020 255);
+  --muted-foreground: oklch(0.58 0.015 255);
 
-  /* Bright IPL orange accent */
-  --accent: oklch(0.72 0.24 45);
-  --accent-foreground: oklch(0.10 0.01 45);
+  /* TIPL gold — crown, stars, shield outline, prestige elements */
+  --accent: oklch(0.78 0.17 86);
+  --accent-foreground: oklch(0.12 0.01 86);
 
   --destructive: oklch(0.577 0.245 27.325);
-  --border: oklch(0.25 0.015 160);
-  --input: oklch(0.25 0.015 160);
-  --ring: oklch(0.62 0.22 145);
+  --border: oklch(0.23 0.018 255);
+  --input: oklch(0.23 0.018 255);
+  --ring: oklch(0.68 0.22 35);
 
-  --chart-1: oklch(0.62 0.22 145);
-  --chart-2: oklch(0.72 0.24 45);
+  --chart-1: oklch(0.68 0.22 35);
+  --chart-2: oklch(0.78 0.17 86);
   --chart-3: oklch(0.769 0.188 70);
   --chart-4: oklch(0.627 0.265 304);
   --chart-5: oklch(0.50 0.18 265);
 
-  --sidebar: oklch(0.10 0.015 160);
-  --sidebar-foreground: oklch(0.97 0.005 160);
-  --sidebar-primary: oklch(0.62 0.22 145);
-  --sidebar-primary-foreground: oklch(0.08 0.01 160);
-  --sidebar-accent: oklch(0.20 0.015 160);
-  --sidebar-accent-foreground: oklch(0.97 0.005 160);
-  --sidebar-border: oklch(0.25 0.015 160);
-  --sidebar-ring: oklch(0.62 0.22 145);
+  --sidebar: oklch(0.10 0.025 255);
+  --sidebar-foreground: oklch(0.97 0.005 255);
+  --sidebar-primary: oklch(0.68 0.22 35);
+  --sidebar-primary-foreground: oklch(0.99 0 0);
+  --sidebar-accent: oklch(0.20 0.020 255);
+  --sidebar-accent-foreground: oklch(0.97 0.005 255);
+  --sidebar-border: oklch(0.23 0.018 255);
+  --sidebar-ring: oklch(0.68 0.22 35);
 
   /* Semantic status tokens (dark mode) */
   --status-live: oklch(0.65 0.24 25);
@@ -199,21 +199,21 @@
   --status-danger: oklch(0.65 0.24 25);
   --status-danger-bg: oklch(0.65 0.24 25 / 0.12);
 
-  /* Role colors */
+  /* Role colors (cricket conventions — unchanged) */
   --role-wk: oklch(0.75 0.15 85);
   --role-bat: oklch(0.68 0.16 265);
   --role-ar: oklch(0.65 0.20 145);
   --role-bowl: oklch(0.65 0.20 304);
 
   /* Glass effect tokens */
-  --glass-bg: oklch(0.12 0.015 160 / 0.75);
-  --glass-bg-hover: oklch(0.15 0.015 160 / 0.80);
+  --glass-bg: oklch(0.12 0.025 255 / 0.75);
+  --glass-bg-hover: oklch(0.15 0.025 255 / 0.80);
   --glass-border: oklch(1 0 0 / 0.08);
   --glass-border-hover: oklch(1 0 0 / 0.12);
   --glass-shadow: 0 4px 16px oklch(0 0 0 / 0.4), 0 8px 32px oklch(0 0 0 / 0.3);
   --glass-shadow-lg: 0 8px 24px oklch(0 0 0 / 0.5), 0 16px 48px oklch(0 0 0 / 0.4);
-  --glow-primary: 0 0 20px oklch(0.62 0.22 145 / 0.35);
-  --glow-accent: 0 0 20px oklch(0.72 0.24 45 / 0.30);
+  --glow-primary: 0 0 20px oklch(0.68 0.22 35 / 0.35);
+  --glow-accent: 0 0 20px oklch(0.78 0.17 86 / 0.30);
 }
 
 @layer base {
