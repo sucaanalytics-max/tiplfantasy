@@ -3,7 +3,7 @@
 import { useState, useTransition } from "react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
-import { Copy, Check, Share2, Trash2, ArrowLeft, Users, Trophy, Swords, Zap, Crown, Target } from "lucide-react"
+import { Copy, Check, Share2, Trash2, ArrowLeft, Users, Trophy, Swords, Zap, Crown, Target, type LucideIcon } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -147,20 +147,13 @@ export function LeagueDetailClient({ league, members, isCreator, leaderboard, aw
             {members.map((member) => {
               const prof = Array.isArray(member.profile) ? member.profile[0] : member.profile
               const name = prof?.display_name ?? "Unknown"
-              const color = getAvatarHexColor(name)
-              const initials = getInitials(name)
               return (
                 <div
                   key={member.user_id}
                   className="flex items-center justify-between py-2 px-3 rounded-lg bg-secondary/50"
                 >
                   <div className="flex items-center gap-2.5 min-w-0">
-                    <div
-                      className="w-7 h-7 rounded-full flex items-center justify-center text-[10px] font-bold text-white shrink-0"
-                      style={{ backgroundColor: color }}
-                    >
-                      {initials}
-                    </div>
+                    <AvatarInitial name={name} />
                     <div className="min-w-0">
                       <span className="text-sm truncate block">{name}</span>
                       {member.user_id === league.creator_id && (
@@ -255,8 +248,6 @@ export function LeagueDetailClient({ league, members, isCreator, leaderboard, aw
               {leaderboard.map((entry, i) => {
                 const rank = i + 1
                 const displayName = entry.display_name ?? "Unknown"
-                const color = getAvatarHexColor(displayName)
-                const initials = getInitials(displayName)
 
                 return (
                   <div
@@ -267,12 +258,7 @@ export function LeagueDetailClient({ league, members, isCreator, leaderboard, aw
                       {rank <= 3 ? MEDALS[rank - 1] : rank}
                     </span>
                     <div className="flex items-center gap-2.5 min-w-0">
-                      <div
-                        className="w-7 h-7 rounded-full flex items-center justify-center text-[10px] font-bold text-white shrink-0"
-                        style={{ backgroundColor: color }}
-                      >
-                        {initials}
-                      </div>
+                      <AvatarInitial name={displayName} />
                       <span className="text-sm truncate">{displayName}</span>
                     </div>
                     <span className="text-sm font-bold text-right">{entry.total_points}</span>
@@ -292,59 +278,69 @@ export function LeagueDetailClient({ league, members, isCreator, leaderboard, aw
 
 
       {/* Season Awards */}
-      {awards.length > 0 && (() => {
-        const highestScore = awards.reduce((a, b) => b.highest_score > a.highest_score ? b : a)
-        const mostWins = awards.reduce((a, b) => b.matchday_wins > a.matchday_wins ? b : a)
-        const bestCaptain = awards.reduce((a, b) => b.total_captain_points > a.total_captain_points ? b : a)
-        const mostConsistent = awards.reduce((a, b) => b.outside_top4 < a.outside_top4 ? b : a)
-
-        const cards = [
-          { icon: <Zap className="h-3.5 w-3.5" />, label: "Highest Score", winner: highestScore, stat: `${highestScore.highest_score} pts` },
-          { icon: <Trophy className="h-3.5 w-3.5" />, label: "Matchday Wins", winner: mostWins, stat: `${mostWins.matchday_wins} wins` },
-          { icon: <Crown className="h-3.5 w-3.5" />, label: "Best Captaincy", winner: bestCaptain, stat: `${bestCaptain.total_captain_points} pts` },
-          { icon: <Target className="h-3.5 w-3.5" />, label: "Most Consistent", winner: mostConsistent, stat: `${mostConsistent.outside_top4} misses` },
-        ]
-
-        return (
-          <Card className="border border-border">
-            <CardHeader className="pb-3">
-              <CardTitle className="text-base flex items-center gap-2">
-                <Zap className="h-4 w-4" />
-                Season Awards
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-                {cards.map(({ icon, label, winner, stat }) => {
-                  const color = getAvatarHexColor(winner.display_name)
-                  const initials = getInitials(winner.display_name)
-                  return (
-                    <div key={label} className="flex flex-col gap-2 p-3 rounded-lg bg-secondary/50">
-                      <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                        {icon}
-                        <span>{label}</span>
-                      </div>
-                      <div className="flex items-center gap-2 min-w-0">
-                        <div
-                          className="w-6 h-6 rounded-full flex items-center justify-center text-[9px] font-bold text-white shrink-0"
-                          style={{ backgroundColor: color }}
-                        >
-                          {initials}
-                        </div>
-                        <span className="text-xs truncate">{winner.display_name}</span>
-                      </div>
-                      <span className="text-sm font-bold">{stat}</span>
-                    </div>
-                  )
-                })}
-              </div>
-            </CardContent>
-          </Card>
-        )
-      })()}
+      <SeasonAwards awards={awards} />
 
       </div>{/* end right column */}
       </div>{/* end desktop grid */}
     </div>
+  )
+}
+
+function AvatarInitial({ name, size = "md" }: { name: string; size?: "sm" | "md" }) {
+  return (
+    <div
+      className={
+        size === "sm"
+          ? "w-6 h-6 rounded-full flex items-center justify-center text-[9px] font-bold text-white shrink-0"
+          : "w-7 h-7 rounded-full flex items-center justify-center text-[10px] font-bold text-white shrink-0"
+      }
+      style={{ backgroundColor: getAvatarHexColor(name) }}
+    >
+      {getInitials(name)}
+    </div>
+  )
+}
+
+function SeasonAwards({ awards }: { awards: LeagueMemberStats[] }) {
+  if (awards.length === 0) return null
+
+  const highestScore = awards.reduce((a, b) => b.highest_score > a.highest_score ? b : a)
+  const mostWins = awards.reduce((a, b) => b.matchday_wins > a.matchday_wins ? b : a)
+  const bestCaptain = awards.reduce((a, b) => b.total_captain_points > a.total_captain_points ? b : a)
+  const mostConsistent = awards.reduce((a, b) => b.outside_top4 < a.outside_top4 ? b : a)
+
+  const cards: { Icon: LucideIcon; label: string; winner: LeagueMemberStats; stat: string }[] = [
+    { Icon: Zap,    label: "Highest Score",   winner: highestScore,  stat: `${highestScore.highest_score} pts` },
+    { Icon: Trophy, label: "Matchday Wins",   winner: mostWins,      stat: `${mostWins.matchday_wins} wins` },
+    { Icon: Crown,  label: "Best Captaincy",  winner: bestCaptain,   stat: `${bestCaptain.total_captain_points} pts` },
+    { Icon: Target, label: "Most Consistent", winner: mostConsistent, stat: `${mostConsistent.outside_top4} misses` },
+  ]
+
+  return (
+    <Card className="border border-border">
+      <CardHeader className="pb-3">
+        <CardTitle className="text-base flex items-center gap-2">
+          <Zap className="h-4 w-4" />
+          Season Awards
+        </CardTitle>
+      </CardHeader>
+      <CardContent>
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+          {cards.map(({ Icon, label, winner, stat }) => (
+            <div key={label} className="flex flex-col gap-2 p-3 rounded-lg bg-secondary/50">
+              <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                <Icon className="h-3.5 w-3.5" />
+                <span>{label}</span>
+              </div>
+              <div className="flex items-center gap-2 min-w-0">
+                <AvatarInitial name={winner.display_name} size="sm" />
+                <span className="text-xs truncate">{winner.display_name}</span>
+              </div>
+              <span className="text-sm font-bold">{stat}</span>
+            </div>
+          ))}
+        </div>
+      </CardContent>
+    </Card>
   )
 }

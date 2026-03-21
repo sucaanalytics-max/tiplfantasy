@@ -8,12 +8,13 @@ export default async function LeagueDetailPage({
   params: Promise<{ id: string }>
 }) {
   const { id } = await params
-  const [leagueData, leaderboard, awards] = await Promise.all([
-    getLeagueWithMembers(id),
+  const leagueData = await getLeagueWithMembers(id)
+  if (!leagueData) redirect("/leagues")
+
+  const [leaderboard, awards] = await Promise.all([
     getLeagueLeaderboard(id),
     getLeagueAwards(id),
   ])
-  if (!leagueData) redirect("/leagues")
 
   return (
     <LeagueDetailClient
