@@ -19,91 +19,68 @@ export default async function DashboardPage() {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect("/login")
 
-  // Fetch user profile
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("display_name, avatar_url")
-    .eq("id", user.id)
-    .single()
+  // Phase 1: all independent queries in parallel
+  const [
+    profileRes,
+    myRankRes,
+    upcomingRes,
+    lastMatchRes,
+    top5Res,
+    myLeagues,
+    completedRes,
+  ] = await Promise.all([
+    supabase.from("profiles").select("display_name, avatar_url").eq("id", user.id).single(),
+    supabase.from("season_leaderboard").select("*").eq("user_id", user.id).single(),
+    supabase
+      .from("matches")
+      .select("*, team_home:teams!matches_team_home_id_fkey(short_name, color, logo_url), team_away:teams!matches_team_away_id_fkey(short_name, color, logo_url)")
+      .eq("status", "upcoming")
+      .order("start_time", { ascending: true })
+      .limit(5),
+    supabase
+      .from("matches")
+      .select("*, team_home:teams!matches_team_home_id_fkey(short_name, color, logo_url), team_away:teams!matches_team_away_id_fkey(short_name, color, logo_url)")
+      .eq("status", "completed")
+      .order("start_time", { ascending: false })
+      .limit(1)
+      .single(),
+    supabase.from("season_leaderboard").select("*").order("season_rank", { ascending: true }).limit(5),
+    getMyLeagues(),
+    supabase.from("matches").select("id").in("status", ["completed", "live"]).order("start_time", { ascending: false }).limit(20),
+  ])
 
-  // Fetch user's season stats from leaderboard
-  const { data: myRank } = await supabase
-    .from("season_leaderboard")
-    .select("*")
-    .eq("user_id", user.id)
-    .single()
-
-  // Fetch next 5 upcoming matches
-  const { data: upcomingMatches } = await supabase
-    .from("matches")
-    .select("*, team_home:teams!matches_team_home_id_fkey(short_name, color, logo_url), team_away:teams!matches_team_away_id_fkey(short_name, color, logo_url)")
-    .eq("status", "upcoming")
-    .order("start_time", { ascending: true })
-    .limit(5)
+  const profile = profileRes.data
+  const myRank = myRankRes.data
+  const upcomingMatches = upcomingRes.data
+  const lastMatch = lastMatchRes.data
+  const top5 = top5Res.data
+  const completedMatches = completedRes.data
 
   const nextMatch = upcomingMatches?.[0] ?? null
   const moreMatches = upcomingMatches?.slice(1) ?? []
 
-  // Check which upcoming matches user has submitted for
+  // Phase 2: queries that depend on Phase 1 results, in parallel
+  const [subsRes, lastScoreRes, streakRes] = await Promise.all([
+    upcomingMatches && upcomingMatches.length > 0
+      ? supabase.from("selections").select("match_id").eq("user_id", user.id).in("match_id", upcomingMatches.map((m) => m.id))
+      : Promise.resolve({ data: [] as { match_id: string }[] }),
+    lastMatch
+      ? supabase.from("user_match_scores").select("total_points, rank").eq("user_id", user.id).eq("match_id", lastMatch.id).single()
+      : Promise.resolve({ data: null as { total_points: number; rank: number | null } | null }),
+    completedMatches && completedMatches.length > 0
+      ? supabase.from("selections").select("match_id").eq("user_id", user.id).in("match_id", completedMatches.map((m) => m.id))
+      : Promise.resolve({ data: [] as { match_id: string }[] }),
+  ])
+
   const submittedMatchIds = new Set<string>()
-  if (upcomingMatches && upcomingMatches.length > 0) {
-    const matchIds = upcomingMatches.map((m) => m.id)
-    const { data: subs } = await supabase
-      .from("selections")
-      .select("match_id")
-      .eq("user_id", user.id)
-      .in("match_id", matchIds)
-    for (const s of subs ?? []) submittedMatchIds.add(s.match_id)
-  }
+  for (const s of subsRes.data ?? []) submittedMatchIds.add(s.match_id)
   const hasSubmitted = nextMatch ? submittedMatchIds.has(nextMatch.id) : false
 
-  // Fetch last completed match result
-  const { data: lastMatch } = await supabase
-    .from("matches")
-    .select("*, team_home:teams!matches_team_home_id_fkey(short_name, color, logo_url), team_away:teams!matches_team_away_id_fkey(short_name, color, logo_url)")
-    .eq("status", "completed")
-    .order("start_time", { ascending: false })
-    .limit(1)
-    .single()
-
-  let lastMatchScore: { total_points: number; rank: number | null } | null = null
-  if (lastMatch) {
-    const { data } = await supabase
-      .from("user_match_scores")
-      .select("total_points, rank")
-      .eq("user_id", user.id)
-      .eq("match_id", lastMatch.id)
-      .single()
-    lastMatchScore = data
-  }
-
-  // Top 5 leaderboard
-  const { data: top5 } = await supabase
-    .from("season_leaderboard")
-    .select("*")
-    .order("season_rank", { ascending: true })
-    .limit(5)
-
-  // Fetch user's leagues
-  const myLeagues = await getMyLeagues()
-
-  // Calculate submission streak (consecutive completed matches with a selection)
-  const { data: completedMatches } = await supabase
-    .from("matches")
-    .select("id")
-    .in("status", ["completed", "live"])
-    .order("start_time", { ascending: false })
-    .limit(20)
+  const lastMatchScore: { total_points: number; rank: number | null } | null = lastScoreRes.data
 
   let streak = 0
   if (completedMatches && completedMatches.length > 0) {
-    const matchIds = completedMatches.map((m) => m.id)
-    const { data: userSelections } = await supabase
-      .from("selections")
-      .select("match_id")
-      .eq("user_id", user.id)
-      .in("match_id", matchIds)
-    const selectionSet = new Set((userSelections ?? []).map((s) => s.match_id))
+    const selectionSet = new Set((streakRes.data ?? []).map((s) => s.match_id))
     for (const m of completedMatches) {
       if (selectionSet.has(m.id)) streak++
       else break

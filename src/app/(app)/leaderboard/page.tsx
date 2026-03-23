@@ -114,8 +114,10 @@ export default async function LeaderboardPage({
     }))
   }
 
-  const thisWeekRows = lastMatch ? await getMatchScores(lastMatch.id) : []
-  const lastWeekRows = prevMatch ? await getMatchScores(prevMatch.id) : []
+  const [thisWeekRows, lastWeekRows] = await Promise.all([
+    lastMatch ? getMatchScores(lastMatch.id) : Promise.resolve([]),
+    prevMatch ? getMatchScores(prevMatch.id) : Promise.resolve([]),
+  ])
 
   const seasonRankMap = new Map(seasonRows.map((r) => [r.user_id, r.rank]))
 

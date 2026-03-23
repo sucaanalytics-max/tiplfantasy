@@ -16,48 +16,31 @@ export default async function ProfilePage() {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect("/login")
 
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("*")
-    .eq("id", user.id)
-    .single()
+  // Phase 1: all independent queries in parallel
+  const [
+    profileRes,
+    myRankRes,
+    matchScoresRes,
+    teamsRes,
+    captainRes,
+    selectionsRes,
+  ] = await Promise.all([
+    supabase.from("profiles").select("*").eq("id", user.id).single(),
+    supabase.from("season_leaderboard").select("*").eq("user_id", user.id).single(),
+    supabase.from("user_match_scores").select("*, match:matches(match_number, team_home_id, team_away_id, start_time)").eq("user_id", user.id).order("created_at", { ascending: false }),
+    supabase.from("teams").select("id, short_name, color, logo_url"),
+    supabase.from("selections").select("captain_id, captain:players!selections_captain_id_fkey(name)").eq("user_id", user.id).not("captain_id", "is", null),
+    supabase.from("selections").select("id").eq("user_id", user.id),
+  ])
 
-  // Season stats
-  const { data: myRank } = await supabase
-    .from("season_leaderboard")
-    .select("*")
-    .eq("user_id", user.id)
-    .single()
+  const profile = profileRes.data
+  const myRank = myRankRes.data
+  const matchScores = matchScoresRes.data
+  const teamMap = new Map(teamsRes.data?.map((t) => [t.id, t]) ?? [])
+  const captainData = captainRes.data
+  const selectionIds = (selectionsRes.data ?? []).map((s) => s.id)
 
-  // Match history
-  const { data: matchScores } = await supabase
-    .from("user_match_scores")
-    .select("*, match:matches(match_number, team_home_id, team_away_id, start_time)")
-    .eq("user_id", user.id)
-    .order("created_at", { ascending: false })
-
-  // Get teams for display
-  const { data: teams } = await supabase.from("teams").select("id, short_name, color, logo_url")
-  const teamMap = new Map(teams?.map((t) => [t.id, t]) ?? [])
-
-  // Best and worst match
-  const sorted = [...(matchScores ?? [])].sort((a, b) => b.total_points - a.total_points)
-  const bestMatch = sorted[0] ?? null
-  const worstMatch = sorted.length > 1 ? sorted[sorted.length - 1] : null
-
-  // Favorite captain (most used)
-  const { data: captainData } = await supabase
-    .from("selections")
-    .select("captain_id, captain:players!selections_captain_id_fkey(name)")
-    .eq("user_id", user.id)
-    .not("captain_id", "is", null)
-
-  // Role preferences
-  const { data: selections } = await supabase
-    .from("selections")
-    .select("id")
-    .eq("user_id", user.id)
-  const selectionIds = (selections ?? []).map((s) => s.id)
+  // Phase 2: role counts — depends on selectionIds
   const roleCounts = { WK: 0, BAT: 0, AR: 0, BOWL: 0 }
   if (selectionIds.length > 0) {
     const { data: selPlayers } = await supabase
@@ -69,6 +52,11 @@ export default async function ProfilePage() {
       if (role && role in roleCounts) roleCounts[role as keyof typeof roleCounts]++
     }
   }
+
+  // Best and worst match
+  const sorted = [...(matchScores ?? [])].sort((a, b) => b.total_points - a.total_points)
+  const bestMatch = sorted[0] ?? null
+  const worstMatch = sorted.length > 1 ? sorted[sorted.length - 1] : null
   const totalPicks = Object.values(roleCounts).reduce((a, b) => a + b, 0)
 
   const captainCounts = new Map<string, { name: string; count: number }>()
