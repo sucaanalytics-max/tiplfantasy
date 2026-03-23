@@ -4,6 +4,7 @@ import Link from "next/link"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { format } from "date-fns"
+import { SeriesImportClient } from "./series-import-client"
 
 export default async function AdminPage() {
   const supabase = await createClient()
@@ -123,6 +124,9 @@ export default async function AdminPage() {
           </Card>
         </Link>
       </div>
+
+      {/* Series import */}
+      <SeriesImportClient />
 
       {/* Match list */}
       <div className="space-y-3">

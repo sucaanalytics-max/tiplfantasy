@@ -10,7 +10,7 @@ import { Separator } from "@/components/ui/separator"
 import { format } from "date-fns"
 import type { MatchWithTeams, PlayerWithTeam, MatchPlayerScore } from "@/lib/types"
 import type { PlayerStats } from "@/lib/scoring"
-import { lockMatch, markNoResult, fetchPlayingXI, fetchMatchScorecard } from "@/actions/matches"
+import { lockMatch, markNoResult, fetchPlayingXI, fetchMatchScorecard, autoScoreMatch } from "@/actions/matches"
 import { savePlayerScores, calculateMatchPoints } from "@/actions/scoring"
 import { formatMatchMessage } from "@/lib/whatsapp"
 
@@ -146,6 +146,23 @@ export function AdminMatchClient({
       if (res.error) showMsg("error", res.error)
       else {
         showMsg("success", "Marked no result")
+        router.refresh()
+      }
+    })
+  }
+
+  function handleAutoScore() {
+    if (!match.cricapi_match_id) {
+      showMsg("error", "No CricAPI match ID set")
+      return
+    }
+    startTransition(async () => {
+      const res = await autoScoreMatch(match.id, match.cricapi_match_id!)
+      if (res.error) {
+        showMsg("error", res.error)
+      } else {
+        const unmatchedNote = res.unmatched?.length ? ` (${res.unmatched.length} unmatched: ${res.unmatched.join(", ")})` : ""
+        showMsg("success", `Auto-scored ${res.userScores?.length ?? 0} users${unmatchedNote}`)
         router.refresh()
       }
     })
@@ -305,6 +322,14 @@ export function AdminMatchClient({
             disabled={isPending || match.status === "completed"}
           >
             No Result
+          </Button>
+          <Button
+            size="sm"
+            onClick={handleAutoScore}
+            disabled={isPending || !match.cricapi_match_id}
+            className="gap-1.5"
+          >
+            ⚡ Auto-Score
           </Button>
           <Button
             variant="outline"

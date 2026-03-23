@@ -5,7 +5,8 @@ import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { updatePlayer, syncPlayerStats } from "@/actions/players"
+import { updatePlayer, syncPlayerStats, previewCricapiIdBackfill, confirmCricapiIdBackfill } from "@/actions/players"
+import type { CricapiIdProposal } from "@/actions/players"
 import type { PlayerWithTeam, PlayerRole, Team } from "@/lib/types"
 import { ROLE_COLORS } from "@/lib/badges"
 
@@ -25,6 +26,10 @@ export function PlayersClient({ players: initialPlayers }: Props) {
   const [howstatValue, setHowstatValue] = useState("")
   const [syncing, setSyncing] = useState(false)
   const [syncResult, setSyncResult] = useState<string | null>(null)
+  const [backfillLoading, setBackfillLoading] = useState(false)
+  const [backfillProposals, setBackfillProposals] = useState<CricapiIdProposal[] | null>(null)
+  const [backfillConfirming, setBackfillConfirming] = useState(false)
+  const [backfillResult, setBackfillResult] = useState<string | null>(null)
   const [isPending, startTransition] = useTransition()
   const costInputRef = useRef<HTMLInputElement>(null)
   const howstatInputRef = useRef<HTMLInputElement>(null)
@@ -171,6 +176,32 @@ export function PlayersClient({ players: initialPlayers }: Props) {
     }
   }
 
+  async function handleMapCricapiIds() {
+    setBackfillLoading(true)
+    setBackfillProposals(null)
+    setBackfillResult(null)
+    const result = await previewCricapiIdBackfill()
+    setBackfillLoading(false)
+    if (result.error) {
+      setBackfillResult(`Error: ${result.error}`)
+    } else {
+      setBackfillProposals(result.proposals ?? [])
+    }
+  }
+
+  async function handleConfirmBackfill() {
+    if (!backfillProposals || backfillProposals.length === 0) return
+    setBackfillConfirming(true)
+    const result = await confirmCricapiIdBackfill(backfillProposals)
+    setBackfillConfirming(false)
+    setBackfillProposals(null)
+    if (result.error) {
+      setBackfillResult(`Error: ${result.error}`)
+    } else {
+      setBackfillResult(`Mapped ${result.updated} players`)
+    }
+  }
+
   return (
     <div className="p-4 md:p-6 space-y-4">
       <div className="flex items-start justify-between">
@@ -180,7 +211,15 @@ export function PlayersClient({ players: initialPlayers }: Props) {
             {players.length} players across {teams.length} teams
           </p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
+          <Button
+            onClick={handleMapCricapiIds}
+            disabled={backfillLoading || backfillConfirming}
+            variant="outline"
+            size="sm"
+          >
+            {backfillLoading ? "Searching... (~30s)" : "Map CricAPI IDs"}
+          </Button>
           <Button
             onClick={handleSyncStats}
             disabled={syncing}
@@ -192,8 +231,50 @@ export function PlayersClient({ players: initialPlayers }: Props) {
           {syncResult && (
             <span className="text-xs text-muted-foreground">{syncResult}</span>
           )}
+          {backfillResult && (
+            <span className="text-xs text-muted-foreground">{backfillResult}</span>
+          )}
         </div>
       </div>
+
+      {/* CricAPI ID backfill proposals */}
+      {backfillProposals !== null && (
+        <Card className="border border-border">
+          <CardContent className="pt-4 space-y-3">
+            <div className="flex items-center justify-between">
+              <p className="text-sm font-medium">
+                {backfillProposals.length === 0
+                  ? "All players already have CricAPI IDs mapped."
+                  : `Found ${backfillProposals.length} player mappings — review and confirm:`}
+              </p>
+              <Button variant="ghost" size="sm" onClick={() => setBackfillProposals(null)}>
+                Dismiss
+              </Button>
+            </div>
+            {backfillProposals.length > 0 && (
+              <>
+                <div className="max-h-64 overflow-y-auto space-y-1 text-xs font-mono border border-border rounded-md p-2">
+                  {backfillProposals.map((p) => (
+                    <div key={p.playerId} className="flex gap-3 py-0.5">
+                      <span className="text-muted-foreground w-40 truncate shrink-0">{p.playerName}</span>
+                      <span className="text-green-400">→</span>
+                      <span className="truncate">{p.apiName}</span>
+                      <span className="text-muted-foreground shrink-0">[{p.country}]</span>
+                    </div>
+                  ))}
+                </div>
+                <Button
+                  onClick={handleConfirmBackfill}
+                  disabled={backfillConfirming}
+                  size="sm"
+                >
+                  {backfillConfirming ? "Saving..." : `Confirm ${backfillProposals.length} Mappings`}
+                </Button>
+              </>
+            )}
+          </CardContent>
+        </Card>
+      )}
 
       {/* Filters */}
       <div className="flex flex-col sm:flex-row gap-3">

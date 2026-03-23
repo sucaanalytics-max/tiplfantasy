@@ -2,6 +2,7 @@
 
 import { createClient } from "@/lib/supabase/server"
 import { createAdminClient } from "@/lib/supabase/admin"
+import { searchPlayers } from "@/lib/api/cricapi"
 import type { PlayerRole } from "@/lib/types"
 
 async function requireAdmin() {
@@ -40,6 +41,73 @@ export async function updatePlayer(
 
   if (error) return { error: error.message }
   return { success: true }
+}
+
+export type CricapiIdProposal = {
+  playerId: string
+  playerName: string
+  cricapiId: string
+  apiName: string
+  country: string
+}
+
+/**
+ * Preview: search CricAPI for each player without a cricapi_id.
+ * Returns proposals — does NOT write to DB.
+ */
+export async function previewCricapiIdBackfill(): Promise<{
+  proposals?: CricapiIdProposal[]
+  error?: string
+}> {
+  await requireAdmin()
+  const admin = createAdminClient()
+
+  const { data: players, error } = await admin
+    .from("players")
+    .select("id, name")
+    .is("cricapi_id", null)
+    .order("name")
+
+  if (error) return { error: error.message }
+  if (!players || players.length === 0) return { proposals: [] }
+
+  const proposals: CricapiIdProposal[] = []
+
+  for (const player of players) {
+    // Stagger requests to avoid rate limiting
+    await new Promise((r) => setTimeout(r, 100))
+    const results = await searchPlayers(player.name)
+    if (results && results.length > 0) {
+      proposals.push({
+        playerId: player.id,
+        playerName: player.name,
+        cricapiId: results[0].id,
+        apiName: results[0].name,
+        country: results[0].country,
+      })
+    }
+  }
+
+  return { proposals }
+}
+
+/** Confirm: write the approved cricapi_id proposals to the players table */
+export async function confirmCricapiIdBackfill(
+  proposals: CricapiIdProposal[]
+): Promise<{ success?: boolean; updated?: number; error?: string }> {
+  await requireAdmin()
+  const admin = createAdminClient()
+
+  let updated = 0
+  for (const p of proposals) {
+    const { error } = await admin
+      .from("players")
+      .update({ cricapi_id: p.cricapiId })
+      .eq("id", p.playerId)
+    if (!error) updated++
+  }
+
+  return { success: true, updated }
 }
 
 export async function syncPlayerStats(playerId?: string) {

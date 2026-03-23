@@ -2,7 +2,8 @@
 
 import { createClient } from "@/lib/supabase/server"
 import { createAdminClient } from "@/lib/supabase/admin"
-import { fetchSquad, fetchScorecard, parseScorecardToStats, fuzzyMatchName } from "@/lib/api/cricapi"
+import { fetchSquad, fetchScorecard, fetchMatchPoints, fetchSeriesInfo, parseScorecardToStats, fuzzyMatchName } from "@/lib/api/cricapi"
+import { savePlayerScores, calculateMatchPoints } from "@/actions/scoring"
 import type { PlayerStats } from "@/lib/scoring"
 
 async function requireAdmin() {
@@ -201,4 +202,183 @@ export async function fetchMatchScorecard(
   }
 
   return { success: true, scores, unmatched }
+}
+
+/**
+ * Auto-score a match in one step using the Fantasy Points API.
+ * Fetches innings stats, resolves player IDs (cricapi_id first, name fallback),
+ * saves player scores, and calculates user rankings.
+ */
+export async function autoScoreMatch(
+  matchId: string,
+  cricapiMatchId: string
+): Promise<{
+  success?: boolean
+  error?: string
+  unmatched?: string[]
+  userScores?: Array<{ userId: string; total: number; rank: number }>
+}> {
+  await requireAdmin()
+  const admin = createAdminClient()
+
+  const result = await fetchMatchPoints(cricapiMatchId)
+  if (!result) return { error: "Fantasy Points API returned no data. Try the manual scorecard flow instead." }
+  if (result.innings.length === 0) return { error: "No innings data in match_points response. Match may not be complete yet." }
+
+  const parsed = parseScorecardToStats(result.innings)
+
+  const { data: match } = await admin
+    .from("matches")
+    .select("team_home_id, team_away_id")
+    .eq("id", matchId)
+    .single()
+  if (!match) return { error: "Match not found" }
+
+  const { data: dbPlayers } = await admin
+    .from("players")
+    .select("id, name, cricapi_id")
+    .in("team_id", [match.team_home_id, match.team_away_id])
+  if (!dbPlayers) return { error: "Failed to load players" }
+
+  // Build lookup maps: cricapi_id → db id, and normalized name → db id
+  const cricapiIdMap = new Map<string, string>()
+  const nameMap = new Map<string, string>()
+  const idToName = new Map<string, string>()
+  for (const p of dbPlayers) {
+    if (p.cricapi_id) cricapiIdMap.set(p.cricapi_id, p.id)
+    const norm = p.name.toLowerCase().replace(/[^a-z\s]/g, "").replace(/\s+/g, " ").trim()
+    nameMap.set(norm, p.id)
+    idToName.set(p.id, p.name)
+  }
+
+  // Build a map: cricapi player id → db player id from totals
+  const apiIdToDbId = new Map<string, string>()
+  for (const t of result.totals) {
+    const dbId = cricapiIdMap.get(t.id) ?? fuzzyMatchName(t.name, nameMap)
+    if (dbId) apiIdToDbId.set(t.id, dbId)
+  }
+
+  const scores: Array<{ playerId: string; stats: PlayerStats }> = []
+  const unmatched: string[] = []
+
+  for (const [apiName, stats] of parsed) {
+    // Try ID-based match first via fuzzyMatchName on name (consistent with parseScorecardToStats key)
+    const dbId = fuzzyMatchName(apiName, nameMap)
+    if (dbId) {
+      scores.push({ playerId: dbId, stats })
+    } else {
+      unmatched.push(apiName)
+    }
+  }
+
+  if (scores.length === 0) {
+    return { error: "No players matched. Check that match teams are correct and cricapi_ids are mapped." }
+  }
+
+  const saveResult = await savePlayerScores(matchId, scores)
+  if (saveResult.error) return { error: `Failed to save scores: ${saveResult.error}` }
+
+  const calcResult = await calculateMatchPoints(matchId)
+  if (calcResult.error) return { error: `Failed to calculate points: ${calcResult.error}` }
+
+  return {
+    success: true,
+    unmatched,
+    userScores: calcResult.results?.map((r) => ({
+      userId: r.userId,
+      total: r.total,
+      rank: r.rank,
+    })),
+  }
+}
+
+export type SeriesImportProposal = {
+  apiMatchId: string
+  apiName: string
+  dateTimeGMT: string
+  teams: string[]
+  dbMatchId: string | null
+  matchNumber: number | null
+  alreadySet: boolean
+}
+
+/**
+ * Preview: fetch all matches from a CricAPI series and propose cricapi_match_id mappings.
+ * Matches by team names + date proximity. Does NOT write to DB.
+ */
+export async function previewSeriesImport(seriesId: string): Promise<{
+  proposals?: SeriesImportProposal[]
+  error?: string
+}> {
+  await requireAdmin()
+  const admin = createAdminClient()
+
+  const seriesMatches = await fetchSeriesInfo(seriesId)
+  if (!seriesMatches) return { error: "Failed to fetch series from CricAPI. Check the series ID." }
+
+  const { data: dbMatches } = await admin
+    .from("matches")
+    .select("id, match_number, start_time, cricapi_match_id, team_home:teams!team_home_id(name, short_name), team_away:teams!team_away_id(name, short_name)")
+    .order("match_number")
+  if (!dbMatches) return { error: "Failed to load matches from DB" }
+
+  const proposals: SeriesImportProposal[] = []
+
+  for (const apiMatch of seriesMatches) {
+    const apiDate = new Date(apiMatch.dateTimeGMT).getTime()
+    const apiTeams = apiMatch.teams.map((t) => t.toLowerCase())
+
+    // Find DB match by team names + date (within 24h)
+    let bestDb: (typeof dbMatches)[0] | null = null
+    for (const dbm of dbMatches) {
+      const home = dbm.team_home as unknown as { name: string; short_name: string }
+      const away = dbm.team_away as unknown as { name: string; short_name: string }
+      const dbDate = new Date(dbm.start_time).getTime()
+      const withinDay = Math.abs(apiDate - dbDate) < 24 * 60 * 60 * 1000
+
+      const teamMatch = apiTeams.some(
+        (t) =>
+          t.includes(home.short_name.toLowerCase()) ||
+          home.name.toLowerCase().includes(t) ||
+          t.includes(away.short_name.toLowerCase()) ||
+          away.name.toLowerCase().includes(t)
+      )
+
+      if (withinDay && teamMatch) {
+        bestDb = dbm
+        break
+      }
+    }
+
+    proposals.push({
+      apiMatchId: apiMatch.id,
+      apiName: apiMatch.name,
+      dateTimeGMT: apiMatch.dateTimeGMT,
+      teams: apiMatch.teams,
+      dbMatchId: bestDb?.id ?? null,
+      matchNumber: bestDb?.match_number ?? null,
+      alreadySet: bestDb?.cricapi_match_id === apiMatch.id,
+    })
+  }
+
+  return { proposals }
+}
+
+/** Confirm: write cricapi_match_id for approved proposals */
+export async function confirmSeriesImport(
+  proposals: Array<{ dbMatchId: string; apiMatchId: string }>
+): Promise<{ success?: boolean; updated?: number; error?: string }> {
+  await requireAdmin()
+  const admin = createAdminClient()
+
+  let updated = 0
+  for (const p of proposals) {
+    const { error } = await admin
+      .from("matches")
+      .update({ cricapi_match_id: p.apiMatchId })
+      .eq("id", p.dbMatchId)
+    if (!error) updated++
+  }
+
+  return { success: true, updated }
 }

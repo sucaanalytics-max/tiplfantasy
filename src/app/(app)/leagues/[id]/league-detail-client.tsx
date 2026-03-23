@@ -34,7 +34,7 @@ type Props = {
   awards: LeagueMemberStats[]
 }
 
-const MEDALS = ["\u{1F947}", "\u{1F948}", "\u{1F949}"]
+const MEDALS = ["\u{1F947}", "\u{1F948}", "\u{1F949}"] as const
 
 export function LeagueDetailClient({ league, members, isCreator, leaderboard, awards }: Props) {
   const router = useRouter()
@@ -93,8 +93,8 @@ export function LeagueDetailClient({ league, members, isCreator, leaderboard, aw
       {/* Header */}
       <div className="flex items-center gap-3">
         <Link href="/leagues">
-          <Button variant="ghost" size="sm" className="h-9 w-9 p-0">
-            <ArrowLeft className="h-4 w-4" />
+          <Button variant="ghost" size="sm" className="h-9 w-9 p-0" aria-label="Back to leagues">
+            <ArrowLeft className="h-4 w-4" aria-hidden="true" />
           </Button>
         </Link>
         <div className="flex-1 min-w-0">

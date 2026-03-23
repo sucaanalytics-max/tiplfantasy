@@ -51,6 +51,19 @@ export type CricAPISeriesMatch = {
   fantasyEnabled: boolean
 }
 
+export type CricAPIPlayerSearchResult = {
+  id: string
+  name: string
+  country: string
+}
+
+export type CricAPIMatchPointsResult = {
+  /** Innings normalized into CricAPIScorecard shape — feed directly to parseScorecardToStats */
+  innings: CricAPIScorecard[]
+  /** Player totals from CricAPI — use `id` for cricapi_id-based DB lookup; ignore `points` (use our own engine) */
+  totals: Array<{ id: string; name: string }>
+}
+
 export type CricAPIScorecard = {
   batting: Array<{
     batsman: { name: string }
@@ -261,6 +274,94 @@ export function parseScorecardToStats(innings: CricAPIScorecard[]): ParsedStats 
   }
 
   return stats
+}
+
+/** Search players by name — used for backfilling cricapi_id on the players table */
+export async function searchPlayers(name: string): Promise<CricAPIPlayerSearchResult[] | null> {
+  try {
+    const res = await fetch(
+      `${BASE_URL}/players?apikey=${apiKey()}&search=${encodeURIComponent(name)}&offset=0`
+    )
+    if (!res.ok) return null
+    const json = await res.json()
+    return (json.data ?? []).map((p: { id: string; name: string; country: string }) => ({
+      id: p.id,
+      name: p.name,
+      country: p.country ?? "",
+    }))
+  } catch {
+    return null
+  }
+}
+
+/**
+ * Fetch match_points (Fantasy Points API).
+ * Returns innings stats normalized to CricAPIScorecard shape + totals for ID-based player lookup.
+ * Ignore totals[].points — we apply our own scoring engine.
+ */
+export async function fetchMatchPoints(matchId: string): Promise<CricAPIMatchPointsResult | null> {
+  try {
+    const res = await fetch(
+      `${BASE_URL}/match_points?apikey=${apiKey()}&id=${matchId}`
+    )
+    if (!res.ok) return null
+    const json = await res.json()
+    const data = json.data
+    if (!data) return null
+
+    // Normalize match_points innings → CricAPIScorecard[]
+    const innings: CricAPIScorecard[] = (data.innings ?? []).map(
+      (inn: {
+        batting?: Array<{ name: string; r: number; b: number; "4s": number; "6s": number }>
+        bowling?: Array<{ name: string; o: number; m: number; r: number; w: number }>
+        catching?: Array<{ name: string; catches?: number; stumpings?: number; runouts?: number }>
+      }) => ({
+        batting: (inn.batting ?? []).map((b) => ({
+          batsman: { name: b.name },
+          r: b.r ?? 0,
+          b: b.b ?? 0,
+          "4s": b["4s"] ?? 0,
+          "6s": b["6s"] ?? 0,
+        })),
+        bowling: (inn.bowling ?? []).map((b) => ({
+          bowler: { name: b.name },
+          o: b.o ?? 0,
+          m: b.m ?? 0,
+          r: b.r ?? 0,
+          w: b.w ?? 0,
+        })),
+        fielding: (inn.catching ?? []).map((f) => ({
+          fielder: { name: f.name },
+          catches: f.catches ?? 0,
+          stumpings: f.stumpings ?? 0,
+          runouts: f.runouts ?? 0,
+        })),
+      })
+    )
+
+    const totals: Array<{ id: string; name: string }> = (data.totals ?? []).map(
+      (t: { id: string; name: string }) => ({ id: t.id, name: t.name })
+    )
+
+    return { innings, totals }
+  } catch {
+    return null
+  }
+}
+
+/** Fetch full series info including all matches with cricapi IDs — for schedule import */
+export async function fetchSeriesInfo(seriesId: string): Promise<CricAPISeriesMatch[] | null> {
+  try {
+    const res = await fetch(
+      `${BASE_URL}/series_info?apikey=${apiKey()}&id=${seriesId}`
+    )
+    if (!res.ok) return null
+    const json = await res.json()
+    // matchList has the most complete match data for our import use case
+    return json.data?.matchList ?? null
+  } catch {
+    return null
+  }
 }
 
 export function fuzzyMatchName(
