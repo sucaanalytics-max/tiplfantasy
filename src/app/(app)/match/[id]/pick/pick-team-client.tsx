@@ -482,7 +482,7 @@ export function PickTeamClient({
 
   // Main player selection view
   return (
-    <div className="min-h-screen pb-40 md:pb-28 lg:pb-0">
+    <div className="min-h-dvh pb-[calc(10rem+env(safe-area-inset-bottom))] md:pb-28 lg:pb-0">
       {showConfetti && <Confetti />}
       {/* Header */}
       <div className="sticky top-0 z-30 bg-background/95 backdrop-blur border-b border-border">
@@ -794,7 +794,7 @@ export function PickTeamClient({
       </div>{/* end split-panel grid */}
 
       {/* Bottom action bar — mobile only */}
-      <div className="fixed bottom-14 left-0 right-0 md:bottom-0 z-40 border-t border-border bg-background/95 backdrop-blur lg:hidden">
+      <div className="fixed bottom-[calc(3.5rem+env(safe-area-inset-bottom))] left-0 right-0 md:bottom-0 z-40 border-t border-border bg-background/95 backdrop-blur lg:hidden">
         {error && (
           <div className="px-4 py-2 bg-destructive/10 border-b border-destructive/20 flex items-center gap-2">
             <AlertCircle className="h-3.5 w-3.5 text-destructive shrink-0" />
@@ -835,7 +835,7 @@ export function PickTeamClient({
                 <p className="text-xs text-muted-foreground text-center mb-3">
                   Captain gets 2x points, Vice-Captain gets 1.5x
                 </p>
-                <div className="px-4 pb-6 space-y-2 overflow-y-auto">
+                <div className="px-4 pb-[max(1.5rem,env(safe-area-inset-bottom))] space-y-2 overflow-y-auto" data-vaul-no-drag>
                   {selectedPlayers
                     .sort((a, b) => ROLE_ORDER.indexOf(a.role) - ROLE_ORDER.indexOf(b.role))
                     .map((player) => {
@@ -909,7 +909,7 @@ export function PickTeamClient({
               </DrawerTrigger>
               <DrawerContent className="max-h-[85vh]">
                 <DrawerTitle className="text-center text-sm font-semibold py-2">Team Preview</DrawerTitle>
-                <div className="px-4 pb-6 overflow-y-auto">
+                <div className="px-4 pb-[max(1.5rem,env(safe-area-inset-bottom))] overflow-y-auto" data-vaul-no-drag>
                   <div className="flex items-center justify-between text-xs text-muted-foreground mb-3">
                     <span>Players: {selectedIds.size}/11</span>
                     <span>Credits: {totalCost.toFixed(1)}/{TOTAL_BUDGET}</span>
