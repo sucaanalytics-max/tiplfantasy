@@ -30,7 +30,7 @@ export default async function DashboardPage() {
     completedRes,
   ] = await Promise.all([
     supabase.from("profiles").select("display_name, avatar_url").eq("id", user.id).single(),
-    supabase.from("season_leaderboard").select("*").eq("user_id", user.id).single(),
+    supabase.from("season_leaderboard").select("*").eq("user_id", user.id).maybeSingle(),
     supabase
       .from("matches")
       .select("*, team_home:teams!matches_team_home_id_fkey(short_name, color, logo_url), team_away:teams!matches_team_away_id_fkey(short_name, color, logo_url)")
@@ -43,10 +43,10 @@ export default async function DashboardPage() {
       .eq("status", "completed")
       .order("start_time", { ascending: false })
       .limit(1)
-      .single(),
+      .maybeSingle(),
     supabase.from("season_leaderboard").select("*").order("season_rank", { ascending: true }).limit(5),
     getMyLeagues(),
-    supabase.from("matches").select("id").in("status", ["completed", "live"]).order("start_time", { ascending: false }).limit(20),
+    supabase.from("matches").select("id").eq("status", "completed").order("start_time", { ascending: false }).limit(20),
   ])
 
   const profile = profileRes.data

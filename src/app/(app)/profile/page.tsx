@@ -26,7 +26,7 @@ export default async function ProfilePage() {
     selectionsRes,
   ] = await Promise.all([
     supabase.from("profiles").select("*").eq("id", user.id).single(),
-    supabase.from("season_leaderboard").select("*").eq("user_id", user.id).single(),
+    supabase.from("season_leaderboard").select("*").eq("user_id", user.id).maybeSingle(),
     supabase.from("user_match_scores").select("*, match:matches(match_number, team_home_id, team_away_id, start_time)").eq("user_id", user.id).order("created_at", { ascending: false }),
     supabase.from("teams").select("id, short_name, color, logo_url"),
     supabase.from("selections").select("captain_id, captain:players!selections_captain_id_fkey(name)").eq("user_id", user.id).not("captain_id", "is", null),
