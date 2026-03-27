@@ -918,7 +918,13 @@ export function PickTeamClient({
                         onClick={handleSubmit}
                         disabled={!validation.valid || isPending}
                       >
-                        {isPending ? "Saving…" : initialSelectedIds.length > 0 ? "Update" : "Submit"}
+                        {!validation.valid
+                        ? "Fix team first"
+                        : isPending
+                          ? "Saving…"
+                          : initialSelectedIds.length > 0
+                            ? "Update"
+                            : "Submit"}
                       </Button>
                     </DrawerClose>
                   </div>
@@ -976,6 +982,17 @@ export function PickTeamClient({
               </button>
             )}
           </div>
+
+          {selectedIds.size === 11 && !validation.valid && (
+            <p className="text-xs text-destructive text-center mb-1.5">
+              {validation.errors[0]}
+            </p>
+          )}
+          {selectedIds.size === 11 && validation.valid && (!captainId || !viceCaptainId) && (
+            <p className="text-xs text-amber-500 text-center mb-1.5">
+              Set Captain &amp; Vice-Captain to submit
+            </p>
+          )}
 
           <Button
             onClick={handleSubmit}
