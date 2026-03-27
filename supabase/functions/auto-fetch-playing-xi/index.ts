@@ -52,6 +52,15 @@ async function fetchMatchInfo(matchId: string, apiKey: string) {
   return json.data ?? null
 }
 
+async function fetchMatches(apiKey: string) {
+  const res = await fetch(
+    `${CRICAPI_BASE}/matches?apikey=${apiKey}&offset=0`
+  )
+  if (!res.ok) return null
+  const json = await res.json()
+  return (json.data ?? []) as Array<{ id: string; hasSquad?: boolean }>
+}
+
 async function fetchSquad(matchId: string, apiKey: string) {
   const res = await fetch(
     `${CRICAPI_BASE}/match_squad?apikey=${apiKey}&id=${matchId}`
@@ -201,8 +210,95 @@ Deno.serve(async (req) => {
       }
     }
 
+    // Step 2: Check matches 60–120 min away with hasSquad:true → early fetch
+    const soon2h = new Date(now.getTime() + 120 * 60 * 1000)
+
+    const { data: earlyMatches } = await supabase
+      .from("matches")
+      .select("id, cricapi_match_id, team_home_id, team_away_id, start_time")
+      .eq("status", "upcoming")
+      .not("cricapi_match_id", "is", null)
+      .gt("start_time", soon.toISOString())
+      .lte("start_time", soon2h.toISOString())
+
+    const earlyResults: Array<{ match_id: string; status: string }> = []
+
+    if (earlyMatches && earlyMatches.length > 0) {
+      const apiMatches = await fetchMatches(apiKey)
+      const apiMatchMap = new Map((apiMatches ?? []).map((m) => [m.id, m]))
+
+      for (const match of earlyMatches) {
+        const apiMatch = apiMatchMap.get(match.cricapi_match_id!)
+        if (!apiMatch?.hasSquad) {
+          earlyResults.push({ match_id: match.id, status: "no_squad_yet" })
+          continue
+        }
+
+        const { count } = await supabase
+          .from("playing_xi")
+          .select("id", { count: "exact", head: true })
+          .eq("match_id", match.id)
+
+        if (count && count >= 22) {
+          earlyResults.push({ match_id: match.id, status: "already_populated" })
+          continue
+        }
+
+        const squad = await fetchSquad(match.cricapi_match_id!, apiKey)
+        if (!squad || squad.length === 0) {
+          earlyResults.push({ match_id: match.id, status: "no_squad_data" })
+          continue
+        }
+
+        const { data: dbPlayers } = await supabase
+          .from("players")
+          .select("id, name, team_id")
+          .in("team_id", [match.team_home_id, match.team_away_id])
+
+        if (!dbPlayers) continue
+
+        const nameMap = new Map<string, string>()
+        for (const p of dbPlayers) nameMap.set(normalizeName(p.name), p.id)
+
+        const matched: string[] = []
+        for (const apiPlayer of squad) {
+          const dbId = fuzzyMatchName(apiPlayer.name, nameMap)
+          if (dbId) matched.push(dbId)
+        }
+
+        const deduped = [...new Set(matched)]
+        const playerTeamMap = new Map(dbPlayers.map((p) => [p.id, p.team_id]))
+        const byTeam = new Map<string, string[]>()
+        for (const pid of deduped) {
+          const tid = playerTeamMap.get(pid)
+          if (!tid) continue
+          const list = byTeam.get(tid) ?? []
+          list.push(pid)
+          byTeam.set(tid, list)
+        }
+
+        const teamCounts = [...byTeam.values()].map((v) => v.length)
+        if (teamCounts.length !== 2 || teamCounts.some((c) => c !== 11)) {
+          earlyResults.push({ match_id: match.id, status: `early_partial (${deduped.length} players)` })
+          continue
+        }
+
+        await supabase.from("playing_xi").delete().eq("match_id", match.id)
+        const rows = deduped.map((pid) => ({
+          match_id: match.id,
+          player_id: pid,
+          team_id: playerTeamMap.get(pid)!,
+        }))
+        const { error: insertError } = await supabase.from("playing_xi").insert(rows)
+        earlyResults.push({
+          match_id: match.id,
+          status: insertError ? `insert_error: ${insertError.message}` : `early_ok (${rows.length} players)`
+        })
+      }
+    }
+
     return new Response(
-      JSON.stringify({ checked: results.length, results }),
+      JSON.stringify({ checked: results.length, results, early: earlyResults }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 200 }
     )
   } catch (e) {

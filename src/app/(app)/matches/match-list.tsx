@@ -11,6 +11,7 @@ import { TeamLogo } from "@/components/team-logo"
 import { Swords } from "lucide-react"
 import { useMemo } from "react"
 import { STATUS_CONFIG } from "@/lib/badges"
+import { LiveScoreWidget } from "@/components/live-score-widget"
 
 type Match = {
   id: string
@@ -19,6 +20,7 @@ type Match = {
   venue: string
   status: string
   result_summary: string | null
+  cricapi_match_id: string | null
   team_home: { short_name: string; color: string; logo_url: string | null }
   team_away: { short_name: string; color: string; logo_url: string | null }
 }
@@ -169,6 +171,15 @@ export function MatchList({
                             )}
                           </div>
                         </div>
+
+                        {match.cricapi_match_id && (match.status === "live" || match.status === "upcoming") && (
+                          <div className="mt-2">
+                            <LiveScoreWidget
+                              cricapiMatchId={match.cricapi_match_id}
+                              startTime={match.start_time}
+                            />
+                          </div>
+                        )}
 
                         <div className="mt-3 pt-3 border-t border-border flex items-center justify-between">
                           {match.status === "upcoming" && (

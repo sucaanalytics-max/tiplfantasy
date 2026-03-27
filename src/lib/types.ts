@@ -59,6 +59,7 @@ export type Player = {
   howstat_id: number | null
   stats_updated_at: string | null
   form_indicator: string | null
+  image_url: string | null
 }
 
 export type Match = {

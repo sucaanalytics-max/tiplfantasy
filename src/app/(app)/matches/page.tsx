@@ -31,6 +31,7 @@ export default async function MatchesPage() {
     venue: match.venue,
     status: match.status,
     result_summary: match.result_summary,
+    cricapi_match_id: match.cricapi_match_id ?? null,
     team_home: match.team_home as unknown as { short_name: string; color: string; logo_url: string | null },
     team_away: match.team_away as unknown as { short_name: string; color: string; logo_url: string | null },
   }))

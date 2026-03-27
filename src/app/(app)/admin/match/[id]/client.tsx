@@ -10,7 +10,7 @@ import { Separator } from "@/components/ui/separator"
 import { format } from "date-fns"
 import type { MatchWithTeams, PlayerWithTeam, MatchPlayerScore } from "@/lib/types"
 import type { PlayerStats } from "@/lib/scoring"
-import { lockMatch, markNoResult, fetchPlayingXI, fetchMatchScorecard, autoScoreMatch } from "@/actions/matches"
+import { lockMatch, markNoResult, fetchPlayingXI, fetchMatchScorecard, autoScoreMatch, testMatchPoints } from "@/actions/matches"
 import { savePlayerScores, calculateMatchPoints } from "@/actions/scoring"
 import { formatMatchMessage } from "@/lib/whatsapp"
 
@@ -62,6 +62,7 @@ export function AdminMatchClient({
   const [isPending, startTransition] = useTransition()
   const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null)
   const [playingXIIds, setPlayingXIIds] = useState<string[]>(initialXIIds)
+  const [fantasyApiResult, setFantasyApiResult] = useState<unknown>(null)
 
   // Initialize score entries from existing scores or empty
   const initScores = (): ScoreEntry => {
@@ -214,6 +215,22 @@ export function AdminMatchClient({
     })
   }
 
+  function handleTestFantasyApi() {
+    if (!match.cricapi_match_id) {
+      showMsg("error", "No CricAPI match ID set")
+      return
+    }
+    startTransition(async () => {
+      const res = await testMatchPoints(match.id)
+      if (res.error) {
+        showMsg("error", res.error)
+      } else {
+        setFantasyApiResult(res.data)
+        showMsg("success", "Fantasy API response loaded below")
+      }
+    })
+  }
+
   function handleWhatsApp() {
     const matchTitle = `${match.team_home.short_name} vs ${match.team_away.short_name}`
     const results = userScores.map((s) => ({
@@ -354,6 +371,14 @@ export function AdminMatchClient({
           >
             Calculate Points
           </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleTestFantasyApi}
+            disabled={isPending || !match.cricapi_match_id}
+          >
+            Test Fantasy API
+          </Button>
           {userScores.length > 0 && (
             <Button variant="secondary" size="sm" onClick={handleWhatsApp}>
               Copy WhatsApp Message
@@ -361,6 +386,21 @@ export function AdminMatchClient({
           )}
         </CardContent>
       </Card>
+
+      {/* Fantasy API diagnostic output */}
+      {fantasyApiResult !== null && (
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between">
+            <CardTitle className="text-base">Fantasy API Response</CardTitle>
+            <Button variant="ghost" size="sm" onClick={() => setFantasyApiResult(null)}>Dismiss</Button>
+          </CardHeader>
+          <CardContent>
+            <pre className="text-xs bg-muted rounded-lg p-4 overflow-x-auto max-h-96 overflow-y-auto">
+              {JSON.stringify(fantasyApiResult, null, 2)}
+            </pre>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Playing XI */}
       {playingXIIds.length > 0 && (

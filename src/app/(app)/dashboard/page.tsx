@@ -13,6 +13,7 @@ import { getMyLeagues } from "@/actions/leagues"
 import { getInitials, getAvatarColor } from "@/lib/avatar"
 import { RankBadge } from "@/components/rank-badge"
 import { PageTransition } from "@/components/page-transition"
+import { LiveScoreWidget } from "@/components/live-score-widget"
 
 export default async function DashboardPage() {
   const supabase = await createClient()
@@ -224,10 +225,16 @@ export default async function DashboardPage() {
 
       {/* Hero match card */}
       {nextMatch && (
-        <MatchCard
-          match={nextMatch as unknown as Parameters<typeof MatchCard>[0]["match"]}
-          hasSubmitted={hasSubmitted}
-        />
+        <div className="space-y-1.5">
+          <MatchCard
+            match={nextMatch as unknown as Parameters<typeof MatchCard>[0]["match"]}
+            hasSubmitted={hasSubmitted}
+          />
+          <LiveScoreWidget
+            cricapiMatchId={(nextMatch as unknown as { cricapi_match_id: string | null }).cricapi_match_id}
+            startTime={nextMatch.start_time}
+          />
+        </div>
       )}
 
       {/* Upcoming matches — horizontal carousel */}

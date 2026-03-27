@@ -181,17 +181,17 @@ export async function fetchScorecard(matchId: string): Promise<CricAPIScorecard[
   }
 }
 
-export async function fetchSquad(matchId: string): Promise<Array<{ name: string; id: string }> | null> {
+export async function fetchSquad(matchId: string): Promise<Array<{ name: string; id: string; img?: string }> | null> {
   try {
     const res = await fetch(
       `${BASE_URL}/match_squad?apikey=${apiKey()}&id=${matchId}`
     )
     if (!res.ok) return null
     const json = await res.json()
-    const players: Array<{ name: string; id: string }> = []
+    const players: Array<{ name: string; id: string; img?: string }> = []
     for (const team of json.data ?? []) {
       for (const p of team.players ?? []) {
-        players.push({ name: p.name, id: p.id })
+        players.push({ name: p.name, id: p.id, img: p.img ?? undefined })
       }
     }
     return players
@@ -362,6 +362,39 @@ export async function fetchSeriesInfo(seriesId: string): Promise<CricAPISeriesMa
   } catch {
     return null
   }
+}
+
+/** Live score item from /cricScore endpoint */
+export type CricScoreItem = {
+  id: string
+  ms: "fixture" | "live" | "result" | string
+  t1s: string
+  t2s: string
+  series: string
+}
+
+/** Fetch all active match scores in one call (60s cache) */
+export async function fetchCricScores(): Promise<CricScoreItem[] | null> {
+  try {
+    const res = await fetch(
+      `${BASE_URL}/cricScore?apikey=${apiKey()}`,
+      { next: { revalidate: 60 } }
+    )
+    if (!res.ok) return null
+    const json = await res.json()
+    return json.data ?? null
+  } catch {
+    return null
+  }
+}
+
+/** Diagnostic: returns raw /match_points response for admin verification */
+export async function testMatchPointsEndpoint(matchId: string): Promise<unknown> {
+  const res = await fetch(
+    `${BASE_URL}/match_points?apikey=${apiKey()}&id=${matchId}`
+  )
+  if (!res.ok) return { error: res.status, statusText: res.statusText }
+  return await res.json()
 }
 
 export function fuzzyMatchName(

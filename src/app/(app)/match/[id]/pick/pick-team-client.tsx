@@ -320,8 +320,22 @@ export function PickTeamClient({
           hasPlayingXI && !isInXI && "opacity-50"
         )}
       >
-        {/* Team logo */}
-        <TeamLogo team={player.team} size="sm" className="shrink-0" />
+        {/* Player avatar — photo if available, else team-colored initial */}
+        {player.image_url ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={player.image_url}
+            alt={player.name}
+            className="h-5 w-5 rounded-full object-cover shrink-0 ring-1 ring-border"
+          />
+        ) : (
+          <div
+            className="h-5 w-5 rounded-full flex items-center justify-center shrink-0 text-[8px] font-bold text-white"
+            style={{ backgroundColor: player.team.color }}
+          >
+            {player.name.split(" ").map(w => w[0]).slice(0, 2).join("").toUpperCase()}
+          </div>
+        )}
         {/* Selection dot */}
         <div className={cn(
           "h-4 w-4 rounded-full border-2 flex items-center justify-center shrink-0",

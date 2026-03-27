@@ -2,7 +2,7 @@
 
 import { createClient } from "@/lib/supabase/server"
 import { createAdminClient } from "@/lib/supabase/admin"
-import { fetchSquad, fetchScorecard, fetchMatchPoints, fetchSeriesInfo, parseScorecardToStats, fuzzyMatchName } from "@/lib/api/cricapi"
+import { fetchSquad, fetchScorecard, fetchMatchPoints, fetchSeriesInfo, parseScorecardToStats, fuzzyMatchName, testMatchPointsEndpoint } from "@/lib/api/cricapi"
 import { savePlayerScores, calculateMatchPoints } from "@/actions/scoring"
 import type { PlayerStats } from "@/lib/scoring"
 
@@ -103,10 +103,12 @@ export async function fetchPlayingXI(matchId: string, cricapiMatchId: string) {
   const matched: string[] = []
   const unmatched: string[] = []
 
+  const imgMap = new Map<string, string>()
   for (const apiPlayer of squad) {
     const dbId = fuzzyMatchName(apiPlayer.name, nameMap)
     if (dbId) {
       matched.push(dbId)
+      if (apiPlayer.img) imgMap.set(dbId, apiPlayer.img)
     } else {
       unmatched.push(apiPlayer.name)
     }
@@ -146,6 +148,15 @@ export async function fetchPlayingXI(matchId: string, cricapiMatchId: string) {
     }))
   )
   if (insertError) return { error: `Failed to insert Playing XI: ${insertError.message}` }
+
+  // Backfill image_url for matched players that have an img
+  if (imgMap.size > 0) {
+    await Promise.all(
+      Array.from(imgMap.entries()).map(([pid, url]) =>
+        admin.from("players").update({ image_url: url }).eq("id", pid)
+      )
+    )
+  }
 
   return { success: true, matched: deduped.length, unmatched }
 }
@@ -362,6 +373,25 @@ export async function previewSeriesImport(seriesId: string): Promise<{
   }
 
   return { proposals }
+}
+
+/** Admin diagnostic: fetch raw /match_points response to verify Fantasy API access */
+export async function testMatchPoints(matchId: string): Promise<{ data?: unknown; error?: string }> {
+  await requireAdmin()
+  const admin = createAdminClient()
+
+  const { data: match } = await admin
+    .from("matches")
+    .select("cricapi_match_id")
+    .eq("id", matchId)
+    .single()
+
+  if (!match?.cricapi_match_id) {
+    return { error: "No CricAPI match ID set for this match" }
+  }
+
+  const data = await testMatchPointsEndpoint(match.cricapi_match_id)
+  return { data }
 }
 
 /** Confirm: write cricapi_match_id for approved proposals */
