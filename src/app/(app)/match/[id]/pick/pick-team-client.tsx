@@ -65,9 +65,9 @@ const ROLE_LABELS: Record<PlayerRole, string> = {
 }
 const ROLE_LIMITS: Record<PlayerRole, [number, number]> = {
   WK: [1, 4],
-  BAT: [3, 5],
+  BAT: [2, 5],
   AR: [1, 3],
-  BOWL: [3, 5],
+  BOWL: [2, 5],
 }
 
 export function PickTeamClient({

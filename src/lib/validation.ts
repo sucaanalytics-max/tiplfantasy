@@ -48,14 +48,14 @@ export function validateSelection(
   const wicketKeepers = byRole.WK >= 1 && byRole.WK <= 4
   if (!wicketKeepers) errors.push(`Need 1-4 wicket-keepers (have ${byRole.WK})`)
 
-  const batsmen = byRole.BAT >= 3 && byRole.BAT <= 5
-  if (!batsmen) errors.push(`Need 3-5 batsmen (have ${byRole.BAT})`)
+  const batsmen = byRole.BAT >= 2 && byRole.BAT <= 5
+  if (!batsmen) errors.push(`Need 2-5 batsmen (have ${byRole.BAT})`)
 
   const allRounders = byRole.AR >= 1 && byRole.AR <= 3
   if (!allRounders) errors.push(`Need 1-3 all-rounders (have ${byRole.AR})`)
 
-  const bowlers = byRole.BOWL >= 3 && byRole.BOWL <= 5
-  if (!bowlers) errors.push(`Need 3-5 bowlers (have ${byRole.BOWL})`)
+  const bowlers = byRole.BOWL >= 2 && byRole.BOWL <= 5
+  if (!bowlers) errors.push(`Need 2-5 bowlers (have ${byRole.BOWL})`)
 
   const maxPerTeam = maxTeamCount <= 7
   if (!maxPerTeam) errors.push(`Max 7 players from one team (have ${maxTeamCount})`)
