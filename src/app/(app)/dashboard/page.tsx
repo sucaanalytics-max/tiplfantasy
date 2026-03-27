@@ -1,4 +1,4 @@
-import { createClient } from "@/lib/supabase/server"
+import { createClient, getAuthUser } from "@/lib/supabase/server"
 import { redirect } from "next/navigation"
 import Link from "next/link"
 import Image from "next/image"
@@ -16,8 +16,7 @@ import { PageTransition } from "@/components/page-transition"
 import { LiveScoreWidget } from "@/components/live-score-widget"
 
 export default async function DashboardPage() {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
+  const [user, supabase] = await Promise.all([getAuthUser(), createClient()])
   if (!user) redirect("/login")
 
   // Phase 1: all independent queries in parallel

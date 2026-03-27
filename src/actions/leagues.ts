@@ -145,32 +145,25 @@ export async function getMyLeagues(): Promise<LeagueWithMemberCount[]> {
   if (!user) return []
 
   const admin = createAdminClient()
-  const { data: memberships } = await admin
+
+  // One join replaces two sequential round-trips (memberships → leagues)
+  const { data: rows } = await admin
     .from("league_members")
-    .select("league_id")
+    .select("leagues!inner(id, name, created_at, invite_code, creator_id)")
     .eq("user_id", user.id)
     .limit(50)
 
-  if (!memberships || memberships.length === 0) return []
+  if (!rows || rows.length === 0) return []
 
-  const leagueIds = memberships.map((m) => m.league_id)
+  type LeagueRow = { id: string; name: string; created_at: string; invite_code: string; creator_id: string }
+  const leagues = rows
+    .map((r) => r.leagues as unknown as LeagueRow)
+    .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
 
-  const { data: leagues } = await admin
-    .from("leagues")
-    .select("*")
-    .in("id", leagueIds)
-    .order("created_at", { ascending: false })
-    .limit(50)
-
-  if (!leagues) return []
-
-  // Get member counts for all leagues in parallel
+  // Get member counts in parallel
   const counts = await Promise.all(
     leagues.map((league) =>
-      admin
-        .from("league_members")
-        .select("*", { count: "exact", head: true })
-        .eq("league_id", league.id)
+      admin.from("league_members").select("*", { count: "exact", head: true }).eq("league_id", league.id)
     )
   )
 

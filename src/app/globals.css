@@ -282,7 +282,7 @@
   .animate-shimmer {
     background: linear-gradient(90deg, transparent 33%, var(--muted) 50%, transparent 67%);
     background-size: 200% 100%;
-    animation: shimmer 1.5s infinite;
+    animation: shimmer 0.9s infinite;
   }
   .animate-slide-up {
     animation: slide-up 0.3s ease-out both;

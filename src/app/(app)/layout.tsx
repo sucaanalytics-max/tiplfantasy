@@ -1,17 +1,17 @@
 import { NavBar } from "@/components/nav-bar"
 import { InstallPrompt } from "@/components/install-prompt"
-import { createClient } from "@/lib/supabase/server"
+import { createClient, getAuthUser } from "@/lib/supabase/server"
 
 export default async function AppLayout({
   children,
 }: {
   children: React.ReactNode
 }) {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
+  const user = await getAuthUser()
 
   let isAdmin = false
   if (user) {
+    const supabase = await createClient()
     const { data } = await supabase
       .from("profiles")
       .select("is_admin")
