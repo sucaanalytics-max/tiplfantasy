@@ -232,7 +232,7 @@ export async function getOpenChallenges(matchId?: string) {
     .order("created_at", { ascending: false })
 
   if (matchId) query = query.eq("match_id", matchId)
-  const { data } = await query
+  const { data } = await query.limit(500)
   return data ?? []
 }
 
@@ -244,6 +244,7 @@ export async function getMyChallenges() {
     .select("*, challenger:profiles!h2h_challenges_challenger_id_fkey(display_name), opponent:profiles!h2h_challenges_opponent_id_fkey(display_name), match:matches(match_number, team_home_id, team_away_id, start_time, status)")
     .or(`challenger_id.eq.${userId},opponent_id.eq.${userId}`)
     .order("created_at", { ascending: false })
+    .limit(500)
   return data ?? []
 }
 
@@ -429,6 +430,7 @@ export async function bulkGrantTokens(
   const { data: profiles } = await admin
     .from("profiles")
     .select("id")
+    .limit(200)
 
   if (!profiles) return { error: "Failed to load users" }
 
@@ -466,5 +468,6 @@ export async function getAllBalances() {
     .from("user_tokens")
     .select("user_id, balance, profile:profiles(display_name)")
     .order("balance", { ascending: false })
+    .limit(200)
   return data ?? []
 }

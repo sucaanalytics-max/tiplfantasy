@@ -22,6 +22,7 @@ export default async function AdminPlayersPage() {
     .from("players")
     .select("*, team:teams(*)")
     .order("name")
+    .limit(500)
 
   return <PlayersClient players={(players ?? []) as unknown as PlayerWithTeam[]} />
 }

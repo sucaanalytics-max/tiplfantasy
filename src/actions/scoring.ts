@@ -77,22 +77,24 @@ export async function calculateMatchPoints(matchId: string) {
 
   const scoreMap = new Map(playerScores.map((s) => [s.player_id, s.fantasy_points]))
 
-  // Get all selections for this match
+  // Get all selections for this match (up to 100 users)
   const { data: selections } = await admin
     .from("selections")
     .select("id, user_id, captain_id, vice_captain_id, is_auto_pick")
     .eq("match_id", matchId)
+    .limit(200)
 
   if (!selections || selections.length === 0) {
     return { error: "No selections found for this match" }
   }
 
-  // Get selection players
+  // Get selection players (100 users × 11 players = 1100 rows, exceeds Supabase 1000 default)
   const selectionIds = selections.map((s) => s.id)
   const { data: selPlayers } = await admin
     .from("selection_players")
     .select("selection_id, player_id")
     .in("selection_id", selectionIds)
+    .limit(2200)
 
   if (!selPlayers) return { error: "Failed to load selection players" }
 

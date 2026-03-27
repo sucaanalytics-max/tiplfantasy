@@ -149,6 +149,7 @@ export async function getMyLeagues(): Promise<LeagueWithMemberCount[]> {
     .from("league_members")
     .select("league_id")
     .eq("user_id", user.id)
+    .limit(50)
 
   if (!memberships || memberships.length === 0) return []
 
@@ -159,6 +160,7 @@ export async function getMyLeagues(): Promise<LeagueWithMemberCount[]> {
     .select("*")
     .in("id", leagueIds)
     .order("created_at", { ascending: false })
+    .limit(50)
 
   if (!leagues) return []
 
@@ -207,6 +209,7 @@ export async function getLeagueWithMembers(leagueId: string) {
     .select("user_id, joined_at, profile:profiles(display_name, avatar_url)")
     .eq("league_id", leagueId)
     .order("joined_at", { ascending: true })
+    .limit(200)
 
   return { league, members: members ?? [], isCreator: league.creator_id === user.id }
 }

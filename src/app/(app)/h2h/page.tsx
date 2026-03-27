@@ -26,6 +26,7 @@ export default async function H2HPage() {
     .select("id, display_name")
     .neq("id", user.id)
     .order("display_name")
+    .limit(200)
 
   return (
     <H2HClient

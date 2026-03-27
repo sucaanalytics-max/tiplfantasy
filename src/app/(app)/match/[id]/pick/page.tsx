@@ -82,6 +82,7 @@ export default async function PickTeamPage({
     .select("player_id, fantasy_points")
     .in("player_id", playerIds)
     .order("created_at", { ascending: false })
+    .limit(2000)
 
   const tiplScoreMap: Record<string, number[]> = {}
   for (const s of tiplScoresRaw ?? []) {

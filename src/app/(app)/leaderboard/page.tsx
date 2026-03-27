@@ -19,6 +19,8 @@ type LeaderRow = {
   total_points: number
   rank: number
   matches_played?: number
+  avg_points?: number
+  podium_count?: number
 }
 
 export default async function LeaderboardPage({
@@ -50,11 +52,12 @@ export default async function LeaderboardPage({
       .from("season_leaderboard")
       .select("*")
       .order("season_rank", { ascending: true })
+      .limit(500)
 
     seasonRows = (seasonData ?? []).map((e) => {
       const entry = e as unknown as {
         user_id: string; display_name: string; total_points: number
-        season_rank: number; matches_played: number
+        season_rank: number; matches_played: number; avg_points: number; podium_count: number
       }
       return {
         user_id: entry.user_id,
@@ -62,6 +65,8 @@ export default async function LeaderboardPage({
         total_points: entry.total_points,
         rank: entry.season_rank,
         matches_played: entry.matches_played,
+        avg_points: entry.avg_points,
+        podium_count: entry.podium_count,
       }
     })
   }
@@ -83,6 +88,7 @@ export default async function LeaderboardPage({
         .from("league_members")
         .select("user_id")
         .eq("league_id", leagueId)
+        .limit(200)
       const memberIds = (members ?? []).map((m) => m.user_id)
       if (memberIds.length === 0) return []
 
@@ -92,6 +98,7 @@ export default async function LeaderboardPage({
         .eq("match_id", matchId)
         .in("user_id", memberIds)
         .order("total_points", { ascending: false })
+        .limit(200)
 
       return (data ?? []).map((s, i) => ({
         user_id: s.user_id,
@@ -106,6 +113,7 @@ export default async function LeaderboardPage({
       .select("user_id, total_points, rank, profile:profiles(display_name)")
       .eq("match_id", matchId)
       .order("rank", { ascending: true })
+      .limit(200)
     return (data ?? []).map((s) => ({
       user_id: s.user_id,
       total_points: s.total_points,
@@ -127,12 +135,14 @@ export default async function LeaderboardPage({
     showBanner,
     showPodium,
     seasonRankMap,
+    showConsistency,
   }: {
     rows: LeaderRow[]
     showMP?: boolean
     showBanner?: boolean
     showPodium?: boolean
     seasonRankMap?: Map<string, number>
+    showConsistency?: boolean
   }) {
     if (rows.length === 0) {
       return (
@@ -185,6 +195,8 @@ export default async function LeaderboardPage({
               <span className="w-10">#</span>
               <span className="flex-1">Name</span>
               {showMP && <span className="w-12 text-center">MP</span>}
+              {showConsistency && <span className="w-14 text-center">Avg</span>}
+              {showConsistency && <span className="w-14 text-center">Top-3</span>}
               <span className="w-16 text-right">Points</span>
             </div>
 
@@ -229,6 +241,24 @@ export default async function LeaderboardPage({
                       {row.matches_played ?? 0}
                     </span>
                   )}
+                  {showConsistency && (
+                    <span className="w-14 text-center text-sm text-muted-foreground">
+                      {row.avg_points != null ? row.avg_points.toFixed(0) : "—"}
+                    </span>
+                  )}
+                  {showConsistency && (() => {
+                    const pct = row.matches_played && row.podium_count != null
+                      ? Math.round((row.podium_count / row.matches_played) * 100)
+                      : null
+                    const isHot = pct != null && pct >= 75
+                    return (
+                      <span className={`w-14 text-center text-sm ${isHot ? "text-amber-400 font-semibold" : "text-muted-foreground"}`}>
+                        {row.podium_count != null && row.matches_played
+                          ? `${row.podium_count}/${row.matches_played}`
+                          : "—"}
+                      </span>
+                    )
+                  })()}
                   <span className="w-16 text-right font-bold text-sm font-display">{row.total_points}</span>
                 </div>
               )
@@ -272,7 +302,7 @@ export default async function LeaderboardPage({
         <TabsContent value="season" className="mt-4">
           <Card className="border border-border">
             <CardContent className="pt-4">
-              <LeaderTable rows={seasonRows} showMP showPodium />
+              <LeaderTable rows={seasonRows} showMP showPodium showConsistency />
             </CardContent>
           </Card>
         </TabsContent>

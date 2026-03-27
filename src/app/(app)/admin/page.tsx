@@ -26,15 +26,17 @@ export default async function AdminPage() {
     .from("matches")
     .select("id, match_number, team_home_id, team_away_id, venue, start_time, status")
     .order("match_number", { ascending: true })
+    .limit(200)
 
   // Fetch teams for display
-  const { data: teams } = await supabase.from("teams").select("id, short_name, color")
+  const { data: teams } = await supabase.from("teams").select("id, short_name, color").limit(20)
   const teamMap = new Map(teams?.map((t) => [t.id, t]) ?? [])
 
-  // Fetch selection counts per match
+  // Fetch selection counts per match (100 users × 70 matches = 7000 rows possible)
   const { data: selectionCounts } = await supabase
     .from("selections")
     .select("match_id")
+    .limit(10000)
 
   const countByMatch = new Map<string, number>()
   for (const s of selectionCounts ?? []) {

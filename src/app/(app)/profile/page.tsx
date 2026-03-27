@@ -27,10 +27,10 @@ export default async function ProfilePage() {
   ] = await Promise.all([
     supabase.from("profiles").select("*").eq("id", user.id).single(),
     supabase.from("season_leaderboard").select("*").eq("user_id", user.id).maybeSingle(),
-    supabase.from("user_match_scores").select("*, match:matches(match_number, team_home_id, team_away_id, start_time)").eq("user_id", user.id).order("created_at", { ascending: false }),
-    supabase.from("teams").select("id, short_name, color, logo_url"),
-    supabase.from("selections").select("captain_id, captain:players!selections_captain_id_fkey(name)").eq("user_id", user.id).not("captain_id", "is", null),
-    supabase.from("selections").select("id").eq("user_id", user.id),
+    supabase.from("user_match_scores").select("*, match:matches(match_number, team_home_id, team_away_id, start_time)").eq("user_id", user.id).order("created_at", { ascending: false }).limit(200),
+    supabase.from("teams").select("id, short_name, color, logo_url").limit(20),
+    supabase.from("selections").select("match_id, captain_id, vice_captain_id, captain:players!selections_captain_id_fkey(name), vc:players!selections_vice_captain_id_fkey(name)").eq("user_id", user.id).limit(200),
+    supabase.from("selections").select("id").eq("user_id", user.id).limit(200),
   ])
 
   const profile = profileRes.data
@@ -47,6 +47,7 @@ export default async function ProfilePage() {
       .from("selection_players")
       .select("player:players(role)")
       .in("selection_id", selectionIds)
+      .limit(2200)
     for (const sp of selPlayers ?? []) {
       const role = (sp.player as unknown as { role: string })?.role
       if (role && role in roleCounts) roleCounts[role as keyof typeof roleCounts]++
@@ -70,6 +71,18 @@ export default async function ProfilePage() {
   const favCaptain = captainCounts.size > 0
     ? Array.from(captainCounts.values()).sort((a, b) => b.count - a.count)[0]
     : null
+
+  const matchCaptainMap = new Map<string, { captainName: string; vcName: string }>()
+  for (const s of captainData ?? []) {
+    const captainName = (s.captain as unknown as { name: string })?.name
+    const vcName = (s.vc as unknown as { name: string })?.name
+    if (s.match_id && (captainName || vcName)) {
+      matchCaptainMap.set(s.match_id, {
+        captainName: captainName ?? "—",
+        vcName: vcName ?? "—",
+      })
+    }
+  }
 
   const rankEntry = myRank as unknown as {
     season_rank: number; total_points: number
@@ -223,6 +236,92 @@ export default async function ProfilePage() {
         )
       })()}
 
+      {/* Rank Progression */}
+      {matchScores && matchScores.length >= 2 && (() => {
+        const sorted = [...matchScores].reverse()
+        const ranks = sorted.map((ms) => ms.rank ?? 999).filter((r) => r < 999)
+        if (ranks.length < 2) return null
+        const maxRank = Math.max(...ranks)
+        const displayMax = Math.max(maxRank + 1, 5)
+        const width = 280
+        const height = 80
+        const padX = 16
+        const padY = 8
+        const chartW = width - padX * 2
+        const chartH = height - padY * 2
+        const points = ranks.map((r, i) => {
+          const x = padX + (i / (ranks.length - 1)) * chartW
+          const y = padY + ((r - 1) / (displayMax - 1)) * chartH
+          return `${x},${y}`
+        }).join(" ")
+        const avgRank = (ranks.reduce((a, b) => a + b, 0) / ranks.length).toFixed(1)
+        const bestRank = Math.min(...ranks)
+        const latestRank = ranks[ranks.length - 1]
+
+        return (
+          <Card className="border border-border">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-base">Rank Progression</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <div className="overflow-x-auto">
+                <svg width={width} height={height} className="block">
+                  {/* Grid lines */}
+                  {[1, Math.ceil(displayMax / 2), displayMax].map((r) => {
+                    const y = padY + ((r - 1) / (displayMax - 1)) * chartH
+                    return (
+                      <g key={r}>
+                        <line x1={padX} y1={y} x2={width - padX} y2={y}
+                          stroke="currentColor" strokeOpacity={0.1} strokeWidth={1} />
+                        <text x={2} y={y + 3} fontSize={8} fill="currentColor" fillOpacity={0.4}>#{r}</text>
+                      </g>
+                    )
+                  })}
+                  {/* Polyline */}
+                  <polyline
+                    points={points}
+                    fill="none"
+                    stroke="hsl(var(--primary))"
+                    strokeWidth={2}
+                    strokeLinejoin="round"
+                    strokeLinecap="round"
+                  />
+                  {/* Dots */}
+                  {ranks.map((r, i) => {
+                    const x = padX + (i / (ranks.length - 1)) * chartW
+                    const y = padY + ((r - 1) / (displayMax - 1)) * chartH
+                    const isLatest = i === ranks.length - 1
+                    return (
+                      <circle
+                        key={i}
+                        cx={x} cy={y} r={isLatest ? 4 : 3}
+                        fill={isLatest ? "hsl(var(--primary))" : "hsl(var(--background))"}
+                        stroke="hsl(var(--primary))"
+                        strokeWidth={2}
+                      />
+                    )
+                  })}
+                </svg>
+              </div>
+              <div className="grid grid-cols-3 gap-2 text-sm">
+                <div className="flex flex-col">
+                  <span className="text-muted-foreground text-xs">Best</span>
+                  <span className="font-semibold">#{bestRank}</span>
+                </div>
+                <div className="flex flex-col">
+                  <span className="text-muted-foreground text-xs">Latest</span>
+                  <span className="font-semibold">#{latestRank}</span>
+                </div>
+                <div className="flex flex-col">
+                  <span className="text-muted-foreground text-xs">Avg Rank</span>
+                  <span className="font-semibold">#{avgRank}</span>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        )
+      })()}
+
       </div>{/* end left detail column */}
       <div className="space-y-6">
       {/* Role Preferences */}
@@ -279,24 +378,35 @@ export default async function ProfilePage() {
               return (
                 <div
                   key={ms.id}
-                  className="flex items-center justify-between py-2.5 px-3 rounded-lg border-b border-border/30 last:border-b-0"
+                  className="py-2.5 px-3 rounded-lg border-b border-border/30 last:border-b-0"
                 >
-                  <div className="flex items-center gap-2.5">
-                    <RankBadge rank={rank} size="sm" />
-                    <span className="text-[10px] text-muted-foreground font-mono">
-                      #{m.match_number}
-                    </span>
-                    <div className="flex items-center gap-1">
-                      {homeTeam && (
-                        <TeamBadge shortName={homeTeam.short_name} color={homeTeam.color} logoUrl={homeTeam.logo_url} size="sm" />
-                      )}
-                      <span className="text-[10px] text-muted-foreground">vs</span>
-                      {awayTeam && (
-                        <TeamBadge shortName={awayTeam.short_name} color={awayTeam.color} logoUrl={awayTeam.logo_url} size="sm" />
-                      )}
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2.5">
+                      <RankBadge rank={rank} size="sm" />
+                      <span className="text-[10px] text-muted-foreground font-mono">
+                        #{m.match_number}
+                      </span>
+                      <div className="flex items-center gap-1">
+                        {homeTeam && (
+                          <TeamBadge shortName={homeTeam.short_name} color={homeTeam.color} logoUrl={homeTeam.logo_url} size="sm" />
+                        )}
+                        <span className="text-[10px] text-muted-foreground">vs</span>
+                        {awayTeam && (
+                          <TeamBadge shortName={awayTeam.short_name} color={awayTeam.color} logoUrl={awayTeam.logo_url} size="sm" />
+                        )}
+                      </div>
                     </div>
+                    <span className="font-bold text-sm font-display">{ms.total_points} pts</span>
                   </div>
-                  <span className="font-bold text-sm font-display">{ms.total_points} pts</span>
+                  {matchCaptainMap.has(ms.match_id) && (() => {
+                    const { captainName, vcName } = matchCaptainMap.get(ms.match_id)!
+                    return (
+                      <div className="flex items-center gap-3 mt-1 ml-1 text-[10px] text-muted-foreground">
+                        <span>👑 {captainName}</span>
+                        <span>🥈 {vcName}</span>
+                      </div>
+                    )
+                  })()}
                 </div>
               )
             })}

@@ -44,6 +44,7 @@ export default async function ScoresPage({
     .select("*, player:players(name, role, team_id, team:teams(short_name, color))")
     .eq("match_id", id)
     .order("fantasy_points", { ascending: false })
+    .limit(50)
 
   // User scores with profiles
   const { data: userScores } = await admin
@@ -51,6 +52,7 @@ export default async function ScoresPage({
     .select("*, profile:profiles(display_name)")
     .eq("match_id", id)
     .order("rank", { ascending: true })
+    .limit(200)
 
   const myScore = userScores?.find((s) => s.user_id === user.id) ?? null
 
@@ -61,6 +63,20 @@ export default async function ScoresPage({
     .eq("user_id", user.id)
     .eq("match_id", id)
     .single()
+
+  // Fetch all users' captain picks for this match (for leaderboard)
+  const { data: captainPicksData } = await admin
+    .from("selections")
+    .select("user_id, captain_id, captain:players!selections_captain_id_fkey(name)")
+    .eq("match_id", id)
+    .not("captain_id", "is", null)
+
+  const captainPickMap = new Map<string, { name: string }>()
+  for (const s of captainPicksData ?? []) {
+    captainPickMap.set(s.user_id, {
+      name: (s.captain as unknown as { name: string })?.name ?? "—",
+    })
+  }
 
   // Build podium entries from top 3
   const podiumEntries = userScores && userScores.length >= 3
@@ -143,6 +159,54 @@ export default async function ScoresPage({
         </Card>
       )}
 
+      {/* Score breakdown bars — only show if we have breakdown data */}
+      {myScore?.breakdown && (() => {
+        const breakdownMap = myScore.breakdown as Record<string, number>
+        const playerScoreList = Object.entries(breakdownMap)
+          .map(([playerId, pts]) => {
+            const ps = playerScores?.find(p => p.player_id === playerId)
+            const player = ps?.player as unknown as { name: string; role: string } | undefined
+            return {
+              playerId,
+              name: player?.name ?? "Unknown",
+              role: player?.role ?? "—",
+              points: pts,
+            }
+          })
+          .filter(p => p.points > 0)
+          .sort((a, b) => b.points - a.points)
+
+        if (playerScoreList.length === 0) return null
+        const maxPts = playerScoreList[0].points
+
+        return (
+          <Card className="border border-border">
+            <CardHeader className="pb-3">
+              <CardTitle className="text-base">Your Score Breakdown</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-2">
+              {playerScoreList.map(({ playerId, name, role, points }) => (
+                <div key={playerId} className="space-y-0.5">
+                  <div className="flex items-center justify-between text-xs">
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-muted-foreground font-mono w-10 shrink-0">{role}</span>
+                      <span className="font-medium truncate max-w-[140px]">{name}</span>
+                    </div>
+                    <span className="font-semibold tabular-nums">{points} pts</span>
+                  </div>
+                  <div className="h-1.5 bg-muted rounded-full overflow-hidden">
+                    <div
+                      className="h-full bg-primary/70 rounded-full transition-all"
+                      style={{ width: `${(points / maxPts) * 100}%` }}
+                    />
+                  </div>
+                </div>
+              ))}
+            </CardContent>
+          </Card>
+        )
+      })()}
+
       {/* Match Leaderboard */}
       {userScores && userScores.length > 0 && (
         <Card className="border border-border">
@@ -173,10 +237,17 @@ export default async function ScoresPage({
                       <div className={`h-7 w-7 rounded-full ${getAvatarColor(profile?.display_name ?? "U")} flex items-center justify-center flex-shrink-0`}>
                         <span className="text-white text-xs font-semibold">{getInitials(profile?.display_name ?? "U")}</span>
                       </div>
-                      <span className={`text-sm ${isMe ? "font-semibold" : ""}`}>
-                        {profile?.display_name ?? "Unknown"}
-                        {isMe && " (you)"}
-                      </span>
+                      <div>
+                        <span className={`text-sm ${isMe ? "font-semibold" : ""}`}>
+                          {profile?.display_name ?? "Unknown"}
+                          {isMe && " (you)"}
+                        </span>
+                        {captainPickMap.has(s.user_id) && (
+                          <div className="text-[10px] text-muted-foreground">
+                            👑 {captainPickMap.get(s.user_id)?.name}
+                          </div>
+                        )}
+                      </div>
                     </div>
                     <div className="flex items-center gap-3 text-sm">
                       {s.captain_points > 0 && (

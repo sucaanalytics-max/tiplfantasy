@@ -12,12 +12,14 @@ export default async function MatchesPage() {
     .from("matches")
     .select("*, team_home:teams!matches_team_home_id_fkey(short_name, color, logo_url), team_away:teams!matches_team_away_id_fkey(short_name, color, logo_url)")
     .order("start_time", { ascending: true })
+    .limit(200)
 
   // Get user's selections
   const { data: selections } = await supabase
     .from("selections")
     .select("match_id")
     .eq("user_id", user.id)
+    .limit(200)
 
   const submittedMatchIds = selections?.map((s) => s.match_id) ?? []
 

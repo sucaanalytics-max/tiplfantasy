@@ -28,6 +28,8 @@ export default async function DashboardPage() {
     top5Res,
     myLeagues,
     completedRes,
+    tokenRes,
+    h2hRes,
   ] = await Promise.all([
     supabase.from("profiles").select("display_name, avatar_url").eq("id", user.id).single(),
     supabase.from("season_leaderboard").select("*").eq("user_id", user.id).maybeSingle(),
@@ -47,6 +49,11 @@ export default async function DashboardPage() {
     supabase.from("season_leaderboard").select("*").order("season_rank", { ascending: true }).limit(5),
     getMyLeagues(),
     supabase.from("matches").select("id").eq("status", "completed").order("start_time", { ascending: false }).limit(20),
+    supabase.from("user_tokens").select("balance").eq("user_id", user.id).maybeSingle(),
+    supabase.from("h2h_challenges")
+      .select("winner_id, status")
+      .eq("status", "completed")
+      .or(`challenger_id.eq.${user.id},opponent_id.eq.${user.id}`),
   ])
 
   const profile = profileRes.data
@@ -55,22 +62,38 @@ export default async function DashboardPage() {
   const lastMatch = lastMatchRes.data
   const top5 = top5Res.data
   const completedMatches = completedRes.data
+  const tokenBalance = tokenRes.data?.balance ?? 0
+  const h2hResults = h2hRes.data ?? []
+  const h2hWins = h2hResults.filter(c => c.winner_id === user.id).length
+  const h2hLosses = h2hResults.filter(c => c.winner_id !== null && c.winner_id !== user.id).length
 
   const nextMatch = upcomingMatches?.[0] ?? null
   const moreMatches = upcomingMatches?.slice(1) ?? []
 
   // Phase 2: queries that depend on Phase 1 results, in parallel
-  const [subsRes, lastScoreRes, streakRes] = await Promise.all([
+  const [subsRes, lastScoreRes, streakRes, lastSelectionRes] = await Promise.all([
     upcomingMatches && upcomingMatches.length > 0
-      ? supabase.from("selections").select("match_id").eq("user_id", user.id).in("match_id", upcomingMatches.map((m) => m.id))
+      ? supabase.from("selections").select("match_id").eq("user_id", user.id).in("match_id", upcomingMatches.map((m) => m.id)).limit(10)
       : Promise.resolve({ data: [] as { match_id: string }[] }),
     lastMatch
       ? supabase.from("user_match_scores").select("total_points, rank").eq("user_id", user.id).eq("match_id", lastMatch.id).single()
       : Promise.resolve({ data: null as { total_points: number; rank: number | null } | null }),
     completedMatches && completedMatches.length > 0
-      ? supabase.from("selections").select("match_id").eq("user_id", user.id).in("match_id", completedMatches.map((m) => m.id))
+      ? supabase.from("selections").select("match_id").eq("user_id", user.id).in("match_id", completedMatches.map((m) => m.id)).limit(25)
       : Promise.resolve({ data: [] as { match_id: string }[] }),
+    lastMatch
+      ? supabase
+          .from("selections")
+          .select("captain_id, vice_captain_id, captain:players!selections_captain_id_fkey(name), vc:players!selections_vice_captain_id_fkey(name)")
+          .eq("user_id", user.id)
+          .eq("match_id", lastMatch.id)
+          .maybeSingle()
+      : Promise.resolve({ data: null as null }),
   ])
+
+  const lastSelection = lastSelectionRes.data
+  const lastCaptainName = (lastSelection?.captain as unknown as { name: string })?.name ?? null
+  const lastVcName = (lastSelection?.vc as unknown as { name: string })?.name ?? null
 
   const submittedMatchIds = new Set<string>()
   for (const s of subsRes.data ?? []) submittedMatchIds.add(s.match_id)
@@ -157,6 +180,48 @@ export default async function DashboardPage() {
         </Card>
       </div>
 
+      {/* Quick Stats row */}
+      {(tokenBalance > 0 || h2hResults.length > 0 || (myRank as unknown as { avg_points?: number })?.avg_points != null) && (
+        <div className="grid grid-cols-3 gap-3">
+          {tokenBalance > 0 && (
+            <Card className="border border-border">
+              <CardContent className="pt-4 pb-3">
+                <div className="flex flex-col gap-0.5">
+                  <span className="text-xl font-bold font-display">{tokenBalance}</span>
+                  <span className="text-xs text-muted-foreground">Tokens</span>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+          {h2hResults.length > 0 && (
+            <Card className="border border-border">
+              <CardContent className="pt-4 pb-3">
+                <div className="flex flex-col gap-0.5">
+                  <span className="text-xl font-bold font-display">
+                    <span className="text-green-500">{h2hWins}W</span>
+                    {" – "}
+                    <span className="text-red-500">{h2hLosses}L</span>
+                  </span>
+                  <span className="text-xs text-muted-foreground">H2H Record</span>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+          {(myRank as unknown as { avg_points?: number })?.avg_points != null && (
+            <Card className="border border-border">
+              <CardContent className="pt-4 pb-3">
+                <div className="flex flex-col gap-0.5">
+                  <span className="text-xl font-bold font-display">
+                    {(myRank as unknown as { avg_points: number }).avg_points.toFixed(1)}
+                  </span>
+                  <span className="text-xs text-muted-foreground">Avg / Match</span>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+        </div>
+      )}
+
       {/* Hero match card */}
       {nextMatch && (
         <MatchCard
@@ -222,6 +287,24 @@ export default async function DashboardPage() {
                   </p>
                 </div>
               </div>
+              {lastCaptainName && (
+                <div className="mt-3 pt-3 border-t border-border/30 space-y-1">
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="text-muted-foreground flex items-center gap-1">
+                      <span>&#128081;</span> Captain
+                    </span>
+                    <span className="font-medium">{lastCaptainName}</span>
+                  </div>
+                  {lastVcName && (
+                    <div className="flex items-center justify-between text-xs">
+                      <span className="text-muted-foreground flex items-center gap-1">
+                        <span>&#129352;</span> Vice-Captain
+                      </span>
+                      <span className="font-medium">{lastVcName}</span>
+                    </div>
+                  )}
+                </div>
+              )}
             </CardContent>
           </Card>
         )

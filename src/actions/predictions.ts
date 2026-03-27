@@ -74,6 +74,7 @@ export async function getMyPredictions() {
     .from("season_predictions")
     .select("*, player:players(name, team_id, role, team:teams(short_name, color))")
     .eq("user_id", user.id)
+    .limit(10)
 
   return data ?? []
 }
@@ -96,6 +97,7 @@ export async function getAllPredictions() {
   const { data } = await admin
     .from("season_predictions")
     .select("*, player:players(name, team_id, team:teams(short_name, color)), profile:profiles(display_name)")
+    .limit(1000)
 
   return data ?? []
 }
@@ -105,6 +107,7 @@ export async function getCommunityVotes(): Promise<Record<PredictionCategory, { 
   const { data } = await admin
     .from("season_predictions")
     .select("category, player_id")
+    .limit(1000)
 
   const empty = { purple_cap: [], orange_cap: [], mvp: [] } as Record<PredictionCategory, { player_id: string; count: number }[]>
   if (!data) return empty
