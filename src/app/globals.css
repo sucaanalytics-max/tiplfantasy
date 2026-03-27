@@ -279,11 +279,6 @@
   }
 
   /* Animation utilities */
-  .animate-shimmer {
-    background: linear-gradient(90deg, transparent 33%, var(--muted) 50%, transparent 67%);
-    background-size: 200% 100%;
-    animation: shimmer 0.9s infinite;
-  }
   .animate-slide-up {
     animation: slide-up 0.3s ease-out both;
   }
@@ -319,11 +314,6 @@
 }
 
 /* UX animation keyframes */
-@keyframes shimmer {
-  0% { background-position: -200% 0; }
-  100% { background-position: 200% 0; }
-}
-
 @keyframes slide-up {
   from { opacity: 0; transform: translateY(8px); }
   to { opacity: 1; transform: translateY(0); }
@@ -347,7 +337,6 @@
 /* Disable all custom animations for reduced motion */
 @media (prefers-reduced-motion: reduce) {
   .ambient-orb,
-  .animate-shimmer,
   .animate-slide-up,
   .animate-count-up,
   .animate-urgency-pulse {
