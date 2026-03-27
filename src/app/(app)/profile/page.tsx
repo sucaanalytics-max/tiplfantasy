@@ -171,7 +171,8 @@ export default async function ProfilePage() {
 
       {/* Performance Sparkline */}
       {matchScores && matchScores.length >= 2 && (() => {
-        const points = [...matchScores].reverse().slice(-10).map((ms) => ms.total_points)
+        const sparkMatches = [...matchScores].reverse().slice(-10)
+        const points = sparkMatches.map((ms) => ms.total_points)
         const maxPts = Math.max(...points, 1)
         const avg = points.reduce((a, b) => a + b, 0) / points.length
         const stdDev = Math.sqrt(points.reduce((sum, p) => sum + (p - avg) ** 2, 0) / points.length)
@@ -200,12 +201,12 @@ export default async function ProfilePage() {
               <div>
                 <p className="text-xs text-muted-foreground mb-2">Last {points.length} matches</p>
                 <div className="flex items-end gap-1 h-24">
-                  {points.map((p, i) => (
-                    <div key={i} className="flex-1 flex flex-col items-center gap-1">
-                      <span className="text-[8px] text-muted-foreground">{p}</span>
+                  {sparkMatches.map((ms) => (
+                    <div key={ms.match_id} className="flex-1 flex flex-col items-center gap-1">
+                      <span className="text-[8px] text-muted-foreground">{ms.total_points}</span>
                       <div
                         className="w-full rounded-t-sm bg-gradient-to-t from-primary/50 to-primary min-h-[2px]"
-                        style={{ height: `${(p / maxPts) * 80}px` }}
+                        style={{ height: `${(ms.total_points / maxPts) * 80}px` }}
                       />
                     </div>
                   ))}
@@ -238,8 +239,8 @@ export default async function ProfilePage() {
 
       {/* Rank Progression */}
       {matchScores && matchScores.length >= 2 && (() => {
-        const sorted = [...matchScores].reverse()
-        const ranks = sorted.map((ms) => ms.rank ?? 999).filter((r) => r < 999)
+        const sorted = [...matchScores].reverse().filter((ms) => (ms.rank ?? 999) < 999)
+        const ranks = sorted.map((ms) => ms.rank!)
         if (ranks.length < 2) return null
         const maxRank = Math.max(...ranks)
         const displayMax = Math.max(maxRank + 1, 5)
@@ -293,7 +294,7 @@ export default async function ProfilePage() {
                     const isLatest = i === ranks.length - 1
                     return (
                       <circle
-                        key={i}
+                        key={sorted[i].match_id}
                         cx={x} cy={y} r={isLatest ? 4 : 3}
                         fill={isLatest ? "hsl(var(--primary))" : "hsl(var(--background))"}
                         stroke="hsl(var(--primary))"

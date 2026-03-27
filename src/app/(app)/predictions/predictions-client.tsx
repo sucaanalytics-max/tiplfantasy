@@ -86,8 +86,8 @@ export function PredictionsClient({
 }) {
   const router = useRouter()
   const [isPending, startTransition] = useTransition()
-  const isLocked = deadline ? new Date() >= new Date(deadline) : false
-  const predictionMap = new Map(myPredictions.map((p) => [p.category, p]))
+  const isLocked = useMemo(() => (deadline ? new Date() >= new Date(deadline) : false), [deadline])
+  const predictionMap = useMemo(() => new Map(myPredictions.map((p) => [p.category, p])), [myPredictions])
 
   return (
     <div className="p-4 md:p-6 space-y-6 max-w-2xl">

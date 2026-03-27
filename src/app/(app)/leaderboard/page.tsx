@@ -128,9 +128,70 @@ export default async function LeaderboardPage({
   ])
 
   const seasonRankMap = new Map(seasonRows.map((r) => [r.user_id, r.rank]))
+  const userId = user.id
 
-  function LeaderTable({
+  return (
+    <PageTransition>
+    <div className="p-4 md:p-6 space-y-6 max-w-2xl lg:max-w-4xl">
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight font-display flex items-center gap-2">
+            <Trophy className="h-6 w-6 shrink-0" />
+            Leaderboard
+          </h1>
+          <p className="text-muted-foreground mt-0.5">Fantasy rankings</p>
+        </div>
+        {myLeagues.length > 0 && (
+          <LeaderboardSelector
+            leagues={myLeagues.map((l) => ({ id: l.id, name: l.name }))}
+            currentLeagueId={leagueId ?? null}
+          />
+        )}
+      </div>
+
+      <Tabs defaultValue="season">
+        <TabsList className="w-full">
+          <TabsTrigger value="season" className="flex-1">Season</TabsTrigger>
+          <TabsTrigger value="this-week" className="flex-1">
+            {lastMatch ? `Match #${lastMatch.match_number}` : "Latest"}
+          </TabsTrigger>
+          <TabsTrigger value="last-week" className="flex-1">
+            {prevMatch ? `Match #${prevMatch.match_number}` : "Previous"}
+          </TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="season" className="mt-4">
+          <Card className="border border-border">
+            <CardContent className="pt-4">
+              <LeaderTable rows={seasonRows} userId={userId} showMP showPodium showConsistency />
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="this-week" className="mt-4">
+          <Card className="border border-border">
+            <CardContent className="pt-4">
+              <LeaderTable rows={thisWeekRows} userId={userId} showBanner showPodium seasonRankMap={seasonRankMap} />
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="last-week" className="mt-4">
+          <Card className="border border-border">
+            <CardContent className="pt-4">
+              <LeaderTable rows={lastWeekRows} userId={userId} showBanner showPodium seasonRankMap={seasonRankMap} />
+            </CardContent>
+          </Card>
+        </TabsContent>
+      </Tabs>
+    </div>
+    </PageTransition>
+  )
+}
+
+function LeaderTable({
     rows,
+    userId,
     showMP,
     showBanner,
     showPodium,
@@ -138,6 +199,7 @@ export default async function LeaderboardPage({
     showConsistency,
   }: {
     rows: LeaderRow[]
+    userId: string
     showMP?: boolean
     showBanner?: boolean
     showPodium?: boolean
@@ -159,7 +221,7 @@ export default async function LeaderboardPage({
           name: r.display_name,
           points: r.total_points,
           rank: r.rank,
-          isCurrentUser: r.user_id === user!.id,
+          isCurrentUser: r.user_id === userId,
         }))
       : null
 
@@ -201,7 +263,7 @@ export default async function LeaderboardPage({
             </div>
 
             {tableRows.map((row, i) => {
-              const isMe = row.user_id === user!.id
+              const isMe = row.user_id === userId
               const displayRank = podiumEntries ? row.rank : i + startRank
               return (
                 <div
@@ -269,61 +331,3 @@ export default async function LeaderboardPage({
     )
   }
 
-  return (
-    <PageTransition>
-    <div className="p-4 md:p-6 space-y-6 max-w-2xl lg:max-w-4xl">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight font-display flex items-center gap-2">
-            <Trophy className="h-6 w-6 shrink-0" />
-            Leaderboard
-          </h1>
-          <p className="text-muted-foreground mt-0.5">Fantasy rankings</p>
-        </div>
-        {myLeagues.length > 0 && (
-          <LeaderboardSelector
-            leagues={myLeagues.map((l) => ({ id: l.id, name: l.name }))}
-            currentLeagueId={leagueId ?? null}
-          />
-        )}
-      </div>
-
-      <Tabs defaultValue="season">
-        <TabsList className="w-full">
-          <TabsTrigger value="season" className="flex-1">Season</TabsTrigger>
-          <TabsTrigger value="this-week" className="flex-1">
-            {lastMatch ? `Match #${lastMatch.match_number}` : "Latest"}
-          </TabsTrigger>
-          <TabsTrigger value="last-week" className="flex-1">
-            {prevMatch ? `Match #${prevMatch.match_number}` : "Previous"}
-          </TabsTrigger>
-        </TabsList>
-
-        <TabsContent value="season" className="mt-4">
-          <Card className="border border-border">
-            <CardContent className="pt-4">
-              <LeaderTable rows={seasonRows} showMP showPodium showConsistency />
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        <TabsContent value="this-week" className="mt-4">
-          <Card className="border border-border">
-            <CardContent className="pt-4">
-              <LeaderTable rows={thisWeekRows} showBanner showPodium seasonRankMap={seasonRankMap} />
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        <TabsContent value="last-week" className="mt-4">
-          <Card className="border border-border">
-            <CardContent className="pt-4">
-              <LeaderTable rows={lastWeekRows} showBanner showPodium seasonRankMap={seasonRankMap} />
-            </CardContent>
-          </Card>
-        </TabsContent>
-      </Tabs>
-    </div>
-    </PageTransition>
-  )
-}
