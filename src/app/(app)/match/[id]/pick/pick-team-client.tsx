@@ -28,7 +28,7 @@ import { submitSelection } from "@/actions/selections"
 import { TOTAL_BUDGET } from "@/lib/constants"
 import { SegmentedProgressBar } from "@/components/segmented-progress-bar"
 import { CricketField } from "@/components/cricket-field"
-import { Drawer, DrawerContent, DrawerTrigger, DrawerTitle } from "@/components/ui/drawer"
+import { Drawer, DrawerClose, DrawerContent, DrawerTrigger, DrawerTitle } from "@/components/ui/drawer"
 import { PlayerStatsDrawer } from "@/components/player-stats-drawer"
 import { Confetti } from "@/components/confetti"
 import type { PlayerWithTeam, MatchWithTeams, PlayerRole, PlayerVenueStats, PlayerVsTeamStats, PlayerSeasonStats } from "@/lib/types"
@@ -824,10 +824,10 @@ export function PickTeamClient({
                 <button
                   disabled={selectedIds.size === 0}
                   className={cn(
-                    "flex items-center gap-1.5 text-xs px-2 py-1 rounded border transition-colors",
+                    "flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-full border transition-colors",
                     captainId && viceCaptainId
-                      ? "border-status-success/30 text-status-success"
-                      : "border-status-warning/30 text-status-warning"
+                      ? "border-status-success/40 bg-status-success/10 text-status-success"
+                      : "border-status-warning/40 bg-status-warning/10 text-status-warning"
                   )}
                 >
                   {captainId && viceCaptainId ? (
@@ -850,7 +850,7 @@ export function PickTeamClient({
                 <p className="text-xs text-muted-foreground text-center mb-3">
                   Captain gets 2x points, Vice-Captain gets 1.5x
                 </p>
-                <div className="px-4 pb-[max(1.5rem,env(safe-area-inset-bottom))] space-y-2 overflow-y-auto" data-vaul-no-drag>
+                <div className="px-4 pb-3 space-y-2 overflow-y-auto" data-vaul-no-drag>
                   {selectedPlayers
                     .sort((a, b) => ROLE_ORDER.indexOf(a.role) - ROLE_ORDER.indexOf(b.role))
                     .map((player) => {
@@ -905,6 +905,24 @@ export function PickTeamClient({
                       )
                     })}
                 </div>
+                {captainId && viceCaptainId && (
+                  <div className="px-4 pb-[max(1rem,env(safe-area-inset-bottom))] pt-3 border-t border-border flex gap-3 bg-background sticky bottom-0" data-vaul-no-drag>
+                    <DrawerClose asChild>
+                      <Button variant="outline" className="flex-1">
+                        Done
+                      </Button>
+                    </DrawerClose>
+                    <DrawerClose asChild>
+                      <Button
+                        className="flex-1 bg-gradient-to-r from-primary to-emerald-400 text-black font-semibold"
+                        onClick={handleSubmit}
+                        disabled={!validation.valid || isPending}
+                      >
+                        {isPending ? "Saving…" : initialSelectedIds.length > 0 ? "Update" : "Submit"}
+                      </Button>
+                    </DrawerClose>
+                  </div>
+                )}
               </DrawerContent>
             </Drawer>
 
@@ -914,8 +932,10 @@ export function PickTeamClient({
                 <button
                   disabled={selectedIds.size === 0}
                   className={cn(
-                    "flex items-center gap-1.5 text-xs px-2 py-1 rounded border transition-colors",
-                    selectedIds.size > 0 ? "border-primary/30 text-primary" : "border-border text-muted-foreground"
+                    "flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-full border transition-colors",
+                    selectedIds.size > 0
+                      ? "border-primary/40 bg-primary/10 text-primary"
+                      : "border-border text-muted-foreground"
                   )}
                 >
                   <Eye className="h-3 w-3" />
