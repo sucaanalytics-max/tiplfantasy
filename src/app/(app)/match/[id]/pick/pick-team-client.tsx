@@ -23,7 +23,7 @@ import { Badge } from "@/components/ui/badge"
 import { Card } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { cn } from "@/lib/utils"
-import { validateSelection, type ValidationResult } from "@/lib/validation"
+import { validateSelection, ROLE_LIMITS, type ValidationResult } from "@/lib/validation"
 import { submitSelection } from "@/actions/selections"
 import { TOTAL_BUDGET } from "@/lib/constants"
 import { SegmentedProgressBar } from "@/components/segmented-progress-bar"
@@ -62,12 +62,6 @@ const ROLE_LABELS: Record<PlayerRole, string> = {
   BAT: "Batsman",
   AR: "All-rounder",
   BOWL: "Bowler",
-}
-const ROLE_LIMITS: Record<PlayerRole, [number, number]> = {
-  WK: [1, 4],
-  BAT: [2, 5],
-  AR: [1, 3],
-  BOWL: [2, 5],
 }
 
 export function PickTeamClient({
@@ -988,7 +982,7 @@ export function PickTeamClient({
               {validation.errors[0]}
             </p>
           )}
-          {selectedIds.size === 11 && validation.valid && (!captainId || !viceCaptainId) && (
+          {validation.valid && (!captainId || !viceCaptainId) && (
             <p className="text-xs text-amber-500 text-center mb-1.5">
               Set Captain &amp; Vice-Captain to submit
             </p>

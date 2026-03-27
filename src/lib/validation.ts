@@ -1,5 +1,12 @@
-import type { PlayerWithTeam } from "./types"
+import type { PlayerWithTeam, PlayerRole } from "./types"
 import { TOTAL_BUDGET } from "./constants"
+
+export const ROLE_LIMITS: Record<PlayerRole, [number, number]> = {
+  WK: [1, 4],
+  BAT: [2, 5],
+  AR: [1, 3],
+  BOWL: [2, 5],
+}
 
 export type ValidationResult = {
   valid: boolean
@@ -45,17 +52,21 @@ export function validateSelection(
   const totalPlayers = players.length === 11
   if (!totalPlayers) errors.push(`Select exactly 11 players (have ${players.length})`)
 
-  const wicketKeepers = byRole.WK >= 1 && byRole.WK <= 4
-  if (!wicketKeepers) errors.push(`Need 1-4 wicket-keepers (have ${byRole.WK})`)
+  const [wkMin, wkMax] = ROLE_LIMITS.WK
+  const wicketKeepers = byRole.WK >= wkMin && byRole.WK <= wkMax
+  if (!wicketKeepers) errors.push(`Need ${wkMin}-${wkMax} wicket-keepers (have ${byRole.WK})`)
 
-  const batsmen = byRole.BAT >= 2 && byRole.BAT <= 5
-  if (!batsmen) errors.push(`Need 2-5 batsmen (have ${byRole.BAT})`)
+  const [batMin, batMax] = ROLE_LIMITS.BAT
+  const batsmen = byRole.BAT >= batMin && byRole.BAT <= batMax
+  if (!batsmen) errors.push(`Need ${batMin}-${batMax} batsmen (have ${byRole.BAT})`)
 
-  const allRounders = byRole.AR >= 1 && byRole.AR <= 3
-  if (!allRounders) errors.push(`Need 1-3 all-rounders (have ${byRole.AR})`)
+  const [arMin, arMax] = ROLE_LIMITS.AR
+  const allRounders = byRole.AR >= arMin && byRole.AR <= arMax
+  if (!allRounders) errors.push(`Need ${arMin}-${arMax} all-rounders (have ${byRole.AR})`)
 
-  const bowlers = byRole.BOWL >= 2 && byRole.BOWL <= 5
-  if (!bowlers) errors.push(`Need 2-5 bowlers (have ${byRole.BOWL})`)
+  const [bowlMin, bowlMax] = ROLE_LIMITS.BOWL
+  const bowlers = byRole.BOWL >= bowlMin && byRole.BOWL <= bowlMax
+  if (!bowlers) errors.push(`Need ${bowlMin}-${bowlMax} bowlers (have ${byRole.BOWL})`)
 
   const maxPerTeam = maxTeamCount <= 7
   if (!maxPerTeam) errors.push(`Max 7 players from one team (have ${maxTeamCount})`)
