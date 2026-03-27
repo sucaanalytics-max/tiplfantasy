@@ -340,7 +340,7 @@ export function PickTeamClient({
               {player.name}
               <Info className="h-2.5 w-2.5 text-muted-foreground/50 shrink-0 inline ml-0.5" />
             </span>
-            <FormIcon indicator={formIndicator as "hot" | "cold" | null} />
+            <FormIcon indicator={formIndicator} />
             {isCaptain && <span className="text-[8px] font-bold text-amber-500">C</span>}
             {isVC && <span className="text-[8px] font-bold text-violet-400">VC</span>}
             {hasPlayingXI && isInXI && <span className="h-2 w-2 rounded-full bg-status-success shrink-0" />}

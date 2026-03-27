@@ -347,35 +347,56 @@ function PredictionCard({
 
             {/* Show standings if no votes yet */}
             {pollRows.total === 0 && standings.length > 0 ? (
-              <div className="space-y-1.5">
-                {standings.map((s, i) => {
-                  const isMyPick = currentPick?.player_id === s.player_id
-                  return (
-                    <div
-                      key={s.player_id}
-                      className={`flex items-center gap-2.5 py-2 px-3 rounded-lg text-sm ${
-                        isMyPick ? "bg-primary/10 border border-primary/20" : "bg-secondary/30"
-                      }`}
-                    >
-                      <span className="w-4 text-center text-xs text-muted-foreground font-mono">{i + 1}</span>
-                      {s.team_color && (
-                        <TeamLogo
-                          team={{ short_name: s.team_short_name ?? "", color: s.team_color }}
-                          size="sm"
-                        />
-                      )}
-                      <span className={`flex-1 truncate ${isMyPick ? "font-semibold" : ""}`}>
-                        {s.player_name}
-                        {isMyPick && (
-                          <Check className="inline h-3 w-3 text-primary ml-1.5" />
-                        )}
-                      </span>
-                      <span className="text-xs font-semibold tabular-nums">
-                        {s.stat_value} {category.statLabel}
-                      </span>
-                    </div>
-                  )
-                })}
+              <div className="space-y-2">
+                {(() => {
+                  const maxStat = Math.max(...standings.map((s) => s.stat_value ?? 0), 1)
+                  const myPickRank = currentPick
+                    ? standings.findIndex((s) => s.player_id === currentPick.player_id) + 1
+                    : 0
+                  return standings.map((s, i) => {
+                    const isMyPick = currentPick?.player_id === s.player_id
+                    const barPct = Math.round(((s.stat_value ?? 0) / maxStat) * 100)
+                    const statusLabel =
+                      isMyPick && myPickRank === 1
+                        ? "Leading 🏆"
+                        : isMyPick && myPickRank <= 2
+                        ? "Close 📈"
+                        : isMyPick
+                        ? "Off track"
+                        : null
+                    return (
+                      <div key={s.player_id} className="space-y-1">
+                        <div className="flex items-center gap-2">
+                          <span className="w-4 text-center text-xs text-muted-foreground font-mono">{i + 1}</span>
+                          {s.team_color && (
+                            <TeamLogo
+                              team={{ short_name: s.team_short_name ?? "", color: s.team_color }}
+                              size="sm"
+                            />
+                          )}
+                          <span className={`flex-1 text-sm truncate ${isMyPick ? "font-semibold" : ""}`}>
+                            {s.player_name}
+                            {isMyPick && <Check className="inline h-3 w-3 text-primary ml-1.5" />}
+                          </span>
+                          {statusLabel && (
+                            <span className="text-[10px] text-primary font-medium">{statusLabel}</span>
+                          )}
+                          <span className="text-xs font-semibold tabular-nums">
+                            {s.stat_value} {category.statLabel}
+                          </span>
+                        </div>
+                        <div className="h-1.5 w-full rounded-full bg-secondary overflow-hidden ml-6">
+                          <motion.div
+                            className={`h-full rounded-full ${isMyPick ? "bg-primary" : "bg-muted-foreground/30"}`}
+                            initial={{ width: 0 }}
+                            animate={{ width: `${barPct}%` }}
+                            transition={{ duration: 0.8, ease: "easeOut", delay: i * 0.05 }}
+                          />
+                        </div>
+                      </div>
+                    )
+                  })
+                })()}
               </div>
             ) : (
               <div className="space-y-2">
