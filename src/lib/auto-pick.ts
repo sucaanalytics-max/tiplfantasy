@@ -134,8 +134,12 @@ export async function runAutoPickForMatch(matchId: string): Promise<{
 }> {
   const admin = createAdminClient()
 
-  // Get all users
-  const { data: allProfiles } = await admin.from("profiles").select("id").limit(200)
+  // Get users who have opted into auto-pick
+  const { data: allProfiles } = await admin
+    .from("profiles")
+    .select("id")
+    .eq("auto_pick_enabled", true)
+    .limit(200)
   const allUserIds = (allProfiles ?? []).map((p) => p.id)
 
   // Get users who already submitted

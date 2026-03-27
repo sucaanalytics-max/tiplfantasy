@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useTransition, useMemo, useCallback, useRef } from "react"
+import { useState, useTransition, useMemo, useCallback, useRef, useDeferredValue } from "react"
 import { useRouter } from "next/navigation"
 import { format } from "date-fns"
 import { CountdownTimer } from "@/components/countdown-timer"
@@ -96,6 +96,7 @@ export function PickTeamClient({
   const [activeFilter, setActiveFilter] = useState<PlayerRole | "ALL">("ALL")
   const [teamFilter, setTeamFilter] = useState<"ALL" | "HOME" | "AWAY">("ALL")
   const [search, setSearch] = useState("")
+  const deferredSearch = useDeferredValue(search)
   const [error, setError] = useState<string | null>(null)
   const [showConfetti, setShowConfetti] = useState(false)
   const [sortBy, setSortBy] = useState<"default" | "credits">("default")
@@ -162,8 +163,8 @@ export function PickTeamClient({
     } else if (teamFilter === "AWAY") {
       list = list.filter((p) => p.team_id === match.team_away_id)
     }
-    if (search.trim()) {
-      const q = search.toLowerCase()
+    if (deferredSearch.trim()) {
+      const q = deferredSearch.toLowerCase()
       list = list.filter((p) => p.name.toLowerCase().includes(q))
     }
     // Show playing XI players first if announced
@@ -177,7 +178,7 @@ export function PickTeamClient({
       list = [...list].sort((a, b) => b.credit_cost - a.credit_cost)
     }
     return list
-  }, [players, activeFilter, teamFilter, search, match, hasPlayingXI, playingXIIds, sortBy])
+  }, [players, activeFilter, teamFilter, deferredSearch, match, hasPlayingXI, playingXIIds, sortBy])
 
   const getDisabledReason = useCallback(
     (player: PlayerWithTeam): string | null => {

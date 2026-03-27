@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { previewSeriesImport, confirmSeriesImport } from "@/actions/matches"
 import type { SeriesImportProposal } from "@/actions/matches"
+import { format } from "date-fns"
 
 export function SeriesImportClient() {
   const [seriesId, setSeriesId] = useState("")
@@ -29,28 +30,42 @@ export function SeriesImportClient() {
 
   function handleConfirm() {
     if (!proposals) return
-    const toConfirm = proposals.filter((p) => p.dbMatchId && !p.alreadySet)
-    if (toConfirm.length === 0) {
-      setMessage("Nothing to update — all matches already have IDs set.")
+    const toUpdate = proposals.filter((p) => p.dbMatchId && !p.alreadySet)
+    const toCreate = proposals.filter((p) => p.isNew)
+    if (toUpdate.length === 0 && toCreate.length === 0) {
+      setMessage("Nothing to do — all matches already have IDs set.")
       return
     }
     startTransition(async () => {
       const res = await confirmSeriesImport(
-        toConfirm.map((p) => ({ dbMatchId: p.dbMatchId!, apiMatchId: p.apiMatchId }))
+        toUpdate.map((p) => ({ dbMatchId: p.dbMatchId!, apiMatchId: p.apiMatchId })),
+        toCreate.map((p) => ({
+          apiMatchId: p.apiMatchId,
+          teamHomeId: p.teamHomeId!,
+          teamAwayId: p.teamAwayId!,
+          venue: p.venue,
+          startTime: p.dateTimeGMT,
+          matchNumber: p.proposedMatchNumber!,
+        }))
       )
       if (res.error) {
         setMessage(`Error: ${res.error}`)
       } else {
-        setMessage(`Updated ${res.updated} matches.`)
+        const parts = []
+        if (res.updated) parts.push(`${res.updated} updated`)
+        if (res.created) parts.push(`${res.created} created`)
+        setMessage(`Done — ${parts.join(", ")}.`)
         setProposals(null)
         setSeriesId("")
       }
     })
   }
 
-  const unmapped = proposals?.filter((p) => !p.dbMatchId) ?? []
-  const toUpdate = proposals?.filter((p) => p.dbMatchId && !p.alreadySet) ?? []
   const alreadySet = proposals?.filter((p) => p.alreadySet) ?? []
+  const toUpdate = proposals?.filter((p) => p.dbMatchId && !p.alreadySet) ?? []
+  const toCreate = proposals?.filter((p) => p.isNew) ?? []
+  const unmapped = proposals?.filter((p) => !p.dbMatchId && !p.isNew) ?? []
+  const totalChanges = toUpdate.length + toCreate.length
 
   return (
     <Card className="border border-border">
@@ -59,7 +74,7 @@ export function SeriesImportClient() {
       </CardHeader>
       <CardContent className="space-y-3">
         <p className="text-xs text-muted-foreground">
-          Paste a CricAPI series ID to auto-map <span className="font-mono">cricapi_match_id</span> for all matches.
+          Paste a CricAPI series ID to auto-map <span className="font-mono">cricapi_match_id</span> for all matches and create any missing fixtures.
         </p>
         <div className="flex gap-2">
           <Input
@@ -85,11 +100,17 @@ export function SeriesImportClient() {
         {proposals !== null && (
           <div className="space-y-3">
             <div className="text-xs text-muted-foreground space-y-0.5">
-              <p>✅ {alreadySet.length} already set &nbsp;·&nbsp; 🔄 {toUpdate.length} to update &nbsp;·&nbsp; ❌ {unmapped.length} no DB match found</p>
+              <p>
+                ✅ {alreadySet.length} already set &nbsp;·&nbsp;
+                🔄 {toUpdate.length} to update &nbsp;·&nbsp;
+                ➕ {toCreate.length} to create &nbsp;·&nbsp;
+                ❌ {unmapped.length} unmapped
+              </p>
             </div>
 
             {toUpdate.length > 0 && (
-              <div className="max-h-48 overflow-y-auto border border-border rounded-md p-2 space-y-0.5 text-xs font-mono">
+              <div className="max-h-32 overflow-y-auto border border-border rounded-md p-2 space-y-0.5 text-xs font-mono">
+                <p className="text-muted-foreground mb-1">To update (cricapi_match_id):</p>
                 {toUpdate.map((p) => (
                   <div key={p.apiMatchId} className="flex gap-2">
                     <span className="text-muted-foreground w-6 shrink-0">#{p.matchNumber}</span>
@@ -99,18 +120,33 @@ export function SeriesImportClient() {
               </div>
             )}
 
+            {toCreate.length > 0 && (
+              <div className="max-h-48 overflow-y-auto border border-border rounded-md p-2 space-y-0.5 text-xs font-mono">
+                <p className="text-muted-foreground mb-1">New matches to create:</p>
+                {toCreate.map((p) => (
+                  <div key={p.apiMatchId} className="flex gap-2">
+                    <span className="text-muted-foreground w-6 shrink-0">#{p.proposedMatchNumber}</span>
+                    <span className="truncate flex-1">{p.teams.join(" vs ")}</span>
+                    <span className="text-muted-foreground shrink-0">{format(new Date(p.dateTimeGMT), "MMM d")}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+
             {unmapped.length > 0 && (
               <div className="max-h-24 overflow-y-auto border border-border rounded-md p-2 space-y-0.5 text-xs font-mono">
-                <p className="text-muted-foreground mb-1">No match found in DB:</p>
+                <p className="text-muted-foreground mb-1">Could not resolve teams:</p>
                 {unmapped.map((p) => (
                   <div key={p.apiMatchId} className="text-muted-foreground">{p.apiName}</div>
                 ))}
               </div>
             )}
 
-            {toUpdate.length > 0 && (
+            {totalChanges > 0 && (
               <Button size="sm" onClick={handleConfirm} disabled={isPending}>
-                {isPending ? "Saving..." : `Confirm ${toUpdate.length} Updates`}
+                {isPending
+                  ? "Saving..."
+                  : `Confirm ${totalChanges} Change${totalChanges !== 1 ? "s" : ""}${toUpdate.length && toCreate.length ? ` (${toUpdate.length} update + ${toCreate.length} create)` : ""}`}
               </Button>
             )}
           </div>

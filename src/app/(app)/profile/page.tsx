@@ -5,6 +5,7 @@ import { Trophy, Target, TrendingUp, TrendingDown } from "lucide-react"
 import { ProfileNameForm } from "./name-form"
 import { SignOutButton } from "./sign-out-button"
 import { ThemeCard } from "./theme-card"
+import { AutoPickToggle } from "./auto-pick-toggle"
 import { StatCard } from "@/components/stat-card"
 import { RankBadge } from "@/components/rank-badge"
 import { TeamBadge } from "@/components/team-badge"
@@ -137,6 +138,9 @@ export default async function ProfilePage() {
           iconColor="bg-red-500/15 text-red-500"
         />
       </div>
+
+      {/* Auto-pick backup */}
+      <AutoPickToggle enabled={profile?.auto_pick_enabled ?? false} />
 
       {/* Desktop 2-column layout for detail cards */}
       <div className="lg:grid lg:grid-cols-2 lg:gap-6 space-y-6 lg:space-y-0">

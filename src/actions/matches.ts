@@ -308,14 +308,20 @@ export type SeriesImportProposal = {
   apiName: string
   dateTimeGMT: string
   teams: string[]
+  venue: string
   dbMatchId: string | null
   matchNumber: number | null
   alreadySet: boolean
+  isNew: boolean
+  teamHomeId: string | null
+  teamAwayId: string | null
+  proposedMatchNumber: number | null
 }
 
 /**
  * Preview: fetch all matches from a CricAPI series and propose cricapi_match_id mappings.
- * Matches by team names + date proximity. Does NOT write to DB.
+ * For API matches with no DB counterpart, attempts to resolve teams and proposes new row creation.
+ * Does NOT write to DB.
  */
 export async function previewSeriesImport(seriesId: string): Promise<{
   proposals?: SeriesImportProposal[]
@@ -327,13 +333,29 @@ export async function previewSeriesImport(seriesId: string): Promise<{
   const seriesMatches = await fetchSeriesInfo(seriesId)
   if (!seriesMatches) return { error: "Failed to fetch series from CricAPI. Check the series ID." }
 
-  const { data: dbMatches } = await admin
-    .from("matches")
-    .select("id, match_number, start_time, cricapi_match_id, team_home:teams!team_home_id(name, short_name), team_away:teams!team_away_id(name, short_name)")
-    .order("match_number")
+  const [{ data: dbMatches }, { data: teams }] = await Promise.all([
+    admin
+      .from("matches")
+      .select("id, match_number, start_time, cricapi_match_id, team_home:teams!team_home_id(name, short_name), team_away:teams!team_away_id(name, short_name)")
+      .order("match_number"),
+    admin.from("teams").select("id, name, short_name"),
+  ])
   if (!dbMatches) return { error: "Failed to load matches from DB" }
 
+  const allTeams = teams ?? []
+  const maxMatchNumber = dbMatches.reduce((m, d) => Math.max(m, d.match_number), 0)
+
+  function resolveTeamId(str: string): string | null {
+    const lower = str.toLowerCase().trim()
+    for (const t of allTeams) {
+      if (lower.includes(t.name.toLowerCase()) || t.name.toLowerCase().includes(lower) ||
+          lower.includes(t.short_name.toLowerCase())) return t.id
+    }
+    return null
+  }
+
   const proposals: SeriesImportProposal[] = []
+  const newProposals: SeriesImportProposal[] = []
 
   for (const apiMatch of seriesMatches) {
     const apiDate = new Date(apiMatch.dateTimeGMT).getTime()
@@ -361,18 +383,75 @@ export async function previewSeriesImport(seriesId: string): Promise<{
       }
     }
 
-    proposals.push({
-      apiMatchId: apiMatch.id,
-      apiName: apiMatch.name,
-      dateTimeGMT: apiMatch.dateTimeGMT,
-      teams: apiMatch.teams,
-      dbMatchId: bestDb?.id ?? null,
-      matchNumber: bestDb?.match_number ?? null,
-      alreadySet: bestDb?.cricapi_match_id === apiMatch.id,
-    })
+    if (bestDb) {
+      proposals.push({
+        apiMatchId: apiMatch.id,
+        apiName: apiMatch.name,
+        dateTimeGMT: apiMatch.dateTimeGMT,
+        venue: apiMatch.venue,
+        teams: apiMatch.teams,
+        dbMatchId: bestDb.id,
+        matchNumber: bestDb.match_number,
+        alreadySet: bestDb.cricapi_match_id === apiMatch.id,
+        isNew: false,
+        teamHomeId: null,
+        teamAwayId: null,
+        proposedMatchNumber: null,
+      })
+    } else {
+      // No DB match — try to resolve teams for new row creation
+      const vsMatch = apiMatch.name.match(/^(.+?)\s+vs\s+(.+?)(?:,|$)/i)
+      let teamHomeId: string | null = null
+      let teamAwayId: string | null = null
+      if (vsMatch) {
+        teamHomeId = resolveTeamId(vsMatch[1])
+        teamAwayId = resolveTeamId(vsMatch[2])
+      }
+      // Fallback: try from teams array if vs-parse failed
+      if (!teamHomeId && apiMatch.teams.length >= 2) {
+        teamHomeId = resolveTeamId(apiMatch.teams[0])
+        teamAwayId = resolveTeamId(apiMatch.teams[1])
+      }
+
+      if (teamHomeId && teamAwayId) {
+        newProposals.push({
+          apiMatchId: apiMatch.id,
+          apiName: apiMatch.name,
+          dateTimeGMT: apiMatch.dateTimeGMT,
+          venue: apiMatch.venue,
+          teams: apiMatch.teams,
+          dbMatchId: null,
+          matchNumber: null,
+          alreadySet: false,
+          isNew: true,
+          teamHomeId,
+          teamAwayId,
+          proposedMatchNumber: null, // assigned below after sorting
+        })
+      } else {
+        proposals.push({
+          apiMatchId: apiMatch.id,
+          apiName: apiMatch.name,
+          dateTimeGMT: apiMatch.dateTimeGMT,
+          venue: apiMatch.venue,
+          teams: apiMatch.teams,
+          dbMatchId: null,
+          matchNumber: null,
+          alreadySet: false,
+          isNew: false,
+          teamHomeId: null,
+          teamAwayId: null,
+          proposedMatchNumber: null,
+        })
+      }
+    }
   }
 
-  return { proposals }
+  // Assign proposed match numbers to new matches in date order
+  newProposals.sort((a, b) => new Date(a.dateTimeGMT).getTime() - new Date(b.dateTimeGMT).getTime())
+  newProposals.forEach((p, i) => { p.proposedMatchNumber = maxMatchNumber + i + 1 })
+
+  return { proposals: [...proposals, ...newProposals] }
 }
 
 /** Admin diagnostic: fetch raw /match_points response to verify Fantasy API access */
@@ -394,15 +473,23 @@ export async function testMatchPoints(matchId: string): Promise<{ data?: unknown
   return { data }
 }
 
-/** Confirm: write cricapi_match_id for approved proposals */
+/** Confirm: write cricapi_match_id for approved proposals, and insert new match rows */
 export async function confirmSeriesImport(
-  proposals: Array<{ dbMatchId: string; apiMatchId: string }>
-): Promise<{ success?: boolean; updated?: number; error?: string }> {
+  toUpdate: Array<{ dbMatchId: string; apiMatchId: string }>,
+  toCreate: Array<{
+    apiMatchId: string
+    teamHomeId: string
+    teamAwayId: string
+    venue: string
+    startTime: string
+    matchNumber: number
+  }>
+): Promise<{ success?: boolean; updated?: number; created?: number; error?: string }> {
   await requireAdmin()
   const admin = createAdminClient()
 
   let updated = 0
-  for (const p of proposals) {
+  for (const p of toUpdate) {
     const { error } = await admin
       .from("matches")
       .update({ cricapi_match_id: p.apiMatchId })
@@ -410,5 +497,21 @@ export async function confirmSeriesImport(
     if (!error) updated++
   }
 
-  return { success: true, updated }
+  let created = 0
+  if (toCreate.length > 0) {
+    const rows = toCreate.map((p) => ({
+      match_number: p.matchNumber,
+      team_home_id: p.teamHomeId,
+      team_away_id: p.teamAwayId,
+      venue: p.venue,
+      start_time: p.startTime,
+      status: "upcoming",
+      cricapi_match_id: p.apiMatchId,
+    }))
+    const { error } = await admin.from("matches").insert(rows)
+    if (error) return { error: `Failed to create matches: ${error.message}` }
+    created = rows.length
+  }
+
+  return { success: true, updated, created }
 }

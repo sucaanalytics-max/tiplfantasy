@@ -253,29 +253,56 @@ export async function getMyChallenges() {
 export async function resolveMatchChallenges(matchId: string) {
   const admin = createAdminClient()
 
-  // Get all accepted challenges for this match
-  const { data: challenges } = await admin
+  // Fetch accepted + open challenges in one query, split in memory
+  const { data: allChallenges } = await admin
     .from("h2h_challenges")
     .select("*")
     .eq("match_id", matchId)
-    .eq("status", "accepted")
+    .in("status", ["accepted", "open"])
 
-  if (!challenges || challenges.length === 0) return
+  if (!allChallenges || allChallenges.length === 0) return
 
-  // Get user match scores for this match
-  const userIds = new Set<string>()
+  const challenges = allChallenges.filter((c) => c.status === "accepted")
+  const openChallenges = allChallenges.filter((c) => c.status === "open")
+
+  // Collect ALL involved user IDs (accepted + open) for complete batch fetch
+  const allUserIds = new Set<string>()
   for (const c of challenges) {
-    userIds.add(c.challenger_id)
-    if (c.opponent_id) userIds.add(c.opponent_id)
+    allUserIds.add(c.challenger_id)
+    if (c.opponent_id) allUserIds.add(c.opponent_id)
+  }
+  for (const oc of openChallenges) {
+    allUserIds.add(oc.challenger_id)
   }
 
-  const { data: scores } = await admin
-    .from("user_match_scores")
-    .select("user_id, total_points")
-    .eq("match_id", matchId)
-    .in("user_id", [...userIds])
+  // Batch fetch scores and token balances in parallel (was sequential per-challenge)
+  const [{ data: scores }, { data: tokenRows }] = await Promise.all([
+    allUserIds.size > 0
+      ? admin
+          .from("user_match_scores")
+          .select("user_id, total_points")
+          .eq("match_id", matchId)
+          .in("user_id", [...allUserIds])
+      : Promise.resolve({ data: [] }),
+    allUserIds.size > 0
+      ? admin
+          .from("user_tokens")
+          .select("user_id, balance")
+          .in("user_id", [...allUserIds])
+      : Promise.resolve({ data: [] }),
+  ])
 
   const scoreMap = new Map((scores ?? []).map((s) => [s.user_id, s.total_points]))
+  const tokenMap = new Map((tokenRows ?? []).map((t) => [t.user_id, t.balance]))
+
+  // Compute all token deltas and prepare batch writes in memory
+  const tokenDeltas = new Map<string, number>()
+  const txnRows: Array<{
+    user_id: string; amount: number; type: string; reference_id: string; note: string
+  }> = []
+  const challengeUpdates: Array<{
+    id: string; status: string; winner_id: string | null; resolved_at: string
+  }> = []
 
   for (const challenge of challenges) {
     const challengerScore = scoreMap.get(challenge.challenger_id) ?? 0
@@ -283,7 +310,6 @@ export async function resolveMatchChallenges(matchId: string) {
     const pot = challenge.wager * 2
 
     let winnerId: string | null = null
-
     if (challengerScore > opponentScore) {
       winnerId = challenge.challenger_id
     } else if (opponentScore > challengerScore) {
@@ -291,99 +317,66 @@ export async function resolveMatchChallenges(matchId: string) {
     }
 
     if (winnerId) {
-      // Winner takes the pot
-      const { data: winnerTokens } = await admin
-        .from("user_tokens")
-        .select("balance")
-        .eq("user_id", winnerId)
-        .single()
-      await admin
-        .from("user_tokens")
-        .update({
-          balance: (winnerTokens?.balance ?? 0) + pot,
-          updated_at: new Date().toISOString(),
-        })
-        .eq("user_id", winnerId)
-
-      await admin.from("token_transactions").insert({
-        user_id: winnerId,
-        amount: pot,
-        type: "h2h_win",
+      tokenDeltas.set(winnerId, (tokenDeltas.get(winnerId) ?? 0) + pot)
+      txnRows.push({
+        user_id: winnerId, amount: pot, type: "h2h_win",
         reference_id: challenge.id,
         note: `Won H2H challenge (${challengerScore} vs ${opponentScore})`,
       })
     } else {
-      // Draw — refund both
       for (const uid of [challenge.challenger_id, challenge.opponent_id!]) {
-        const { data: t } = await admin
-          .from("user_tokens")
-          .select("balance")
-          .eq("user_id", uid)
-          .single()
-        await admin
-          .from("user_tokens")
-          .update({
-            balance: (t?.balance ?? 0) + challenge.wager,
-            updated_at: new Date().toISOString(),
-          })
-          .eq("user_id", uid)
-
-        await admin.from("token_transactions").insert({
-          user_id: uid,
-          amount: challenge.wager,
-          type: "h2h_refund",
+        tokenDeltas.set(uid, (tokenDeltas.get(uid) ?? 0) + challenge.wager)
+        txnRows.push({
+          user_id: uid, amount: challenge.wager, type: "h2h_refund",
           reference_id: challenge.id,
           note: `Draw in H2H challenge (${challengerScore} each)`,
         })
       }
     }
 
-    // Mark challenge resolved
-    await admin
-      .from("h2h_challenges")
-      .update({
-        status: "completed",
-        winner_id: winnerId,
-        resolved_at: new Date().toISOString(),
-      })
-      .eq("id", challenge.id)
-  }
-
-  // Expire unaccepted open challenges for this match
-  const { data: openChallenges } = await admin
-    .from("h2h_challenges")
-    .select("id, challenger_id, wager")
-    .eq("match_id", matchId)
-    .eq("status", "open")
-
-  for (const oc of openChallenges ?? []) {
-    // Refund challenger
-    const { data: t } = await admin
-      .from("user_tokens")
-      .select("balance")
-      .eq("user_id", oc.challenger_id)
-      .single()
-    await admin
-      .from("user_tokens")
-      .update({
-        balance: (t?.balance ?? 0) + oc.wager,
-        updated_at: new Date().toISOString(),
-      })
-      .eq("user_id", oc.challenger_id)
-
-    await admin.from("token_transactions").insert({
-      user_id: oc.challenger_id,
-      amount: oc.wager,
-      type: "h2h_refund",
-      reference_id: oc.id,
-      note: "Expired H2H challenge (match started)",
+    challengeUpdates.push({
+      id: challenge.id, status: "completed",
+      winner_id: winnerId, resolved_at: new Date().toISOString(),
     })
-
-    await admin
-      .from("h2h_challenges")
-      .update({ status: "expired", resolved_at: new Date().toISOString() })
-      .eq("id", oc.id)
   }
+
+  // Expire open challenges
+  for (const oc of openChallenges ?? []) {
+    tokenDeltas.set(oc.challenger_id, (tokenDeltas.get(oc.challenger_id) ?? 0) + oc.wager)
+    txnRows.push({
+      user_id: oc.challenger_id, amount: oc.wager, type: "h2h_refund",
+      reference_id: oc.id, note: "Expired H2H challenge (match started)",
+    })
+    challengeUpdates.push({
+      id: oc.id, status: "expired", winner_id: null, resolved_at: new Date().toISOString(),
+    })
+  }
+
+  // Batch all writes in parallel — was O(n) sequential reads + writes
+  const now = new Date().toISOString()
+  await Promise.all([
+    // All token balance updates in one upsert
+    tokenDeltas.size > 0
+      ? admin.from("user_tokens").upsert(
+          Array.from(tokenDeltas.entries()).map(([userId, delta]) => ({
+            user_id: userId,
+            balance: (tokenMap.get(userId) ?? 0) + delta,
+            updated_at: now,
+          }))
+        )
+      : Promise.resolve(),
+    // All transactions in one insert
+    txnRows.length > 0
+      ? admin.from("token_transactions").insert(txnRows)
+      : Promise.resolve(),
+    // Challenge status updates in parallel
+    ...challengeUpdates.map((u) =>
+      admin
+        .from("h2h_challenges")
+        .update({ status: u.status, winner_id: u.winner_id, resolved_at: u.resolved_at })
+        .eq("id", u.id)
+    ),
+  ])
 }
 
 // ─── Admin Actions ──────────────────────────────────────────

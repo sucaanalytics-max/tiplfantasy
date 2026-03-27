@@ -164,17 +164,17 @@ export async function getMyLeagues(): Promise<LeagueWithMemberCount[]> {
 
   if (!leagues) return []
 
-  // Get member counts
-  const result: LeagueWithMemberCount[] = []
-  for (const league of leagues) {
-    const { count } = await admin
-      .from("league_members")
-      .select("*", { count: "exact", head: true })
-      .eq("league_id", league.id)
-    result.push({ ...league, member_count: count ?? 0 })
-  }
+  // Get member counts for all leagues in parallel
+  const counts = await Promise.all(
+    leagues.map((league) =>
+      admin
+        .from("league_members")
+        .select("*", { count: "exact", head: true })
+        .eq("league_id", league.id)
+    )
+  )
 
-  return result
+  return leagues.map((league, i) => ({ ...league, member_count: counts[i].count ?? 0 }))
 }
 
 export async function getLeagueWithMembers(leagueId: string) {
