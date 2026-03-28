@@ -137,11 +137,12 @@ export async function GET(req: NextRequest) {
         continue
       }
 
-      // 6. Overwrite player scores (delete + insert mirrors savePlayerScores)
-      await admin.from("match_player_scores").delete().eq("match_id", match.id)
-      const { error: insertErr } = await admin.from("match_player_scores").insert(scoreRows)
-      if (insertErr) {
-        errors.push({ matchId: match.id, error: insertErr.message })
+      // 6. Upsert player scores (atomic — no gap between delete and insert)
+      const { error: upsertPlayerErr } = await admin
+        .from("match_player_scores")
+        .upsert(scoreRows, { onConflict: "match_id,player_id" })
+      if (upsertPlayerErr) {
+        errors.push({ matchId: match.id, error: upsertPlayerErr.message })
         continue
       }
 
@@ -235,7 +236,8 @@ export async function GET(req: NextRequest) {
       // 14. Stamp when live points were last calculated
       await admin.from("matches").update({ live_scores_at: new Date().toISOString() }).eq("id", match.id)
 
-      // 15. Auto-detect match finished — finalize scores and mark completed
+      // 15. Auto-detect match finished — only check API when both innings have data
+      if (result.innings.length >= 2) {
       const fixtureInfo = await fetchMatchInfo(match.cricapi_match_id)
       if (fixtureInfo && fixtureInfo.status === "Finished") {
         const note = (fixtureInfo.note ?? "")
@@ -247,6 +249,7 @@ export async function GET(req: NextRequest) {
         }).eq("id", match.id)
         // Refresh season leaderboard materialized view
         await admin.rpc("refresh_leaderboard")
+      }
       }
 
       updated.push(match.id)

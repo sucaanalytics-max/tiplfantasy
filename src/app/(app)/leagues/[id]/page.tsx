@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation"
 import { getLeagueWithMembers, getLeagueLeaderboard, getLeagueAwards, getLeagueMatchScores } from "@/actions/leagues"
+import { createClient } from "@/lib/supabase/server"
 import { createAdminClient } from "@/lib/supabase/admin"
 import { LeagueDetailClient } from "./league-detail-client"
 
@@ -9,8 +10,16 @@ export default async function LeagueDetailPage({
   params: Promise<{ id: string }>
 }) {
   const { id } = await params
+
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) redirect("/login")
+
   const leagueData = await getLeagueWithMembers(id)
   if (!leagueData) redirect("/leagues")
+
+  const isMember = leagueData.members.some((m) => m.user_id === user.id)
+  if (!isMember) redirect("/leagues")
 
   const admin = createAdminClient()
 

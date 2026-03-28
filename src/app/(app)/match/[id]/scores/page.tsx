@@ -45,7 +45,8 @@ export default async function ScoresPage({
     admin
       .from("selections")
       .select("user_id, captain_id, vice_captain_id, selection_players(player_id)")
-      .eq("match_id", id),
+      .eq("match_id", id)
+      .limit(200),
     admin
       .from("selections")
       .select("user_id, captain_id, captain:players!selections_captain_id_fkey(name)")
@@ -65,12 +66,16 @@ export default async function ScoresPage({
   const mySelection = mySelectionRes.data
   const myPlayerIds = (mySelection?.selection_players as { player_id: string }[] | undefined)?.map((sp) => sp.player_id) ?? []
 
-  const allSelections: SelectionRow[] = (allSelectionsRes.data ?? []).map((s) => ({
-    user_id: s.user_id,
-    captain_id: s.captain_id as string | null,
-    vice_captain_id: s.vice_captain_id as string | null,
-    player_ids: (s.selection_players as { player_id: string }[]).map((sp) => sp.player_id),
-  }))
+  // Only expose other users' selections when match is live or completed (not upcoming)
+  const isMatchLocked = match.status === "live" || match.status === "completed" || match.status === "no_result"
+  const allSelections: SelectionRow[] = isMatchLocked
+    ? (allSelectionsRes.data ?? []).map((s) => ({
+        user_id: s.user_id,
+        captain_id: s.captain_id as string | null,
+        vice_captain_id: s.vice_captain_id as string | null,
+        player_ids: (s.selection_players as { player_id: string }[]).map((sp) => sp.player_id),
+      }))
+    : []
 
   const captainPicks: Record<string, { name: string }> = {}
   for (const s of captainPicksRes.data ?? []) {

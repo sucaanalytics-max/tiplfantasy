@@ -67,42 +67,6 @@ const ROLE_COLORS: Record<string, string> = {
   BOWL: "text-purple-400 bg-purple-400/15 border-purple-400/30",
 }
 
-function formatBattingStats(p: PlayerScore): string {
-  const parts: string[] = []
-  if (p.runs > 0 || p.balls_faced > 0) {
-    parts.push(`${p.runs}(${p.balls_faced})`)
-  }
-  if (p.fours > 0) parts.push(`${p.fours}×4`)
-  if (p.sixes > 0) parts.push(`${p.sixes}×6`)
-  return parts.join(" ")
-}
-
-function formatBowlingStats(p: PlayerScore): string {
-  const parts: string[] = []
-  if (Number(p.overs_bowled) > 0) {
-    parts.push(`${p.wickets}/${p.runs > 0 ? "" : "0"} (${p.overs_bowled} ov)`)
-  }
-  return parts.join(" ")
-}
-
-function formatPlayerStats(p: PlayerScore): string {
-  const role = p.player.role
-  const batting = formatBattingStats(p)
-  const bowling = formatBowlingStats(p)
-
-  if (role === "BOWL" && bowling) return bowling
-  if (role === "BAT" || role === "WK") return batting
-  // AR: show both if available
-  const combined = [batting, bowling].filter(Boolean).join("  ")
-  return combined
-}
-
-function formatBowlerLine(p: PlayerScore): string {
-  if (Number(p.overs_bowled) <= 0) return ""
-  // Calculate runs conceded — we don't have it directly, so show wickets/overs
-  return `${p.wickets}w (${p.overs_bowled} ov)`
-}
-
 function getPlayerDisplayStats(p: PlayerScore): string {
   const role = p.player.role
   const parts: string[] = []
@@ -130,12 +94,6 @@ function getPlayerDisplayStats(p: PlayerScore): string {
   if (fielding.length) parts.push(fielding.join(" "))
 
   return parts.join("  ") || "-"
-}
-
-/** We don't have runs conceded, so just show wicket count for bowlers */
-function formatBowlerEconomy(p: PlayerScore): string {
-  // Placeholder — we only have wickets + overs
-  return `${p.wickets}w`
 }
 
 export function MatchLeaderboard({
