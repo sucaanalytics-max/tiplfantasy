@@ -13,6 +13,7 @@ import { EmptyState } from "@/components/empty-state"
 import { getInitials, getAvatarColor } from "@/lib/avatar"
 import { PageTransition } from "@/components/page-transition"
 import { CricketBall } from "@/components/icons/cricket-ball"
+import { LiveRefresher } from "@/components/live-refresher"
 
 export default async function ScoresPage({
   params,
@@ -114,6 +115,15 @@ export default async function ScoresPage({
           </div>
         </div>
       </div>
+
+      {match.status === "live" && <LiveRefresher interval={30000} />}
+
+      {match.status === "live" && (
+        <div className="flex items-center gap-2 rounded-lg px-4 py-2.5 text-sm bg-red-500/10 border border-red-500/20 text-red-400">
+          <span className="h-2 w-2 rounded-full bg-red-500 animate-pulse shrink-0" />
+          <span>LIVE — Points update every ~5 min. Provisional until match ends.</span>
+        </div>
+      )}
 
       {match.result_summary && (
         <div className="text-sm text-muted-foreground bg-secondary border border-border rounded-lg px-4 py-3">

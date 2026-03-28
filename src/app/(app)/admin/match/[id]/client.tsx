@@ -11,7 +11,7 @@ import { format } from "date-fns"
 import type { MatchWithTeams, PlayerWithTeam, MatchPlayerScore } from "@/lib/types"
 import type { PlayerStats } from "@/lib/scoring"
 import { lockMatch, markNoResult, fetchPlayingXI, fetchMatchScorecard, autoScoreMatch, testMatchPoints } from "@/actions/matches"
-import { savePlayerScores, calculateMatchPoints } from "@/actions/scoring"
+import { savePlayerScores, calculateMatchPoints, calculateLiveMatchPoints } from "@/actions/scoring"
 import { formatMatchMessage } from "@/lib/whatsapp"
 
 type UserScoreRow = {
@@ -215,6 +215,17 @@ export function AdminMatchClient({
     })
   }
 
+  function handleLivePoints() {
+    startTransition(async () => {
+      const res = await calculateLiveMatchPoints(match.id)
+      if (res.error) showMsg("error", res.error)
+      else {
+        showMsg("success", `Live points updated for ${res.count} users`)
+        router.refresh()
+      }
+    })
+  }
+
   function handleTestFantasyApi() {
     if (!match.cricapi_match_id) {
       showMsg("error", "No CricAPI match ID set")
@@ -371,6 +382,16 @@ export function AdminMatchClient({
           >
             Calculate Points
           </Button>
+          {match.status === "live" && existingScores.length > 0 && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleLivePoints}
+              disabled={isPending}
+            >
+              📊 Live Points
+            </Button>
+          )}
           <Button
             variant="outline"
             size="sm"
