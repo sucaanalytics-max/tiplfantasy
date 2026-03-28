@@ -4,6 +4,7 @@ import { Toaster } from "sonner"
 import { ThemeProvider } from "@/components/theme-provider"
 import { ServiceWorkerRegistration } from "@/components/sw-register"
 import { AmbientGradient } from "@/components/ambient-gradient"
+import { Analytics } from "@vercel/analytics/next"
 import "./globals.css"
 
 const geistSans = Geist({
@@ -99,6 +100,7 @@ export default function RootLayout({
           <Toaster richColors position="top-center" />
         </ThemeProvider>
         <ServiceWorkerRegistration />
+        <Analytics />
       </body>
     </html>
   )
