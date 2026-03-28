@@ -4,7 +4,7 @@ import { useState, useTransition, useRef, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
 import { format } from "date-fns"
-import { Copy, Check, Share2, Trash2, ArrowLeft, Users, Trophy, Swords, Zap, Crown, Target, ChevronRight, GitCompareArrows, IndianRupee, type LucideIcon } from "lucide-react"
+import { Copy, Check, Share2, Trash2, ArrowLeft, Users, Trophy, Swords, Zap, Crown, Target, ChevronRight, GitCompareArrows, type LucideIcon } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -458,7 +458,7 @@ export function PrizesTab({ awards, matchScores, leaderboard }: PrizesTabProps) 
   if (awards.length === 0 && matchScores.length === 0) {
     return (
       <div className="flex flex-col items-center text-center py-16 gap-3">
-        <IndianRupee className="h-10 w-10 text-muted-foreground/30" />
+        <Trophy className="h-10 w-10 text-muted-foreground/30" />
         <div>
           <p className="font-medium text-muted-foreground">No prize data yet</p>
           <p className="text-xs text-muted-foreground/60 mt-0.5">Prizes unlock once matches complete</p>
@@ -587,13 +587,13 @@ export function PrizesTab({ awards, matchScores, leaderboard }: PrizesTabProps) 
         </Card>
       )}
 
-      {/* Matchday Prize History */}
+      {/* Matchday History */}
       {matchHistory.length > 0 && (
         <Card className="border border-border">
           <CardHeader className="pb-3">
             <CardTitle className="text-base flex items-center gap-2">
-              <IndianRupee className="h-4 w-4" />
-              Matchday Prize History
+              <Trophy className="h-4 w-4" />
+              Matchday History
             </CardTitle>
           </CardHeader>
           <CardContent className="p-0">
@@ -635,29 +635,31 @@ export function PrizesTab({ awards, matchScores, leaderboard }: PrizesTabProps) 
         </Card>
       )}
 
-      {/* Earnings Tracker */}
+      {/* Awards */}
       {earnings.length > 0 && (
         <Card className="border border-border">
           <CardHeader className="pb-3">
             <CardTitle className="text-base flex items-center gap-2">
-              <IndianRupee className="h-4 w-4" />
-              Earnings Tracker
+              <Crown className="h-4 w-4" />
+              Awards
             </CardTitle>
           </CardHeader>
           <CardContent>
             <div className="space-y-1">
-              <div className="grid grid-cols-[1fr_5rem_5rem_5rem] gap-2 text-[10px] text-muted-foreground px-3 pb-1 uppercase tracking-wide">
+              <div className="grid grid-cols-[1fr_4rem_4rem] gap-2 text-[10px] text-muted-foreground px-3 pb-1 uppercase tracking-wide">
                 <span>Member</span>
-                <span className="text-right">Match Wins</span>
-                <span className="text-right">Season*</span>
-                <span className="text-right">Total*</span>
+                <span className="text-right">Wins</span>
+                <span className="text-right">Top 2</span>
               </div>
               {earnings.map((e) => {
-                const total = e.matchdayEarnings + e.seasonPrize + e.awardLeads * AWARD_PRIZE
+                // Look up stats from awards data
+                const memberAwards = awards.find((a) => a.user_id === e.userId)
+                const matchWins = memberAwards?.matchday_wins ?? 0
+                const top2 = memberAwards?.top2_finishes ?? 0
                 return (
                   <div
                     key={e.userId}
-                    className="grid grid-cols-[1fr_5rem_5rem_5rem] gap-2 items-center py-2.5 px-3 rounded-lg bg-secondary/50"
+                    className="grid grid-cols-[1fr_4rem_4rem] gap-2 items-center py-2.5 px-3 rounded-lg bg-secondary/50"
                   >
                     <div className="flex items-center gap-2 min-w-0">
                       <AvatarInitial name={e.name} size="sm" />
@@ -667,19 +669,15 @@ export function PrizesTab({ awards, matchScores, leaderboard }: PrizesTabProps) 
                       )}
                     </div>
                     <span className="text-sm font-semibold text-right text-emerald-400">
-                      {e.matchdayEarnings > 0 ? `${e.matchdayEarnings}` : "—"}
+                      {matchWins > 0 ? matchWins : "—"}
                     </span>
-                    <span className="text-sm text-right text-muted-foreground">
-                      {e.seasonPrize > 0 ? `${(e.seasonPrize / 1000).toFixed(0)}k` : "—"}
-                    </span>
-                    <span className="text-sm font-bold text-right">
-                      {total > 0 ? `${(total / 1000).toFixed(1)}k` : "—"}
+                    <span className="text-sm font-semibold text-right text-sky-400">
+                      {top2 > 0 ? top2 : "—"}
                     </span>
                   </div>
                 )
               })}
             </div>
-            <p className="text-[10px] text-muted-foreground mt-3">* Season & award prizes projected from current standings</p>
           </CardContent>
         </Card>
       )}
