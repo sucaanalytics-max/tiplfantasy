@@ -96,16 +96,28 @@ function apiKey() {
   return key
 }
 
+/** Fetch with abort timeout to prevent hanging cron jobs */
+function fetchWithTimeout(
+  url: string,
+  options?: RequestInit & { next?: { revalidate: number } },
+  timeoutMs = 10_000
+): Promise<Response> {
+  const controller = new AbortController()
+  const id = setTimeout(() => controller.abort(), timeoutMs)
+  return fetch(url, { ...options, signal: controller.signal }).finally(() => clearTimeout(id))
+}
+
 /** Search for a series by name (e.g. "IPL") */
 export async function searchSeries(query: string): Promise<CricAPISeries[] | null> {
   try {
-    const res = await fetch(
+    const res = await fetchWithTimeout(
       `${BASE_URL}/series?apikey=${apiKey()}&offset=0&search=${encodeURIComponent(query)}`
     )
-    if (!res.ok) return null
+    if (!res.ok) { console.error(`[CricAPI] /series ${res.status}`); return null }
     const json = await res.json()
     return json.data ?? null
-  } catch {
+  } catch (err) {
+    console.error("[CricAPI] /series failed:", err)
     return null
   }
 }
@@ -113,13 +125,14 @@ export async function searchSeries(query: string): Promise<CricAPISeries[] | nul
 /** Get all matches for a series */
 export async function fetchSeriesMatches(seriesId: string): Promise<CricAPISeriesMatch[] | null> {
   try {
-    const res = await fetch(
+    const res = await fetchWithTimeout(
       `${BASE_URL}/series_info?apikey=${apiKey()}&id=${seriesId}`
     )
-    if (!res.ok) return null
+    if (!res.ok) { console.error(`[CricAPI] /series_info ${res.status}`); return null }
     const json = await res.json()
     return json.data?.matchList ?? null
-  } catch {
+  } catch (err) {
+    console.error(`[CricAPI] /series_info failed for ${seriesId}:`, err)
     return null
   }
 }
@@ -127,13 +140,14 @@ export async function fetchSeriesMatches(seriesId: string): Promise<CricAPISerie
 /** Get detailed info for a single match */
 export async function fetchMatchInfo(matchId: string): Promise<CricAPIMatchInfo | null> {
   try {
-    const res = await fetch(
+    const res = await fetchWithTimeout(
       `${BASE_URL}/match_info?apikey=${apiKey()}&id=${matchId}`
     )
-    if (!res.ok) return null
+    if (!res.ok) { console.error(`[CricAPI] /match_info ${res.status}`); return null }
     const json = await res.json()
     return json.data ?? null
-  } catch {
+  } catch (err) {
+    console.error(`[CricAPI] /match_info failed for ${matchId}:`, err)
     return null
   }
 }
@@ -141,14 +155,15 @@ export async function fetchMatchInfo(matchId: string): Promise<CricAPIMatchInfo 
 /** Get current live/recent matches */
 export async function fetchCurrentMatches(): Promise<CricAPIMatch[] | null> {
   try {
-    const res = await fetch(
+    const res = await fetchWithTimeout(
       `${BASE_URL}/currentMatches?apikey=${apiKey()}&offset=0`,
       { next: { revalidate: 300 } }
     )
-    if (!res.ok) return null
+    if (!res.ok) { console.error(`[CricAPI] /currentMatches ${res.status}`); return null }
     const json = await res.json()
     return json.data ?? null
-  } catch {
+  } catch (err) {
+    console.error("[CricAPI] /currentMatches failed:", err)
     return null
   }
 }
@@ -156,37 +171,39 @@ export async function fetchCurrentMatches(): Promise<CricAPIMatch[] | null> {
 /** Get all matches (paginated) */
 export async function fetchMatches(offset = 0): Promise<CricAPIMatch[] | null> {
   try {
-    const res = await fetch(
+    const res = await fetchWithTimeout(
       `${BASE_URL}/matches?apikey=${apiKey()}&offset=${offset}`,
       { next: { revalidate: 300 } }
     )
-    if (!res.ok) return null
+    if (!res.ok) { console.error(`[CricAPI] /matches ${res.status}`); return null }
     const json = await res.json()
     return json.data ?? null
-  } catch {
+  } catch (err) {
+    console.error("[CricAPI] /matches failed:", err)
     return null
   }
 }
 
 export async function fetchScorecard(matchId: string): Promise<CricAPIScorecard[] | null> {
   try {
-    const res = await fetch(
+    const res = await fetchWithTimeout(
       `${BASE_URL}/match_scorecard?apikey=${apiKey()}&id=${matchId}`
     )
-    if (!res.ok) return null
+    if (!res.ok) { console.error(`[CricAPI] /match_scorecard ${res.status}`); return null }
     const json = await res.json()
     return json.data?.scorecard ?? null
-  } catch {
+  } catch (err) {
+    console.error(`[CricAPI] /match_scorecard failed for ${matchId}:`, err)
     return null
   }
 }
 
 export async function fetchSquad(matchId: string): Promise<Array<{ name: string; id: string; img?: string }> | null> {
   try {
-    const res = await fetch(
+    const res = await fetchWithTimeout(
       `${BASE_URL}/match_squad?apikey=${apiKey()}&id=${matchId}`
     )
-    if (!res.ok) return null
+    if (!res.ok) { console.error(`[CricAPI] /match_squad ${res.status}`); return null }
     const json = await res.json()
     const players: Array<{ name: string; id: string; img?: string }> = []
     for (const team of json.data ?? []) {
@@ -195,7 +212,8 @@ export async function fetchSquad(matchId: string): Promise<Array<{ name: string;
       }
     }
     return players
-  } catch {
+  } catch (err) {
+    console.error(`[CricAPI] /match_squad failed for ${matchId}:`, err)
     return null
   }
 }
@@ -279,17 +297,18 @@ export function parseScorecardToStats(innings: CricAPIScorecard[]): ParsedStats 
 /** Search players by name — used for backfilling cricapi_id on the players table */
 export async function searchPlayers(name: string): Promise<CricAPIPlayerSearchResult[] | null> {
   try {
-    const res = await fetch(
+    const res = await fetchWithTimeout(
       `${BASE_URL}/players?apikey=${apiKey()}&search=${encodeURIComponent(name)}&offset=0`
     )
-    if (!res.ok) return null
+    if (!res.ok) { console.error(`[CricAPI] /players ${res.status}`); return null }
     const json = await res.json()
     return (json.data ?? []).map((p: { id: string; name: string; country: string }) => ({
       id: p.id,
       name: p.name,
       country: p.country ?? "",
     }))
-  } catch {
+  } catch (err) {
+    console.error(`[CricAPI] /players failed for "${name}":`, err)
     return null
   }
 }
@@ -301,10 +320,10 @@ export async function searchPlayers(name: string): Promise<CricAPIPlayerSearchRe
  */
 export async function fetchMatchPoints(matchId: string): Promise<CricAPIMatchPointsResult | null> {
   try {
-    const res = await fetch(
+    const res = await fetchWithTimeout(
       `${BASE_URL}/match_points?apikey=${apiKey()}&id=${matchId}`
     )
-    if (!res.ok) return null
+    if (!res.ok) { console.error(`[CricAPI] /match_points ${res.status} for ${matchId}`); return null }
     const json = await res.json()
     const data = json.data
     if (!data) return null
@@ -344,7 +363,8 @@ export async function fetchMatchPoints(matchId: string): Promise<CricAPIMatchPoi
     )
 
     return { innings, totals }
-  } catch {
+  } catch (err) {
+    console.error(`[CricAPI] /match_points failed for ${matchId}:`, err)
     return null
   }
 }
@@ -352,14 +372,14 @@ export async function fetchMatchPoints(matchId: string): Promise<CricAPIMatchPoi
 /** Fetch full series info including all matches with cricapi IDs — for schedule import */
 export async function fetchSeriesInfo(seriesId: string): Promise<CricAPISeriesMatch[] | null> {
   try {
-    const res = await fetch(
+    const res = await fetchWithTimeout(
       `${BASE_URL}/series_info?apikey=${apiKey()}&id=${seriesId}`
     )
-    if (!res.ok) return null
+    if (!res.ok) { console.error(`[CricAPI] /series_info ${res.status}`); return null }
     const json = await res.json()
-    // matchList has the most complete match data for our import use case
     return json.data?.matchList ?? null
-  } catch {
+  } catch (err) {
+    console.error(`[CricAPI] /series_info failed for ${seriesId}:`, err)
     return null
   }
 }
@@ -376,21 +396,22 @@ export type CricScoreItem = {
 /** Fetch all active match scores in one call (60s cache) */
 export async function fetchCricScores(): Promise<CricScoreItem[] | null> {
   try {
-    const res = await fetch(
+    const res = await fetchWithTimeout(
       `${BASE_URL}/cricScore?apikey=${apiKey()}`,
       { next: { revalidate: 60 } }
     )
-    if (!res.ok) return null
+    if (!res.ok) { console.error(`[CricAPI] /cricScore ${res.status}`); return null }
     const json = await res.json()
     return json.data ?? null
-  } catch {
+  } catch (err) {
+    console.error("[CricAPI] /cricScore failed:", err)
     return null
   }
 }
 
 /** Diagnostic: returns raw /match_points response for admin verification */
 export async function testMatchPointsEndpoint(matchId: string): Promise<unknown> {
-  const res = await fetch(
+  const res = await fetchWithTimeout(
     `${BASE_URL}/match_points?apikey=${apiKey()}&id=${matchId}`
   )
   if (!res.ok) return { error: res.status, statusText: res.statusText }

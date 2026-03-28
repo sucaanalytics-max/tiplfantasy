@@ -40,12 +40,47 @@ export async function GET(req: NextRequest) {
       // 3. Load DB players for this match's two teams
       const { data: dbPlayers } = await admin
         .from("players")
-        .select("id, name")
+        .select("id, name, team_id, cricapi_id")
         .in("team_id", [match.team_home_id, match.team_away_id])
 
       if (!dbPlayers) {
         errors.push({ matchId: match.id, error: "Failed to load players" })
         continue
+      }
+
+      // 3b. Auto-populate playing_xi if not yet done (saves a separate cron + API call)
+      const { count: xiCount } = await admin
+        .from("playing_xi")
+        .select("id", { count: "exact", head: true })
+        .eq("match_id", match.id)
+
+      if (!xiCount || xiCount < 22) {
+        const cricapiIdMap = new Map<string, { id: string; team_id: string }>()
+        for (const p of dbPlayers) {
+          if (p.cricapi_id) cricapiIdMap.set(p.cricapi_id, { id: p.id, team_id: p.team_id })
+        }
+        const xiMatched = new Map<string, string>()
+        for (const apiPlayer of result.totals) {
+          const byId = cricapiIdMap.get(apiPlayer.id)
+          if (byId) { xiMatched.set(byId.id, byId.team_id); continue }
+          const nameNorm = apiPlayer.name.toLowerCase().replace(/[^a-z\s]/g, "").replace(/\s+/g, " ").trim()
+          const dbMatch = dbPlayers.find((p) => {
+            const pNorm = p.name.toLowerCase().replace(/[^a-z\s]/g, "").replace(/\s+/g, " ").trim()
+            return pNorm === nameNorm || pNorm.includes(nameNorm) || nameNorm.includes(pNorm)
+          })
+          if (dbMatch) xiMatched.set(dbMatch.id, dbMatch.team_id)
+        }
+        const byTeam = new Map<string, string[]>()
+        for (const [pid, tid] of xiMatched) {
+          const list = byTeam.get(tid) ?? []; list.push(pid); byTeam.set(tid, list)
+        }
+        const teamCounts = [...byTeam.values()].map((v) => v.length)
+        if (teamCounts.length === 2 && teamCounts.every((c) => c === 11)) {
+          await admin.from("playing_xi").delete().eq("match_id", match.id)
+          await admin.from("playing_xi").insert(
+            [...xiMatched.entries()].map(([pid, tid]) => ({ match_id: match.id, player_id: pid, team_id: tid }))
+          )
+        }
       }
 
       // 4. Build normalised name → db id lookup
