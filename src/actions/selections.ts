@@ -94,3 +94,32 @@ export async function submitSelection(
 
   return { success: true }
 }
+
+export async function getMyTeamForMatch(matchId: string): Promise<{
+  players: PlayerWithTeam[]
+  captainId: string | null
+  viceCaptainId: string | null
+} | null> {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return null
+
+  const { data: selection } = await supabase
+    .from("selections")
+    .select("captain_id, vice_captain_id, selection_players(player_id, player:players(*, team:teams(*)))")
+    .eq("match_id", matchId)
+    .eq("user_id", user.id)
+    .maybeSingle()
+
+  if (!selection) return null
+
+  const players = (selection.selection_players as { player_id: string; player: unknown }[])
+    .map((sp) => sp.player as PlayerWithTeam)
+    .filter(Boolean)
+
+  return {
+    players,
+    captainId: selection.captain_id as string | null,
+    viceCaptainId: selection.vice_captain_id as string | null,
+  }
+}

@@ -3,9 +3,10 @@ import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { format, isPast } from "date-fns"
-import { MapPin, CheckCircle2, ChevronRight, Eye, Pencil } from "lucide-react"
+import { MapPin, CheckCircle2, ChevronRight, Pencil } from "lucide-react"
 import { TeamLogo } from "@/components/team-logo"
 import { CountdownTimer } from "@/components/countdown-timer"
+import { TeamPreviewSheet } from "@/components/team-preview-sheet"
 import type { MatchStatus } from "@/lib/types"
 
 type PartialTeam = {
@@ -197,11 +198,11 @@ export function MatchCard({ match, userPoints, userRank, hasSubmitted, compact =
         ) : isLive ? (
           <div className="flex justify-center gap-2">
             {hasSubmitted && (
-              <Link href={`/match/${match.id}/my-team`}>
-                <Button size="sm" variant="ghost" className="gap-1 text-muted-foreground">
-                  <Eye className="h-3.5 w-3.5" /> Preview
-                </Button>
-              </Link>
+              <TeamPreviewSheet
+                matchId={match.id}
+                matchLabel={`${home.short_name} vs ${away.short_name} · Match #${match.match_number}`}
+                status={match.status}
+              />
             )}
             <Link href={href}>
               <Button size="sm" variant="outline" className="border-orange-500/40 text-orange-400 hover:bg-orange-500/10 gap-1">
@@ -218,11 +219,11 @@ export function MatchCard({ match, userPoints, userRank, hasSubmitted, compact =
                   <span className="text-sm font-semibold text-status-success">Team Submitted</span>
                 </div>
                 <div className="flex gap-2">
-                  <Link href={`/match/${match.id}/my-team`}>
-                    <Button size="sm" variant="ghost" className="gap-1 text-muted-foreground">
-                      <Eye className="h-3.5 w-3.5" /> Preview
-                    </Button>
-                  </Link>
+                  <TeamPreviewSheet
+                    matchId={match.id}
+                    matchLabel={`${home.short_name} vs ${away.short_name} · Match #${match.match_number}`}
+                    status={match.status}
+                  />
                   <Link href={`/match/${match.id}/pick`}>
                     <Button size="sm" variant="outline" className="gap-1 border-primary/40 text-primary hover:bg-primary/10">
                       <Pencil className="h-3.5 w-3.5" /> Edit

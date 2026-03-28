@@ -1,4 +1,4 @@
-import { CheckCircle2, ArrowLeft } from "lucide-react"
+import { CheckCircle2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { CricketField } from "@/components/cricket-field"
 import { cn } from "@/lib/utils"
@@ -21,7 +21,6 @@ type Props = {
   match: MatchWithTeams
   isUpdate?: boolean
   onDone: () => void
-  mode?: "success" | "view"
 }
 
 export function TeamSubmitPreview({
@@ -31,21 +30,15 @@ export function TeamSubmitPreview({
   match,
   isUpdate,
   onDone,
-  mode = "success",
 }: Props) {
-  const isView = mode === "view"
   return (
     <div className="min-h-dvh bg-background flex flex-col">
       {/* Header */}
       <div className="px-4 pt-8 pb-4 text-center">
         <div className="flex items-center justify-center gap-2 mb-1">
-          {!isView && <CheckCircle2 className="h-6 w-6 text-emerald-400" />}
+          <CheckCircle2 className="h-6 w-6 text-emerald-400" />
           <h1 className="text-xl font-bold tracking-tight font-display">
-            {isView
-              ? "Your Team"
-              : isUpdate
-                ? "Team Updated!"
-                : "Team Submitted!"}
+            {isUpdate ? "Team Updated!" : "Team Submitted!"}
           </h1>
         </div>
         <p className="text-sm text-muted-foreground">
@@ -118,10 +111,9 @@ export function TeamSubmitPreview({
         <div className="max-w-xl mx-auto">
           <Button
             onClick={onDone}
-            variant={isView ? "outline" : "default"}
-            className={isView ? "w-full gap-2" : "w-full bg-gradient-to-r from-primary to-emerald-400 text-black font-semibold"}
+            className="w-full bg-gradient-to-r from-primary to-emerald-400 text-black font-semibold"
           >
-            {isView ? <><ArrowLeft className="h-4 w-4" />Back</> : "View Matches"}
+            View Matches
           </Button>
         </div>
       </div>

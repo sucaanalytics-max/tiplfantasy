@@ -8,7 +8,8 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs"
 import { format } from "date-fns"
 import { CountdownTimer } from "@/components/countdown-timer"
 import { TeamLogo } from "@/components/team-logo"
-import { Swords, Eye } from "lucide-react"
+import { Swords } from "lucide-react"
+import { TeamPreviewSheet } from "@/components/team-preview-sheet"
 import { useMemo } from "react"
 import { STATUS_CONFIG } from "@/lib/badges"
 import { LiveScoreWidget } from "@/components/live-score-widget"
@@ -193,12 +194,11 @@ export function MatchList({
                               )}
                               <div className="flex gap-2">
                                 {hasSubmitted && (
-                                  <Link href={`/match/${match.id}/my-team`}>
-                                    <Button variant="ghost" size="sm" className="gap-1 text-muted-foreground">
-                                      <Eye className="h-3.5 w-3.5" />
-                                      Preview
-                                    </Button>
-                                  </Link>
+                                  <TeamPreviewSheet
+                                    matchId={match.id}
+                                    matchLabel={`${home.short_name} vs ${away.short_name} · Match #${match.match_number}`}
+                                    status={match.status}
+                                  />
                                 )}
                                 <Link href={`/match/${match.id}/pick`}>
                                   {hasSubmitted ? (
@@ -227,12 +227,11 @@ export function MatchList({
                               )}
                               <div className="flex items-center gap-2">
                                 {hasSubmitted && (
-                                  <Link href={`/match/${match.id}/my-team`}>
-                                    <Button variant="ghost" size="sm" className="gap-1 text-muted-foreground text-xs">
-                                      <Eye className="h-3.5 w-3.5" />
-                                      Preview
-                                    </Button>
-                                  </Link>
+                                  <TeamPreviewSheet
+                                    matchId={match.id}
+                                    matchLabel={`${home.short_name} vs ${away.short_name} · Match #${match.match_number}`}
+                                    status={match.status}
+                                  />
                                 )}
                                 <span className="inline-flex items-center gap-1.5 text-xs text-status-live">
                                   <span className="w-2 h-2 rounded-full bg-status-live animate-pulse" /> Live
