@@ -244,7 +244,7 @@ export function LeagueDetailClient({ league, members, isCreator, leaderboard, aw
             Match Teams
           </TabsTrigger>
           <TabsTrigger value="prizes" className="gap-1.5">
-            <IndianRupee className="h-3.5 w-3.5" />
+            <Trophy className="h-3.5 w-3.5" />
             Prizes
           </TabsTrigger>
         </TabsList>
