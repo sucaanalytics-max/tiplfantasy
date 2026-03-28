@@ -558,7 +558,7 @@ export function PrizesTab({ awards, matchScores, leaderboard }: PrizesTabProps) 
             <CardTitle className="text-base flex items-center gap-2">
               <Trophy className="h-4 w-4" />
               Award Leaders
-              <span className="text-xs font-normal text-muted-foreground ml-auto">₹2,000 each</span>
+              <span className="text-xs font-normal text-muted-foreground ml-auto">2,000 each</span>
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -571,7 +571,7 @@ export function PrizesTab({ awards, matchScores, leaderboard }: PrizesTabProps) 
                       <span>{label}</span>
                     </div>
                     <span className="text-[10px] font-semibold text-emerald-400 bg-emerald-400/10 border border-emerald-400/20 rounded px-1.5 py-0.5">
-                      ₹2k
+                      2k
                     </span>
                   </div>
                   <div className="flex items-center gap-2 min-w-0">
@@ -621,7 +621,7 @@ export function PrizesTab({ awards, matchScores, leaderboard }: PrizesTabProps) 
                     </div>
                     <div className="text-right shrink-0 ml-3">
                       <span className="text-sm font-bold text-emerald-400">
-                        ₹{isTied ? splitPrize : match.prize}
+                        {isTied ? splitPrize : match.prize}
                       </span>
                       {isTied && (
                         <p className="text-[10px] text-muted-foreground">each (split)</p>
@@ -667,13 +667,13 @@ export function PrizesTab({ awards, matchScores, leaderboard }: PrizesTabProps) 
                       )}
                     </div>
                     <span className="text-sm font-semibold text-right text-emerald-400">
-                      {e.matchdayEarnings > 0 ? `₹${e.matchdayEarnings}` : "—"}
+                      {e.matchdayEarnings > 0 ? `${e.matchdayEarnings}` : "—"}
                     </span>
                     <span className="text-sm text-right text-muted-foreground">
-                      {e.seasonPrize > 0 ? `₹${(e.seasonPrize / 1000).toFixed(0)}k` : "—"}
+                      {e.seasonPrize > 0 ? `${(e.seasonPrize / 1000).toFixed(0)}k` : "—"}
                     </span>
                     <span className="text-sm font-bold text-right">
-                      {total > 0 ? `₹${(total / 1000).toFixed(1)}k` : "—"}
+                      {total > 0 ? `${(total / 1000).toFixed(1)}k` : "—"}
                     </span>
                   </div>
                 )
