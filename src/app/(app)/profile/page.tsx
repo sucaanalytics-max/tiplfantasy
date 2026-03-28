@@ -1,7 +1,8 @@
 import { createClient } from "@/lib/supabase/server"
 import { redirect } from "next/navigation"
+import Link from "next/link"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Trophy, Target, TrendingUp, TrendingDown } from "lucide-react"
+import { Trophy, Target, TrendingUp, TrendingDown, BookOpen, ChevronRight } from "lucide-react"
 import { ProfileNameForm } from "./name-form"
 import { SignOutButton } from "./sign-out-button"
 import { ThemeCard } from "./theme-card"
@@ -418,6 +419,23 @@ export default async function ProfilePage() {
           </CardContent>
         </Card>
       )}
+
+      <Link href="/rules">
+        <Card className="border border-border hover:bg-accent/40 transition-colors cursor-pointer">
+          <CardContent className="flex items-center justify-between py-4 px-5">
+            <div className="flex items-center gap-3">
+              <div className="rounded-full bg-primary/10 p-2">
+                <BookOpen className="h-4 w-4 text-primary" />
+              </div>
+              <div>
+                <p className="text-sm font-medium">Rules & Scoring Guide</p>
+                <p className="text-xs text-muted-foreground">How to play and points reference</p>
+              </div>
+            </div>
+            <ChevronRight className="h-4 w-4 text-muted-foreground" />
+          </CardContent>
+        </Card>
+      </Link>
 
       <SignOutButton />
     </div>

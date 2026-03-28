@@ -13,6 +13,7 @@ import {
   LogOut,
   Award,
   Coins,
+  BookOpen,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { createClient } from "@/lib/supabase/client"
@@ -33,6 +34,7 @@ const sidebarNavItems = [
   { href: "/leagues", label: "Leagues", icon: Users },
   { href: "/predictions", label: "Predict", icon: Award },
   { href: "/h2h", label: "H2H", icon: Coins },
+  { href: "/rules", label: "Rules", icon: BookOpen },
   { href: "/leaderboard", label: "Leaderboard", icon: Trophy },
   { href: "/profile", label: "Profile", icon: User },
 ]
