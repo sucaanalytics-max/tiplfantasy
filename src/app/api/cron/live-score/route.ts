@@ -235,10 +235,18 @@ export async function GET(req: NextRequest) {
       // 14. Stamp when live points were last calculated
       await admin.from("matches").update({ live_scores_at: new Date().toISOString() }).eq("id", match.id)
 
-      // 15. Auto-detect match finished — write result_summary from SportMonks note
+      // 15. Auto-detect match finished — finalize scores and mark completed
       const fixtureInfo = await fetchMatchInfo(match.cricapi_match_id)
-      if (fixtureInfo && fixtureInfo.status === "Finished" && fixtureInfo.note) {
-        await admin.from("matches").update({ result_summary: fixtureInfo.note }).eq("id", match.id)
+      if (fixtureInfo && fixtureInfo.status === "Finished") {
+        const note = (fixtureInfo.note ?? "")
+          .replace(/\s{2,}/g, " ")
+          .trim()
+        await admin.from("matches").update({
+          status: "completed",
+          ...(note ? { result_summary: note } : {}),
+        }).eq("id", match.id)
+        // Refresh season leaderboard materialized view
+        await admin.rpc("refresh_leaderboard")
       }
 
       updated.push(match.id)
