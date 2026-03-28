@@ -1,7 +1,5 @@
-import { fetchCricScores } from "@/lib/api/cricapi"
+import { fetchCricScores } from "@/lib/api/sportmonks"
 import { NextResponse } from "next/server"
-
-const IPL_SERIES_ID = "87c62aac-bc3c-4738-ab93-19da0690488f"
 
 export type LiveScoreEntry = {
   cricapiMatchId: string
@@ -16,16 +14,15 @@ export async function GET() {
     return NextResponse.json([], { status: 200 })
   }
 
-  const ipl = scores
-    .filter((s) => s.series === IPL_SERIES_ID)
-    .map((s) => ({
-      cricapiMatchId: s.id,
-      ms: s.ms,
-      score1: s.t1s ?? "",
-      score2: s.t2s ?? "",
-    } satisfies LiveScoreEntry))
+  // SportMonks fetchCricScores() already filters to IPL
+  const entries = scores.map((s) => ({
+    cricapiMatchId: s.id,
+    ms: s.ms,
+    score1: s.t1s ?? "",
+    score2: s.t2s ?? "",
+  } satisfies LiveScoreEntry))
 
-  return NextResponse.json(ipl, {
+  return NextResponse.json(entries, {
     headers: { "Cache-Control": "public, s-maxage=60, stale-while-revalidate=30" },
   })
 }

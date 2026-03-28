@@ -1,6 +1,6 @@
 import { type NextRequest } from "next/server"
 import { createAdminClient } from "@/lib/supabase/admin"
-import { fetchMatchPoints, parseScorecardToStats, fuzzyMatchName } from "@/lib/api/cricapi"
+import { fetchMatchPoints, parseScorecardToStats, fuzzyMatchName } from "@/lib/api/sportmonks"
 import { loadScoringRules, calculatePlayerPoints, calculateUserMatchScore } from "@/lib/scoring"
 
 export async function GET(req: NextRequest) {

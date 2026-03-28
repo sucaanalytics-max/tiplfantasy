@@ -1,6 +1,6 @@
 import { type NextRequest } from "next/server"
 import { createAdminClient } from "@/lib/supabase/admin"
-import { fetchMatchPoints, fuzzyMatchName } from "@/lib/api/cricapi"
+import { fetchMatchPoints, fuzzyMatchName } from "@/lib/api/sportmonks"
 
 export async function GET(req: NextRequest) {
   if (req.headers.get("authorization") !== `Bearer ${process.env.CRON_SECRET}`) {

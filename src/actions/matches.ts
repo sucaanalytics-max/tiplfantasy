@@ -2,7 +2,7 @@
 
 import { createClient } from "@/lib/supabase/server"
 import { createAdminClient } from "@/lib/supabase/admin"
-import { fetchSquad, fetchScorecard, fetchMatchPoints, fetchSeriesInfo, parseScorecardToStats, fuzzyMatchName, testMatchPointsEndpoint } from "@/lib/api/cricapi"
+import { fetchSquad, fetchScorecard, fetchMatchPoints, fetchSeriesInfo, parseScorecardToStats, fuzzyMatchName, testMatchPointsEndpoint, SPORTMONKS_TEAM_MAP } from "@/lib/api/sportmonks"
 import { savePlayerScores, calculateMatchPoints } from "@/actions/scoring"
 import type { PlayerStats } from "@/lib/scoring"
 
@@ -329,8 +329,9 @@ export async function previewSeriesImport(seriesId: string): Promise<{
   await requireAdmin()
   const admin = createAdminClient()
 
-  const seriesMatches = await fetchSeriesInfo(seriesId)
-  if (!seriesMatches) return { error: "Failed to fetch series from CricAPI. Check the series ID." }
+  // SportMonks: seriesId is ignored — we always fetch IPL 2026 season
+  const seasonFixtures = await fetchSeriesInfo()
+  if (!seasonFixtures) return { error: "Failed to fetch season fixtures from SportMonks." }
 
   const [{ data: dbMatches }, { data: teams }] = await Promise.all([
     admin
@@ -344,37 +345,36 @@ export async function previewSeriesImport(seriesId: string): Promise<{
   const allTeams = teams ?? []
   const maxMatchNumber = dbMatches.reduce((m, d) => Math.max(m, d.match_number), 0)
 
-  function resolveTeamId(str: string): string | null {
-    const lower = str.toLowerCase().trim()
-    for (const t of allTeams) {
-      if (lower.includes(t.name.toLowerCase()) || t.name.toLowerCase().includes(lower) ||
-          lower.includes(t.short_name.toLowerCase())) return t.id
-    }
-    return null
+  // Build SportMonks team_id → DB team_id lookup
+  const smTeamToDbTeam = new Map<number, string>()
+  for (const [smId, shortName] of Object.entries(SPORTMONKS_TEAM_MAP)) {
+    const dbTeam = allTeams.find((t) => t.short_name === shortName)
+    if (dbTeam) smTeamToDbTeam.set(Number(smId), dbTeam.id)
   }
 
   const proposals: SeriesImportProposal[] = []
   const newProposals: SeriesImportProposal[] = []
 
-  for (const apiMatch of seriesMatches) {
-    const apiDate = new Date(apiMatch.dateTimeGMT).getTime()
-    const apiTeams = apiMatch.teams.map((t) => t.toLowerCase())
+  for (const fixture of seasonFixtures) {
+    const fixtureId = String(fixture.id)
+    const apiDate = new Date(fixture.starting_at).getTime()
+    const homeCode = SPORTMONKS_TEAM_MAP[fixture.localteam_id] ?? "?"
+    const awayCode = SPORTMONKS_TEAM_MAP[fixture.visitorteam_id] ?? "?"
+    const apiName = `${homeCode} vs ${awayCode}, ${fixture.round}`
+    const apiTeams = [homeCode, awayCode]
 
-    // Find DB match by team names + date (within 24h)
+    // Find DB match by date proximity (within 24h) + team ID match
+    const dbHomeId = smTeamToDbTeam.get(fixture.localteam_id)
+    const dbAwayId = smTeamToDbTeam.get(fixture.visitorteam_id)
+
     let bestDb: (typeof dbMatches)[0] | null = null
     for (const dbm of dbMatches) {
       const home = dbm.team_home as unknown as { name: string; short_name: string }
       const away = dbm.team_away as unknown as { name: string; short_name: string }
       const dbDate = new Date(dbm.start_time).getTime()
       const withinDay = Math.abs(apiDate - dbDate) < 24 * 60 * 60 * 1000
-
-      const teamMatch = apiTeams.some(
-        (t) =>
-          t.includes(home.short_name.toLowerCase()) ||
-          home.name.toLowerCase().includes(t) ||
-          t.includes(away.short_name.toLowerCase()) ||
-          away.name.toLowerCase().includes(t)
-      )
+      const teamMatch = (home.short_name === homeCode && away.short_name === awayCode) ||
+                         (home.short_name === awayCode && away.short_name === homeCode)
 
       if (withinDay && teamMatch) {
         bestDb = dbm
@@ -384,65 +384,49 @@ export async function previewSeriesImport(seriesId: string): Promise<{
 
     if (bestDb) {
       proposals.push({
-        apiMatchId: apiMatch.id,
-        apiName: apiMatch.name,
-        dateTimeGMT: apiMatch.dateTimeGMT,
-        venue: apiMatch.venue,
-        teams: apiMatch.teams,
+        apiMatchId: fixtureId,
+        apiName,
+        dateTimeGMT: fixture.starting_at,
+        venue: "",
+        teams: apiTeams,
         dbMatchId: bestDb.id,
         matchNumber: bestDb.match_number,
-        alreadySet: bestDb.cricapi_match_id === apiMatch.id,
+        alreadySet: bestDb.cricapi_match_id === fixtureId,
         isNew: false,
         teamHomeId: null,
         teamAwayId: null,
         proposedMatchNumber: null,
       })
+    } else if (dbHomeId && dbAwayId) {
+      newProposals.push({
+        apiMatchId: fixtureId,
+        apiName,
+        dateTimeGMT: fixture.starting_at,
+        venue: "",
+        teams: apiTeams,
+        dbMatchId: null,
+        matchNumber: null,
+        alreadySet: false,
+        isNew: true,
+        teamHomeId: dbHomeId,
+        teamAwayId: dbAwayId,
+        proposedMatchNumber: null,
+      })
     } else {
-      // No DB match — try to resolve teams for new row creation
-      const vsMatch = apiMatch.name.match(/^(.+?)\s+vs\s+(.+?)(?:,|$)/i)
-      let teamHomeId: string | null = null
-      let teamAwayId: string | null = null
-      if (vsMatch) {
-        teamHomeId = resolveTeamId(vsMatch[1])
-        teamAwayId = resolveTeamId(vsMatch[2])
-      }
-      // Fallback: try from teams array if vs-parse failed
-      if (!teamHomeId && apiMatch.teams.length >= 2) {
-        teamHomeId = resolveTeamId(apiMatch.teams[0])
-        teamAwayId = resolveTeamId(apiMatch.teams[1])
-      }
-
-      if (teamHomeId && teamAwayId) {
-        newProposals.push({
-          apiMatchId: apiMatch.id,
-          apiName: apiMatch.name,
-          dateTimeGMT: apiMatch.dateTimeGMT,
-          venue: apiMatch.venue,
-          teams: apiMatch.teams,
-          dbMatchId: null,
-          matchNumber: null,
-          alreadySet: false,
-          isNew: true,
-          teamHomeId,
-          teamAwayId,
-          proposedMatchNumber: null, // assigned below after sorting
-        })
-      } else {
-        proposals.push({
-          apiMatchId: apiMatch.id,
-          apiName: apiMatch.name,
-          dateTimeGMT: apiMatch.dateTimeGMT,
-          venue: apiMatch.venue,
-          teams: apiMatch.teams,
-          dbMatchId: null,
-          matchNumber: null,
-          alreadySet: false,
-          isNew: false,
-          teamHomeId: null,
-          teamAwayId: null,
-          proposedMatchNumber: null,
-        })
-      }
+      proposals.push({
+        apiMatchId: fixtureId,
+        apiName,
+        dateTimeGMT: fixture.starting_at,
+        venue: "",
+        teams: apiTeams,
+        dbMatchId: null,
+        matchNumber: null,
+        alreadySet: false,
+        isNew: false,
+        teamHomeId: null,
+        teamAwayId: null,
+        proposedMatchNumber: null,
+      })
     }
   }
 

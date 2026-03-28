@@ -2,7 +2,7 @@
 
 import { createClient } from "@/lib/supabase/server"
 import { createAdminClient } from "@/lib/supabase/admin"
-import { searchPlayers } from "@/lib/api/cricapi"
+import { fetchSquad, fuzzyMatchName } from "@/lib/api/sportmonks"
 import type { PlayerRole } from "@/lib/types"
 
 async function requireAdmin() {
@@ -52,7 +52,7 @@ export type CricapiIdProposal = {
 }
 
 /**
- * Preview: search CricAPI for each player without a cricapi_id.
+ * Preview: fetch lineups from recent matches to backfill SportMonks player IDs.
  * Returns proposals — does NOT write to DB.
  */
 export async function previewCricapiIdBackfill(): Promise<{
@@ -62,6 +62,7 @@ export async function previewCricapiIdBackfill(): Promise<{
   await requireAdmin()
   const admin = createAdminClient()
 
+  // Get players without a cricapi_id
   const { data: players, error } = await admin
     .from("players")
     .select("id, name")
@@ -71,19 +72,49 @@ export async function previewCricapiIdBackfill(): Promise<{
   if (error) return { error: error.message }
   if (!players || players.length === 0) return { proposals: [] }
 
-  const proposals: CricapiIdProposal[] = []
+  // Get matches that have a SportMonks fixture ID
+  const { data: matches } = await admin
+    .from("matches")
+    .select("cricapi_match_id")
+    .not("cricapi_match_id", "is", null)
+    .in("status", ["live", "completed"])
+    .order("start_time", { ascending: false })
+    .limit(5)
 
+  if (!matches || matches.length === 0) {
+    return { error: "No matches with fixture IDs found. Import fixtures first." }
+  }
+
+  // Fetch lineups from recent fixtures to collect SportMonks player IDs + names
+  const apiPlayers = new Map<string, { id: string; name: string }>() // normalized name → { id, name }
+  for (const m of matches) {
+    const lineup = await fetchSquad(m.cricapi_match_id)
+    if (!lineup) continue
+    for (const p of lineup) {
+      const norm = p.name.toLowerCase().replace(/[^a-z\s]/g, "").replace(/\s+/g, " ").trim()
+      if (!apiPlayers.has(norm)) {
+        apiPlayers.set(norm, { id: p.id, name: p.name })
+      }
+    }
+  }
+
+  // Build name map for fuzzy matching
+  const nameMap = new Map<string, string>()
+  for (const [norm, p] of apiPlayers) {
+    nameMap.set(norm, p.id)
+  }
+
+  const proposals: CricapiIdProposal[] = []
   for (const player of players) {
-    // Stagger requests to avoid rate limiting
-    await new Promise((r) => setTimeout(r, 100))
-    const results = await searchPlayers(player.name)
-    if (results && results.length > 0) {
+    const matchedId = fuzzyMatchName(player.name, nameMap)
+    if (matchedId) {
+      const apiPlayer = [...apiPlayers.values()].find((p) => p.id === matchedId)
       proposals.push({
         playerId: player.id,
         playerName: player.name,
-        cricapiId: results[0].id,
-        apiName: results[0].name,
-        country: results[0].country,
+        cricapiId: matchedId,
+        apiName: apiPlayer?.name ?? matchedId,
+        country: "",
       })
     }
   }

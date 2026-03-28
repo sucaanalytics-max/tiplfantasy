@@ -5,7 +5,7 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 }
 
-const CRICAPI_BASE = "https://api.cricapi.com/v1"
+const SPORTMONKS_BASE = "https://cricket.sportmonks.com/api/v2.0"
 
 function normalizeName(name: string): string {
   return name
@@ -21,17 +21,14 @@ function fuzzyMatchName(
 ): string | null {
   const normalized = normalizeName(apiName)
 
-  // Exact match
   if (dbNames.has(normalized)) return dbNames.get(normalized)!
 
-  // Partial match — check includes both directions
   for (const [dbNorm, dbId] of dbNames) {
     if (dbNorm.includes(normalized) || normalized.includes(dbNorm)) {
       return dbId
     }
   }
 
-  // Last name match
   const apiLast = normalized.split(" ").pop() ?? ""
   for (const [dbNorm, dbId] of dbNames) {
     const dbLast = dbNorm.split(" ").pop() ?? ""
@@ -43,37 +40,27 @@ function fuzzyMatchName(
   return null
 }
 
-async function fetchMatchInfo(matchId: string, apiKey: string) {
+async function fetchFixtureInfo(fixtureId: string, token: string) {
   const res = await fetch(
-    `${CRICAPI_BASE}/match_info?apikey=${apiKey}&id=${matchId}`
+    `${SPORTMONKS_BASE}/fixtures/${fixtureId}?api_token=${token}`
   )
   if (!res.ok) return null
   const json = await res.json()
   return json.data ?? null
 }
 
-async function fetchMatches(apiKey: string) {
+async function fetchLineup(fixtureId: string, token: string) {
   const res = await fetch(
-    `${CRICAPI_BASE}/matches?apikey=${apiKey}&offset=0`
+    `${SPORTMONKS_BASE}/fixtures/${fixtureId}?api_token=${token}&include=lineup`
   )
   if (!res.ok) return null
   const json = await res.json()
-  return (json.data ?? []) as Array<{ id: string; hasSquad?: boolean }>
-}
-
-async function fetchSquad(matchId: string, apiKey: string) {
-  const res = await fetch(
-    `${CRICAPI_BASE}/match_squad?apikey=${apiKey}&id=${matchId}`
-  )
-  if (!res.ok) return null
-  const json = await res.json()
-  const players: Array<{ name: string; id: string }> = []
-  for (const team of json.data ?? []) {
-    for (const p of team.players ?? []) {
-      players.push({ name: p.name, id: p.id })
-    }
-  }
-  return players
+  const lineup = json.data?.lineup ?? []
+  return lineup.map((p: { id: number; fullname: string; lineup?: { team_id: number } }) => ({
+    name: p.fullname,
+    id: String(p.id),
+    team_id: p.lineup?.team_id,
+  }))
 }
 
 Deno.serve(async (req) => {
@@ -88,8 +75,8 @@ Deno.serve(async (req) => {
       { auth: { autoRefreshToken: false, persistSession: false } }
     )
 
-    const apiKey = Deno.env.get("CRICDATA_KEY")
-    if (!apiKey) throw new Error("CRICDATA_KEY not set")
+    const token = Deno.env.get("SPORTMONKS_TOKEN")
+    if (!token) throw new Error("SPORTMONKS_TOKEN not set")
 
     // Find upcoming matches starting within the next 60 minutes
     const now = new Date()
@@ -127,24 +114,24 @@ Deno.serve(async (req) => {
           continue
         }
 
-        // Check if toss has happened via match_info
-        const matchInfo = await fetchMatchInfo(match.cricapi_match_id, apiKey)
-        if (!matchInfo?.tossWinner) {
+        // Check if toss has happened via fixture info
+        const fixtureInfo = await fetchFixtureInfo(match.cricapi_match_id, token)
+        if (!fixtureInfo?.toss_won_team_id) {
           results.push({ match_id: match.id, status: "no_toss_yet" })
           continue
         }
 
-        // Toss done — fetch squad and try to get Playing XI
-        const squad = await fetchSquad(match.cricapi_match_id, apiKey)
-        if (!squad || squad.length === 0) {
-          results.push({ match_id: match.id, status: "no_squad_data" })
+        // Toss done — fetch lineup (Playing XI)
+        const lineup = await fetchLineup(match.cricapi_match_id, token)
+        if (!lineup || lineup.length === 0) {
+          results.push({ match_id: match.id, status: "no_lineup_data" })
           continue
         }
 
         // Load DB players for both teams
         const { data: dbPlayers } = await supabase
           .from("players")
-          .select("id, name, team_id")
+          .select("id, name, team_id, cricapi_id")
           .in("team_id", [match.team_home_id, match.team_away_id])
 
         if (!dbPlayers) {
@@ -152,27 +139,29 @@ Deno.serve(async (req) => {
           continue
         }
 
+        // Build lookup maps
+        const cricapiIdMap = new Map<string, { id: string; team_id: string }>()
         const nameMap = new Map<string, string>()
         for (const p of dbPlayers) {
+          if (p.cricapi_id) cricapiIdMap.set(p.cricapi_id, { id: p.id, team_id: p.team_id })
           nameMap.set(normalizeName(p.name), p.id)
         }
 
-        // Match API players to DB
-        const matched: string[] = []
-        for (const apiPlayer of squad) {
+        // Match lineup players to DB — prefer cricapi_id, fallback to fuzzy name
+        const matched = new Map<string, string>() // player_id → team_id
+        for (const apiPlayer of lineup) {
+          const byId = cricapiIdMap.get(apiPlayer.id)
+          if (byId) { matched.set(byId.id, byId.team_id); continue }
           const dbId = fuzzyMatchName(apiPlayer.name, nameMap)
-          if (dbId) matched.push(dbId)
+          if (dbId) {
+            const playerTeam = dbPlayers.find((p) => p.id === dbId)
+            if (playerTeam) matched.set(dbId, playerTeam.team_id)
+          }
         }
 
-        // Deduplicate — fuzzyMatchName can map multiple API names to the same DB player
-        const deduped = [...new Set(matched)]
-
-        // Group by team and validate 11 per team
-        const playerTeamMap = new Map(dbPlayers.map((p) => [p.id, p.team_id]))
+        // Group by team and validate 11+11
         const byTeam = new Map<string, string[]>()
-        for (const pid of deduped) {
-          const tid = playerTeamMap.get(pid)
-          if (!tid) continue
+        for (const [pid, tid] of matched) {
           const list = byTeam.get(tid) ?? []
           list.push(pid)
           byTeam.set(tid, list)
@@ -182,7 +171,7 @@ Deno.serve(async (req) => {
         if (teamCounts.length !== 2 || teamCounts.some((c) => c !== 11)) {
           results.push({
             match_id: match.id,
-            status: `not_xi_yet (${deduped.length} players: ${teamCounts.join("+")})`
+            status: `not_xi_yet (${matched.size} players: ${teamCounts.join("+")})`
           })
           continue
         }
@@ -190,10 +179,10 @@ Deno.serve(async (req) => {
         // Valid 11+11 — insert into playing_xi
         await supabase.from("playing_xi").delete().eq("match_id", match.id)
 
-        const rows = deduped.map((pid) => ({
+        const rows = [...matched.entries()].map(([pid, tid]) => ({
           match_id: match.id,
           player_id: pid,
-          team_id: playerTeamMap.get(pid)!,
+          team_id: tid,
         }))
 
         const { error: insertError } = await supabase.from("playing_xi").insert(rows)
@@ -202,103 +191,13 @@ Deno.serve(async (req) => {
         } else {
           results.push({ match_id: match.id, status: `ok (${rows.length} players inserted)` })
         }
-
-        // Small delay between matches
-        await new Promise((r) => setTimeout(r, 500))
       } catch (e) {
         results.push({ match_id: match.id, status: `error: ${(e as Error).message}` })
       }
     }
 
-    // Step 2: Check matches 60–120 min away with hasSquad:true → early fetch
-    const soon2h = new Date(now.getTime() + 120 * 60 * 1000)
-
-    const { data: earlyMatches } = await supabase
-      .from("matches")
-      .select("id, cricapi_match_id, team_home_id, team_away_id, start_time")
-      .eq("status", "upcoming")
-      .not("cricapi_match_id", "is", null)
-      .gt("start_time", soon.toISOString())
-      .lte("start_time", soon2h.toISOString())
-
-    const earlyResults: Array<{ match_id: string; status: string }> = []
-
-    if (earlyMatches && earlyMatches.length > 0) {
-      const apiMatches = await fetchMatches(apiKey)
-      const apiMatchMap = new Map((apiMatches ?? []).map((m) => [m.id, m]))
-
-      for (const match of earlyMatches) {
-        const apiMatch = apiMatchMap.get(match.cricapi_match_id!)
-        if (!apiMatch?.hasSquad) {
-          earlyResults.push({ match_id: match.id, status: "no_squad_yet" })
-          continue
-        }
-
-        const { count } = await supabase
-          .from("playing_xi")
-          .select("id", { count: "exact", head: true })
-          .eq("match_id", match.id)
-
-        if (count && count >= 22) {
-          earlyResults.push({ match_id: match.id, status: "already_populated" })
-          continue
-        }
-
-        const squad = await fetchSquad(match.cricapi_match_id!, apiKey)
-        if (!squad || squad.length === 0) {
-          earlyResults.push({ match_id: match.id, status: "no_squad_data" })
-          continue
-        }
-
-        const { data: dbPlayers } = await supabase
-          .from("players")
-          .select("id, name, team_id")
-          .in("team_id", [match.team_home_id, match.team_away_id])
-
-        if (!dbPlayers) continue
-
-        const nameMap = new Map<string, string>()
-        for (const p of dbPlayers) nameMap.set(normalizeName(p.name), p.id)
-
-        const matched: string[] = []
-        for (const apiPlayer of squad) {
-          const dbId = fuzzyMatchName(apiPlayer.name, nameMap)
-          if (dbId) matched.push(dbId)
-        }
-
-        const deduped = [...new Set(matched)]
-        const playerTeamMap = new Map(dbPlayers.map((p) => [p.id, p.team_id]))
-        const byTeam = new Map<string, string[]>()
-        for (const pid of deduped) {
-          const tid = playerTeamMap.get(pid)
-          if (!tid) continue
-          const list = byTeam.get(tid) ?? []
-          list.push(pid)
-          byTeam.set(tid, list)
-        }
-
-        const teamCounts = [...byTeam.values()].map((v) => v.length)
-        if (teamCounts.length !== 2 || teamCounts.some((c) => c !== 11)) {
-          earlyResults.push({ match_id: match.id, status: `early_partial (${deduped.length} players)` })
-          continue
-        }
-
-        await supabase.from("playing_xi").delete().eq("match_id", match.id)
-        const rows = deduped.map((pid) => ({
-          match_id: match.id,
-          player_id: pid,
-          team_id: playerTeamMap.get(pid)!,
-        }))
-        const { error: insertError } = await supabase.from("playing_xi").insert(rows)
-        earlyResults.push({
-          match_id: match.id,
-          status: insertError ? `insert_error: ${insertError.message}` : `early_ok (${rows.length} players)`
-        })
-      }
-    }
-
     return new Response(
-      JSON.stringify({ checked: results.length, results, early: earlyResults }),
+      JSON.stringify({ checked: results.length, results }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 200 }
     )
   } catch (e) {
