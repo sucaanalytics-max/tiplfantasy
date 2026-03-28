@@ -167,17 +167,9 @@ export function MatchLeaderboard({
     return a.rank - b.rank
   })
 
-  // Podium user IDs so we can filter them from rows if needed
-  const podiumUserIds = new Set(
-    podiumEntries && podiumEntries.length >= 3
-      ? sortedScores.slice(0, 3).map((s) => s.user_id)
-      : []
-  )
-
   const hasPodium = podiumEntries && podiumEntries.length >= 3
-  const rowScores = hasPodium
-    ? sortedScores.filter((s) => !podiumUserIds.has(s.user_id))
-    : sortedScores
+  // Show ALL users as expandable rows (including top 3) so their teams are viewable
+  const rowScores = sortedScores
 
   function toggleExpand(userId: string) {
     setExpandedUserId((prev) => (prev === userId ? null : userId))
