@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next"
 import { Geist, Geist_Mono, Rajdhani } from "next/font/google"
 import { Toaster } from "sonner"
+import { Analytics } from "@vercel/analytics/next"
 import { ThemeProvider } from "@/components/theme-provider"
 import { ServiceWorkerRegistration } from "@/components/sw-register"
 import { AmbientGradient } from "@/components/ambient-gradient"
@@ -99,6 +100,7 @@ export default function RootLayout({
           <Toaster richColors position="top-center" />
         </ThemeProvider>
         <ServiceWorkerRegistration />
+        <Analytics />
       </body>
     </html>
   )
