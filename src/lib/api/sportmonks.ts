@@ -177,16 +177,16 @@ function buildUrl(path: string, params?: Record<string, string>): string {
 // ─── SportMonks team ID → DB team short_name mapping ────────────────────
 
 export const SPORTMONKS_TEAM_MAP: Record<number, string> = {
-  2: "MI",    // Mumbai Indians
-  3: "KKR",   // Kolkata Knight Riders
-  4: "CSK",   // Chennai Super Kings
-  5: "DC",    // Delhi Capitals
-  6: "PBKS",  // Punjab Kings
-  7: "RR",    // Rajasthan Royals
-  8: "RCB",   // Royal Challengers Bengaluru
-  9: "SRH",   // Sunrisers Hyderabad
-  10: "LSG",  // Lucknow Super Giants
-  11: "GT",   // Gujarat Titans
+  2: "CSK",    // Chennai Super Kings
+  3: "DC",     // Delhi Capitals
+  4: "PBKS",   // Punjab Kings
+  5: "KKR",    // Kolkata Knight Riders
+  6: "MI",     // Mumbai Indians
+  7: "RR",     // Rajasthan Royals
+  8: "RCB",    // Royal Challengers Bengaluru
+  9: "SRH",    // Sunrisers Hyderabad
+  1976: "GT",  // Gujarat Titans
+  1979: "LSG", // Lucknow Super Giants
 }
 
 // ─── Normalization helpers ──────────────────────────────────────────────
