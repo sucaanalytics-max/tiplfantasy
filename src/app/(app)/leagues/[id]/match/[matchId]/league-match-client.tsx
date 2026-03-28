@@ -1,0 +1,279 @@
+"use client"
+
+import Link from "next/link"
+import { useState } from "react"
+import { ArrowLeft } from "lucide-react"
+import { Button } from "@/components/ui/button"
+import { Badge } from "@/components/ui/badge"
+import { cn } from "@/lib/utils"
+import { ROLE_COLORS } from "@/lib/badges"
+import { getInitials, getAvatarHexColor } from "@/lib/avatar"
+import type { PlayerWithTeam, PlayerRole } from "@/lib/types"
+
+type MemberSelection = {
+  user_id: string
+  display_name: string
+  captain_id: string | null
+  vice_captain_id: string | null
+  player_ids: string[]
+}
+
+type MatchInfo = {
+  id: string
+  match_number: number
+  status: string
+  team_home: { short_name: string; color: string }
+  team_away: { short_name: string; color: string }
+}
+
+type Props = {
+  leagueId: string
+  leagueName: string
+  match: MatchInfo
+  currentUserId: string
+  memberSelections: MemberSelection[]
+  players: PlayerWithTeam[]
+}
+
+const ROLE_ORDER: PlayerRole[] = ["WK", "BAT", "AR", "BOWL"]
+
+function multiplierLabel(isC: boolean, isVC: boolean): string {
+  if (isC) return "C (2×)"
+  if (isVC) return "VC (1.5×)"
+  return "1×"
+}
+
+function PlayerRow({
+  player,
+  myMultiplier,
+  theirMultiplier,
+  showSharedNotes,
+}: {
+  player: PlayerWithTeam
+  myMultiplier?: string
+  theirMultiplier?: string
+  showSharedNotes?: boolean
+}) {
+  return (
+    <div className="flex items-center gap-3 py-2.5 px-3 rounded-lg bg-secondary/40 border border-border/30">
+      <span className={cn("text-[10px] font-semibold px-1.5 py-0.5 rounded border shrink-0", ROLE_COLORS[player.role])}>
+        {player.role}
+      </span>
+      <div className="flex-1 min-w-0">
+        <p className="text-sm font-medium truncate">{player.name}</p>
+        <p className="text-[11px] text-muted-foreground">{player.team.short_name}</p>
+      </div>
+      {showSharedNotes && myMultiplier && theirMultiplier ? (
+        <div className="text-[10px] text-right shrink-0 space-y-0.5">
+          <p className="text-primary/80">You: {myMultiplier}</p>
+          <p className="text-muted-foreground">They: {theirMultiplier}</p>
+        </div>
+      ) : myMultiplier && myMultiplier !== "1×" ? (
+        <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded border border-amber-400/30 bg-amber-400/10 text-amber-400 shrink-0">
+          {myMultiplier}
+        </span>
+      ) : theirMultiplier && theirMultiplier !== "1×" ? (
+        <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded border border-red-400/30 bg-red-400/10 text-red-400 shrink-0">
+          {theirMultiplier}
+        </span>
+      ) : null}
+    </div>
+  )
+}
+
+export function LeagueMatchClient({
+  leagueId,
+  leagueName,
+  match,
+  currentUserId,
+  memberSelections,
+  players,
+}: Props) {
+  const opponents = memberSelections.filter((m) => m.user_id !== currentUserId)
+  const [selectedOpponentId, setSelectedOpponentId] = useState<string>(
+    opponents[0]?.user_id ?? ""
+  )
+
+  const playerMap = new Map(players.map((p) => [p.id, p]))
+
+  const mySelection = memberSelections.find((m) => m.user_id === currentUserId)
+  const opponentSelection = memberSelections.find((m) => m.user_id === selectedOpponentId)
+  const selectedOpponent = opponents.find((m) => m.user_id === selectedOpponentId)
+
+  const myIds = new Set(mySelection?.player_ids ?? [])
+  const theirIds = new Set(opponentSelection?.player_ids ?? [])
+
+  const myEdge = [...myIds]
+    .filter((id) => !theirIds.has(id))
+    .map((id) => playerMap.get(id))
+    .filter((p): p is PlayerWithTeam => !!p)
+    .sort((a, b) => ROLE_ORDER.indexOf(a.role) - ROLE_ORDER.indexOf(b.role))
+
+  const theirEdge = [...theirIds]
+    .filter((id) => !myIds.has(id))
+    .map((id) => playerMap.get(id))
+    .filter((p): p is PlayerWithTeam => !!p)
+    .sort((a, b) => ROLE_ORDER.indexOf(a.role) - ROLE_ORDER.indexOf(b.role))
+
+  const shared = [...myIds]
+    .filter((id) => theirIds.has(id))
+    .map((id) => playerMap.get(id))
+    .filter((p): p is PlayerWithTeam => !!p)
+    .sort((a, b) => ROLE_ORDER.indexOf(a.role) - ROLE_ORDER.indexOf(b.role))
+
+  return (
+    <div className="p-4 md:p-6 max-w-2xl space-y-5">
+      {/* Back */}
+      <div className="flex items-center gap-2">
+        <Link href={`/leagues/${leagueId}`}>
+          <Button variant="ghost" size="sm" className="h-9 w-9 p-0">
+            <ArrowLeft className="h-4 w-4" />
+          </Button>
+        </Link>
+        <div>
+          <h1 className="text-base font-bold truncate">{leagueName}</h1>
+          <p className="text-xs text-muted-foreground">
+            <span style={{ color: match.team_home.color }}>{match.team_home.short_name}</span>
+            {" vs "}
+            <span style={{ color: match.team_away.color }}>{match.team_away.short_name}</span>
+            {" · "}Match #{match.match_number}
+            {match.status === "live" && (
+              <span className="ml-2 inline-flex items-center gap-1 text-status-live">
+                <span className="w-1.5 h-1.5 rounded-full bg-status-live animate-pulse" />
+                Live
+              </span>
+            )}
+          </p>
+        </div>
+      </div>
+
+      {/* No personal submission state */}
+      {!mySelection ? (
+        <div className="flex flex-col items-center text-center py-12 gap-3">
+          <p className="text-muted-foreground text-sm">You didn&apos;t submit a team for this match.</p>
+        </div>
+      ) : opponents.length === 0 ? (
+        <div className="flex flex-col items-center text-center py-12 gap-3">
+          <p className="text-muted-foreground text-sm">No other league members to compare with.</p>
+        </div>
+      ) : (
+        <>
+          {/* Opponent selector */}
+          <div>
+            <p className="text-xs text-muted-foreground mb-2 font-medium uppercase tracking-wide">Compare with</p>
+            <div className="flex gap-2 flex-wrap">
+              {opponents.map((opp) => (
+                <button
+                  key={opp.user_id}
+                  onClick={() => setSelectedOpponentId(opp.user_id)}
+                  className={cn(
+                    "flex items-center gap-2 px-3 py-1.5 rounded-full border text-sm transition-colors",
+                    selectedOpponentId === opp.user_id
+                      ? "border-primary bg-primary/10 text-primary"
+                      : "border-border text-muted-foreground hover:border-primary/40 hover:text-foreground"
+                  )}
+                >
+                  <span
+                    className="w-5 h-5 rounded-full flex items-center justify-center text-[9px] font-bold text-white shrink-0"
+                    style={{ backgroundColor: getAvatarHexColor(opp.display_name) }}
+                  >
+                    {getInitials(opp.display_name)}
+                  </span>
+                  {opp.display_name}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* No opponent submission */}
+          {!opponentSelection ? (
+            <p className="text-sm text-muted-foreground py-4 text-center">
+              {selectedOpponent?.display_name ?? "They"} didn&apos;t submit a team for this match.
+            </p>
+          ) : (
+            <div className="space-y-4">
+              {/* Your Edge */}
+              <div>
+                <div className="flex items-center gap-2 mb-2">
+                  <span className="w-2 h-2 rounded-full bg-emerald-400 shrink-0" />
+                  <p className="text-xs font-semibold text-emerald-400 uppercase tracking-wide">
+                    Your Edge
+                    <Badge variant="secondary" className="ml-2 text-[10px] font-normal">{myEdge.length}</Badge>
+                  </p>
+                </div>
+                {myEdge.length === 0 ? (
+                  <p className="text-xs text-muted-foreground pl-4">None — they have all your players too</p>
+                ) : (
+                  <div className="space-y-1.5 border-l-2 border-emerald-400/40 pl-3">
+                    {myEdge.map((p) => (
+                      <PlayerRow
+                        key={p.id}
+                        player={p}
+                        myMultiplier={multiplierLabel(p.id === mySelection.captain_id, p.id === mySelection.vice_captain_id)}
+                      />
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* Their Edge */}
+              <div>
+                <div className="flex items-center gap-2 mb-2">
+                  <span className="w-2 h-2 rounded-full bg-red-400 shrink-0" />
+                  <p className="text-xs font-semibold text-red-400 uppercase tracking-wide">
+                    Their Edge
+                    <Badge variant="secondary" className="ml-2 text-[10px] font-normal">{theirEdge.length}</Badge>
+                  </p>
+                </div>
+                {theirEdge.length === 0 ? (
+                  <p className="text-xs text-muted-foreground pl-4">None — you have all their players</p>
+                ) : (
+                  <div className="space-y-1.5 border-l-2 border-red-400/40 pl-3">
+                    {theirEdge.map((p) => (
+                      <PlayerRow
+                        key={p.id}
+                        player={p}
+                        theirMultiplier={multiplierLabel(p.id === opponentSelection.captain_id, p.id === opponentSelection.vice_captain_id)}
+                      />
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* Shared */}
+              <div>
+                <div className="flex items-center gap-2 mb-2">
+                  <span className="w-2 h-2 rounded-full bg-muted-foreground shrink-0" />
+                  <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+                    Shared
+                    <Badge variant="secondary" className="ml-2 text-[10px] font-normal">{shared.length}</Badge>
+                  </p>
+                </div>
+                {shared.length === 0 ? (
+                  <p className="text-xs text-muted-foreground pl-4">No shared players</p>
+                ) : (
+                  <div className="space-y-1.5 border-l-2 border-muted-foreground/30 pl-3">
+                    {shared.map((p) => {
+                      const myMul = multiplierLabel(p.id === mySelection.captain_id, p.id === mySelection.vice_captain_id)
+                      const theirMul = multiplierLabel(p.id === opponentSelection.captain_id, p.id === opponentSelection.vice_captain_id)
+                      const hasDiff = myMul !== theirMul
+                      return (
+                        <PlayerRow
+                          key={p.id}
+                          player={p}
+                          showSharedNotes={hasDiff}
+                          myMultiplier={hasDiff ? myMul : undefined}
+                          theirMultiplier={hasDiff ? theirMul : undefined}
+                        />
+                      )
+                    })}
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+        </>
+      )}
+    </div>
+  )
+}

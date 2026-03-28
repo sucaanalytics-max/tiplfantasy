@@ -3,10 +3,12 @@
 import { useState, useTransition } from "react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
-import { Copy, Check, Share2, Trash2, ArrowLeft, Users, Trophy, Swords, Zap, Crown, Target, type LucideIcon } from "lucide-react"
+import { format } from "date-fns"
+import { Copy, Check, Share2, Trash2, ArrowLeft, Users, Trophy, Swords, Zap, Crown, Target, ChevronRight, GitCompareArrows, type LucideIcon } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs"
 import {
   Dialog,
   DialogContent,
@@ -26,17 +28,27 @@ type MemberProfile = {
   profile: { display_name: string; avatar_url: string | null }[] | { display_name: string; avatar_url: string | null } | null
 }
 
+type LockedMatch = {
+  id: string
+  match_number: number
+  start_time: string
+  status: string
+  team_home: { short_name: string; color: string }
+  team_away: { short_name: string; color: string }
+}
+
 type Props = {
   league: League
   members: MemberProfile[]
   isCreator: boolean
   leaderboard: LeagueLeaderboardEntry[]
   awards: LeagueMemberStats[]
+  lockedMatches: LockedMatch[]
 }
 
 const MEDALS = ["\u{1F947}", "\u{1F948}", "\u{1F949}"] as const
 
-export function LeagueDetailClient({ league, members, isCreator, leaderboard, awards }: Props) {
+export function LeagueDetailClient({ league, members, isCreator, leaderboard, awards, lockedMatches }: Props) {
   const router = useRouter()
   const [isPending, startTransition] = useTransition()
   const [copied, setCopied] = useState(false)
@@ -210,76 +222,128 @@ export function LeagueDetailClient({ league, members, isCreator, leaderboard, aw
       </div>
 
       </div>{/* end left column */}
-      {/* Right column — leaderboard */}
-      <div className="lg:col-span-2 space-y-6 mt-6 lg:mt-0">
+      {/* Right column — leaderboard + match teams */}
+      <div className="lg:col-span-2 mt-6 lg:mt-0">
+      <Tabs defaultValue="leaderboard">
+        <TabsList className="w-full grid grid-cols-2 mb-6">
+          <TabsTrigger value="leaderboard" className="gap-1.5">
+            <Trophy className="h-3.5 w-3.5" />
+            Leaderboard
+          </TabsTrigger>
+          <TabsTrigger value="match-teams" className="gap-1.5">
+            <GitCompareArrows className="h-3.5 w-3.5" />
+            Match Teams
+          </TabsTrigger>
+        </TabsList>
 
-      {/* Leaderboard */}
-      <Card className="border border-border">
-        <CardHeader className="pb-3">
-          <div className="flex items-center justify-between">
-            <CardTitle className="text-base flex items-center gap-2">
-              <Trophy className="h-4 w-4" />
-              Leaderboard
-            </CardTitle>
-            <Link href={`/leagues/${league.id}/h2h`}>
-              <Button variant="ghost" size="sm" className="gap-1.5 text-xs">
-                <Swords className="h-3.5 w-3.5" />
-                Head-to-Head
-              </Button>
-            </Link>
-          </div>
-        </CardHeader>
-        <CardContent>
-          {leaderboard.length === 0 ? (
-            <p className="text-sm text-muted-foreground text-center py-6">
-              No scores yet. Play some matches!
-            </p>
-          ) : (
-            <div className="space-y-2">
-              {/* Table header */}
-              <div className="grid grid-cols-[2rem_1fr_4rem_3rem_3.5rem] gap-2 text-xs text-muted-foreground px-3 pb-1">
-                <span>#</span>
-                <span>Player</span>
-                <span className="text-right">Pts</span>
-                <span className="text-right">M</span>
-                <span className="text-right">Avg</span>
-              </div>
-
-              {leaderboard.map((entry, i) => {
-                const rank = i + 1
-                const displayName = entry.display_name ?? "Unknown"
-
-                return (
-                  <div
-                    key={entry.user_id}
-                    className="grid grid-cols-[2rem_1fr_4rem_3rem_3.5rem] gap-2 items-center py-2.5 px-3 rounded-lg bg-secondary/50"
-                  >
-                    <span className="text-sm text-center">
-                      {rank <= 3 ? MEDALS[rank - 1] : rank}
-                    </span>
-                    <div className="flex items-center gap-2.5 min-w-0">
-                      <AvatarInitial name={displayName} />
-                      <span className="text-sm truncate">{displayName}</span>
-                    </div>
-                    <span className="text-sm font-bold text-right">{entry.total_points}</span>
-                    <span className="text-xs text-muted-foreground text-right">
-                      {entry.matches_played}
-                    </span>
-                    <span className="text-xs text-muted-foreground text-right">
-                      {entry.avg_points.toFixed(1)}
-                    </span>
-                  </div>
-                )
-              })}
+        <TabsContent value="leaderboard" className="space-y-6">
+        {/* Leaderboard */}
+        <Card className="border border-border">
+          <CardHeader className="pb-3">
+            <div className="flex items-center justify-between">
+              <CardTitle className="text-base flex items-center gap-2">
+                <Trophy className="h-4 w-4" />
+                Leaderboard
+              </CardTitle>
+              <Link href={`/leagues/${league.id}/h2h`}>
+                <Button variant="ghost" size="sm" className="gap-1.5 text-xs">
+                  <Swords className="h-3.5 w-3.5" />
+                  Head-to-Head
+                </Button>
+              </Link>
             </div>
+          </CardHeader>
+          <CardContent>
+            {leaderboard.length === 0 ? (
+              <p className="text-sm text-muted-foreground text-center py-6">
+                No scores yet. Play some matches!
+              </p>
+            ) : (
+              <div className="space-y-2">
+                <div className="grid grid-cols-[2rem_1fr_4rem_3rem_3.5rem] gap-2 text-xs text-muted-foreground px-3 pb-1">
+                  <span>#</span>
+                  <span>Player</span>
+                  <span className="text-right">Pts</span>
+                  <span className="text-right">M</span>
+                  <span className="text-right">Avg</span>
+                </div>
+                {leaderboard.map((entry, i) => {
+                  const rank = i + 1
+                  const displayName = entry.display_name ?? "Unknown"
+                  return (
+                    <div
+                      key={entry.user_id}
+                      className="grid grid-cols-[2rem_1fr_4rem_3rem_3.5rem] gap-2 items-center py-2.5 px-3 rounded-lg bg-secondary/50"
+                    >
+                      <span className="text-sm text-center">
+                        {rank <= 3 ? MEDALS[rank - 1] : rank}
+                      </span>
+                      <div className="flex items-center gap-2.5 min-w-0">
+                        <AvatarInitial name={displayName} />
+                        <span className="text-sm truncate">{displayName}</span>
+                      </div>
+                      <span className="text-sm font-bold text-right">{entry.total_points}</span>
+                      <span className="text-xs text-muted-foreground text-right">
+                        {entry.matches_played}
+                      </span>
+                      <span className="text-xs text-muted-foreground text-right">
+                        {entry.avg_points.toFixed(1)}
+                      </span>
+                    </div>
+                  )
+                })}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Season Awards */}
+        <SeasonAwards awards={awards} />
+        </TabsContent>
+
+        <TabsContent value="match-teams" className="space-y-3">
+          {lockedMatches.length === 0 ? (
+            <div className="flex flex-col items-center text-center py-16 gap-3">
+              <GitCompareArrows className="h-10 w-10 text-muted-foreground/30" />
+              <div>
+                <p className="font-medium text-muted-foreground">No completed matches yet</p>
+                <p className="text-xs text-muted-foreground/60 mt-0.5">Team comparisons appear once matches begin</p>
+              </div>
+            </div>
+          ) : (
+            lockedMatches.map((match) => (
+              <Card key={match.id} className="border border-border">
+                <CardContent className="py-3 px-4">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3 min-w-0">
+                      <div>
+                        <p className="text-sm font-medium">
+                          <span style={{ color: match.team_home.color }}>{match.team_home.short_name}</span>
+                          <span className="text-muted-foreground mx-1.5">vs</span>
+                          <span style={{ color: match.team_away.color }}>{match.team_away.short_name}</span>
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                          Match #{match.match_number} · {format(new Date(match.start_time), "MMM d")}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2 shrink-0">
+                      {match.status === "live" && (
+                        <Badge variant="live" className="text-[10px]">Live</Badge>
+                      )}
+                      <Link href={`/leagues/${league.id}/match/${match.id}`}>
+                        <Button variant="outline" size="sm" className="gap-1 text-xs">
+                          View Teams <ChevronRight className="h-3.5 w-3.5" />
+                        </Button>
+                      </Link>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            ))
           )}
-        </CardContent>
-      </Card>
-
-
-      {/* Season Awards */}
-      <SeasonAwards awards={awards} />
-
+        </TabsContent>
+      </Tabs>
       </div>{/* end right column */}
       </div>{/* end desktop grid */}
     </div>

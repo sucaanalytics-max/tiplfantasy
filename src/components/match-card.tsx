@@ -3,7 +3,7 @@ import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { format, isPast } from "date-fns"
-import { MapPin, CheckCircle2, ChevronRight } from "lucide-react"
+import { MapPin, CheckCircle2, ChevronRight, Eye, Pencil } from "lucide-react"
 import { TeamLogo } from "@/components/team-logo"
 import { CountdownTimer } from "@/components/countdown-timer"
 import type { MatchStatus } from "@/lib/types"
@@ -195,7 +195,14 @@ export function MatchCard({ match, userPoints, userRank, hasSubmitted, compact =
             </Link>
           </div>
         ) : isLive ? (
-          <div className="flex justify-center">
+          <div className="flex justify-center gap-2">
+            {hasSubmitted && (
+              <Link href={`/match/${match.id}/my-team`}>
+                <Button size="sm" variant="ghost" className="gap-1 text-muted-foreground">
+                  <Eye className="h-3.5 w-3.5" /> Preview
+                </Button>
+              </Link>
+            )}
             <Link href={href}>
               <Button size="sm" variant="outline" className="border-orange-500/40 text-orange-400 hover:bg-orange-500/10 gap-1">
                 View Live Scores <ChevronRight className="h-3.5 w-3.5" />
@@ -203,12 +210,26 @@ export function MatchCard({ match, userPoints, userRank, hasSubmitted, compact =
             </Link>
           </div>
         ) : isUpcoming ? (
-          <div className="flex justify-center">
+          <div className="flex flex-col items-center gap-2">
             {hasSubmitted ? (
-              <div className="flex items-center gap-2 bg-status-success-bg border border-status-success/20 rounded-full px-4 py-2">
-                <CheckCircle2 className="h-4 w-4 text-status-success" />
-                <span className="text-sm font-semibold text-status-success">Team Submitted</span>
-              </div>
+              <>
+                <div className="flex items-center gap-2 bg-status-success-bg border border-status-success/20 rounded-full px-4 py-2">
+                  <CheckCircle2 className="h-4 w-4 text-status-success" />
+                  <span className="text-sm font-semibold text-status-success">Team Submitted</span>
+                </div>
+                <div className="flex gap-2">
+                  <Link href={`/match/${match.id}/my-team`}>
+                    <Button size="sm" variant="ghost" className="gap-1 text-muted-foreground">
+                      <Eye className="h-3.5 w-3.5" /> Preview
+                    </Button>
+                  </Link>
+                  <Link href={`/match/${match.id}/pick`}>
+                    <Button size="sm" variant="outline" className="gap-1 border-primary/40 text-primary hover:bg-primary/10">
+                      <Pencil className="h-3.5 w-3.5" /> Edit
+                    </Button>
+                  </Link>
+                </div>
+              </>
             ) : (
               <Link href={href}>
                 <Button size="sm" className="bg-gradient-to-r from-primary to-emerald-400 hover:from-primary/90 hover:to-emerald-400/90 text-black font-semibold">

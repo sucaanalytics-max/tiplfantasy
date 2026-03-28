@@ -8,7 +8,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs"
 import { format } from "date-fns"
 import { CountdownTimer } from "@/components/countdown-timer"
 import { TeamLogo } from "@/components/team-logo"
-import { Swords } from "lucide-react"
+import { Swords, Eye } from "lucide-react"
 import { useMemo } from "react"
 import { STATUS_CONFIG } from "@/lib/badges"
 import { LiveScoreWidget } from "@/components/live-score-widget"
@@ -191,17 +191,27 @@ export function MatchList({
                               ) : (
                                 <span className="text-xs text-muted-foreground">No pick yet</span>
                               )}
-                              <Link href={`/match/${match.id}/pick`}>
-                                {hasSubmitted ? (
-                                  <Button variant="outline" size="sm" className="border-primary/40 text-primary hover:bg-primary/10">
-                                    Edit Pick
-                                  </Button>
-                                ) : (
-                                  <Button size="sm" className="bg-gradient-to-r from-primary to-blue-400 text-black font-semibold hover:opacity-90">
-                                    Pick Team
-                                  </Button>
+                              <div className="flex gap-2">
+                                {hasSubmitted && (
+                                  <Link href={`/match/${match.id}/my-team`}>
+                                    <Button variant="ghost" size="sm" className="gap-1 text-muted-foreground">
+                                      <Eye className="h-3.5 w-3.5" />
+                                      Preview
+                                    </Button>
+                                  </Link>
                                 )}
-                              </Link>
+                                <Link href={`/match/${match.id}/pick`}>
+                                  {hasSubmitted ? (
+                                    <Button variant="outline" size="sm" className="border-primary/40 text-primary hover:bg-primary/10">
+                                      Edit Pick
+                                    </Button>
+                                  ) : (
+                                    <Button size="sm" className="bg-gradient-to-r from-primary to-blue-400 text-black font-semibold hover:opacity-90">
+                                      Pick Team
+                                    </Button>
+                                  )}
+                                </Link>
+                              </div>
                             </>
                           )}
                           {match.status === "live" && (
@@ -215,9 +225,19 @@ export function MatchList({
                                   Missed
                                 </Badge>
                               )}
-                              <span className="inline-flex items-center gap-1.5 text-xs text-status-live">
-                                <span className="w-2 h-2 rounded-full bg-status-live animate-pulse" /> Live
-                              </span>
+                              <div className="flex items-center gap-2">
+                                {hasSubmitted && (
+                                  <Link href={`/match/${match.id}/my-team`}>
+                                    <Button variant="ghost" size="sm" className="gap-1 text-muted-foreground text-xs">
+                                      <Eye className="h-3.5 w-3.5" />
+                                      Preview
+                                    </Button>
+                                  </Link>
+                                )}
+                                <span className="inline-flex items-center gap-1.5 text-xs text-status-live">
+                                  <span className="w-2 h-2 rounded-full bg-status-live animate-pulse" /> Live
+                                </span>
+                              </div>
                             </>
                           )}
                           {(match.status === "completed" || match.status === "no_result" || match.status === "abandoned") && (
