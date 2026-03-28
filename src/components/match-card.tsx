@@ -91,6 +91,7 @@ export function MatchCard({ match, userPoints, userRank, hasSubmitted, compact =
   }
 
   // Full card
+  const startDate = new Date(match.start_time)
   return (
     <Card className={`border border-border overflow-hidden relative ${isLive ? "live-glow" : ""}`}>
       {/* Team color gradient background */}
@@ -160,12 +161,12 @@ export function MatchCard({ match, userPoints, userRank, hasSubmitted, compact =
           </p>
           {isCompleted ? (
             <p className="text-sm text-muted-foreground">
-              {match.result_summary ?? format(new Date(match.start_time), "EEE, MMM d")}
+              {match.result_summary ?? format(startDate, "EEE, MMM d")}
             </p>
           ) : (
             <>
               <p className="text-sm font-medium">
-                {format(new Date(match.start_time), "EEE, MMM d · h:mm a")}
+                {format(startDate, "EEE, MMM d · h:mm a")}
               </p>
               {!matchStarted && (
                 <div className="pt-1">
@@ -189,11 +190,11 @@ export function MatchCard({ match, userPoints, userRank, hasSubmitted, compact =
                 <p className="text-2xl font-bold font-display">#{userRank}</p>
               </div>
             )}
-            <Link href={href}>
-              <Button variant="outline" size="sm" className="gap-1">
+            <Button variant="outline" size="sm" className="gap-1" asChild>
+              <Link href={href}>
                 Scores <ChevronRight className="h-3.5 w-3.5" />
-              </Button>
-            </Link>
+              </Link>
+            </Button>
           </div>
         ) : isLive ? (
           <div className="flex justify-center gap-2">
@@ -204,11 +205,11 @@ export function MatchCard({ match, userPoints, userRank, hasSubmitted, compact =
                 status={match.status}
               />
             )}
-            <Link href={href}>
-              <Button size="sm" variant="outline" className="border-orange-500/40 text-orange-400 hover:bg-orange-500/10 gap-1">
+            <Button size="sm" variant="outline" className="border-orange-500/40 text-orange-400 hover:bg-orange-500/10 gap-1" asChild>
+              <Link href={href}>
                 View Live Scores <ChevronRight className="h-3.5 w-3.5" />
-              </Button>
-            </Link>
+              </Link>
+            </Button>
           </div>
         ) : isUpcoming ? (
           <div className="flex flex-col items-center gap-2">
@@ -224,19 +225,17 @@ export function MatchCard({ match, userPoints, userRank, hasSubmitted, compact =
                     matchLabel={`${home.short_name} vs ${away.short_name} · Match #${match.match_number}`}
                     status={match.status}
                   />
-                  <Link href={`/match/${match.id}/pick`}>
-                    <Button size="sm" variant="outline" className="gap-1 border-primary/40 text-primary hover:bg-primary/10">
+                  <Button size="sm" variant="outline" className="gap-1 border-primary/40 text-primary hover:bg-primary/10" asChild>
+                    <Link href={`/match/${match.id}/pick`}>
                       <Pencil className="h-3.5 w-3.5" /> Edit
-                    </Button>
-                  </Link>
+                    </Link>
+                  </Button>
                 </div>
               </>
             ) : (
-              <Link href={href}>
-                <Button size="sm" className="bg-gradient-to-r from-primary to-emerald-400 hover:from-primary/90 hover:to-emerald-400/90 text-black font-semibold">
-                  Pick Your Team
-                </Button>
-              </Link>
+              <Button size="sm" className="bg-gradient-to-r from-primary to-emerald-400 hover:from-primary/90 hover:to-emerald-400/90 text-black font-semibold" asChild>
+                <Link href={href}>Pick Your Team</Link>
+              </Button>
             )}
           </div>
         ) : null}

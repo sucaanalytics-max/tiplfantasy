@@ -12,6 +12,7 @@ import { Swords } from "lucide-react"
 import { TeamPreviewSheet } from "@/components/team-preview-sheet"
 import { useMemo } from "react"
 import { STATUS_CONFIG } from "@/lib/badges"
+import { cn } from "@/lib/utils"
 import { LiveScoreWidget } from "@/components/live-score-widget"
 
 type Match = {
@@ -70,6 +71,12 @@ export function MatchList({
   const defaultTab: TabKey =
     counts.live > 0 ? "live" : counts.upcoming > 0 ? "upcoming" : "completed"
 
+  const groupedByTab = useMemo(() => ({
+    upcoming: groupByDate(tabMatches.upcoming),
+    live: groupByDate(tabMatches.live),
+    completed: groupByDate(tabMatches.completed),
+  }), [tabMatches])
+
   return (
     <Tabs defaultValue={defaultTab} className="w-full">
       <TabsList className="w-full grid grid-cols-3">
@@ -81,16 +88,12 @@ export function MatchList({
         </TabsTrigger>
         <TabsTrigger value="live" className="gap-1.5">
           Live
-          {counts.live > 0 && (
-            <Badge variant="secondary" className="ml-1 h-5 px-1.5 text-[10px] font-semibold bg-status-live-bg text-status-live">
-              {counts.live}
-            </Badge>
-          )}
-          {counts.live === 0 && (
-            <Badge variant="secondary" className="ml-1 h-5 px-1.5 text-[10px] font-semibold">
-              {counts.live}
-            </Badge>
-          )}
+          <Badge
+            variant="secondary"
+            className={cn("ml-1 h-5 px-1.5 text-[10px] font-semibold", counts.live > 0 && "bg-status-live-bg text-status-live")}
+          >
+            {counts.live}
+          </Badge>
         </TabsTrigger>
         <TabsTrigger value="completed" className="gap-1.5">
           Completed
@@ -101,7 +104,7 @@ export function MatchList({
       </TabsList>
 
       {(["upcoming", "live", "completed"] as TabKey[]).map((tab) => {
-        const grouped = groupByDate(tabMatches[tab])
+        const grouped = groupedByTab[tab]
         return (
           <TabsContent key={tab} value={tab} className="space-y-6 mt-4">
             {grouped.size === 0 && (
@@ -200,17 +203,15 @@ export function MatchList({
                                     status={match.status}
                                   />
                                 )}
-                                <Link href={`/match/${match.id}/pick`}>
-                                  {hasSubmitted ? (
-                                    <Button variant="outline" size="sm" className="border-primary/40 text-primary hover:bg-primary/10">
-                                      Edit Pick
-                                    </Button>
-                                  ) : (
-                                    <Button size="sm" className="bg-gradient-to-r from-primary to-blue-400 text-black font-semibold hover:opacity-90">
-                                      Pick Team
-                                    </Button>
-                                  )}
-                                </Link>
+                                {hasSubmitted ? (
+                                  <Button variant="outline" size="sm" className="border-primary/40 text-primary hover:bg-primary/10" asChild>
+                                    <Link href={`/match/${match.id}/pick`}>Edit Pick</Link>
+                                  </Button>
+                                ) : (
+                                  <Button size="sm" className="bg-gradient-to-r from-primary to-blue-400 text-black font-semibold hover:opacity-90" asChild>
+                                    <Link href={`/match/${match.id}/pick`}>Pick Team</Link>
+                                  </Button>
+                                )}
                               </div>
                             </>
                           )}
@@ -248,9 +249,9 @@ export function MatchList({
                               ) : (
                                 <span />
                               )}
-                              <Link href={`/match/${match.id}/scores`}>
-                                <Button variant="ghost" size="sm">View Scores</Button>
-                              </Link>
+                              <Button variant="ghost" size="sm" asChild>
+                                <Link href={`/match/${match.id}/scores`}>View Scores</Link>
+                              </Button>
                             </>
                           )}
                         </div>

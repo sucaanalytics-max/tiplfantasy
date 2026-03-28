@@ -1,7 +1,7 @@
 "use client"
 
 import Link from "next/link"
-import { useState } from "react"
+import { useState, useMemo } from "react"
 import { ArrowLeft } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -89,47 +89,71 @@ export function LeagueMatchClient({
   memberSelections,
   players,
 }: Props) {
-  const opponents = memberSelections.filter((m) => m.user_id !== currentUserId)
+  const opponents = useMemo(
+    () => memberSelections.filter((m) => m.user_id !== currentUserId),
+    [memberSelections, currentUserId]
+  )
   const [selectedOpponentId, setSelectedOpponentId] = useState<string>(
     opponents[0]?.user_id ?? ""
   )
 
-  const playerMap = new Map(players.map((p) => [p.id, p]))
+  const playerMap = useMemo(() => new Map(players.map((p) => [p.id, p])), [players])
 
-  const mySelection = memberSelections.find((m) => m.user_id === currentUserId)
-  const opponentSelection = memberSelections.find((m) => m.user_id === selectedOpponentId)
-  const selectedOpponent = opponents.find((m) => m.user_id === selectedOpponentId)
+  const mySelection = useMemo(
+    () => memberSelections.find((m) => m.user_id === currentUserId),
+    [memberSelections, currentUserId]
+  )
+  const opponentSelection = useMemo(
+    () => memberSelections.find((m) => m.user_id === selectedOpponentId),
+    [memberSelections, selectedOpponentId]
+  )
+  const selectedOpponent = useMemo(
+    () => opponents.find((m) => m.user_id === selectedOpponentId),
+    [opponents, selectedOpponentId]
+  )
 
-  const myIds = new Set(mySelection?.player_ids ?? [])
-  const theirIds = new Set(opponentSelection?.player_ids ?? [])
+  const myIds = useMemo(() => new Set(mySelection?.player_ids ?? []), [mySelection])
+  const theirIds = useMemo(() => new Set(opponentSelection?.player_ids ?? []), [opponentSelection])
 
-  const myEdge = [...myIds]
-    .filter((id) => !theirIds.has(id))
-    .map((id) => playerMap.get(id))
-    .filter((p): p is PlayerWithTeam => !!p)
-    .sort((a, b) => ROLE_ORDER.indexOf(a.role) - ROLE_ORDER.indexOf(b.role))
+  const myEdge = useMemo(
+    () =>
+      [...myIds]
+        .filter((id) => !theirIds.has(id))
+        .map((id) => playerMap.get(id))
+        .filter((p): p is PlayerWithTeam => !!p)
+        .sort((a, b) => ROLE_ORDER.indexOf(a.role) - ROLE_ORDER.indexOf(b.role)),
+    [myIds, theirIds, playerMap]
+  )
 
-  const theirEdge = [...theirIds]
-    .filter((id) => !myIds.has(id))
-    .map((id) => playerMap.get(id))
-    .filter((p): p is PlayerWithTeam => !!p)
-    .sort((a, b) => ROLE_ORDER.indexOf(a.role) - ROLE_ORDER.indexOf(b.role))
+  const theirEdge = useMemo(
+    () =>
+      [...theirIds]
+        .filter((id) => !myIds.has(id))
+        .map((id) => playerMap.get(id))
+        .filter((p): p is PlayerWithTeam => !!p)
+        .sort((a, b) => ROLE_ORDER.indexOf(a.role) - ROLE_ORDER.indexOf(b.role)),
+    [theirIds, myIds, playerMap]
+  )
 
-  const shared = [...myIds]
-    .filter((id) => theirIds.has(id))
-    .map((id) => playerMap.get(id))
-    .filter((p): p is PlayerWithTeam => !!p)
-    .sort((a, b) => ROLE_ORDER.indexOf(a.role) - ROLE_ORDER.indexOf(b.role))
+  const shared = useMemo(
+    () =>
+      [...myIds]
+        .filter((id) => theirIds.has(id))
+        .map((id) => playerMap.get(id))
+        .filter((p): p is PlayerWithTeam => !!p)
+        .sort((a, b) => ROLE_ORDER.indexOf(a.role) - ROLE_ORDER.indexOf(b.role)),
+    [myIds, theirIds, playerMap]
+  )
 
   return (
     <div className="p-4 md:p-6 max-w-2xl space-y-5">
       {/* Back */}
       <div className="flex items-center gap-2">
-        <Link href={`/leagues/${leagueId}`}>
-          <Button variant="ghost" size="sm" className="h-9 w-9 p-0">
+        <Button variant="ghost" size="sm" className="h-9 w-9 p-0" asChild>
+          <Link href={`/leagues/${leagueId}`}>
             <ArrowLeft className="h-4 w-4" />
-          </Button>
-        </Link>
+          </Link>
+        </Button>
         <div>
           <h1 className="text-base font-bold truncate">{leagueName}</h1>
           <p className="text-xs text-muted-foreground">
@@ -163,14 +187,15 @@ export function LeagueMatchClient({
             <p className="text-xs text-muted-foreground mb-2 font-medium uppercase tracking-wide">Compare with</p>
             <div className="flex gap-2 flex-wrap">
               {opponents.map((opp) => (
-                <button
+                <Button
                   key={opp.user_id}
+                  variant="outline"
                   onClick={() => setSelectedOpponentId(opp.user_id)}
                   className={cn(
-                    "flex items-center gap-2 px-3 py-1.5 rounded-full border text-sm transition-colors",
+                    "h-auto flex items-center gap-2 px-3 py-1.5 rounded-full text-sm",
                     selectedOpponentId === opp.user_id
-                      ? "border-primary bg-primary/10 text-primary"
-                      : "border-border text-muted-foreground hover:border-primary/40 hover:text-foreground"
+                      ? "border-primary bg-primary/10 text-primary hover:bg-primary/20 hover:text-primary"
+                      : "border-border text-muted-foreground hover:border-primary/40 hover:text-foreground hover:bg-transparent"
                   )}
                 >
                   <span
@@ -180,7 +205,7 @@ export function LeagueMatchClient({
                     {getInitials(opp.display_name)}
                   </span>
                   {opp.display_name}
-                </button>
+                </Button>
               ))}
             </div>
           </div>

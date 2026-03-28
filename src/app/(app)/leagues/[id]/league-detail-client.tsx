@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useTransition } from "react"
+import { useState, useTransition, useRef, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
 import { format } from "date-fns"
@@ -19,6 +19,7 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog"
 import { leaveLeague, deleteLeague } from "@/actions/leagues"
+import { toast } from "sonner"
 import type { League, LeagueLeaderboardEntry, LeagueMemberStats } from "@/lib/types"
 import { getInitials, getAvatarHexColor } from "@/lib/avatar"
 
@@ -54,6 +55,12 @@ export function LeagueDetailClient({ league, members, isCreator, leaderboard, aw
   const [copied, setCopied] = useState(false)
   const [deleteOpen, setDeleteOpen] = useState(false)
 
+  const copyTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  useEffect(() => () => {
+    if (copyTimeoutRef.current) clearTimeout(copyTimeoutRef.current)
+  }, [])
+
   function handleShare(): void {
     const shareData = {
       title: "Join my TIPL league!",
@@ -72,14 +79,15 @@ export function LeagueDetailClient({ league, members, isCreator, leaderboard, aw
   function copyCode(): void {
     navigator.clipboard.writeText(league.invite_code)
     setCopied(true)
-    setTimeout(() => setCopied(false), 2000)
+    if (copyTimeoutRef.current) clearTimeout(copyTimeoutRef.current)
+    copyTimeoutRef.current = setTimeout(() => setCopied(false), 2000)
   }
 
   function handleLeave(): void {
     startTransition(async () => {
       const result = await leaveLeague(league.id)
       if (result.error) {
-        alert(result.error)
+        toast.error(result.error)
         return
       }
       router.push("/leagues")
@@ -91,7 +99,7 @@ export function LeagueDetailClient({ league, members, isCreator, leaderboard, aw
     startTransition(async () => {
       const result = await deleteLeague(league.id)
       if (result.error) {
-        alert(result.error)
+        toast.error(result.error)
         return
       }
       setDeleteOpen(false)

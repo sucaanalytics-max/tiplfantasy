@@ -19,6 +19,8 @@ type TeamData = {
   viceCaptainId: string | null
 }
 
+const SKELETON_ITEMS = [0, 1, 2, 3, 4, 5]
+
 type Props = {
   matchId: string
   matchLabel: string
@@ -109,15 +111,16 @@ export function TeamPreviewSheet({ matchId, matchLabel, status }: Props) {
 
             {status === "upcoming" && data !== "loading" && data !== null && (
               <div className="px-4 pt-3 pb-[max(1rem,env(safe-area-inset-bottom))] border-t border-border">
-                <Link href={`/match/${matchId}/pick`} onClick={() => setOpen(false)}>
-                  <Button
-                    variant="outline"
-                    className="w-full gap-2 border-primary/40 text-primary hover:bg-primary/10"
-                  >
+                <Button
+                  variant="outline"
+                  className="w-full gap-2 border-primary/40 text-primary hover:bg-primary/10"
+                  asChild
+                >
+                  <Link href={`/match/${matchId}/pick`} onClick={() => setOpen(false)}>
                     <Pencil className="h-3.5 w-3.5" />
                     Edit Team
-                  </Button>
-                </Link>
+                  </Link>
+                </Button>
               </div>
             )}
           </div>
