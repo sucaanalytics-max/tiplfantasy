@@ -31,6 +31,7 @@ import { CricketField } from "@/components/cricket-field"
 import { Drawer, DrawerClose, DrawerContent, DrawerTrigger, DrawerTitle } from "@/components/ui/drawer"
 import { PlayerStatsDrawer } from "@/components/player-stats-drawer"
 import { Confetti } from "@/components/confetti"
+import { TeamSubmitPreview } from "@/components/team-submit-preview"
 import type { PlayerWithTeam, MatchWithTeams, PlayerRole, PlayerVenueStats, PlayerVsTeamStats, PlayerSeasonStats } from "@/lib/types"
 import { CAPTAIN_BADGE, VICE_CAPTAIN_BADGE } from "@/lib/badges"
 
@@ -93,6 +94,7 @@ export function PickTeamClient({
   const deferredSearch = useDeferredValue(search)
   const [error, setError] = useState<string | null>(null)
   const [showConfetti, setShowConfetti] = useState(false)
+  const [showSubmitPreview, setShowSubmitPreview] = useState(false)
   const [sortBy, setSortBy] = useState<"default" | "credits">("default")
   const [statsPlayerId, setStatsPlayerId] = useState<string | null>(null)
 
@@ -275,10 +277,7 @@ export function PickTeamClient({
         setError(result.error)
       } else {
         setShowConfetti(true)
-        setTimeout(() => {
-          router.push("/matches")
-          router.refresh()
-        }, 1500)
+        setShowSubmitPreview(true)
       }
     })
   }
@@ -488,6 +487,26 @@ export function PickTeamClient({
       )}
     </div>
   )
+
+  // Post-submission preview
+  if (showSubmitPreview) {
+    return (
+      <>
+        {showConfetti && <Confetti />}
+        <TeamSubmitPreview
+          players={selectedPlayers}
+          captainId={captainId}
+          viceCaptainId={viceCaptainId}
+          match={match}
+          isUpdate={initialSelectedIds.length > 0}
+          onDone={() => {
+            router.refresh()
+            router.push("/matches")
+          }}
+        />
+      </>
+    )
+  }
 
   // Main player selection view
   return (
