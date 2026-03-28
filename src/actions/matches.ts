@@ -75,9 +75,6 @@ export async function fetchPlayingXI(matchId: string, cricapiMatchId: string) {
   await requireAdmin()
   const admin = createAdminClient()
 
-  const squad = await fetchSquad(cricapiMatchId)
-  if (!squad) return { error: "Failed to fetch squad from CricAPI" }
-
   const { data: match } = await admin
     .from("matches")
     .select("team_home_id, team_away_id")
@@ -85,48 +82,60 @@ export async function fetchPlayingXI(matchId: string, cricapiMatchId: string) {
     .single()
   if (!match) return { error: "Match not found" }
 
+  // Load DB players for both teams (include cricapi_id for ID-based matching)
   const { data: dbPlayers } = await admin
     .from("players")
-    .select("id, name, team_id")
+    .select("id, name, team_id, cricapi_id")
     .in("team_id", [match.team_home_id, match.team_away_id])
 
   if (!dbPlayers) return { error: "Failed to load players" }
 
-  const nameMap = new Map<string, string>()
-  for (const p of dbPlayers) {
-    nameMap.set(
-      p.name.toLowerCase().replace(/[^a-z\s]/g, "").replace(/\s+/g, " ").trim(),
-      p.id
-    )
+  // Try match_points first — returns only players who actually played (the real Playing XI)
+  const pointsResult = await fetchMatchPoints(cricapiMatchId)
+
+  if (!pointsResult || pointsResult.totals.length === 0) {
+    return {
+      error: "Match points data not available yet. Playing XI auto-populates from match scorecard ~15 min after the match starts. Try again shortly.",
+    }
   }
 
-  const matched: string[] = []
+  // Build lookup maps
+  const cricapiIdMap = new Map<string, { id: string; team_id: string }>()
+  const nameMap = new Map<string, string>()
+  for (const p of dbPlayers) {
+    if (p.cricapi_id) {
+      cricapiIdMap.set(p.cricapi_id, { id: p.id, team_id: p.team_id })
+    }
+    const norm = p.name.toLowerCase().replace(/[^a-z\s]/g, "").replace(/\s+/g, " ").trim()
+    nameMap.set(norm, p.id)
+  }
+
+  // Match API players to DB — prefer cricapi_id, fallback to fuzzy name
+  const matched = new Map<string, string>() // player_id → team_id
   const unmatched: string[] = []
 
-  const imgMap = new Map<string, string>()
-  for (const apiPlayer of squad) {
+  for (const apiPlayer of pointsResult.totals) {
+    const byId = cricapiIdMap.get(apiPlayer.id)
+    if (byId) {
+      matched.set(byId.id, byId.team_id)
+      continue
+    }
     const dbId = fuzzyMatchName(apiPlayer.name, nameMap)
     if (dbId) {
-      matched.push(dbId)
-      if (apiPlayer.img) imgMap.set(dbId, apiPlayer.img)
+      const p = dbPlayers.find((pl) => pl.id === dbId)
+      if (p) matched.set(dbId, p.team_id)
     } else {
       unmatched.push(apiPlayer.name)
     }
   }
 
-  // Deduplicate — fuzzyMatchName can map multiple API names to the same DB player
-  const deduped = [...new Set(matched)]
-
-  if (deduped.length === 0) {
-    return { error: "No players matched from API response" }
+  if (matched.size === 0) {
+    return { error: "No players matched from match_points response" }
   }
 
-  // Validate: must be exactly 11 per team (22 total) — not full squad
-  const playerTeamMap = new Map(dbPlayers.map((p) => [p.id, p.team_id]))
+  // Validate: must be exactly 11 per team (22 total)
   const byTeam = new Map<string, string[]>()
-  for (const pid of deduped) {
-    const tid = playerTeamMap.get(pid)
-    if (!tid) continue
+  for (const [pid, tid] of matched) {
     const list = byTeam.get(tid) ?? []
     list.push(pid)
     byTeam.set(tid, list)
@@ -135,30 +144,20 @@ export async function fetchPlayingXI(matchId: string, cricapiMatchId: string) {
   const teamCounts = [...byTeam.values()].map((v) => v.length)
   if (teamCounts.length !== 2 || teamCounts.some((c) => c !== 11)) {
     return {
-      error: `Squad data returned (${deduped.length} players: ${teamCounts.join(" + ")}), not confirmed Playing XI (11+11). Try again after toss.`,
+      error: `Partial data (${matched.size} players: ${teamCounts.join(" + ")}${unmatched.length > 0 ? `, ${unmatched.length} unmatched: ${unmatched.join(", ")}` : ""}). Match may still be in progress — try again in a few minutes.`,
     }
   }
 
   await admin.from("playing_xi").delete().eq("match_id", matchId)
-  const { error: insertError } = await admin.from("playing_xi").insert(
-    deduped.map((pid) => ({
-      match_id: matchId,
-      player_id: pid,
-      team_id: playerTeamMap.get(pid)!,
-    }))
-  )
+  const rows = [...matched.entries()].map(([pid, tid]) => ({
+    match_id: matchId,
+    player_id: pid,
+    team_id: tid,
+  }))
+  const { error: insertError } = await admin.from("playing_xi").insert(rows)
   if (insertError) return { error: `Failed to insert Playing XI: ${insertError.message}` }
 
-  // Backfill image_url for matched players that have an img
-  if (imgMap.size > 0) {
-    await Promise.all(
-      Array.from(imgMap.entries()).map(([pid, url]) =>
-        admin.from("players").update({ image_url: url }).eq("id", pid)
-      )
-    )
-  }
-
-  return { success: true, matched: deduped.length, unmatched }
+  return { success: true, matched: matched.size, unmatched }
 }
 
 export async function fetchMatchScorecard(
