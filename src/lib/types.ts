@@ -293,9 +293,20 @@ export type LeagueMemberStats = {
   display_name: string
   highest_score: number
   matchday_wins: number
+  top2_finishes: number
   total_captain_points: number
-  outside_top4: number
   matches_played: number
+}
+
+export type LeagueMatchScore = {
+  match_id: string
+  match_number: number
+  start_time: string
+  user_id: string
+  display_name: string
+  total_points: number
+  league_rank: number
+  match_winners_count: number
 }
 
 // Season Predictions

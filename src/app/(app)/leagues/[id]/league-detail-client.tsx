@@ -4,7 +4,7 @@ import { useState, useTransition, useRef, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
 import { format } from "date-fns"
-import { Copy, Check, Share2, Trash2, ArrowLeft, Users, Trophy, Swords, Zap, Crown, Target, ChevronRight, GitCompareArrows, type LucideIcon } from "lucide-react"
+import { Copy, Check, Share2, Trash2, ArrowLeft, Users, Trophy, Swords, Zap, Crown, Target, ChevronRight, GitCompareArrows, IndianRupee, type LucideIcon } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -20,7 +20,7 @@ import {
 } from "@/components/ui/dialog"
 import { leaveLeague, deleteLeague } from "@/actions/leagues"
 import { toast } from "sonner"
-import type { League, LeagueLeaderboardEntry, LeagueMemberStats } from "@/lib/types"
+import type { League, LeagueLeaderboardEntry, LeagueMemberStats, LeagueMatchScore } from "@/lib/types"
 import { getInitials, getAvatarHexColor } from "@/lib/avatar"
 
 type MemberProfile = {
@@ -44,12 +44,13 @@ type Props = {
   isCreator: boolean
   leaderboard: LeagueLeaderboardEntry[]
   awards: LeagueMemberStats[]
+  matchScores: LeagueMatchScore[]
   lockedMatches: LockedMatch[]
 }
 
 const MEDALS = ["\u{1F947}", "\u{1F948}", "\u{1F949}"] as const
 
-export function LeagueDetailClient({ league, members, isCreator, leaderboard, awards, lockedMatches }: Props) {
+export function LeagueDetailClient({ league, members, isCreator, leaderboard, awards, matchScores, lockedMatches }: Props) {
   const router = useRouter()
   const [isPending, startTransition] = useTransition()
   const [copied, setCopied] = useState(false)
@@ -233,7 +234,7 @@ export function LeagueDetailClient({ league, members, isCreator, leaderboard, aw
       {/* Right column — leaderboard + match teams */}
       <div className="lg:col-span-2 mt-6 lg:mt-0">
       <Tabs defaultValue="leaderboard">
-        <TabsList className="w-full grid grid-cols-2 mb-6">
+        <TabsList className="w-full grid grid-cols-3 mb-6">
           <TabsTrigger value="leaderboard" className="gap-1.5">
             <Trophy className="h-3.5 w-3.5" />
             Leaderboard
@@ -241,6 +242,10 @@ export function LeagueDetailClient({ league, members, isCreator, leaderboard, aw
           <TabsTrigger value="match-teams" className="gap-1.5">
             <GitCompareArrows className="h-3.5 w-3.5" />
             Match Teams
+          </TabsTrigger>
+          <TabsTrigger value="prizes" className="gap-1.5">
+            <IndianRupee className="h-3.5 w-3.5" />
+            Prizes
           </TabsTrigger>
         </TabsList>
 
@@ -351,6 +356,10 @@ export function LeagueDetailClient({ league, members, isCreator, leaderboard, aw
             ))
           )}
         </TabsContent>
+
+        <TabsContent value="prizes" className="space-y-6">
+          <PrizesTab awards={awards} matchScores={matchScores} leaderboard={leaderboard} />
+        </TabsContent>
       </Tabs>
       </div>{/* end right column */}
       </div>{/* end desktop grid */}
@@ -379,13 +388,13 @@ function SeasonAwards({ awards }: { awards: LeagueMemberStats[] }) {
   const highestScore = awards.reduce((a, b) => b.highest_score > a.highest_score ? b : a)
   const mostWins = awards.reduce((a, b) => b.matchday_wins > a.matchday_wins ? b : a)
   const bestCaptain = awards.reduce((a, b) => b.total_captain_points > a.total_captain_points ? b : a)
-  const mostConsistent = awards.reduce((a, b) => b.outside_top4 < a.outside_top4 ? b : a)
+  const mostConsistent = awards.reduce((a, b) => b.top2_finishes > a.top2_finishes ? b : a)
 
   const cards: { Icon: LucideIcon; label: string; winner: LeagueMemberStats; stat: string }[] = [
     { Icon: Zap,    label: "Highest Score",   winner: highestScore,  stat: `${highestScore.highest_score} pts` },
     { Icon: Trophy, label: "Matchday Wins",   winner: mostWins,      stat: `${mostWins.matchday_wins} wins` },
     { Icon: Crown,  label: "Best Captaincy",  winner: bestCaptain,   stat: `${bestCaptain.total_captain_points} pts` },
-    { Icon: Target, label: "Most Consistent", winner: mostConsistent, stat: `${mostConsistent.outside_top4} misses` },
+    { Icon: Target, label: "Most Consistent", winner: mostConsistent, stat: `${mostConsistent.top2_finishes} top-2s` },
   ]
 
   return (
@@ -416,3 +425,265 @@ function SeasonAwards({ awards }: { awards: LeagueMemberStats[] }) {
     </Card>
   )
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Prize Tracker — Tusk League prize configuration
+// ─────────────────────────────────────────────────────────────────────────────
+
+const KNOCKOUT_MATCH_NUMBERS = [71, 72, 73]
+const FINAL_MATCH_NUMBER = 74
+const MATCHDAY_PRIZE = { league: 150, knockout: 200, final: 400 } as const
+const SEASON_PRIZE = { first: 19000, second: 7000 } as const
+const AWARD_PRIZE = 2000
+
+type MatchKind = "league" | "knockout" | "final"
+
+function getMatchType(matchNumber: number): MatchKind {
+  if (matchNumber === FINAL_MATCH_NUMBER) return "final"
+  if (KNOCKOUT_MATCH_NUMBERS.includes(matchNumber)) return "knockout"
+  return "league"
+}
+
+function getMatchdayPrize(matchNumber: number): number {
+  return MATCHDAY_PRIZE[getMatchType(matchNumber)]
+}
+
+type PrizesTabProps = {
+  awards: LeagueMemberStats[]
+  matchScores: LeagueMatchScore[]
+  leaderboard: LeagueLeaderboardEntry[]
+}
+
+export function PrizesTab({ awards, matchScores, leaderboard }: PrizesTabProps) {
+  if (awards.length === 0 && matchScores.length === 0) {
+    return (
+      <div className="flex flex-col items-center text-center py-16 gap-3">
+        <IndianRupee className="h-10 w-10 text-muted-foreground/30" />
+        <div>
+          <p className="font-medium text-muted-foreground">No prize data yet</p>
+          <p className="text-xs text-muted-foreground/60 mt-0.5">Prizes unlock once matches complete</p>
+        </div>
+      </div>
+    )
+  }
+
+  // ── Award leaders ──────────────────────────────────────────────────────────
+  const awardLeaders = awards.length > 0 ? {
+    highestScore:  awards.reduce((a, b) => b.highest_score > a.highest_score ? b : a),
+    mostWins:      awards.reduce((a, b) => b.matchday_wins > a.matchday_wins ? b : a),
+    bestCaptain:   awards.reduce((a, b) => b.total_captain_points > a.total_captain_points ? b : a),
+    mostConsistent: awards.reduce((a, b) => b.top2_finishes > a.top2_finishes ? b : a),
+  } : null
+
+  const awardCards: { Icon: LucideIcon; label: string; winner: LeagueMemberStats; stat: string }[] = awardLeaders ? [
+    { Icon: Zap,    label: "Highest Score",   winner: awardLeaders.highestScore,   stat: `${awardLeaders.highestScore.highest_score} pts` },
+    { Icon: Trophy, label: "Matchday Wins",   winner: awardLeaders.mostWins,       stat: `${awardLeaders.mostWins.matchday_wins} wins` },
+    { Icon: Crown,  label: "Best Captaincy",  winner: awardLeaders.bestCaptain,    stat: `${Math.round(awardLeaders.bestCaptain.total_captain_points)} pts` },
+    { Icon: Target, label: "Most Consistent", winner: awardLeaders.mostConsistent, stat: `${awardLeaders.mostConsistent.top2_finishes} top-2s` },
+  ] : []
+
+  // ── Per-match winners (league_rank === 1) ───────────────────────────────────
+  const matchesMap = new Map<number, { matchId: string; startTime: string; prize: number; winners: { userId: string; name: string; points: number }[]; winnersCount: number }>()
+  for (const row of matchScores) {
+    if (row.league_rank === 1) {
+      if (!matchesMap.has(row.match_number)) {
+        matchesMap.set(row.match_number, {
+          matchId: row.match_id,
+          startTime: row.start_time,
+          prize: getMatchdayPrize(row.match_number),
+          winners: [],
+          winnersCount: row.match_winners_count,
+        })
+      }
+      matchesMap.get(row.match_number)!.winners.push({
+        userId: row.user_id,
+        name: row.display_name,
+        points: row.total_points,
+      })
+    }
+  }
+  const matchHistory = Array.from(matchesMap.entries())
+    .sort(([a], [b]) => b - a)
+    .map(([matchNumber, data]) => ({ matchNumber, ...data }))
+
+  // ── Per-member earnings ────────────────────────────────────────────────────
+  type MemberEarnings = {
+    userId: string
+    name: string
+    matchdayEarnings: number
+    seasonPrize: number
+    awardLeads: number
+  }
+
+  const earningsMap = new Map<string, MemberEarnings>()
+
+  // Seed from leaderboard so all members appear
+  leaderboard.forEach((entry, idx) => {
+    earningsMap.set(entry.user_id, {
+      userId: entry.user_id,
+      name: entry.display_name ?? "Unknown",
+      matchdayEarnings: 0,
+      seasonPrize: idx === 0 ? SEASON_PRIZE.first : idx === 1 ? SEASON_PRIZE.second : 0,
+      awardLeads: 0,
+    })
+  })
+
+  // Confirmed matchday earnings from match history
+  for (const match of matchHistory) {
+    const splitPrize = match.prize / match.winnersCount
+    for (const winner of match.winners) {
+      const entry = earningsMap.get(winner.userId)
+      if (entry) entry.matchdayEarnings += splitPrize
+    }
+  }
+
+  // Award leads count
+  if (awardLeaders) {
+    for (const { winner } of awardCards) {
+      const entry = earningsMap.get(winner.user_id)
+      if (entry) entry.awardLeads += 1
+    }
+  }
+
+  const earnings = Array.from(earningsMap.values()).sort(
+    (a, b) => b.matchdayEarnings - a.matchdayEarnings
+  )
+
+  return (
+    <div className="space-y-6">
+      {/* Award Leaders */}
+      {awardCards.length > 0 && (
+        <Card className="border border-border">
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base flex items-center gap-2">
+              <Trophy className="h-4 w-4" />
+              Award Leaders
+              <span className="text-xs font-normal text-muted-foreground ml-auto">₹2,000 each</span>
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+              {awardCards.map(({ Icon, label, winner, stat }) => (
+                <div key={label} className="flex flex-col gap-2 p-3 rounded-lg bg-secondary/50">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                      <Icon className="h-3.5 w-3.5" />
+                      <span>{label}</span>
+                    </div>
+                    <span className="text-[10px] font-semibold text-emerald-400 bg-emerald-400/10 border border-emerald-400/20 rounded px-1.5 py-0.5">
+                      ₹2k
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-2 min-w-0">
+                    <AvatarInitial name={winner.display_name} size="sm" />
+                    <span className="text-xs truncate">{winner.display_name}</span>
+                  </div>
+                  <span className="text-sm font-bold">{stat}</span>
+                </div>
+              ))}
+            </div>
+            <p className="text-[10px] text-muted-foreground mt-3">Ties share prize equally</p>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Matchday Prize History */}
+      {matchHistory.length > 0 && (
+        <Card className="border border-border">
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base flex items-center gap-2">
+              <IndianRupee className="h-4 w-4" />
+              Matchday Prize History
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="p-0">
+            <div className="divide-y divide-border/50">
+              {matchHistory.map((match) => {
+                const isTied = match.winnersCount > 1
+                const splitPrize = match.prize / match.winnersCount
+                const matchKind = getMatchType(match.matchNumber)
+                return (
+                  <div key={match.matchId} className="flex items-center justify-between py-2.5 px-4">
+                    <div className="flex items-center gap-3 min-w-0">
+                      <div className="flex flex-col">
+                        <span className="text-xs font-medium">Match #{match.matchNumber}</span>
+                        <span className="text-[10px] text-muted-foreground capitalize">{matchKind}</span>
+                      </div>
+                      <div className="min-w-0">
+                        {match.winners.map((w) => (
+                          <div key={w.userId} className="flex items-center gap-1.5">
+                            <AvatarInitial name={w.name} size="sm" />
+                            <span className="text-sm truncate">{w.name}</span>
+                            <span className="text-xs text-muted-foreground">· {w.points} pts</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                    <div className="text-right shrink-0 ml-3">
+                      <span className="text-sm font-bold text-emerald-400">
+                        ₹{isTied ? splitPrize : match.prize}
+                      </span>
+                      {isTied && (
+                        <p className="text-[10px] text-muted-foreground">each (split)</p>
+                      )}
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Earnings Tracker */}
+      {earnings.length > 0 && (
+        <Card className="border border-border">
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base flex items-center gap-2">
+              <IndianRupee className="h-4 w-4" />
+              Earnings Tracker
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-1">
+              <div className="grid grid-cols-[1fr_5rem_5rem_5rem] gap-2 text-[10px] text-muted-foreground px-3 pb-1 uppercase tracking-wide">
+                <span>Member</span>
+                <span className="text-right">Match Wins</span>
+                <span className="text-right">Season*</span>
+                <span className="text-right">Total*</span>
+              </div>
+              {earnings.map((e) => {
+                const total = e.matchdayEarnings + e.seasonPrize + e.awardLeads * AWARD_PRIZE
+                return (
+                  <div
+                    key={e.userId}
+                    className="grid grid-cols-[1fr_5rem_5rem_5rem] gap-2 items-center py-2.5 px-3 rounded-lg bg-secondary/50"
+                  >
+                    <div className="flex items-center gap-2 min-w-0">
+                      <AvatarInitial name={e.name} size="sm" />
+                      <span className="text-sm truncate">{e.name}</span>
+                      {e.awardLeads > 0 && (
+                        <span className="text-[10px] text-amber-400 shrink-0">+{e.awardLeads} award{e.awardLeads > 1 ? "s" : ""}</span>
+                      )}
+                    </div>
+                    <span className="text-sm font-semibold text-right text-emerald-400">
+                      {e.matchdayEarnings > 0 ? `₹${e.matchdayEarnings}` : "—"}
+                    </span>
+                    <span className="text-sm text-right text-muted-foreground">
+                      {e.seasonPrize > 0 ? `₹${(e.seasonPrize / 1000).toFixed(0)}k` : "—"}
+                    </span>
+                    <span className="text-sm font-bold text-right">
+                      {total > 0 ? `₹${(total / 1000).toFixed(1)}k` : "—"}
+                    </span>
+                  </div>
+                )
+              })}
+            </div>
+            <p className="text-[10px] text-muted-foreground mt-3">* Season & award prizes projected from current standings</p>
+          </CardContent>
+        </Card>
+      )}
+    </div>
+  )
+}
+

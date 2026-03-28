@@ -2,7 +2,7 @@
 
 import { createClient } from "@/lib/supabase/server"
 import { createAdminClient } from "@/lib/supabase/admin"
-import type { LeagueWithMemberCount, LeagueLeaderboardEntry, LeagueMemberStats } from "@/lib/types"
+import type { LeagueWithMemberCount, LeagueLeaderboardEntry, LeagueMemberStats, LeagueMatchScore } from "@/lib/types"
 import crypto from "crypto"
 
 function generateInviteCode(): string {
@@ -225,4 +225,13 @@ export async function getLeagueAwards(leagueId: string): Promise<LeagueMemberSta
   })
   if (error) return []
   return (data ?? []) as LeagueMemberStats[]
+}
+
+export async function getLeagueMatchScores(leagueId: string): Promise<LeagueMatchScore[]> {
+  const admin = createAdminClient()
+  const { data, error } = await admin.rpc("get_league_match_scores", {
+    p_league_id: leagueId,
+  })
+  if (error) return []
+  return (data ?? []) as LeagueMatchScore[]
 }

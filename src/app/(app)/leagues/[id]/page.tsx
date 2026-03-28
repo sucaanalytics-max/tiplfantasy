@@ -1,5 +1,5 @@
 import { redirect } from "next/navigation"
-import { getLeagueWithMembers, getLeagueLeaderboard, getLeagueAwards } from "@/actions/leagues"
+import { getLeagueWithMembers, getLeagueLeaderboard, getLeagueAwards, getLeagueMatchScores } from "@/actions/leagues"
 import { createAdminClient } from "@/lib/supabase/admin"
 import { LeagueDetailClient } from "./league-detail-client"
 
@@ -14,9 +14,10 @@ export default async function LeagueDetailPage({
 
   const admin = createAdminClient()
 
-  const [leaderboard, awards, { data: lockedMatches }] = await Promise.all([
+  const [leaderboard, awards, matchScores, { data: lockedMatches }] = await Promise.all([
     getLeagueLeaderboard(id),
     getLeagueAwards(id),
+    getLeagueMatchScores(id),
     admin
       .from("matches")
       .select("id, match_number, start_time, status, team_home:teams!team_home_id(short_name, color), team_away:teams!team_away_id(short_name, color)")
@@ -31,6 +32,7 @@ export default async function LeagueDetailPage({
       isCreator={leagueData.isCreator}
       leaderboard={leaderboard}
       awards={awards}
+      matchScores={matchScores}
       lockedMatches={(lockedMatches ?? []) as unknown as { id: string; match_number: number; start_time: string; status: string; team_home: { short_name: string; color: string }; team_away: { short_name: string; color: string } }[]}
     />
   )
