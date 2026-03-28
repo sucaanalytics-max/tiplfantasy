@@ -50,11 +50,16 @@ export function LiveScoreWidget({
 
   if (entry.ms === "live") {
     return (
-      <div className="flex items-center gap-1.5 text-xs font-medium text-status-live">
-        <span className="inline-block h-1.5 w-1.5 rounded-full bg-status-live animate-pulse" />
-        {entry.score1 && <span>{entry.score1}</span>}
-        {entry.score1 && entry.score2 && <span className="text-muted-foreground">·</span>}
-        {entry.score2 && <span>{entry.score2}</span>}
+      <div className="space-y-0.5">
+        <div className="flex items-center gap-1.5 text-xs font-medium text-status-live">
+          <span className="inline-block h-1.5 w-1.5 rounded-full bg-status-live animate-pulse" />
+          {entry.score1 && <span>{entry.score1}</span>}
+          {entry.score1 && entry.score2 && <span className="text-muted-foreground">·</span>}
+          {entry.score2 && <span>{entry.score2}</span>}
+        </div>
+        {entry.note && (
+          <p className="text-[10px] text-muted-foreground">{entry.note}</p>
+        )}
       </div>
     )
   }
@@ -62,10 +67,15 @@ export function LiveScoreWidget({
   // result
   if (entry.score1 || entry.score2) {
     return (
-      <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-        {entry.score1 && <span>{entry.score1}</span>}
-        {entry.score1 && entry.score2 && <span>·</span>}
-        {entry.score2 && <span>{entry.score2}</span>}
+      <div className="space-y-0.5">
+        <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+          {entry.score1 && <span>{entry.score1}</span>}
+          {entry.score1 && entry.score2 && <span>·</span>}
+          {entry.score2 && <span>{entry.score2}</span>}
+        </div>
+        {entry.note && (
+          <p className="text-[10px] text-muted-foreground">{entry.note}</p>
+        )}
       </div>
     )
   }

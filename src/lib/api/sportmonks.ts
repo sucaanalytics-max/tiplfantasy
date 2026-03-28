@@ -41,6 +41,7 @@ export type CricScoreItem = {
   t1s: string
   t2s: string
   series: string
+  note: string | null
 }
 
 export type SeasonFixture = {
@@ -368,6 +369,7 @@ export async function fetchCricScores(): Promise<CricScoreItem[] | null> {
         t1s: formatScore(t1Code, team1Runs),
         t2s: formatScore(t2Code, team2Runs),
         series: String(IPL_LEAGUE_ID),
+        note: f.note ?? null,
       }
     })
   } catch (err) {

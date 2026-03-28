@@ -173,7 +173,7 @@ export async function fetchMatchScorecard(
   const admin = createAdminClient()
 
   const innings = await fetchScorecard(cricapiMatchId)
-  if (!innings) return { error: "Failed to fetch scorecard from CricAPI" }
+  if (!innings) return { error: "Failed to fetch scorecard from SportMonks" }
 
   const parsed = parseScorecardToStats(innings)
 
@@ -282,7 +282,7 @@ export async function autoScoreMatch(
   }
 
   if (scores.length === 0) {
-    return { error: "No players matched. Check that match teams are correct and cricapi_ids are mapped." }
+    return { error: "No players matched. Check that match teams are correct and player IDs are mapped." }
   }
 
   const saveResult = await savePlayerScores(matchId, scores)
@@ -318,7 +318,7 @@ export type SeriesImportProposal = {
 }
 
 /**
- * Preview: fetch all matches from a CricAPI series and propose cricapi_match_id mappings.
+ * Preview: fetch all IPL 2026 fixtures from SportMonks and propose cricapi_match_id mappings.
  * For API matches with no DB counterpart, attempts to resolve teams and proposes new row creation.
  * Does NOT write to DB.
  */
@@ -449,7 +449,7 @@ export async function testMatchPoints(matchId: string): Promise<{ data?: unknown
     .single()
 
   if (!match?.cricapi_match_id) {
-    return { error: "No CricAPI match ID set for this match" }
+    return { error: "No fixture ID set for this match" }
   }
 
   const data = await testMatchPointsEndpoint(match.cricapi_match_id)

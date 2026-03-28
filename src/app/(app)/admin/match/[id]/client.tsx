@@ -115,7 +115,7 @@ export function AdminMatchClient({
 
   function handleFetchXI() {
     if (!match.cricapi_match_id) {
-      showMsg("error", "No CricAPI match ID set")
+      showMsg("error", "No fixture ID set for this match")
       return
     }
     startTransition(async () => {
@@ -154,7 +154,7 @@ export function AdminMatchClient({
 
   function handleAutoScore() {
     if (!match.cricapi_match_id) {
-      showMsg("error", "No CricAPI match ID set")
+      showMsg("error", "No fixture ID set for this match")
       return
     }
     startTransition(async () => {
@@ -171,7 +171,7 @@ export function AdminMatchClient({
 
   function handleFetchScorecard() {
     if (!match.cricapi_match_id) {
-      showMsg("error", "No CricAPI match ID set")
+      showMsg("error", "No fixture ID set for this match")
       return
     }
     startTransition(async () => {
@@ -228,7 +228,7 @@ export function AdminMatchClient({
 
   function handleTestFantasyApi() {
     if (!match.cricapi_match_id) {
-      showMsg("error", "No CricAPI match ID set")
+      showMsg("error", "No fixture ID set for this match")
       return
     }
     startTransition(async () => {

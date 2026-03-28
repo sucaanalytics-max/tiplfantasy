@@ -6,6 +6,7 @@ export type LiveScoreEntry = {
   ms: "fixture" | "live" | "result" | string
   score1: string
   score2: string
+  note: string | null
 }
 
 export async function GET() {
@@ -20,6 +21,7 @@ export async function GET() {
     ms: s.ms,
     score1: s.t1s ?? "",
     score2: s.t2s ?? "",
+    note: s.note ?? null,
   } satisfies LiveScoreEntry))
 
   return NextResponse.json(entries, {

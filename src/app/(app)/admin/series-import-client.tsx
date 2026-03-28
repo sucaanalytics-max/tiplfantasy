@@ -74,11 +74,11 @@ export function SeriesImportClient() {
       </CardHeader>
       <CardContent className="space-y-3">
         <p className="text-xs text-muted-foreground">
-          Paste a CricAPI series ID to auto-map <span className="font-mono">cricapi_match_id</span> for all matches and create any missing fixtures.
+          Fetch IPL 2026 fixtures from SportMonks and auto-map fixture IDs for all matches.
         </p>
         <div className="flex gap-2">
           <Input
-            placeholder="CricAPI series ID (e.g. abc123...)"
+            placeholder="Any value (IPL 2026 auto-fetched)"
             value={seriesId}
             onChange={(e) => setSeriesId(e.target.value)}
             className="font-mono text-sm"

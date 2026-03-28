@@ -1,6 +1,6 @@
 import { type NextRequest } from "next/server"
 import { createAdminClient } from "@/lib/supabase/admin"
-import { fetchMatchPoints, parseScorecardToStats, fuzzyMatchName } from "@/lib/api/sportmonks"
+import { fetchMatchPoints, parseScorecardToStats, fuzzyMatchName, fetchMatchInfo } from "@/lib/api/sportmonks"
 import { loadScoringRules, calculatePlayerPoints, calculateUserMatchScore } from "@/lib/scoring"
 
 export async function GET(req: NextRequest) {
@@ -27,7 +27,7 @@ export async function GET(req: NextRequest) {
 
   for (const match of liveMatches) {
     try {
-      // 1. Fetch fantasy points from CricAPI
+      // 1. Fetch fixture stats from SportMonks
       const result = await fetchMatchPoints(match.cricapi_match_id)
       if (!result || result.innings.length === 0) {
         errors.push({ matchId: match.id, error: "No innings data yet" })
@@ -234,6 +234,12 @@ export async function GET(req: NextRequest) {
 
       // 14. Stamp when live points were last calculated
       await admin.from("matches").update({ live_scores_at: new Date().toISOString() }).eq("id", match.id)
+
+      // 15. Auto-detect match finished — write result_summary from SportMonks note
+      const fixtureInfo = await fetchMatchInfo(match.cricapi_match_id)
+      if (fixtureInfo && fixtureInfo.status === "Finished" && fixtureInfo.note) {
+        await admin.from("matches").update({ result_summary: fixtureInfo.note }).eq("id", match.id)
+      }
 
       updated.push(match.id)
     } catch (err) {
