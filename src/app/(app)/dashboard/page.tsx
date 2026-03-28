@@ -24,6 +24,7 @@ export default async function DashboardPage() {
     profileRes,
     myRankRes,
     upcomingRes,
+    liveRes,
     lastMatchRes,
     top5Res,
     myLeagues,
@@ -39,6 +40,12 @@ export default async function DashboardPage() {
       .eq("status", "upcoming")
       .order("start_time", { ascending: true })
       .limit(5),
+    supabase
+      .from("matches")
+      .select("*, team_home:teams!matches_team_home_id_fkey(short_name, color, logo_url), team_away:teams!matches_team_away_id_fkey(short_name, color, logo_url)")
+      .eq("status", "live")
+      .order("start_time", { ascending: true })
+      .limit(2),
     supabase
       .from("matches")
       .select("*, team_home:teams!matches_team_home_id_fkey(short_name, color, logo_url), team_away:teams!matches_team_away_id_fkey(short_name, color, logo_url)")
@@ -59,6 +66,7 @@ export default async function DashboardPage() {
   const profile = profileRes.data
   const myRank = myRankRes.data
   const upcomingMatches = upcomingRes.data
+  const liveMatches = liveRes.data ?? []
   const lastMatch = lastMatchRes.data
   const top5 = top5Res.data
   const completedMatches = completedRes.data
@@ -71,9 +79,10 @@ export default async function DashboardPage() {
   const moreMatches = upcomingMatches?.slice(1) ?? []
 
   // Phase 2: queries that depend on Phase 1 results, in parallel
-  const [subsRes, lastScoreRes, streakRes, lastSelectionRes] = await Promise.all([
-    upcomingMatches && upcomingMatches.length > 0
-      ? supabase.from("selections").select("match_id").eq("user_id", user.id).in("match_id", upcomingMatches.map((m) => m.id)).limit(10)
+  const allRelevantMatchIds = [...(upcomingMatches ?? []), ...liveMatches].map((m) => m.id)
+  const [subsRes, lastScoreRes, streakRes, lastSelectionRes, liveScoresRes] = await Promise.all([
+    allRelevantMatchIds.length > 0
+      ? supabase.from("selections").select("match_id").eq("user_id", user.id).in("match_id", allRelevantMatchIds).limit(10)
       : Promise.resolve({ data: [] as { match_id: string }[] }),
     lastMatch
       ? supabase.from("user_match_scores").select("total_points, rank").eq("user_id", user.id).eq("match_id", lastMatch.id).single()
@@ -89,9 +98,14 @@ export default async function DashboardPage() {
           .eq("match_id", lastMatch.id)
           .maybeSingle()
       : Promise.resolve({ data: null as null }),
+    liveMatches.length > 0
+      ? supabase.from("user_match_scores").select("match_id, total_points, rank").eq("user_id", user.id).in("match_id", liveMatches.map((m) => m.id)).limit(2)
+      : Promise.resolve({ data: [] as { match_id: string; total_points: number; rank: number | null }[] }),
   ])
 
   const lastSelection = lastSelectionRes.data
+  const liveScoreMap = new Map<string, { total_points: number; rank: number | null }>()
+  for (const s of liveScoresRes.data ?? []) liveScoreMap.set(s.match_id, { total_points: s.total_points, rank: s.rank })
   const lastCaptainName = (lastSelection?.captain as unknown as { name: string })?.name ?? null
   const lastVcName = (lastSelection?.vc as unknown as { name: string })?.name ?? null
 
@@ -219,6 +233,39 @@ export default async function DashboardPage() {
               </CardContent>
             </Card>
           )}
+        </div>
+      )}
+
+      {/* Live matches — shown prominently above everything else */}
+      {liveMatches.length > 0 && (
+        <div className="space-y-3">
+          <div className="flex items-center gap-2">
+            <span className="h-2 w-2 rounded-full bg-red-500 animate-pulse" />
+            <p className="text-sm font-semibold text-red-400">Live Now</p>
+          </div>
+          {liveMatches.map((match) => {
+            const myLiveScore = liveScoreMap.get(match.id)
+            return (
+              <div key={match.id} className="space-y-1.5">
+                <MatchCard
+                  match={match as unknown as Parameters<typeof MatchCard>[0]["match"]}
+                  hasSubmitted={submittedMatchIds.has(match.id)}
+                />
+                <div className="flex items-center justify-between px-1">
+                  <LiveScoreWidget
+                    cricapiMatchId={(match as unknown as { cricapi_match_id: string | null }).cricapi_match_id}
+                    startTime={match.start_time}
+                  />
+                  {myLiveScore && (
+                    <Link href={`/match/${match.id}/scores`} className="text-xs text-muted-foreground hover:text-foreground transition-colors">
+                      Your pts: <span className="font-bold text-foreground">{myLiveScore.total_points}</span>
+                      {myLiveScore.rank != null && <span> (#{myLiveScore.rank})</span>}
+                    </Link>
+                  )}
+                </div>
+              </div>
+            )
+          })}
         </div>
       )}
 

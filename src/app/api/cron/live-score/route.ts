@@ -148,6 +148,7 @@ export async function GET(req: NextRequest) {
 
       // 11. Calculate per-user scores with captain/VC multipliers
       const userScores = selections.map((sel) => {
+        const playerIds = playersBySelection.get(sel.id) ?? []
         const res = calculateUserMatchScore(
           {
             userId: sel.user_id,
@@ -155,11 +156,17 @@ export async function GET(req: NextRequest) {
             captainId: sel.captain_id,
             viceCaptainId: sel.vice_captain_id,
             isAutoPick: sel.is_auto_pick,
-            playerIds: playersBySelection.get(sel.id) ?? [],
+            playerIds,
           },
           scoreMap
         )
-        return { userId: sel.user_id, total: res.total, captainPoints: res.captainPoints, vcPoints: res.vcPoints, rank: 0 }
+        // Build per-player breakdown so the UI can show score bars during live matches
+        const breakdown: Record<string, number> = {}
+        for (const pid of playerIds) {
+          const pts = scoreMap.get(pid) ?? 0
+          if (pts > 0) breakdown[pid] = pts
+        }
+        return { userId: sel.user_id, total: res.total, captainPoints: res.captainPoints, vcPoints: res.vcPoints, rank: 0, breakdown }
       })
 
       // 12. Sort and assign ranks (ties share a rank)
@@ -178,7 +185,7 @@ export async function GET(req: NextRequest) {
         rank: s.rank,
         captain_points: s.captainPoints,
         vc_points: s.vcPoints,
-        breakdown: null,
+        breakdown: s.breakdown,
       }))
 
       const { error: upsertErr } = await admin

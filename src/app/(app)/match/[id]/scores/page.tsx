@@ -14,6 +14,7 @@ import { getInitials, getAvatarColor } from "@/lib/avatar"
 import { PageTransition } from "@/components/page-transition"
 import { CricketBall } from "@/components/icons/cricket-ball"
 import { LiveRefresher } from "@/components/live-refresher"
+import { LiveScoreWidget } from "@/components/live-score-widget"
 
 export default async function ScoresPage({
   params,
@@ -119,9 +120,22 @@ export default async function ScoresPage({
       {match.status === "live" && <LiveRefresher interval={30000} />}
 
       {match.status === "live" && (
-        <div className="flex items-center gap-2 rounded-lg px-4 py-2.5 text-sm bg-red-500/10 border border-red-500/20 text-red-400">
-          <span className="h-2 w-2 rounded-full bg-red-500 animate-pulse shrink-0" />
-          <span>LIVE — Points update every ~5 min. Provisional until match ends.</span>
+        <div className="space-y-3">
+          <div className="flex items-center gap-2 rounded-lg px-4 py-2.5 text-sm bg-red-500/10 border border-red-500/20 text-red-400">
+            <span className="h-2 w-2 rounded-full bg-red-500 animate-pulse shrink-0" />
+            <span>LIVE — Points update every ~5 min. Provisional until match ends.</span>
+          </div>
+          {match.cricapi_match_id && (
+            <div className="rounded-lg border border-border bg-secondary/50 px-4 py-3 text-center">
+              <p className="text-[10px] text-muted-foreground uppercase tracking-wider mb-1">Live Score</p>
+              <div className="text-sm">
+                <LiveScoreWidget
+                  cricapiMatchId={match.cricapi_match_id}
+                  startTime={match.start_time}
+                />
+              </div>
+            </div>
+          )}
         </div>
       )}
 
@@ -414,8 +428,12 @@ export default async function ScoresPage({
           <CardContent>
             <EmptyState
               icon={Trophy}
-              title="Scores not yet available"
-              description="Check back after the match is completed and scores are published"
+              title={match.status === "live" ? "Calculating live scores..." : "Scores not yet available"}
+              description={
+                match.status === "live"
+                  ? "Fantasy points will appear here within 5 minutes of the match starting. This page refreshes automatically."
+                  : "Check back after the match is completed and scores are published"
+              }
               action={{ label: "Back to Matches", href: "/matches" }}
             />
           </CardContent>
