@@ -33,6 +33,7 @@ type Props = {
   currentUserId: string
   memberSelections: MemberSelection[]
   players: PlayerWithTeam[]
+  playerPoints?: Record<string, number>
 }
 
 const ROLE_ORDER: PlayerRole[] = ["WK", "BAT", "AR", "BOWL"]
@@ -48,11 +49,13 @@ function PlayerRow({
   myMultiplier,
   theirMultiplier,
   showSharedNotes,
+  points,
 }: {
   player: PlayerWithTeam
   myMultiplier?: string
   theirMultiplier?: string
   showSharedNotes?: boolean
+  points?: number
 }) {
   return (
     <div className="flex items-center gap-3 py-2.5 px-3 rounded-lg bg-secondary/40 border border-border/30">
@@ -77,6 +80,9 @@ function PlayerRow({
           {theirMultiplier}
         </span>
       ) : null}
+      {points !== undefined && (
+        <span className="text-sm font-bold font-display tabular-nums shrink-0">{points}</span>
+      )}
     </div>
   )
 }
@@ -88,6 +94,7 @@ export function LeagueMatchClient({
   currentUserId,
   memberSelections,
   players,
+  playerPoints = {},
 }: Props) {
   const opponents = useMemo(
     () => memberSelections.filter((m) => m.user_id !== currentUserId),
@@ -235,6 +242,7 @@ export function LeagueMatchClient({
                         key={p.id}
                         player={p}
                         myMultiplier={multiplierLabel(p.id === mySelection.captain_id, p.id === mySelection.vice_captain_id)}
+                        points={playerPoints[p.id]}
                       />
                     ))}
                   </div>
@@ -259,6 +267,7 @@ export function LeagueMatchClient({
                         key={p.id}
                         player={p}
                         theirMultiplier={multiplierLabel(p.id === opponentSelection.captain_id, p.id === opponentSelection.vice_captain_id)}
+                        points={playerPoints[p.id]}
                       />
                     ))}
                   </div>
@@ -289,6 +298,7 @@ export function LeagueMatchClient({
                           showSharedNotes={hasDiff}
                           myMultiplier={hasDiff ? myMul : undefined}
                           theirMultiplier={hasDiff ? theirMul : undefined}
+                          points={playerPoints[p.id]}
                         />
                       )
                     })}
