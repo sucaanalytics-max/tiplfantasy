@@ -51,84 +51,76 @@ export function TeamPreviewSheet({ matchId, matchLabel, status }: Props) {
 
       <Sheet open={open} onOpenChange={setOpen}>
         <SheetContent side="bottom" className="rounded-t-2xl p-0 max-h-[85dvh] flex flex-col">
-          <SheetHeader className="px-4 pt-5 pb-3">
-            <SheetTitle>Your Team</SheetTitle>
-            <SheetDescription>{matchLabel}</SheetDescription>
-          </SheetHeader>
+          <div className="max-w-lg mx-auto w-full flex flex-col flex-1 min-h-0">
+            <SheetHeader className="px-4 pt-5 pb-3">
+              <SheetTitle>Your Team</SheetTitle>
+              <SheetDescription>{matchLabel}</SheetDescription>
+            </SheetHeader>
 
-          <div className="flex-1 overflow-y-auto">
-            {data === "loading" ? (
-              <div className="px-4 space-y-2 pb-4">
-                {Array.from({ length: 6 }).map((_, i) => (
-                  <Skeleton key={i} className="h-9 w-full rounded-lg" />
-                ))}
-              </div>
-            ) : data === null ? (
-              <p className="text-sm text-muted-foreground text-center py-10">
-                No team submitted for this match.
-              </p>
-            ) : (
-              <div className="pb-2">
-                {sortedPlayers.map((player) => {
-                  const isC = player.id === data.captainId
-                  const isVC = player.id === data.viceCaptainId
-                  return (
-                    <div
-                      key={player.id}
-                      className="flex items-center gap-3 py-2.5 px-4 border-b border-border/30 last:border-0"
-                    >
-                      <span
-                        className={cn(
-                          "text-[10px] font-semibold px-1.5 py-0.5 rounded border shrink-0 w-10 text-center",
-                          ROLE_COLORS[player.role]
-                        )}
+            <div className="flex-1 overflow-y-auto">
+              {data === "loading" ? (
+                <div className="px-4 space-y-2 pb-4">
+                  {Array.from({ length: 6 }).map((_, i) => (
+                    <Skeleton key={i} className="h-9 w-full rounded-lg" />
+                  ))}
+                </div>
+              ) : data === null ? (
+                <p className="text-sm text-muted-foreground text-center py-10">
+                  No team submitted for this match.
+                </p>
+              ) : (
+                <div className="pb-2">
+                  {sortedPlayers.map((player) => {
+                    const isC = player.id === data.captainId
+                    const isVC = player.id === data.viceCaptainId
+                    return (
+                      <div
+                        key={player.id}
+                        className="flex items-center gap-3 py-2.5 px-4 border-b border-border/30 last:border-0"
                       >
-                        {player.role}
-                      </span>
-                      <span className="flex-1 text-sm truncate">{player.name}</span>
-                      {isC && (
                         <span
                           className={cn(
-                            "text-[10px] font-bold px-1.5 py-0.5 rounded border shrink-0",
-                            CAPTAIN_BADGE
+                            "text-[10px] font-semibold px-1.5 py-0.5 rounded border shrink-0 w-10 text-center",
+                            ROLE_COLORS[player.role]
                           )}
                         >
-                          C
+                          {player.role}
                         </span>
-                      )}
-                      {isVC && (
-                        <span
-                          className={cn(
-                            "text-[10px] font-bold px-1.5 py-0.5 rounded border shrink-0",
-                            VICE_CAPTAIN_BADGE
-                          )}
-                        >
-                          VC
+                        <span className="flex-1 text-sm truncate">{player.name}</span>
+                        {isC && (
+                          <span className={cn("text-[10px] font-bold px-1.5 py-0.5 rounded border shrink-0", CAPTAIN_BADGE)}>
+                            C
+                          </span>
+                        )}
+                        {isVC && (
+                          <span className={cn("text-[10px] font-bold px-1.5 py-0.5 rounded border shrink-0", VICE_CAPTAIN_BADGE)}>
+                            VC
+                          </span>
+                        )}
+                        <span className="text-[11px] text-muted-foreground w-10 text-right shrink-0">
+                          {player.team.short_name}
                         </span>
-                      )}
-                      <span className="text-[11px] text-muted-foreground w-10 text-right shrink-0">
-                        {player.team.short_name}
-                      </span>
-                    </div>
-                  )
-                })}
+                      </div>
+                    )
+                  })}
+                </div>
+              )}
+            </div>
+
+            {status === "upcoming" && data !== "loading" && data !== null && (
+              <div className="px-4 pt-3 pb-[max(1rem,env(safe-area-inset-bottom))] border-t border-border">
+                <Link href={`/match/${matchId}/pick`} onClick={() => setOpen(false)}>
+                  <Button
+                    variant="outline"
+                    className="w-full gap-2 border-primary/40 text-primary hover:bg-primary/10"
+                  >
+                    <Pencil className="h-3.5 w-3.5" />
+                    Edit Team
+                  </Button>
+                </Link>
               </div>
             )}
           </div>
-
-          {status === "upcoming" && data !== "loading" && data !== null && (
-            <div className="px-4 pt-3 pb-[max(1rem,env(safe-area-inset-bottom))] border-t border-border">
-              <Link href={`/match/${matchId}/pick`} onClick={() => setOpen(false)}>
-                <Button
-                  variant="outline"
-                  className="w-full gap-2 border-primary/40 text-primary hover:bg-primary/10"
-                >
-                  <Pencil className="h-3.5 w-3.5" />
-                  Edit Team
-                </Button>
-              </Link>
-            </div>
-          )}
         </SheetContent>
       </Sheet>
     </>
