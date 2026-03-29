@@ -229,7 +229,7 @@ export function ScoresClient({
             {myXI.length === 0 ? (
               <p className="text-sm text-muted-foreground text-center py-8">You didn&apos;t pick a team for this match.</p>
             ) : (
-              <div className="rounded-lg overflow-hidden border border-border/30 bg-[hsl(var(--background))] overflow-x-auto">
+              <div className="rounded-lg border border-border/30 bg-[hsl(var(--background))] overflow-x-auto">
                 {/* Table header */}
                 <div className="grid grid-cols-[2.5rem_1fr_1.5rem_1.5rem_1.5rem_1.5rem_1px_1.5rem_1.8rem_1.8rem_1.5rem_3.2rem] gap-px px-3 py-2 text-[9px] text-muted-foreground/70 uppercase tracking-widest font-semibold border-b border-border/40 bg-secondary/30 min-w-[420px]">
                   <span></span>
