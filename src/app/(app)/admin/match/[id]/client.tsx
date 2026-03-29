@@ -10,7 +10,7 @@ import { Separator } from "@/components/ui/separator"
 import { formatIST } from "@/lib/utils"
 import type { MatchWithTeams, PlayerWithTeam, MatchPlayerScore } from "@/lib/types"
 import type { PlayerStats } from "@/lib/scoring"
-import { lockMatch, markNoResult, fetchPlayingXI, fetchMatchScorecard, autoScoreMatch, testMatchPoints } from "@/actions/matches"
+import { lockMatch, markNoResult, fetchPlayingXI, fetchMatchScorecard, autoScoreMatch, testMatchPoints, getMatchMemo } from "@/actions/matches"
 import { savePlayerScores, calculateMatchPoints, calculateLiveMatchPoints } from "@/actions/scoring"
 import { adminUpdateCaptainVc } from "@/actions/selections"
 import { formatMatchMessage } from "@/lib/whatsapp"
@@ -417,6 +417,20 @@ export function AdminMatchClient({
           {userScores.length > 0 && (
             <Button variant="secondary" size="sm" onClick={handleWhatsApp}>
               Copy WhatsApp Message
+            </Button>
+          )}
+          {userScores.length > 0 && (
+            <Button variant="secondary" size="sm" onClick={() => {
+              startTransition(async () => {
+                const res = await getMatchMemo(match.id)
+                if (res.error) { showMsg("error", res.error); return }
+                if (res.memo) {
+                  navigator.clipboard.writeText(res.memo)
+                  showMsg("success", "Match Memo copied to clipboard!")
+                }
+              })
+            }}>
+              Copy Match Memo
             </Button>
           )}
         </CardContent>

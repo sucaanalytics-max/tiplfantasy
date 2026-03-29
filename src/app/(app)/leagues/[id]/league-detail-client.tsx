@@ -51,6 +51,7 @@ type LiveMatchData = {
   memberSelections: Array<{ user_id: string; captain_id: string | null; vice_captain_id: string | null; player_ids: string[] }>
   playerPoints: Record<string, number>
   playerNames: Record<string, { name: string; role: string }>
+  banter?: Array<{ message: string; event_type: string; created_at: string }>
 }
 
 type Props = {
@@ -385,6 +386,23 @@ export function LeagueDetailClient({ league, members, isCreator, leaderboard, aw
                       </div>
                     )
                   })}
+              </div>
+            )}
+
+            {/* Banter Feed */}
+            {liveMatchData.banter && liveMatchData.banter.length > 0 && (
+              <div className="mt-4 rounded-lg border border-border/30 bg-secondary/10 overflow-hidden">
+                <div className="px-3 py-2 border-b border-border/20 flex items-center gap-2">
+                  <span className="text-sm">🎭</span>
+                  <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Live Commentary</span>
+                </div>
+                <div className="divide-y divide-border/10 max-h-64 overflow-y-auto">
+                  {liveMatchData.banter.map((b, i) => (
+                    <div key={i} className="px-3 py-2 text-xs text-muted-foreground">
+                      <span className="text-foreground">{b.message}</span>
+                    </div>
+                  ))}
+                </div>
               </div>
             )}
           </TabsContent>

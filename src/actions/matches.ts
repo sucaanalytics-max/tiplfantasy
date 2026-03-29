@@ -5,6 +5,7 @@ import { createAdminClient } from "@/lib/supabase/admin"
 import { fetchSquad, fetchScorecard, fetchMatchPoints, fetchSeriesInfo, parseScorecardToStats, fuzzyMatchName, testMatchPointsEndpoint, SPORTMONKS_TEAM_MAP } from "@/lib/api/sportmonks"
 import { savePlayerScores, calculateMatchPoints } from "@/actions/scoring"
 import type { PlayerStats } from "@/lib/scoring"
+import { formatMatchMemo } from "@/lib/banter"
 
 async function requireAdmin() {
   const supabase = await createClient()
@@ -497,4 +498,64 @@ export async function confirmSeriesImport(
   }
 
   return { success: true, updated, created }
+}
+
+/** Generate a post-match memo with scores + banter for WhatsApp sharing */
+export async function getMatchMemo(matchId: string): Promise<{ memo?: string; error?: string }> {
+  await requireAdmin()
+  const admin = createAdminClient()
+
+  const { data: match } = await admin
+    .from("matches")
+    .select("match_number, result_summary, team_home:teams!team_home_id(short_name), team_away:teams!team_away_id(short_name)")
+    .eq("id", matchId)
+    .single()
+
+  if (!match) return { error: "Match not found" }
+
+  const [{ data: userScores }, { data: banter }] = await Promise.all([
+    admin.from("user_match_scores")
+      .select("user_id, total_points, rank, profile:profiles(display_name)")
+      .eq("match_id", matchId)
+      .order("rank", { ascending: true }),
+    admin.from("match_banter")
+      .select("message")
+      .eq("match_id", matchId)
+      .order("created_at", { ascending: true })
+      .limit(10),
+  ])
+
+  // Get captain names
+  const { data: selections } = await admin
+    .from("selections")
+    .select("user_id, captain:players!selections_captain_id_fkey(name)")
+    .eq("match_id", matchId)
+    .not("captain_id", "is", null)
+
+  const captainMap = new Map<string, string>()
+  for (const s of selections ?? []) {
+    captainMap.set(s.user_id, (s.captain as unknown as { name: string })?.name ?? "—")
+  }
+
+  const home = (match.team_home as unknown as { short_name: string }).short_name
+  const away = (match.team_away as unknown as { short_name: string }).short_name
+
+  const rankedUsers = (userScores ?? []).map((s) => ({
+    name: (s.profile as unknown as { display_name: string })?.display_name ?? "Unknown",
+    points: Number(s.total_points),
+    captainName: captainMap.get(s.user_id) ?? null,
+  }))
+
+  const banterMessages = (banter ?? []).map((b) => b.message)
+
+  const memo = formatMatchMemo(
+    match.match_number,
+    home,
+    away,
+    match.result_summary,
+    rankedUsers,
+    banterMessages,
+  )
+
+  return { memo }
 }

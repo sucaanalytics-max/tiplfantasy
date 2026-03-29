@@ -2,6 +2,7 @@ import { type NextRequest } from "next/server"
 import { createAdminClient } from "@/lib/supabase/admin"
 import { fetchMatchPoints, parseScorecardToStats, fuzzyMatchName, fetchMatchInfo } from "@/lib/api/sportmonks"
 import { loadScoringRules, calculatePlayerPoints, calculateUserMatchScore } from "@/lib/scoring"
+import { detectBanterEvents, detectRankBanter, generateBanter } from "@/lib/banter"
 
 export async function GET(req: NextRequest) {
   if (req.headers.get("authorization") !== `Bearer ${process.env.CRON_SECRET}`) {
@@ -235,6 +236,80 @@ export async function GET(req: NextRequest) {
 
       // 14. Stamp when live points were last calculated
       await admin.from("matches").update({ live_scores_at: new Date().toISOString() }).eq("id", match.id)
+
+      // 14b. Generate banter for noteworthy events
+      try {
+        // Load display names for league members
+        const userIds = selections.map((s) => s.user_id)
+        const { data: profiles } = await admin
+          .from("profiles")
+          .select("id, display_name")
+          .in("id", userIds)
+        const nameMap = new Map((profiles ?? []).map((p) => [p.id, p.display_name ?? "Unknown"]))
+
+        // Build player name lookup from dbPlayers
+        const playerNameMap = new Map(dbPlayers.map((p) => [p.id, p.name]))
+
+        const banterRows: Array<{ match_id: string; user_id: string; player_id: string; message: string; event_type: string }> = []
+
+        for (const sel of selections) {
+          const memberName = nameMap.get(sel.user_id) ?? "Unknown"
+          const playerIds = playersBySelection.get(sel.id) ?? []
+
+          for (const pid of playerIds) {
+            const ps = scoreRows.find((r) => r.player_id === pid)
+            if (!ps) continue
+
+            const events = detectBanterEvents(
+              {
+                player_id: pid,
+                playerName: playerNameMap.get(pid) ?? "Unknown",
+                runs: ps.runs,
+                balls_faced: ps.balls_faced,
+                wickets: ps.wickets,
+                overs_bowled: Number(ps.overs_bowled),
+                runs_conceded: ps.runs_conceded,
+                fantasy_points: ps.fantasy_points,
+              },
+              {
+                memberName,
+                isCaptain: sel.captain_id === pid,
+                isViceCaptain: sel.vice_captain_id === pid,
+              }
+            )
+
+            for (const evt of events) {
+              const msg = generateBanter(evt)
+              if (msg) {
+                banterRows.push({ match_id: match.id, user_id: sel.user_id, player_id: pid, message: msg, event_type: evt.type })
+              }
+            }
+          }
+        }
+
+        // Rank-based banter
+        const sorted = [...userScores].sort((a, b) => b.total - a.total)
+        for (const us of sorted) {
+          const rank = us.rank
+          const evt = detectRankBanter(nameMap.get(us.userId) ?? "Unknown", rank, sorted.length)
+          if (evt) {
+            const msg = generateBanter(evt)
+            if (msg) {
+              banterRows.push({ match_id: match.id, user_id: us.userId, player_id: us.userId, message: msg, event_type: evt.type })
+            }
+          }
+        }
+
+        // Upsert banter (dedup by unique index on match_id, user_id, player_id, event_type)
+        if (banterRows.length > 0) {
+          await admin.from("match_banter").upsert(
+            banterRows,
+            { onConflict: "match_id,user_id,player_id,event_type" }
+          )
+        }
+      } catch {
+        // Banter generation is non-critical — don't fail the cron
+      }
 
       // 15. Auto-detect match finished — only check API when both innings have data
       if (result.innings.length >= 2) {

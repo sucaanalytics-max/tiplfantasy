@@ -56,12 +56,13 @@ export default async function LeagueDetailPage({
     memberSelections: Array<{ user_id: string; captain_id: string | null; vice_captain_id: string | null; player_ids: string[] }>
     playerPoints: Record<string, number>
     playerNames: Record<string, { name: string; role: string }>
+    banter?: Array<{ message: string; event_type: string; created_at: string }>
   }
   let liveMatchData: LiveMatchData | null = null
 
   if (liveMatchRow) {
     const matchId = liveMatchRow.id
-    const [{ data: memberScoresRaw }, { data: selectionsRaw }, { data: playerScoresRaw }] = await Promise.all([
+    const [{ data: memberScoresRaw }, { data: selectionsRaw }, { data: playerScoresRaw }, { data: banterRaw }] = await Promise.all([
       admin.from("user_match_scores")
         .select("user_id, total_points, captain_points, vc_points")
         .eq("match_id", matchId)
@@ -74,6 +75,12 @@ export default async function LeagueDetailPage({
       admin.from("match_player_scores")
         .select("player_id, fantasy_points, player:players(name, role)")
         .eq("match_id", matchId),
+      admin.from("match_banter")
+        .select("message, event_type, created_at")
+        .eq("match_id", matchId)
+        .in("user_id", memberIds)
+        .order("created_at", { ascending: false })
+        .limit(20),
     ])
 
     const playerPoints: Record<string, number> = {}
@@ -101,6 +108,11 @@ export default async function LeagueDetailPage({
       })),
       playerPoints,
       playerNames: playerNamesMap,
+      banter: (banterRaw ?? []).map((b) => ({
+        message: b.message,
+        event_type: b.event_type,
+        created_at: b.created_at,
+      })),
     }
   }
 
