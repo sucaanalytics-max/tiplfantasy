@@ -49,11 +49,16 @@ export default async function LeagueMatchPage({
     ),
   ]
 
-  const [{ data: players }, { data: matchPlayerScores }] = await Promise.all([
+  const [{ data: players }, { data: matchPlayerScores }, { data: memberScoresRaw }] = await Promise.all([
     allPlayerIds.length > 0
       ? admin.from("players").select("*, team:teams(*)").in("id", allPlayerIds)
       : Promise.resolve({ data: [] }),
     admin.from("match_player_scores").select("player_id, fantasy_points").eq("match_id", matchId),
+    admin.from("user_match_scores")
+      .select("user_id, total_points, rank, captain_points, vc_points, breakdown")
+      .eq("match_id", matchId)
+      .in("user_id", memberIds)
+      .order("total_points", { ascending: false }),
   ])
 
   // Build player_id → fantasy_points lookup
@@ -77,6 +82,17 @@ export default async function LeagueMatchPage({
     player_ids: (s.selection_players as { player_id: string }[]).map((sp) => sp.player_id),
   }))
 
+  // Build league member scores with display names
+  const memberScores = (memberScoresRaw ?? []).map((s) => ({
+    user_id: s.user_id,
+    display_name: memberNames[s.user_id] ?? "Unknown",
+    total_points: Number(s.total_points),
+    rank: s.rank as number | null,
+    captain_points: Number(s.captain_points),
+    vc_points: Number(s.vc_points),
+    breakdown: s.breakdown as Record<string, number> | null,
+  }))
+
   return (
     <LeagueMatchClient
       leagueId={leagueId}
@@ -86,6 +102,7 @@ export default async function LeagueMatchPage({
       memberSelections={memberSelections}
       players={(players ?? []) as unknown as PlayerWithTeam[]}
       playerPoints={playerPointsMap}
+      memberScores={memberScores}
     />
   )
 }
