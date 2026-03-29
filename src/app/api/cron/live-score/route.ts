@@ -250,7 +250,7 @@ export async function GET(req: NextRequest) {
         // Build player name lookup from dbPlayers
         const playerNameMap = new Map(dbPlayers.map((p) => [p.id, p.name]))
 
-        const banterRows: Array<{ match_id: string; user_id: string; player_id: string; message: string; event_type: string }> = []
+        const banterRows: Array<{ match_id: string; user_id: string; player_id: string | null; message: string; event_type: string }> = []
 
         for (const sel of selections) {
           const memberName = nameMap.get(sel.user_id) ?? "Unknown"
@@ -295,17 +295,15 @@ export async function GET(req: NextRequest) {
           if (evt) {
             const msg = generateBanter(evt)
             if (msg) {
-              banterRows.push({ match_id: match.id, user_id: us.userId, player_id: us.userId, message: msg, event_type: evt.type })
+              banterRows.push({ match_id: match.id, user_id: us.userId, player_id: null, message: msg, event_type: evt.type })
             }
           }
         }
 
-        // Upsert banter (dedup by unique index on match_id, user_id, player_id, event_type)
+        // Insert banter — delete old first to avoid duplicates (simpler than upsert with NULLs)
         if (banterRows.length > 0) {
-          await admin.from("match_banter").upsert(
-            banterRows,
-            { onConflict: "match_id,user_id,player_id,event_type" }
-          )
+          await admin.from("match_banter").delete().eq("match_id", match.id)
+          await admin.from("match_banter").insert(banterRows)
         }
       } catch {
         // Banter generation is non-critical — don't fail the cron

@@ -589,7 +589,7 @@ export async function generateMatchBanter(matchId: string): Promise<{ generated?
     .order("total_points", { ascending: false })
 
   const psMap = new Map(playerScores.map((ps) => [ps.player_id, ps]))
-  const banterRows: Array<{ match_id: string; user_id: string; player_id: string; message: string; event_type: string }> = []
+  const banterRows: Array<{ match_id: string; user_id: string; player_id: string | null; message: string; event_type: string }> = []
 
   for (const sel of selections) {
     const memberName = (sel.profile as unknown as { display_name: string })?.display_name ?? "Unknown"
@@ -634,7 +634,7 @@ export async function generateMatchBanter(matchId: string): Promise<{ generated?
       const evt = detectRankBanter(memberName, rank, userScores.length)
       if (evt) {
         const msg = generateBanter(evt)
-        if (msg) banterRows.push({ match_id: matchId, user_id: us.user_id, player_id: us.user_id, message: msg, event_type: evt.type })
+        if (msg) banterRows.push({ match_id: matchId, user_id: us.user_id, player_id: null, message: msg, event_type: evt.type })
       }
     }
   }
@@ -642,7 +642,9 @@ export async function generateMatchBanter(matchId: string): Promise<{ generated?
   if (banterRows.length === 0) return { generated: 0 }
 
   // Upsert (dedup by unique index)
-  const { error } = await admin.from("match_banter").upsert(banterRows, { onConflict: "match_id,user_id,player_id,event_type" })
+  // Delete existing banter for this match before regenerating
+  await admin.from("match_banter").delete().eq("match_id", matchId)
+  const { error } = await admin.from("match_banter").insert(banterRows)
   if (error) return { error: error.message }
 
   return { generated: banterRows.length }
