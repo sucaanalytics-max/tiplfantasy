@@ -229,60 +229,57 @@ export function ScoresClient({
             {myXI.length === 0 ? (
               <p className="text-sm text-muted-foreground text-center py-8">You didn&apos;t pick a team for this match.</p>
             ) : (
-              <div className="space-y-1">
+              <div className="rounded-lg overflow-hidden border border-border/30 bg-[hsl(var(--background))]">
                 {/* Table header */}
-                <div className="grid grid-cols-[2.5rem_1fr_2rem_2rem_2rem_2rem_3.5rem] gap-1 px-3 py-1.5 text-[10px] text-muted-foreground uppercase tracking-wider font-medium">
-                  <span>Role</span>
+                <div className="grid grid-cols-[2.5rem_1fr_2rem_2rem_2rem_2rem_3.5rem] gap-1 px-3 py-2 text-[10px] text-muted-foreground/70 uppercase tracking-widest font-semibold border-b border-border/40 bg-secondary/30">
+                  <span></span>
                   <span>Player</span>
                   <span className="text-right">R</span>
                   <span className="text-right">B</span>
                   <span className="text-right">4s</span>
                   <span className="text-right">6s</span>
-                  <span className="text-right font-bold">Pts</span>
+                  <span className="text-right">Pts</span>
                 </div>
 
-                {myXI.map((ps) => {
+                {myXI.map((ps, idx) => {
                   const role = ps.player.role
                   const hasBowled = Number(ps.overs_bowled) > 0
+                  const isLast = idx === myXI.length - 1
                   return (
                     <div key={ps.player_id} className={cn(
-                      "rounded-lg border-l-[3px] bg-secondary/40",
-                      ROLE_BORDER[role] ?? "border-l-border"
+                      !isLast && "border-b border-border/15"
                     )}>
                       {/* Main row */}
-                      <div className="grid grid-cols-[2.5rem_1fr_2rem_2rem_2rem_2rem_3.5rem] gap-1 items-center px-3 py-2">
+                      <div className="grid grid-cols-[2.5rem_1fr_2rem_2rem_2rem_2rem_3.5rem] gap-1 items-center px-3 py-1.5">
                         <div className="flex items-center gap-0.5">
-                          {ps.isC && <span className="text-[9px] font-bold text-amber-400">C</span>}
-                          {ps.isVC && <span className="text-[9px] font-bold text-sky-400">VC</span>}
-                          <Badge variant="outline" className={cn("text-[9px] px-1 py-0 h-4 border", ROLE_COLORS[role])}>
+                          {ps.isC && <span className="text-[8px] font-bold text-amber-400 mr-px">C</span>}
+                          {ps.isVC && <span className="text-[8px] font-bold text-sky-400 mr-px">VC</span>}
+                          <Badge variant="outline" className={cn("text-[8px] px-1 py-0 h-[14px] border leading-none", ROLE_COLORS[role])}>
                             {role}
                           </Badge>
                         </div>
-                        <div className="min-w-0">
-                          <p className="text-sm font-medium truncate">{ps.player.name}</p>
-                          <p className="text-[10px] text-muted-foreground" style={{ color: ps.player.team.color }}>{ps.player.team.short_name}</p>
-                        </div>
-                        <span className="text-sm text-right tabular-nums">{ps.runs > 0 ? ps.runs : "-"}</span>
-                        <span className="text-sm text-right tabular-nums text-muted-foreground">{ps.balls_faced > 0 ? ps.balls_faced : "-"}</span>
-                        <span className="text-sm text-right tabular-nums text-muted-foreground">{ps.fours > 0 ? ps.fours : "-"}</span>
-                        <span className="text-sm text-right tabular-nums text-muted-foreground">{ps.sixes > 0 ? ps.sixes : "-"}</span>
+                        <span className="text-[13px] font-medium truncate text-foreground">{ps.player.name}</span>
+                        <span className="text-[13px] text-right tabular-nums text-foreground">{ps.runs > 0 ? ps.runs : "-"}</span>
+                        <span className="text-[13px] text-right tabular-nums text-muted-foreground/60">{ps.balls_faced > 0 ? ps.balls_faced : "-"}</span>
+                        <span className="text-[13px] text-right tabular-nums text-muted-foreground/60">{ps.fours > 0 ? ps.fours : "-"}</span>
+                        <span className="text-[13px] text-right tabular-nums text-muted-foreground/60">{ps.sixes > 0 ? ps.sixes : "-"}</span>
                         <div className="text-right">
-                          <span className="text-sm font-bold font-display tabular-nums">{ps.effective}</span>
+                          <span className="text-[13px] font-bold font-display tabular-nums text-foreground">{ps.effective}</span>
                           {ps.mult > 1 && (
-                            <p className="text-[9px] text-muted-foreground">{Number(ps.fantasy_points)}×{ps.mult}</p>
+                            <p className="text-[8px] text-muted-foreground/50">{Number(ps.fantasy_points)}×{ps.mult}</p>
                           )}
                         </div>
                       </div>
 
                       {/* Bowling sub-row */}
                       {hasBowled && (
-                        <div className="grid grid-cols-[2.5rem_1fr_2rem_2rem_2rem_2rem_3.5rem] gap-1 px-3 pb-1.5 text-[10px] text-muted-foreground">
+                        <div className="grid grid-cols-[2.5rem_1fr_2rem_2rem_2rem_2rem_3.5rem] gap-1 px-3 pb-1 -mt-0.5 text-[10px]">
                           <span />
-                          <span className="text-purple-400/70">Bowl</span>
-                          <span className="text-right">{ps.wickets}w</span>
-                          <span className="text-right">{ps.overs_bowled}ov</span>
-                          <span className="text-right">{ps.runs_conceded}rc</span>
-                          <span className="text-right">{ps.maidens}m</span>
+                          <span className="text-purple-400/50 font-medium">Bowling</span>
+                          <span className="text-right text-muted-foreground/50">{ps.wickets}w</span>
+                          <span className="text-right text-muted-foreground/50">{ps.overs_bowled}ov</span>
+                          <span className="text-right text-muted-foreground/50">{ps.runs_conceded}rc</span>
+                          <span className="text-right text-muted-foreground/50">{ps.maidens}m</span>
                           <span />
                         </div>
                       )}
@@ -290,18 +287,18 @@ export function ScoresClient({
                   )
                 })}
 
-                {/* Fielding summary */}
+                {/* Fielding summary — bottom row of the table */}
                 {(() => {
                   const totalCatches = myXI.reduce((s, p) => s + p.catches, 0)
                   const totalStumpings = myXI.reduce((s, p) => s + p.stumpings, 0)
                   const totalRunOuts = myXI.reduce((s, p) => s + p.run_outs, 0)
                   if (totalCatches + totalStumpings + totalRunOuts === 0) return null
                   return (
-                    <div className="flex items-center gap-3 px-3 py-2 text-[10px] text-muted-foreground bg-secondary/20 rounded-lg mt-1">
-                      <span className="font-medium uppercase tracking-wider">Fielding</span>
-                      {totalCatches > 0 && <span>{totalCatches} catches</span>}
-                      {totalStumpings > 0 && <span>{totalStumpings} stumpings</span>}
-                      {totalRunOuts > 0 && <span>{totalRunOuts} run-outs</span>}
+                    <div className="flex items-center gap-3 px-3 py-1.5 text-[10px] text-muted-foreground/50 border-t border-border/20 bg-secondary/10">
+                      <span className="font-semibold uppercase tracking-widest text-muted-foreground/40">Field</span>
+                      {totalCatches > 0 && <span>{totalCatches}c</span>}
+                      {totalStumpings > 0 && <span>{totalStumpings}st</span>}
+                      {totalRunOuts > 0 && <span>{totalRunOuts}ro</span>}
                     </div>
                   )
                 })()}
