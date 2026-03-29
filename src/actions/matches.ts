@@ -5,7 +5,7 @@ import { createAdminClient } from "@/lib/supabase/admin"
 import { fetchSquad, fetchScorecard, fetchMatchPoints, fetchSeriesInfo, parseScorecardToStats, fuzzyMatchName, testMatchPointsEndpoint, SPORTMONKS_TEAM_MAP } from "@/lib/api/sportmonks"
 import { savePlayerScores, calculateMatchPoints } from "@/actions/scoring"
 import type { PlayerStats } from "@/lib/scoring"
-import { formatMatchMemo, detectBanterEvents, detectRankBanter, generateBanter } from "@/lib/banter"
+import { formatMatchMemo, detectBanterEvents, detectRankBanter, generateBanter, type MemoHighlights } from "@/lib/banter"
 
 async function requireAdmin() {
   const supabase = await createClient()
@@ -500,7 +500,7 @@ export async function confirmSeriesImport(
   return { success: true, updated, created }
 }
 
-/** Generate a post-match memo with scores + banter for WhatsApp sharing */
+/** Generate a rich post-match memo with highlights + banter for WhatsApp sharing */
 export async function getMatchMemo(matchId: string): Promise<{ memo?: string; error?: string }> {
   await requireAdmin()
   const admin = createAdminClient()
@@ -513,9 +513,9 @@ export async function getMatchMemo(matchId: string): Promise<{ memo?: string; er
 
   if (!match) return { error: "Match not found" }
 
-  const [{ data: userScores }, { data: banter }] = await Promise.all([
+  const [{ data: userScores }, { data: banter }, { data: playerScores }, { data: selectionsRaw }] = await Promise.all([
     admin.from("user_match_scores")
-      .select("user_id, total_points, rank, profile:profiles(display_name)")
+      .select("user_id, total_points, rank, captain_points, profile:profiles(display_name)")
       .eq("match_id", matchId)
       .order("rank", { ascending: true }),
     admin.from("match_banter")
@@ -523,28 +523,114 @@ export async function getMatchMemo(matchId: string): Promise<{ memo?: string; er
       .eq("match_id", matchId)
       .order("created_at", { ascending: true })
       .limit(10),
+    admin.from("match_player_scores")
+      .select("player_id, runs, balls_faced, wickets, overs_bowled, runs_conceded, catches, stumpings, fantasy_points, player:players(name)")
+      .eq("match_id", matchId)
+      .order("fantasy_points", { ascending: false }),
+    admin.from("selections")
+      .select("user_id, captain_id, selection_players(player_id), profile:profiles(display_name), captain:players!selections_captain_id_fkey(name)")
+      .eq("match_id", matchId),
   ])
-
-  // Get captain names
-  const { data: selections } = await admin
-    .from("selections")
-    .select("user_id, captain:players!selections_captain_id_fkey(name)")
-    .eq("match_id", matchId)
-    .not("captain_id", "is", null)
-
-  const captainMap = new Map<string, string>()
-  for (const s of selections ?? []) {
-    captainMap.set(s.user_id, (s.captain as unknown as { name: string })?.name ?? "—")
-  }
 
   const home = (match.team_home as unknown as { short_name: string }).short_name
   const away = (match.team_away as unknown as { short_name: string }).short_name
+
+  // Captain name map
+  const captainMap = new Map<string, string>()
+  for (const s of selectionsRaw ?? []) {
+    if (s.captain_id) {
+      captainMap.set(s.user_id, (s.captain as unknown as { name: string })?.name ?? "—")
+    }
+  }
 
   const rankedUsers = (userScores ?? []).map((s) => ({
     name: (s.profile as unknown as { display_name: string })?.display_name ?? "Unknown",
     points: Number(s.total_points),
     captainName: captainMap.get(s.user_id) ?? null,
   }))
+
+  // Build highlights
+  const highlights: MemoHighlights = {}
+  const ps = playerScores ?? []
+
+  // Top scorer (by runs)
+  const topBat = [...ps].sort((a, b) => b.runs - a.runs)[0]
+  if (topBat && topBat.runs > 0) {
+    highlights.topScorer = {
+      name: (topBat.player as unknown as { name: string })?.name ?? "?",
+      runs: topBat.runs,
+      balls: topBat.balls_faced,
+      pts: Number(topBat.fantasy_points),
+    }
+  }
+
+  // Best bowler (by wickets, then economy)
+  const topBowl = [...ps].filter((p) => Number(p.overs_bowled) > 0).sort((a, b) => b.wickets - a.wickets || a.runs_conceded - b.runs_conceded)[0]
+  if (topBowl && topBowl.wickets > 0) {
+    highlights.bestBowler = {
+      name: (topBowl.player as unknown as { name: string })?.name ?? "?",
+      wickets: topBowl.wickets,
+      runs: topBowl.runs_conceded,
+      overs: Number(topBowl.overs_bowled),
+      pts: Number(topBowl.fantasy_points),
+    }
+  }
+
+  // Best fielder
+  const topFielder = [...ps].sort((a, b) => (b.catches + b.stumpings) - (a.catches + a.stumpings))[0]
+  if (topFielder && (topFielder.catches + topFielder.stumpings) >= 2) {
+    highlights.bestFielder = {
+      name: (topFielder.player as unknown as { name: string })?.name ?? "?",
+      catches: topFielder.catches + topFielder.stumpings,
+    }
+  }
+
+  // Highest fantasy points player
+  const topFantasy = ps[0]
+  if (topFantasy) {
+    highlights.highestFantasy = {
+      name: (topFantasy.player as unknown as { name: string })?.name ?? "?",
+      pts: Number(topFantasy.fantasy_points),
+    }
+  }
+
+  // Best captain pick (highest captain_points)
+  const bestCapUser = [...(userScores ?? [])].sort((a, b) => Number(b.captain_points) - Number(a.captain_points))[0]
+  if (bestCapUser && Number(bestCapUser.captain_points) > 0) {
+    const capName = captainMap.get(bestCapUser.user_id)
+    const ownerName = (bestCapUser.profile as unknown as { display_name: string })?.display_name ?? "?"
+    const capPts = Number(bestCapUser.captain_points)
+    if (capName) {
+      highlights.bestCaptainPick = {
+        playerName: capName,
+        ownerName,
+        basePts: Math.round(capPts),
+        effectivePts: Math.round(capPts * 2),
+      }
+    }
+  }
+
+  // Differential pick (high points, picked by few)
+  const selectionCounts = new Map<string, number>()
+  for (const s of selectionsRaw ?? []) {
+    for (const sp of (s.selection_players as { player_id: string }[])) {
+      selectionCounts.set(sp.player_id, (selectionCounts.get(sp.player_id) ?? 0) + 1)
+    }
+  }
+  const totalUsers = (selectionsRaw ?? []).length
+  const differentials = ps
+    .filter((p) => {
+      const count = selectionCounts.get(p.player_id) ?? 0
+      return count > 0 && count <= Math.ceil(totalUsers * 0.4) && Number(p.fantasy_points) >= 40
+    })
+    .sort((a, b) => Number(b.fantasy_points) - Number(a.fantasy_points))
+  if (differentials[0]) {
+    highlights.differentialPick = {
+      playerName: (differentials[0].player as unknown as { name: string })?.name ?? "?",
+      pickedBy: selectionCounts.get(differentials[0].player_id) ?? 0,
+      pts: Number(differentials[0].fantasy_points),
+    }
+  }
 
   const banterMessages = (banter ?? []).map((b) => b.message)
 
@@ -555,6 +641,7 @@ export async function getMatchMemo(matchId: string): Promise<{ memo?: string; er
     match.result_summary,
     rankedUsers,
     banterMessages,
+    highlights,
   )
 
   return { memo }
