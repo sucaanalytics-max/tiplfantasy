@@ -263,6 +263,20 @@ export default async function DashboardPage() {
                     </Link>
                   )}
                 </div>
+                {myLeagues.length > 0 && (
+                  <div className="flex items-center gap-2 px-1">
+                    {myLeagues.slice(0, 2).map((league) => (
+                      <Link
+                        key={league.id}
+                        href={`/leagues/${league.id}/match/${match.id}`}
+                        className="text-[11px] text-muted-foreground hover:text-foreground transition-colors flex items-center gap-1"
+                      >
+                        <Users className="h-3 w-3" />
+                        {league.name} →
+                      </Link>
+                    ))}
+                  </div>
+                )}
               </div>
             )
           })}

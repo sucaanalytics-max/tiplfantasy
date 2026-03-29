@@ -3,8 +3,11 @@
 import { useState, useTransition, useRef, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
-import { formatIST } from "@/lib/utils"
-import { Copy, Check, Share2, Trash2, ArrowLeft, Users, Trophy, Swords, Zap, Crown, Target, ChevronRight, GitCompareArrows, type LucideIcon } from "lucide-react"
+import { cn, formatIST } from "@/lib/utils"
+import { Copy, Check, Share2, Trash2, ArrowLeft, Users, Trophy, Swords, Zap, Crown, Target, ChevronRight, ChevronDown, GitCompareArrows, Radio, type LucideIcon } from "lucide-react"
+import { LiveRefresher } from "@/components/live-refresher"
+import { LiveScoreWidget } from "@/components/live-score-widget"
+import { getInitials as getAvatarInitials, getAvatarColor } from "@/lib/avatar"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -38,6 +41,18 @@ type LockedMatch = {
   team_away: { short_name: string; color: string }
 }
 
+type LiveMatchData = {
+  match: {
+    id: string; match_number: number; status: string; cricapi_match_id: string | null; start_time: string
+    team_home: { short_name: string; color: string; logo_url: string | null }
+    team_away: { short_name: string; color: string; logo_url: string | null }
+  }
+  memberScores: Array<{ user_id: string; display_name: string; total_points: number; captain_points: number; vc_points: number }>
+  memberSelections: Array<{ user_id: string; captain_id: string | null; vice_captain_id: string | null; player_ids: string[] }>
+  playerPoints: Record<string, number>
+  playerNames: Record<string, { name: string; role: string }>
+}
+
 type Props = {
   league: League
   members: MemberProfile[]
@@ -46,15 +61,18 @@ type Props = {
   awards: LeagueMemberStats[]
   matchScores: LeagueMatchScore[]
   lockedMatches: LockedMatch[]
+  liveMatchData?: LiveMatchData | null
+  currentUserId?: string
 }
 
 const MEDALS = ["\u{1F947}", "\u{1F948}", "\u{1F949}"] as const
 
-export function LeagueDetailClient({ league, members, isCreator, leaderboard, awards, matchScores, lockedMatches }: Props) {
+export function LeagueDetailClient({ league, members, isCreator, leaderboard, awards, matchScores, lockedMatches, liveMatchData, currentUserId }: Props) {
   const router = useRouter()
   const [isPending, startTransition] = useTransition()
   const [copied, setCopied] = useState(false)
   const [deleteOpen, setDeleteOpen] = useState(false)
+  const [liveExpandedId, setLiveExpandedId] = useState<string | null>(null)
 
   const copyTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
@@ -230,8 +248,17 @@ export function LeagueDetailClient({ league, members, isCreator, leaderboard, aw
       </div>{/* end left column */}
       {/* Right column — leaderboard + match teams */}
       <div className="lg:col-span-2 mt-6 lg:mt-0">
-      <Tabs defaultValue="leaderboard">
-        <TabsList className="w-full grid grid-cols-3 mb-6">
+      <Tabs defaultValue={liveMatchData ? "live" : "leaderboard"}>
+        <TabsList className={cn("w-full mb-6", liveMatchData ? "grid grid-cols-4" : "grid grid-cols-3")}>
+          {liveMatchData && (
+            <TabsTrigger value="live" className="gap-1.5">
+              <span className="relative flex h-3.5 w-3.5 items-center justify-center">
+                <Radio className="h-3.5 w-3.5 text-red-400" />
+                <span className="absolute -top-0.5 -right-0.5 h-1.5 w-1.5 rounded-full bg-red-500 animate-pulse" />
+              </span>
+              Live
+            </TabsTrigger>
+          )}
           <TabsTrigger value="leaderboard" className="gap-1.5">
             <Trophy className="h-3.5 w-3.5" />
             Leaderboard
@@ -245,6 +272,123 @@ export function LeagueDetailClient({ league, members, isCreator, leaderboard, aw
             Prizes
           </TabsTrigger>
         </TabsList>
+
+        {/* ── Live Tab ─────────────────────────────── */}
+        {liveMatchData && (
+          <TabsContent value="live" className="space-y-4">
+            <LiveRefresher interval={30000} />
+
+            {/* Match score header */}
+            <div className="rounded-lg border border-border/40 bg-secondary/20 p-4">
+              <div className="flex items-center justify-center gap-4 mb-2">
+                <span className="text-sm font-bold font-display" style={{ color: liveMatchData.match.team_home.color }}>
+                  {liveMatchData.match.team_home.short_name}
+                </span>
+                <div className="flex items-center gap-1.5 text-xs text-red-400">
+                  <span className="h-1.5 w-1.5 rounded-full bg-red-500 animate-pulse" />
+                  LIVE
+                </div>
+                <span className="text-sm font-bold font-display" style={{ color: liveMatchData.match.team_away.color }}>
+                  {liveMatchData.match.team_away.short_name}
+                </span>
+              </div>
+              <div className="text-center">
+                <LiveScoreWidget
+                  cricapiMatchId={liveMatchData.match.cricapi_match_id}
+                  startTime={liveMatchData.match.start_time}
+                />
+              </div>
+              <p className="text-[10px] text-muted-foreground/50 text-center mt-2">
+                Match #{liveMatchData.match.match_number} · Updates every ~5 min
+              </p>
+            </div>
+
+            {/* League fantasy table */}
+            {liveMatchData.memberScores.length === 0 ? (
+              <p className="text-sm text-muted-foreground text-center py-8">
+                Fantasy points will appear within 5 minutes of the match starting.
+              </p>
+            ) : (
+              <div className="space-y-1">
+                {liveMatchData.memberScores
+                  .sort((a, b) => b.total_points - a.total_points)
+                  .map((member, idx) => {
+                    const isMe = member.user_id === currentUserId
+                    const sel = liveMatchData.memberSelections.find((s) => s.user_id === member.user_id)
+                    const leagueRank = idx + 1
+                    const expanded = liveExpandedId === member.user_id
+
+                    return (
+                      <div key={member.user_id}>
+                        <button
+                          onClick={() => setLiveExpandedId((prev) => prev === member.user_id ? null : member.user_id)}
+                          className={cn(
+                            "w-full flex items-center gap-2.5 px-3 py-2.5 rounded-lg transition-colors",
+                            "hover:bg-secondary/50 active:bg-secondary/70",
+                            isMe && "bg-primary/10 border border-primary/20",
+                            expanded && !isMe && "bg-secondary/30"
+                          )}
+                        >
+                          <span className={cn(
+                            "w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold shrink-0",
+                            leagueRank === 1 && "bg-amber-400/20 text-amber-400",
+                            leagueRank === 2 && "bg-gray-400/20 text-gray-400",
+                            leagueRank === 3 && "bg-amber-600/20 text-amber-600",
+                            leagueRank > 3 && "bg-secondary text-muted-foreground"
+                          )}>
+                            {leagueRank}
+                          </span>
+                          <div className={cn("h-7 w-7 rounded-full flex items-center justify-center shrink-0", getAvatarColor(member.display_name))}>
+                            <span className="text-white text-[10px] font-semibold">{getAvatarInitials(member.display_name)}</span>
+                          </div>
+                          <div className="flex-1 text-left min-w-0">
+                            <p className="text-sm font-medium truncate">
+                              {member.display_name}
+                              {isMe && <span className="text-primary text-[10px] ml-1">(you)</span>}
+                            </p>
+                          </div>
+                          <span className="text-lg font-bold font-display tabular-nums shrink-0">
+                            {member.total_points}
+                          </span>
+                          <ChevronDown className={cn("h-3.5 w-3.5 text-muted-foreground transition-transform shrink-0", expanded && "rotate-180")} />
+                        </button>
+
+                        {expanded && sel && (
+                          <div className="ml-8 mr-2 mb-2 border-t border-border/40 pt-2 space-y-0.5">
+                            {sel.player_ids
+                              .map((pid) => {
+                                const pts = liveMatchData.playerPoints[pid] ?? 0
+                                const pInfo = liveMatchData.playerNames[pid]
+                                const isC = sel.captain_id === pid
+                                const isVC = sel.vice_captain_id === pid
+                                const mult = isC ? 2 : isVC ? 1.5 : 1
+                                const eff = Math.round(pts * mult * 100) / 100
+                                return { pid, name: pInfo?.name ?? "Unknown", role: pInfo?.role ?? "?", pts, isC, isVC, eff }
+                              })
+                              .sort((a, b) => b.eff - a.eff)
+                              .map((p) => (
+                                <div key={p.pid} className="flex items-center gap-2 py-1 text-xs">
+                                  <Badge variant="outline" className={cn("text-[9px] px-1 py-0 h-4 border shrink-0",
+                                    p.role === "WK" ? "text-amber-400 border-amber-400/30 bg-amber-400/10" :
+                                    p.role === "BAT" ? "text-blue-400 border-blue-400/30 bg-blue-400/10" :
+                                    p.role === "AR" ? "text-emerald-400 border-emerald-400/30 bg-emerald-400/10" :
+                                    "text-purple-400 border-purple-400/30 bg-purple-400/10"
+                                  )}>
+                                    {p.isC ? "C" : p.isVC ? "VC" : p.role}
+                                  </Badge>
+                                  <span className="truncate min-w-0 font-medium">{p.name}</span>
+                                  <span className="ml-auto font-bold font-display tabular-nums shrink-0">{p.eff}</span>
+                                </div>
+                              ))}
+                          </div>
+                        )}
+                      </div>
+                    )
+                  })}
+              </div>
+            )}
+          </TabsContent>
+        )}
 
         <TabsContent value="leaderboard" className="space-y-6">
         {/* Leaderboard */}
