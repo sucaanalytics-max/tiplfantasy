@@ -23,7 +23,7 @@ import { Card } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { cn, formatIST } from "@/lib/utils"
 import { validateSelection, ROLE_LIMITS, type ValidationResult } from "@/lib/validation"
-import { submitSelection } from "@/actions/selections"
+import { submitSelection, adminEditSelection } from "@/actions/selections"
 import { TOTAL_BUDGET } from "@/lib/constants"
 import { SegmentedProgressBar } from "@/components/segmented-progress-bar"
 import { CricketField } from "@/components/cricket-field"
@@ -46,6 +46,7 @@ type Props = {
   vsTeamStats: Record<string, PlayerVsTeamStats>
   seasonStats: Record<string, PlayerSeasonStats[]>
   selectionPcts: Record<string, number>
+  adminUserId?: string
 }
 
 const ROLE_ORDER: PlayerRole[] = ["WK", "BAT", "AR", "BOWL"]
@@ -76,6 +77,7 @@ export function PickTeamClient({
   vsTeamStats,
   seasonStats,
   selectionPcts,
+  adminUserId,
 }: Props) {
   const router = useRouter()
   const [isPending, startTransition] = useTransition()
@@ -266,17 +268,18 @@ export function PickTeamClient({
     }
 
     startTransition(async () => {
-      const result = await submitSelection(
-        match.id,
-        Array.from(selectedIds),
-        captainId,
-        viceCaptainId
-      )
+      const result = adminUserId
+        ? await adminEditSelection(match.id, adminUserId, Array.from(selectedIds), captainId, viceCaptainId)
+        : await submitSelection(match.id, Array.from(selectedIds), captainId, viceCaptainId)
       if (result.error) {
         setError(result.error)
       } else {
-        setShowConfetti(true)
-        setShowSubmitPreview(true)
+        if (adminUserId) {
+          router.push(`/admin/match/${match.id}`)
+        } else {
+          setShowConfetti(true)
+          setShowSubmitPreview(true)
+        }
       }
     })
   }

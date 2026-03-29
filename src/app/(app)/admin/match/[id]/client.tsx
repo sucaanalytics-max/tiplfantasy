@@ -12,6 +12,7 @@ import type { MatchWithTeams, PlayerWithTeam, MatchPlayerScore } from "@/lib/typ
 import type { PlayerStats } from "@/lib/scoring"
 import { lockMatch, markNoResult, fetchPlayingXI, fetchMatchScorecard, autoScoreMatch, testMatchPoints } from "@/actions/matches"
 import { savePlayerScores, calculateMatchPoints, calculateLiveMatchPoints } from "@/actions/scoring"
+import { adminUpdateCaptainVc } from "@/actions/selections"
 import { formatMatchMessage } from "@/lib/whatsapp"
 
 type UserScoreRow = {
@@ -23,6 +24,14 @@ type UserScoreRow = {
   displayName: string
 }
 
+type UserSelection = {
+  user_id: string
+  display_name: string
+  captain_id: string | null
+  vice_captain_id: string | null
+  player_ids: string[]
+}
+
 type Props = {
   match: MatchWithTeams
   players: PlayerWithTeam[]
@@ -31,6 +40,7 @@ type Props = {
   userScores: UserScoreRow[]
   seasonTop5: Array<{ displayName: string; totalPoints: number }>
   selectionCount: number
+  userSelections?: UserSelection[]
 }
 
 type ScoreEntry = Record<string, PlayerStats>
@@ -57,12 +67,16 @@ export function AdminMatchClient({
   userScores,
   seasonTop5,
   selectionCount,
+  userSelections = [],
 }: Props) {
   const router = useRouter()
   const [isPending, startTransition] = useTransition()
   const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null)
   const [playingXIIds, setPlayingXIIds] = useState<string[]>(initialXIIds)
   const [fantasyApiResult, setFantasyApiResult] = useState<unknown>(null)
+  const [editUserId, setEditUserId] = useState<string>("")
+  const [editCaptainId, setEditCaptainId] = useState<string>("")
+  const [editVcId, setEditVcId] = useState<string>("")
 
   // Initialize score entries from existing scores or empty
   const initScores = (): ScoreEntry => {
@@ -579,6 +593,111 @@ export function AdminMatchClient({
                 )
               })}
             </div>
+          </CardContent>
+        </Card>
+      )}
+      {/* Edit User Team — C/VC Editor */}
+      {userSelections.length > 0 && (
+        <Card className="border border-border">
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base">Edit User Team</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            {/* User selector */}
+            <div>
+              <label className="text-xs text-muted-foreground mb-1 block">Select User</label>
+              <select
+                value={editUserId}
+                onChange={(e) => {
+                  const uid = e.target.value
+                  setEditUserId(uid)
+                  const sel = userSelections.find((s) => s.user_id === uid)
+                  setEditCaptainId(sel?.captain_id ?? "")
+                  setEditVcId(sel?.vice_captain_id ?? "")
+                }}
+                className="w-full rounded-md border border-border bg-secondary px-3 py-2 text-sm"
+              >
+                <option value="">Choose user...</option>
+                {userSelections.map((s) => (
+                  <option key={s.user_id} value={s.user_id}>{s.display_name}</option>
+                ))}
+              </select>
+            </div>
+
+            {editUserId && (() => {
+              const sel = userSelections.find((s) => s.user_id === editUserId)
+              if (!sel) return null
+              const selPlayers = players.filter((p) => sel.player_ids.includes(p.id))
+
+              return (
+                <div className="space-y-3">
+                  {/* Current XI list */}
+                  <div className="text-xs text-muted-foreground">
+                    XI: {selPlayers.map((p) => p.name).join(", ")}
+                  </div>
+
+                  {/* Captain selector */}
+                  <div>
+                    <label className="text-xs text-muted-foreground mb-1 block">Captain (2×)</label>
+                    <select
+                      value={editCaptainId}
+                      onChange={(e) => setEditCaptainId(e.target.value)}
+                      className="w-full rounded-md border border-border bg-secondary px-3 py-2 text-sm"
+                    >
+                      <option value="">None</option>
+                      {selPlayers.map((p) => (
+                        <option key={p.id} value={p.id}>{p.name} ({p.role})</option>
+                      ))}
+                    </select>
+                  </div>
+
+                  {/* Vice-Captain selector */}
+                  <div>
+                    <label className="text-xs text-muted-foreground mb-1 block">Vice-Captain (1.5×)</label>
+                    <select
+                      value={editVcId}
+                      onChange={(e) => setEditVcId(e.target.value)}
+                      className="w-full rounded-md border border-border bg-secondary px-3 py-2 text-sm"
+                    >
+                      <option value="">None</option>
+                      {selPlayers.filter((p) => p.id !== editCaptainId).map((p) => (
+                        <option key={p.id} value={p.id}>{p.name} ({p.role})</option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div className="flex gap-2">
+                    <Button
+                      size="sm"
+                      disabled={isPending}
+                      onClick={() => {
+                        startTransition(async () => {
+                          const res = await adminUpdateCaptainVc(
+                            match.id,
+                            editUserId,
+                            editCaptainId || null,
+                            editVcId || null
+                          )
+                          if (res.error) showMsg("error", res.error)
+                          else { showMsg("success", "C/VC updated"); router.refresh() }
+                        })
+                      }}
+                    >
+                      Update C/VC
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      asChild
+                    >
+                      <a href={`/match/${match.id}/pick?admin=${editUserId}`}>
+                        Full Edit →
+                      </a>
+                    </Button>
+                  </div>
+                </div>
+              )
+            })()}
           </CardContent>
         </Card>
       )}

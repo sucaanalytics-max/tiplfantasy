@@ -1,14 +1,18 @@
 import { redirect } from "next/navigation"
 import { createClient } from "@/lib/supabase/server"
+import { createAdminClient } from "@/lib/supabase/admin"
 import type { PlayerWithTeam, MatchWithTeams, PlayerVenueStats, PlayerVsTeamStats, PlayerSeasonStats } from "@/lib/types"
 import { PickTeamClient } from "./pick-team-client"
 
 export default async function PickTeamPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ id: string }>
+  searchParams: Promise<{ admin?: string }>
 }) {
   const { id: matchId } = await params
+  const { admin: adminUserId } = await searchParams
   const supabase = await createClient()
 
   const {
@@ -16,8 +20,22 @@ export default async function PickTeamPage({
   } = await supabase.auth.getUser()
   if (!user) redirect("/login")
 
+  // Admin mode: verify the user is actually an admin
+  const isAdminMode = !!adminUserId
+  if (isAdminMode) {
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("is_admin")
+      .eq("id", user.id)
+      .single()
+    if (!profile?.is_admin) redirect("/")
+  }
+
+  const targetUserId = isAdminMode ? adminUserId : user.id
+  const db = isAdminMode ? createAdminClient() : supabase
+
   // Fetch match with teams
-  const { data: match } = await supabase
+  const { data: match } = await db
     .from("matches")
     .select("*, team_home:teams!matches_team_home_id_fkey(*), team_away:teams!matches_team_away_id_fkey(*)")
     .eq("id", matchId)
@@ -27,17 +45,17 @@ export default async function PickTeamPage({
 
   const typedMatch = match as unknown as MatchWithTeams
 
-  // If match isn't upcoming, redirect to scores or matches
-  if (typedMatch.status !== "upcoming") {
-    if (typedMatch.status === "completed" || typedMatch.status === "no_result") {
-      redirect(`/match/${matchId}/scores`)
+  // Non-admin: redirect if match isn't upcoming
+  if (!isAdminMode) {
+    if (typedMatch.status !== "upcoming") {
+      if (typedMatch.status === "completed" || typedMatch.status === "no_result") {
+        redirect(`/match/${matchId}/scores`)
+      }
+      redirect("/matches")
     }
-    redirect("/matches")
-  }
-
-  // Check if match has started
-  if (new Date(typedMatch.start_time) <= new Date()) {
-    redirect("/matches")
+    if (new Date(typedMatch.start_time) <= new Date()) {
+      redirect("/matches")
+    }
   }
 
   // Phase 1: All independent queries in parallel — eliminates sequential waterfalls
@@ -61,11 +79,11 @@ export default async function PickTeamPage({
     // Playing XI if announced
     supabase.from("playing_xi").select("player_id").eq("match_id", matchId),
 
-    // Existing selection with players joined — fixes Waterfall A (was 2 sequential queries)
-    supabase
+    // Existing selection with players joined
+    db
       .from("selections")
       .select("id, captain_id, vice_captain_id, selection_players(player_id)")
-      .eq("user_id", user.id)
+      .eq("user_id", targetUserId)
       .eq("match_id", matchId)
       .maybeSingle(),
 
@@ -193,6 +211,7 @@ export default async function PickTeamPage({
       vsTeamStats={vsTeamStatsMap}
       seasonStats={seasonStatsMap}
       selectionPcts={selectionPcts}
+      adminUserId={isAdminMode ? targetUserId : undefined}
     />
   )
 }

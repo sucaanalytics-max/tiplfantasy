@@ -70,6 +70,20 @@ export default async function AdminMatchPage({
     .select("id", { count: "exact", head: true })
     .eq("match_id", id)
 
+  // Fetch all user selections with player IDs for admin editing
+  const { data: selectionsRaw } = await admin
+    .from("selections")
+    .select("user_id, captain_id, vice_captain_id, selection_players(player_id), profile:profiles(display_name)")
+    .eq("match_id", id)
+
+  const userSelections = (selectionsRaw ?? []).map((s) => ({
+    user_id: s.user_id,
+    display_name: (s.profile as unknown as { display_name: string })?.display_name ?? "Unknown",
+    captain_id: s.captain_id as string | null,
+    vice_captain_id: s.vice_captain_id as string | null,
+    player_ids: (s.selection_players as { player_id: string }[]).map((sp) => sp.player_id),
+  }))
+
   // Season top 5 for WhatsApp message
   const { data: seasonTop5 } = await admin
     .from("season_leaderboard")
@@ -96,6 +110,7 @@ export default async function AdminMatchPage({
         }))
       }
       selectionCount={selectionCount ?? 0}
+      userSelections={userSelections}
     />
   )
 }
