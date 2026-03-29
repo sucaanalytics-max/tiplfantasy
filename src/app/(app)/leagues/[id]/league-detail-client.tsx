@@ -3,7 +3,7 @@
 import { useState, useTransition, useRef, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
-import { format } from "date-fns"
+import { formatIST } from "@/lib/utils"
 import { Copy, Check, Share2, Trash2, ArrowLeft, Users, Trophy, Swords, Zap, Crown, Target, ChevronRight, GitCompareArrows, type LucideIcon } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -336,7 +336,7 @@ export function LeagueDetailClient({ league, members, isCreator, leaderboard, aw
                           <span style={{ color: match.team_away.color }}>{match.team_away.short_name}</span>
                         </p>
                         <p className="text-xs text-muted-foreground">
-                          Match #{match.match_number} · {format(new Date(match.start_time), "MMM d")}
+                          Match #{match.match_number} · {formatIST(match.start_time, "MMM d")}
                         </p>
                       </div>
                     </div>

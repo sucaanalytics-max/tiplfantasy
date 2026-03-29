@@ -2,7 +2,6 @@
 
 import { useState, useTransition, useMemo, useCallback, useRef, useDeferredValue } from "react"
 import { useRouter } from "next/navigation"
-import { format } from "date-fns"
 import { CountdownTimer } from "@/components/countdown-timer"
 import {
   Star,
@@ -22,7 +21,7 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Card } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
-import { cn } from "@/lib/utils"
+import { cn, formatIST } from "@/lib/utils"
 import { validateSelection, ROLE_LIMITS, type ValidationResult } from "@/lib/validation"
 import { submitSelection } from "@/actions/selections"
 import { TOTAL_BUDGET } from "@/lib/constants"
@@ -532,7 +531,7 @@ export function PickTeamClient({
                 </div>
               </div>
               <p className="text-xs text-muted-foreground">
-                {format(new Date(match.start_time), "EEE d MMM, h:mm a")} •{" "}
+                {formatIST(match.start_time, "EEE d MMM, h:mm a")} •{" "}
                 {match.venue}
               </p>
               <CountdownTimer targetTime={match.start_time} variant="compact" />

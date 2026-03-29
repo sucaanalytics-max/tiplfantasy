@@ -3,7 +3,7 @@ import { redirect } from "next/navigation"
 import Link from "next/link"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { format } from "date-fns"
+import { formatIST } from "@/lib/utils"
 import { SeriesImportClient } from "./series-import-client"
 
 export default async function AdminPage() {
@@ -151,7 +151,7 @@ export default async function AdminPage() {
                         {home?.short_name ?? "?"} vs {away?.short_name ?? "?"}
                       </div>
                       <div className="text-xs text-muted-foreground">
-                        {format(new Date(match.start_time), "MMM d, h:mm a")}
+                        {formatIST(match.start_time, "MMM d, h:mm a")}
                       </div>
                     </div>
                   </div>

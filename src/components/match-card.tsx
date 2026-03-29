@@ -2,7 +2,8 @@ import Link from "next/link"
 import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { format, isPast } from "date-fns"
+import { isPast } from "date-fns"
+import { formatIST } from "@/lib/utils"
 import { MapPin, CheckCircle2, ChevronRight, Pencil } from "lucide-react"
 import { TeamLogo } from "@/components/team-logo"
 import { CountdownTimer } from "@/components/countdown-timer"
@@ -80,7 +81,7 @@ export function MatchCard({ match, userPoints, userRank, hasSubmitted, compact =
                 <p className="text-sm font-bold font-display">{userPoints} pts</p>
               ) : (
                 <p className="text-[10px] text-muted-foreground">
-                  {format(new Date(match.start_time), "MMM d, h:mm a")}
+                  {formatIST(match.start_time, "MMM d, h:mm a")}
                 </p>
               )}
             </div>
@@ -161,12 +162,12 @@ export function MatchCard({ match, userPoints, userRank, hasSubmitted, compact =
           </p>
           {isCompleted ? (
             <p className="text-sm text-muted-foreground">
-              {match.result_summary ?? format(startDate, "EEE, MMM d")}
+              {match.result_summary ?? formatIST(match.start_time, "EEE, MMM d")}
             </p>
           ) : (
             <>
               <p className="text-sm font-medium">
-                {format(startDate, "EEE, MMM d · h:mm a")}
+                {formatIST(match.start_time, "EEE, MMM d · h:mm a")}
               </p>
               {!matchStarted && (
                 <div className="pt-1">

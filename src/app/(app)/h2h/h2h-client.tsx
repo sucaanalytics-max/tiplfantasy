@@ -9,7 +9,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { createChallenge, acceptChallenge, cancelChallenge } from "@/actions/h2h"
 import { useRouter } from "next/navigation"
 import { Coins, Swords, Plus, Trophy, Clock, X, Users } from "lucide-react"
-import { format } from "date-fns"
+import { formatIST } from "@/lib/utils"
 
 type UpcomingMatch = {
   id: string
@@ -200,7 +200,7 @@ export function H2HClient({
                   <option value="">Select a match...</option>
                   {upcomingMatches.map((m) => (
                     <option key={m.id} value={m.id}>
-                      #{m.match_number} {m.home} vs {m.away} — {format(new Date(m.start_time), "MMM d, h:mm a")}
+                      #{m.match_number} {m.home} vs {m.away} — {formatIST(m.start_time, "MMM d, h:mm a")}
                     </option>
                   ))}
                 </select>
@@ -302,7 +302,7 @@ function ChallengeCard({
               </span>
               {c.match?.start_time && (
                 <span className="flex items-center gap-1">
-                  <Clock className="h-3 w-3" /> {format(new Date(c.match.start_time), "MMM d")}
+                  <Clock className="h-3 w-3" /> {formatIST(c.match.start_time, "MMM d")}
                 </span>
               )}
             </div>

@@ -7,7 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
 import { Separator } from "@/components/ui/separator"
-import { format } from "date-fns"
+import { formatIST } from "@/lib/utils"
 import type { MatchWithTeams, PlayerWithTeam, MatchPlayerScore } from "@/lib/types"
 import type { PlayerStats } from "@/lib/scoring"
 import { lockMatch, markNoResult, fetchPlayingXI, fetchMatchScorecard, autoScoreMatch, testMatchPoints } from "@/actions/matches"
@@ -297,7 +297,7 @@ export function AdminMatchClient({
             <span style={{ color: match.team_away.color }}>{match.team_away.short_name}</span>
           </p>
           <p className="text-sm text-muted-foreground mt-1">
-            {match.venue} &middot; {format(new Date(match.start_time), "MMM d, yyyy h:mm a")}
+            {match.venue} &middot; {formatIST(match.start_time, "MMM d, yyyy h:mm a")}
           </p>
           <p className="text-sm text-muted-foreground">
             {selectionCount} selection{selectionCount !== 1 ? "s" : ""}

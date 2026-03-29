@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { previewSeriesImport, confirmSeriesImport } from "@/actions/matches"
 import type { SeriesImportProposal } from "@/actions/matches"
-import { format } from "date-fns"
+import { formatIST } from "@/lib/utils"
 
 export function SeriesImportClient() {
   const [seriesId, setSeriesId] = useState("")
@@ -127,7 +127,7 @@ export function SeriesImportClient() {
                   <div key={p.apiMatchId} className="flex gap-2">
                     <span className="text-muted-foreground w-6 shrink-0">#{p.proposedMatchNumber}</span>
                     <span className="truncate flex-1">{p.teams.join(" vs ")}</span>
-                    <span className="text-muted-foreground shrink-0">{format(new Date(p.dateTimeGMT), "MMM d")}</span>
+                    <span className="text-muted-foreground shrink-0">{formatIST(p.dateTimeGMT, "MMM d")}</span>
                   </div>
                 ))}
               </div>

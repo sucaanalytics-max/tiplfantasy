@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs"
 import { format } from "date-fns"
+import { formatIST, toIST } from "@/lib/utils"
 import { CountdownTimer } from "@/components/countdown-timer"
 import { TeamLogo } from "@/components/team-logo"
 import { Swords } from "lucide-react"
@@ -38,7 +39,7 @@ function getTabForStatus(status: string): TabKey {
 function groupByDate(matches: Match[]) {
   const grouped = new Map<string, Match[]>()
   for (const match of matches) {
-    const dateKey = format(new Date(match.start_time), "yyyy-MM-dd")
+    const dateKey = format(toIST(match.start_time), "yyyy-MM-dd")
     if (!grouped.has(dateKey)) grouped.set(dateKey, [])
     grouped.get(dateKey)!.push(match)
   }
@@ -119,7 +120,7 @@ export function MatchList({
             {Array.from(grouped.entries()).map(([dateKey, dayMatches]) => (
               <div key={dateKey} className="space-y-3">
                 <h2 className="flex items-center gap-3 text-sm font-semibold text-muted-foreground uppercase tracking-wide">
-                  {format(new Date(dateKey), "EEEE, MMMM d")}
+                  {format(new Date(dateKey), "EEEE, MMMM d")}{/* dateKey already in IST */}
                   <div className="flex-1 h-px bg-border" />
                 </h2>
                 <div className="lg:grid lg:grid-cols-2 lg:gap-4 space-y-3 lg:space-y-0">
@@ -168,7 +169,7 @@ export function MatchList({
                           </div>
 
                           <div className="text-right text-xs text-muted-foreground">
-                            <p>{format(new Date(match.start_time), "h:mm a")}</p>
+                            <p>{formatIST(match.start_time, "h:mm a")}</p>
                             <p className="truncate max-w-[160px]">{match.venue}</p>
                             {match.status === "upcoming" && (
                               <CountdownTimer targetTime={match.start_time} variant="compact" />
