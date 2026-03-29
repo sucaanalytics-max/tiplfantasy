@@ -177,9 +177,6 @@ export function LeagueDetailClient({ league, members, isCreator, leaderboard, aw
                     <AvatarInitial name={name} />
                     <div className="min-w-0">
                       <span className="text-sm truncate block">{name}</span>
-                      {member.user_id === league.creator_id && (
-                        <span className="text-[10px] text-muted-foreground">Creator</span>
-                      )}
                     </div>
                   </div>
                 </div>
