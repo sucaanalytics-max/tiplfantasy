@@ -130,7 +130,7 @@ export function LeagueDetailClient({ league, members, isCreator, leaderboard, aw
 
   return (
     <div className="p-4 md:p-6 space-y-6 max-w-3xl lg:max-w-5xl">
-      {/* Header */}
+      {/* Header with compact invite code */}
       <div className="flex items-center gap-3">
         <Link href="/leagues">
           <Button variant="ghost" size="sm" className="h-9 w-9 p-0" aria-label="Back to leagues">
@@ -142,115 +142,93 @@ export function LeagueDetailClient({ league, members, isCreator, leaderboard, aw
           <div className="flex items-center gap-2 mt-1">
             <Badge variant="secondary" className="gap-1">
               <Users className="h-3 w-3" />
-              {members.length} {members.length === 1 ? "member" : "members"}
+              {members.length}
             </Badge>
+            <button onClick={copyCode} className="flex items-center gap-1 text-[10px] text-muted-foreground hover:text-foreground transition-colors font-mono">
+              {copied ? <Check className="h-3 w-3" /> : <Copy className="h-3 w-3" />}
+              {league.invite_code}
+            </button>
           </div>
+        </div>
+        <div className="flex gap-1.5 shrink-0">
+          <Button variant="outline" size="sm" onClick={handleShare} className="h-8 w-8 p-0">
+            <Share2 className="h-3.5 w-3.5" />
+          </Button>
+          {isCreator ? (
+            <Dialog open={deleteOpen} onOpenChange={setDeleteOpen}>
+              <DialogTrigger asChild>
+                <Button variant="outline" size="sm" className="h-8 w-8 p-0 text-destructive hover:text-destructive">
+                  <Trash2 className="h-3.5 w-3.5" />
+                </Button>
+              </DialogTrigger>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>Delete League</DialogTitle>
+                  <DialogDescription>
+                    This will permanently delete &quot;{league.name}&quot; and remove all members.
+                  </DialogDescription>
+                </DialogHeader>
+                <DialogFooter className="gap-2">
+                  <Button variant="outline" onClick={() => setDeleteOpen(false)}>Cancel</Button>
+                  <Button variant="destructive" onClick={handleDelete} disabled={isPending}>
+                    {isPending ? "Deleting..." : "Delete"}
+                  </Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
+          ) : (
+            <Button variant="outline" size="sm" onClick={handleLeave} disabled={isPending} className="h-8 text-xs">
+              Leave
+            </Button>
+          )}
         </div>
       </div>
 
-      <div className="lg:grid lg:grid-cols-3 lg:gap-6">
-      {/* Left column — invite, members, actions */}
-      <div className="lg:col-span-1 space-y-6">
-
-      {/* Invite Code */}
-      <Card className="border border-border">
-        <CardContent className="pt-4 pb-4">
-          <div className="flex items-center justify-between gap-3">
-            <div className="min-w-0">
-              <p className="text-xs text-muted-foreground mb-1">Invite Code</p>
-              <p className="font-mono text-lg font-bold tracking-widest">{league.invite_code}</p>
-            </div>
-            <div className="flex gap-2 shrink-0">
-              <Button variant="outline" size="sm" onClick={copyCode} className="gap-1.5">
-                {copied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
-                {copied ? "Copied" : "Copy"}
-              </Button>
-              <Button variant="outline" size="sm" onClick={handleShare} className="gap-1.5">
-                <Share2 className="h-4 w-4" />
-                Share
-              </Button>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Members */}
-      <Card className="border border-border">
-        <CardHeader className="pb-3">
-          <CardTitle className="text-base flex items-center gap-2">
-            <Users className="h-4 w-4" />
-            Members
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-2">
-            {members.map((member) => {
-              const prof = Array.isArray(member.profile) ? member.profile[0] : member.profile
-              const name = prof?.display_name ?? "Unknown"
+      {/* Season Leaderboard — always visible, above tabs */}
+      <div className="rounded-lg border border-border/30 bg-[hsl(var(--background))] overflow-hidden">
+        <div className="flex items-center justify-between px-4 py-2.5 border-b border-border/30 bg-secondary/20">
+          <span className="text-xs font-semibold text-muted-foreground uppercase tracking-widest">Season Standings</span>
+          <Link href={`/leagues/${league.id}/h2h`}>
+            <Button variant="ghost" size="sm" className="gap-1 text-[10px] h-6 px-2">
+              <Swords className="h-3 w-3" />
+              H2H
+            </Button>
+          </Link>
+        </div>
+        {leaderboard.length === 0 ? (
+          <p className="text-sm text-muted-foreground text-center py-8">No scores yet. Play some matches!</p>
+        ) : (
+          <div>
+            {leaderboard.map((entry, i) => {
+              const rank = i + 1
+              const displayName = entry.display_name ?? "Unknown"
               return (
                 <div
-                  key={member.user_id}
-                  className="flex items-center justify-between py-2 px-3 rounded-lg bg-secondary/50"
+                  key={entry.user_id}
+                  className="flex items-center gap-3 px-4 py-2.5 border-b border-border/10 last:border-b-0"
                 >
-                  <div className="flex items-center gap-2.5 min-w-0">
-                    <AvatarInitial name={name} />
-                    <div className="min-w-0">
-                      <span className="text-sm truncate block">{name}</span>
-                    </div>
-                  </div>
+                  <span className="w-6 text-center text-sm shrink-0">
+                    {rank <= 3 ? MEDALS[rank - 1] : <span className="text-muted-foreground">{rank}</span>}
+                  </span>
+                  <AvatarInitial name={displayName} size="sm" />
+                  <span className="text-sm font-medium flex-1">{displayName}</span>
+                  <span className="text-sm font-bold font-display tabular-nums">{entry.total_points}</span>
+                  <span className="text-[10px] text-muted-foreground tabular-nums w-8 text-right">{entry.matches_played}M</span>
+                  <span className="text-[10px] text-muted-foreground tabular-nums w-10 text-right">{entry.avg_points.toFixed(0)} avg</span>
                 </div>
               )
             })}
           </div>
-        </CardContent>
-      </Card>
-
-      {/* Actions */}
-      <div className="flex gap-3">
-        {!isCreator && (
-          <Button
-            variant="outline"
-            onClick={handleLeave}
-            disabled={isPending}
-            className="flex-1"
-          >
-            {isPending ? "Leaving..." : "Leave League"}
-          </Button>
-        )}
-        {isCreator && (
-          <Dialog open={deleteOpen} onOpenChange={setDeleteOpen}>
-            <DialogTrigger asChild>
-              <Button variant="destructive" className="flex-1 gap-2">
-                <Trash2 className="h-4 w-4" />
-                Delete League
-              </Button>
-            </DialogTrigger>
-            <DialogContent>
-              <DialogHeader>
-                <DialogTitle>Delete League</DialogTitle>
-                <DialogDescription>
-                  This will permanently delete &quot;{league.name}&quot; and remove all members.
-                  This action cannot be undone.
-                </DialogDescription>
-              </DialogHeader>
-              <DialogFooter className="gap-2">
-                <Button variant="outline" onClick={() => setDeleteOpen(false)}>
-                  Cancel
-                </Button>
-                <Button variant="destructive" onClick={handleDelete} disabled={isPending}>
-                  {isPending ? "Deleting..." : "Delete"}
-                </Button>
-              </DialogFooter>
-            </DialogContent>
-          </Dialog>
         )}
       </div>
 
-      </div>{/* end left column */}
-      {/* Right column — leaderboard + match teams */}
-      <div className="lg:col-span-2 mt-6 lg:mt-0">
-      <Tabs defaultValue={liveMatchData ? "live" : "leaderboard"}>
-        <TabsList className={cn("w-full mb-6", liveMatchData ? "grid grid-cols-4" : "grid grid-cols-3")}>
+      {/* Season Awards — compact 2x2 grid */}
+      <SeasonAwards awards={awards} />
+
+      {/* Tabs — Live, Match Teams, Prizes (no Leaderboard tab) */}
+      <div>
+      <Tabs defaultValue={liveMatchData ? "live" : "match-teams"}>
+        <TabsList className={cn("w-full mb-4", liveMatchData ? "grid grid-cols-3" : "grid grid-cols-2")}>
           {liveMatchData && (
             <TabsTrigger value="live" className="gap-1.5">
               <span className="relative flex h-3.5 w-3.5 items-center justify-center">
@@ -260,10 +238,6 @@ export function LeagueDetailClient({ league, members, isCreator, leaderboard, aw
               Live
             </TabsTrigger>
           )}
-          <TabsTrigger value="leaderboard" className="gap-1.5">
-            <Trophy className="h-3.5 w-3.5" />
-            Leaderboard
-          </TabsTrigger>
           <TabsTrigger value="match-teams" className="gap-1.5">
             <GitCompareArrows className="h-3.5 w-3.5" />
             Match Teams
@@ -408,70 +382,7 @@ export function LeagueDetailClient({ league, members, isCreator, leaderboard, aw
           </TabsContent>
         )}
 
-        <TabsContent value="leaderboard" className="space-y-6">
-        {/* Leaderboard */}
-        <Card className="border border-border">
-          <CardHeader className="pb-3">
-            <div className="flex items-center justify-between">
-              <CardTitle className="text-base flex items-center gap-2">
-                <Trophy className="h-4 w-4" />
-                Leaderboard
-              </CardTitle>
-              <Link href={`/leagues/${league.id}/h2h`}>
-                <Button variant="ghost" size="sm" className="gap-1.5 text-xs">
-                  <Swords className="h-3.5 w-3.5" />
-                  Head-to-Head
-                </Button>
-              </Link>
-            </div>
-          </CardHeader>
-          <CardContent>
-            {leaderboard.length === 0 ? (
-              <p className="text-sm text-muted-foreground text-center py-6">
-                No scores yet. Play some matches!
-              </p>
-            ) : (
-              <div className="space-y-2">
-                <div className="grid grid-cols-[2rem_1fr_4rem_3rem_3.5rem] gap-2 text-xs text-muted-foreground px-3 pb-1">
-                  <span>#</span>
-                  <span>Player</span>
-                  <span className="text-right">Pts</span>
-                  <span className="text-right">M</span>
-                  <span className="text-right">Avg</span>
-                </div>
-                {leaderboard.map((entry, i) => {
-                  const rank = i + 1
-                  const displayName = entry.display_name ?? "Unknown"
-                  return (
-                    <div
-                      key={entry.user_id}
-                      className="grid grid-cols-[2rem_1fr_4rem_3rem_3.5rem] gap-2 items-center py-2.5 px-3 rounded-lg bg-secondary/50"
-                    >
-                      <span className="text-sm text-center">
-                        {rank <= 3 ? MEDALS[rank - 1] : rank}
-                      </span>
-                      <div className="flex items-center gap-2.5 min-w-0">
-                        <AvatarInitial name={displayName} />
-                        <span className="text-sm truncate">{displayName}</span>
-                      </div>
-                      <span className="text-sm font-bold text-right">{entry.total_points}</span>
-                      <span className="text-xs text-muted-foreground text-right">
-                        {entry.matches_played}
-                      </span>
-                      <span className="text-xs text-muted-foreground text-right">
-                        {entry.avg_points.toFixed(1)}
-                      </span>
-                    </div>
-                  )
-                })}
-              </div>
-            )}
-          </CardContent>
-        </Card>
-
-        {/* Season Awards */}
-        <SeasonAwards awards={awards} />
-        </TabsContent>
+        {/* Leaderboard tab removed — now above tabs */}
 
         <TabsContent value="match-teams" className="space-y-3">
           {lockedMatches.length === 0 ? (
@@ -520,8 +431,7 @@ export function LeagueDetailClient({ league, members, isCreator, leaderboard, aw
           <PrizesTab awards={awards} matchScores={matchScores} leaderboard={leaderboard} />
         </TabsContent>
       </Tabs>
-      </div>{/* end right column */}
-      </div>{/* end desktop grid */}
+      </div>{/* end tabs wrapper */}
     </div>
   )
 }
