@@ -73,6 +73,7 @@ type Props = {
   allSelections: SelectionRow[]
   captainPicks: Record<string, { name: string }>
   currentUserId: string
+  banter?: Array<{ message: string; event_type: string }>
 }
 
 // ─── Helpers ────────────────────────────────────────────────────────────
@@ -106,7 +107,7 @@ function econ(runs: number, overs: number): string {
 export function ScoresClient({
   match, home, away, playerScores, userScores, myScore,
   myPlayerIds, myCaptainId, myVcId, allSelections,
-  captainPicks, currentUserId,
+  captainPicks, currentUserId, banter = [],
 }: Props) {
   const [expandedUserId, setExpandedUserId] = useState<string | null>(null)
   const myPlayerSet = new Set(myPlayerIds)
@@ -203,6 +204,23 @@ export function ScoresClient({
             </div>
           </div>
           {myScore.rank != null && <RankBadge rank={myScore.rank} size="lg" />}
+        </div>
+      )}
+
+      {/* ── Match Highlights (Banter) ──────────────────── */}
+      {banter.length > 0 && (
+        <div className="mx-4 md:mx-6 mb-4 rounded-lg border border-border/30 bg-[hsl(var(--background))] overflow-hidden">
+          <div className="px-3 py-2 border-b border-border/20 bg-secondary/20 flex items-center gap-2">
+            <span className="text-sm">🎭</span>
+            <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-widest">Match Highlights</span>
+          </div>
+          <div className="divide-y divide-border/10 max-h-40 overflow-y-auto">
+            {banter.map((b, i) => (
+              <div key={i} className="px-3 py-2 text-xs text-foreground/90">
+                {b.message}
+              </div>
+            ))}
+          </div>
         </div>
       )}
 

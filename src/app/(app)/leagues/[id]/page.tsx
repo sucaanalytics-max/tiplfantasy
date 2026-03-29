@@ -25,7 +25,7 @@ export default async function LeagueDetailPage({
 
   const memberIds = leagueData.members.map((m) => m.user_id)
 
-  const [leaderboard, awards, matchScores, { data: lockedMatches }, { data: liveMatchRow }] = await Promise.all([
+  const [leaderboard, awards, matchScores, { data: lockedMatches }, { data: liveMatchRow }, { data: recentBanter }] = await Promise.all([
     getLeagueLeaderboard(id),
     getLeagueAwards(id),
     getLeagueMatchScores(id),
@@ -40,6 +40,11 @@ export default async function LeagueDetailPage({
       .eq("status", "live")
       .limit(1)
       .maybeSingle(),
+    admin.from("match_banter")
+      .select("message, event_type, created_at")
+      .in("user_id", memberIds)
+      .order("created_at", { ascending: false })
+      .limit(15),
   ])
 
   // Build member display name lookup
@@ -127,6 +132,7 @@ export default async function LeagueDetailPage({
       lockedMatches={(lockedMatches ?? []) as unknown as { id: string; match_number: number; start_time: string; status: string; team_home: { short_name: string; color: string }; team_away: { short_name: string; color: string } }[]}
       liveMatchData={liveMatchData}
       currentUserId={user.id}
+      recentBanter={(recentBanter ?? []).map((b) => ({ message: b.message, event_type: b.event_type }))}
     />
   )
 }

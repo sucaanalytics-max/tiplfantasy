@@ -10,7 +10,7 @@ import { Separator } from "@/components/ui/separator"
 import { formatIST } from "@/lib/utils"
 import type { MatchWithTeams, PlayerWithTeam, MatchPlayerScore } from "@/lib/types"
 import type { PlayerStats } from "@/lib/scoring"
-import { lockMatch, markNoResult, fetchPlayingXI, fetchMatchScorecard, autoScoreMatch, testMatchPoints, getMatchMemo } from "@/actions/matches"
+import { lockMatch, markNoResult, fetchPlayingXI, fetchMatchScorecard, autoScoreMatch, testMatchPoints, getMatchMemo, generateMatchBanter } from "@/actions/matches"
 import { savePlayerScores, calculateMatchPoints, calculateLiveMatchPoints } from "@/actions/scoring"
 import { adminUpdateCaptainVc } from "@/actions/selections"
 import { formatMatchMessage } from "@/lib/whatsapp"
@@ -431,6 +431,17 @@ export function AdminMatchClient({
               })
             }}>
               Copy Match Memo
+            </Button>
+          )}
+          {userScores.length > 0 && (
+            <Button variant="secondary" size="sm" onClick={() => {
+              startTransition(async () => {
+                const res = await generateMatchBanter(match.id)
+                if (res.error) showMsg("error", res.error)
+                else showMsg("success", `Generated ${res.generated ?? 0} banter messages`)
+              })
+            }}>
+              Generate Banter
             </Button>
           )}
         </CardContent>

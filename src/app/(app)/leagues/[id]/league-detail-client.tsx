@@ -64,11 +64,12 @@ type Props = {
   lockedMatches: LockedMatch[]
   liveMatchData?: LiveMatchData | null
   currentUserId?: string
+  recentBanter?: Array<{ message: string; event_type: string }>
 }
 
 const MEDALS = ["\u{1F947}", "\u{1F948}", "\u{1F949}"] as const
 
-export function LeagueDetailClient({ league, members, isCreator, leaderboard, awards, matchScores, lockedMatches, liveMatchData, currentUserId }: Props) {
+export function LeagueDetailClient({ league, members, isCreator, leaderboard, awards, matchScores, lockedMatches, liveMatchData, currentUserId, recentBanter = [] }: Props) {
   const router = useRouter()
   const [isPending, startTransition] = useTransition()
   const [copied, setCopied] = useState(false)
@@ -224,6 +225,23 @@ export function LeagueDetailClient({ league, members, isCreator, leaderboard, aw
 
       {/* Season Awards — compact 2x2 grid */}
       <SeasonAwards awards={awards} />
+
+      {/* Match Highlights — banter feed */}
+      {recentBanter.length > 0 && (
+        <div className="rounded-lg border border-border/30 bg-[hsl(var(--background))] overflow-hidden">
+          <div className="px-4 py-2.5 border-b border-border/30 bg-secondary/20 flex items-center gap-2">
+            <span className="text-sm">🎭</span>
+            <span className="text-xs font-semibold text-muted-foreground uppercase tracking-widest">Match Highlights</span>
+          </div>
+          <div className="divide-y divide-border/10 max-h-48 overflow-y-auto">
+            {recentBanter.map((b, i) => (
+              <div key={i} className="px-4 py-2.5 text-sm text-foreground/90">
+                {b.message}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Tabs — Live, Match Teams, Prizes (no Leaderboard tab) */}
       <div>

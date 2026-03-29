@@ -18,7 +18,7 @@ export default async function ScoresPage({
   const admin = createAdminClient()
 
   // All queries in parallel
-  const [matchRes, playerScoresRes, userScoresRes, mySelectionRes, allSelectionsRes, captainPicksRes] = await Promise.all([
+  const [matchRes, playerScoresRes, userScoresRes, mySelectionRes, allSelectionsRes, captainPicksRes, banterRes] = await Promise.all([
     admin
       .from("matches")
       .select("*, team_home:teams!matches_team_home_id_fkey(short_name, color, logo_url), team_away:teams!matches_team_away_id_fkey(short_name, color, logo_url)")
@@ -52,6 +52,12 @@ export default async function ScoresPage({
       .select("user_id, captain_id, captain:players!selections_captain_id_fkey(name)")
       .eq("match_id", id)
       .not("captain_id", "is", null),
+    admin
+      .from("match_banter")
+      .select("message, event_type")
+      .eq("match_id", id)
+      .order("created_at", { ascending: false })
+      .limit(15),
   ])
 
   const match = matchRes.data
@@ -104,6 +110,7 @@ export default async function ScoresPage({
         allSelections={allSelections}
         captainPicks={captainPicks}
         currentUserId={user.id}
+        banter={(banterRes.data ?? []).map((b) => ({ message: b.message, event_type: b.event_type }))}
       />
     </PageTransition>
   )

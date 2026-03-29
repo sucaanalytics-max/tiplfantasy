@@ -5,7 +5,7 @@ import { createAdminClient } from "@/lib/supabase/admin"
 import { fetchSquad, fetchScorecard, fetchMatchPoints, fetchSeriesInfo, parseScorecardToStats, fuzzyMatchName, testMatchPointsEndpoint, SPORTMONKS_TEAM_MAP } from "@/lib/api/sportmonks"
 import { savePlayerScores, calculateMatchPoints } from "@/actions/scoring"
 import type { PlayerStats } from "@/lib/scoring"
-import { formatMatchMemo } from "@/lib/banter"
+import { formatMatchMemo, detectBanterEvents, detectRankBanter, generateBanter } from "@/lib/banter"
 
 async function requireAdmin() {
   const supabase = await createClient()
@@ -558,4 +558,92 @@ export async function getMatchMemo(matchId: string): Promise<{ memo?: string; er
   )
 
   return { memo }
+}
+
+/** Admin: generate banter for a match (retroactive or live) */
+export async function generateMatchBanter(matchId: string): Promise<{ generated?: number; error?: string }> {
+  await requireAdmin()
+  const admin = createAdminClient()
+
+  // Load player scores
+  const { data: playerScores } = await admin
+    .from("match_player_scores")
+    .select("player_id, runs, balls_faced, wickets, overs_bowled, runs_conceded, fantasy_points, player:players(name)")
+    .eq("match_id", matchId)
+
+  if (!playerScores || playerScores.length === 0) return { error: "No player scores found" }
+
+  // Load selections with profiles
+  const { data: selections } = await admin
+    .from("selections")
+    .select("user_id, captain_id, vice_captain_id, selection_players(player_id), profile:profiles(display_name)")
+    .eq("match_id", matchId)
+
+  if (!selections) return { error: "No selections found" }
+
+  // Load user match scores for rank banter
+  const { data: userScores } = await admin
+    .from("user_match_scores")
+    .select("user_id, total_points, rank")
+    .eq("match_id", matchId)
+    .order("total_points", { ascending: false })
+
+  const psMap = new Map(playerScores.map((ps) => [ps.player_id, ps]))
+  const banterRows: Array<{ match_id: string; user_id: string; player_id: string; message: string; event_type: string }> = []
+
+  for (const sel of selections) {
+    const memberName = (sel.profile as unknown as { display_name: string })?.display_name ?? "Unknown"
+    const playerIds = (sel.selection_players as { player_id: string }[]).map((sp) => sp.player_id)
+
+    for (const pid of playerIds) {
+      const ps = psMap.get(pid)
+      if (!ps) continue
+      const playerName = (ps.player as unknown as { name: string })?.name ?? "Unknown"
+
+      const events = detectBanterEvents(
+        {
+          player_id: pid,
+          playerName,
+          runs: ps.runs,
+          balls_faced: ps.balls_faced,
+          wickets: ps.wickets,
+          overs_bowled: Number(ps.overs_bowled),
+          runs_conceded: ps.runs_conceded,
+          fantasy_points: Number(ps.fantasy_points),
+        },
+        {
+          memberName,
+          isCaptain: sel.captain_id === pid,
+          isViceCaptain: sel.vice_captain_id === pid,
+        }
+      )
+
+      for (const evt of events) {
+        const msg = generateBanter(evt)
+        if (msg) banterRows.push({ match_id: matchId, user_id: sel.user_id, player_id: pid, message: msg, event_type: evt.type })
+      }
+    }
+  }
+
+  // Rank banter
+  if (userScores && userScores.length >= 3) {
+    for (const us of userScores) {
+      const sel = selections.find((s) => s.user_id === us.user_id)
+      const memberName = (sel?.profile as unknown as { display_name: string })?.display_name ?? "Unknown"
+      const rank = us.rank ?? 0
+      const evt = detectRankBanter(memberName, rank, userScores.length)
+      if (evt) {
+        const msg = generateBanter(evt)
+        if (msg) banterRows.push({ match_id: matchId, user_id: us.user_id, player_id: us.user_id, message: msg, event_type: evt.type })
+      }
+    }
+  }
+
+  if (banterRows.length === 0) return { generated: 0 }
+
+  // Upsert (dedup by unique index)
+  const { error } = await admin.from("match_banter").upsert(banterRows, { onConflict: "match_id,user_id,player_id,event_type" })
+  if (error) return { error: error.message }
+
+  return { generated: banterRows.length }
 }
