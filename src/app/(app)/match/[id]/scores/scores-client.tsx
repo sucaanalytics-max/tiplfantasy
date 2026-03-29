@@ -229,60 +229,56 @@ export function ScoresClient({
             {myXI.length === 0 ? (
               <p className="text-sm text-muted-foreground text-center py-8">You didn&apos;t pick a team for this match.</p>
             ) : (
-              <div className="rounded-lg overflow-hidden border border-border/30 bg-[hsl(var(--background))]">
+              <div className="rounded-lg overflow-hidden border border-border/30 bg-[hsl(var(--background))] overflow-x-auto">
                 {/* Table header */}
-                <div className="grid grid-cols-[2.5rem_1fr_2rem_2rem_2rem_2rem_3.5rem] gap-1 px-3 py-2 text-[10px] text-muted-foreground/70 uppercase tracking-widest font-semibold border-b border-border/40 bg-secondary/30">
+                <div className="grid grid-cols-[2.5rem_1fr_1.5rem_1.5rem_1.5rem_1.5rem_1px_1.5rem_1.8rem_1.8rem_1.5rem_3.2rem] gap-px px-3 py-2 text-[9px] text-muted-foreground/70 uppercase tracking-widest font-semibold border-b border-border/40 bg-secondary/30 min-w-[420px]">
                   <span></span>
                   <span>Player</span>
                   <span className="text-right">R</span>
                   <span className="text-right">B</span>
                   <span className="text-right">4s</span>
                   <span className="text-right">6s</span>
+                  <span></span>
+                  <span className="text-right">W</span>
+                  <span className="text-right">Ov</span>
+                  <span className="text-right">RC</span>
+                  <span className="text-right">M</span>
                   <span className="text-right">Pts</span>
                 </div>
 
                 {myXI.map((ps, idx) => {
                   const role = ps.player.role
-                  const hasBowled = Number(ps.overs_bowled) > 0
                   const isLast = idx === myXI.length - 1
+                  const bowled = Number(ps.overs_bowled) > 0
                   return (
                     <div key={ps.player_id} className={cn(
+                      "grid grid-cols-[2.5rem_1fr_1.5rem_1.5rem_1.5rem_1.5rem_1px_1.5rem_1.8rem_1.8rem_1.5rem_3.2rem] gap-px items-center px-3 py-1.5 min-w-[420px]",
                       !isLast && "border-b border-border/15"
                     )}>
-                      {/* Main row */}
-                      <div className="grid grid-cols-[2.5rem_1fr_2rem_2rem_2rem_2rem_3.5rem] gap-1 items-center px-3 py-1.5">
-                        <div className="flex items-center gap-0.5">
-                          {ps.isC && <span className="text-[8px] font-bold text-amber-400 mr-px">C</span>}
-                          {ps.isVC && <span className="text-[8px] font-bold text-sky-400 mr-px">VC</span>}
-                          <Badge variant="outline" className={cn("text-[8px] px-1 py-0 h-[14px] border leading-none", ROLE_COLORS[role])}>
-                            {role}
-                          </Badge>
-                        </div>
-                        <span className="text-[13px] font-medium truncate text-foreground">{ps.player.name}</span>
-                        <span className="text-[13px] text-right tabular-nums text-foreground">{ps.runs > 0 ? ps.runs : "-"}</span>
-                        <span className="text-[13px] text-right tabular-nums text-muted-foreground/60">{ps.balls_faced > 0 ? ps.balls_faced : "-"}</span>
-                        <span className="text-[13px] text-right tabular-nums text-muted-foreground/60">{ps.fours > 0 ? ps.fours : "-"}</span>
-                        <span className="text-[13px] text-right tabular-nums text-muted-foreground/60">{ps.sixes > 0 ? ps.sixes : "-"}</span>
-                        <div className="text-right">
-                          <span className="text-[13px] font-bold font-display tabular-nums text-foreground">{ps.effective}</span>
-                          {ps.mult > 1 && (
-                            <p className="text-[8px] text-muted-foreground/50">{Number(ps.fantasy_points)}×{ps.mult}</p>
-                          )}
-                        </div>
+                      <div className="flex items-center gap-0.5">
+                        {ps.isC && <span className="text-[8px] font-bold text-amber-400 mr-px">C</span>}
+                        {ps.isVC && <span className="text-[8px] font-bold text-sky-400 mr-px">VC</span>}
+                        <Badge variant="outline" className={cn("text-[8px] px-1 py-0 h-[14px] border leading-none", ROLE_COLORS[role])}>
+                          {role}
+                        </Badge>
                       </div>
-
-                      {/* Bowling sub-row */}
-                      {hasBowled && (
-                        <div className="grid grid-cols-[2.5rem_1fr_2rem_2rem_2rem_2rem_3.5rem] gap-1 px-3 pb-1 -mt-0.5 text-[10px]">
-                          <span />
-                          <span className="text-purple-400/50 font-medium">Bowling</span>
-                          <span className="text-right text-muted-foreground/50">{ps.wickets}w</span>
-                          <span className="text-right text-muted-foreground/50">{ps.overs_bowled}ov</span>
-                          <span className="text-right text-muted-foreground/50">{ps.runs_conceded}rc</span>
-                          <span className="text-right text-muted-foreground/50">{ps.maidens}m</span>
-                          <span />
-                        </div>
-                      )}
+                      <span className="text-[13px] font-medium truncate text-foreground">{ps.player.name}</span>
+                      <span className="text-[13px] text-right tabular-nums text-foreground">{ps.runs > 0 ? ps.runs : "-"}</span>
+                      <span className="text-[13px] text-right tabular-nums text-muted-foreground/60">{ps.balls_faced > 0 ? ps.balls_faced : "-"}</span>
+                      <span className="text-[13px] text-right tabular-nums text-muted-foreground/60">{ps.fours > 0 ? ps.fours : "-"}</span>
+                      <span className="text-[13px] text-right tabular-nums text-muted-foreground/60">{ps.sixes > 0 ? ps.sixes : "-"}</span>
+                      {/* Separator between bat and bowl */}
+                      <span className="h-4 bg-border/20" />
+                      <span className="text-[13px] text-right tabular-nums text-foreground">{bowled ? ps.wickets : "-"}</span>
+                      <span className="text-[13px] text-right tabular-nums text-muted-foreground/60">{bowled ? ps.overs_bowled : "-"}</span>
+                      <span className="text-[13px] text-right tabular-nums text-muted-foreground/60">{bowled ? ps.runs_conceded : "-"}</span>
+                      <span className="text-[13px] text-right tabular-nums text-muted-foreground/60">{bowled ? ps.maidens : "-"}</span>
+                      <div className="text-right">
+                        <span className="text-[13px] font-bold font-display tabular-nums text-foreground">{ps.effective}</span>
+                        {ps.mult > 1 && (
+                          <p className="text-[8px] text-muted-foreground/50">{Number(ps.fantasy_points)}×{ps.mult}</p>
+                        )}
+                      </div>
                     </div>
                   )
                 })}
