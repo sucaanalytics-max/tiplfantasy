@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useTransition, useMemo, useCallback, useRef, useDeferredValue } from "react"
+import { useState, useTransition, useMemo, useCallback, useRef, useDeferredValue, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { CountdownTimer } from "@/components/countdown-timer"
 import {
@@ -97,9 +97,19 @@ export function PickTeamClient({
   const [showConfetti, setShowConfetti] = useState(false)
   const [showSubmitPreview, setShowSubmitPreview] = useState(false)
   const [sortBy, setSortBy] = useState<"default" | "credits">("default")
+  const [cvDrawerOpen, setCvDrawerOpen] = useState(false)
+  const prevSelectedCount = useRef(selectedIds.size)
   const [statsPlayerId, setStatsPlayerId] = useState<string | null>(null)
 
   const statsPlayer = statsPlayerId ? players.find((p) => p.id === statsPlayerId) ?? null : null
+
+  // Auto-open C/VC drawer when user picks their 11th player (and C/VC not set)
+  useEffect(() => {
+    if (selectedIds.size === 11 && prevSelectedCount.current < 11 && (!captainId || !viceCaptainId)) {
+      setCvDrawerOpen(true)
+    }
+    prevSelectedCount.current = selectedIds.size
+  }, [selectedIds.size, captainId, viceCaptainId])
 
   const getMatchupChip = useCallback((player: PlayerWithTeam): string | null => {
     const opponentShort = player.team_id === match.team_home_id
@@ -353,7 +363,12 @@ export function PickTeamClient({
             <FormIcon indicator={formIndicator} />
             {isCaptain && <span className="text-[8px] font-bold text-amber-500">C</span>}
             {isVC && <span className="text-[8px] font-bold text-violet-400">VC</span>}
-            {hasPlayingXI && isInXI && <span className="h-2 w-2 rounded-full bg-status-success shrink-0" />}
+            {hasPlayingXI && isInXI && (
+              <span className="text-[7px] font-bold text-emerald-400 bg-emerald-400/15 px-1 rounded">XI</span>
+            )}
+            {hasPlayingXI && !isInXI && (
+              <span className="text-[7px] font-bold text-red-400/60 bg-red-400/10 px-1 rounded">BENCH</span>
+            )}
           </div>
           <div className="flex items-center gap-1">
             <Badge variant="outline" className="text-[8px] h-3 px-0.5 py-0">{player.role}</Badge>
@@ -839,8 +854,8 @@ export function PickTeamClient({
         )}
         <div className="px-4 py-3">
           <div className="flex items-center gap-2 mb-2">
-            {/* Captain/VC picker as Drawer */}
-            <Drawer>
+            {/* Captain/VC picker as Drawer (auto-opens when 11 selected) */}
+            <Drawer open={cvDrawerOpen} onOpenChange={setCvDrawerOpen}>
               <DrawerTrigger asChild>
                 <button
                   disabled={selectedIds.size === 0}
