@@ -10,6 +10,8 @@ import { cn } from "@/lib/utils"
 import { ROLE_COLORS } from "@/lib/badges"
 import { getInitials, getAvatarColor, getAvatarHexColor } from "@/lib/avatar"
 import { LiveRefresher } from "@/components/live-refresher"
+import { PlayerRow as SharedPlayerRow } from "@/components/shared/player-row"
+import { LeaderboardRow } from "@/components/shared/leaderboard-row"
 import type { PlayerWithTeam, PlayerRole } from "@/lib/types"
 
 type MemberSelection = {
@@ -314,13 +316,14 @@ export function LeagueMatchClient({
                           .filter(Boolean)
                           .sort((a, b) => b!.eff - a!.eff)
                           .map((item) => (
-                            <div key={item!.player.id} className="flex items-center gap-2 py-1 text-xs">
-                              <Badge variant="outline" className={cn("text-[9px] px-1 py-0 h-4 border shrink-0", ROLE_COLORS[item!.player.role])}>
-                                {item!.isC ? "C" : item!.isVC ? "VC" : item!.player.role}
-                              </Badge>
-                              <span className="truncate min-w-0 font-medium">{item!.player.name}</span>
-                              <span className="ml-auto font-bold font-display tabular-nums shrink-0">{item!.eff}</span>
-                            </div>
+                            <SharedPlayerRow
+                              key={item!.player.id}
+                              player={{ id: item!.player.id, name: item!.player.name, role: item!.player.role }}
+                              isCaptain={item!.isC}
+                              isViceCaptain={item!.isVC}
+                              effectivePoints={item!.eff}
+                              variant="compact"
+                            />
                           ))}
                       </div>
                     )}

@@ -8,6 +8,8 @@ import { Copy, Check, Share2, Trash2, ArrowLeft, Users, Trophy, Swords, Zap, Cro
 import { LiveRefresher } from "@/components/live-refresher"
 import { LiveScoreWidget } from "@/components/live-score-widget"
 import { getInitials as getAvatarInitials, getAvatarColor } from "@/lib/avatar"
+import { LeaderboardRow } from "@/components/shared/leaderboard-row"
+import { PlayerRow } from "@/components/shared/player-row"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -200,25 +202,21 @@ export function LeagueDetailClient({ league, members, isCreator, leaderboard, aw
           <p className="text-sm text-muted-foreground text-center py-8">No scores yet. Play some matches!</p>
         ) : (
           <div>
-            {leaderboard.map((entry, i) => {
-              const rank = i + 1
-              const displayName = entry.display_name ?? "Unknown"
-              return (
-                <div
-                  key={entry.user_id}
-                  className="flex items-center gap-3 px-4 py-2.5 border-b border-border/10 last:border-b-0"
-                >
-                  <span className="w-6 text-center text-sm shrink-0">
-                    {rank <= 3 ? MEDALS[rank - 1] : <span className="text-muted-foreground">{rank}</span>}
-                  </span>
-                  <AvatarInitial name={displayName} size="sm" />
-                  <span className="text-sm font-medium flex-1">{displayName}</span>
-                  <span className="text-sm font-bold font-display tabular-nums">{entry.total_points}</span>
-                  <span className="text-[10px] text-muted-foreground tabular-nums w-8 text-right">{entry.matches_played}M</span>
-                  <span className="text-[10px] text-muted-foreground tabular-nums w-10 text-right">{entry.avg_points.toFixed(0)} avg</span>
-                </div>
-              )
-            })}
+            {leaderboard.map((entry, i) => (
+              <LeaderboardRow
+                key={entry.user_id}
+                entry={{
+                  userId: entry.user_id,
+                  displayName: entry.display_name ?? "Unknown",
+                  totalPoints: Number(entry.total_points),
+                  rank: i + 1,
+                  matchesPlayed: entry.matches_played,
+                  avgPoints: entry.avg_points,
+                }}
+                isCurrentUser={entry.user_id === currentUserId}
+                variant="season"
+              />
+            ))}
           </div>
         )}
       </div>
@@ -360,18 +358,14 @@ export function LeagueDetailClient({ league, members, isCreator, leaderboard, aw
                               })
                               .sort((a, b) => b.eff - a.eff)
                               .map((p) => (
-                                <div key={p.pid} className="flex items-center gap-2 py-1 text-xs">
-                                  <Badge variant="outline" className={cn("text-[9px] px-1 py-0 h-4 border shrink-0",
-                                    p.role === "WK" ? "text-amber-400 border-amber-400/30 bg-amber-400/10" :
-                                    p.role === "BAT" ? "text-blue-400 border-blue-400/30 bg-blue-400/10" :
-                                    p.role === "AR" ? "text-emerald-400 border-emerald-400/30 bg-emerald-400/10" :
-                                    "text-purple-400 border-purple-400/30 bg-purple-400/10"
-                                  )}>
-                                    {p.isC ? "C" : p.isVC ? "VC" : p.role}
-                                  </Badge>
-                                  <span className="truncate min-w-0 font-medium">{p.name}</span>
-                                  <span className="ml-auto font-bold font-display tabular-nums shrink-0">{p.eff}</span>
-                                </div>
+                                <PlayerRow
+                                  key={p.pid}
+                                  player={{ id: p.pid, name: p.name, role: p.role }}
+                                  isCaptain={p.isC}
+                                  isViceCaptain={p.isVC}
+                                  effectivePoints={p.eff}
+                                  variant="compact"
+                                />
                               ))}
                           </div>
                         )}
