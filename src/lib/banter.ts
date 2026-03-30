@@ -38,6 +38,8 @@ const TEMPLATES: TemplatePool = {
     "{m}, {p} walked in and walked right back out. Must've forgotten something in the dressing room.",
     "Breaking News: {m}'s pick {p} has scored a duck. Scientists are now studying how to achieve zero in T20 cricket.",
     "{m}, keeping {p} in your XI is pure charity. You're a good person with a truly terrible fantasy team.",
+    "A golden duck! {m}'s star player {p}'s chart is looking like a 90% market correction.",
+    "{m}'s {p} just gave a worse ROI than an NFT. Zero runs, infinite disappointment.",
   ],
 
   low_sr: [
@@ -45,6 +47,8 @@ const TEMPLATES: TemplatePool = {
     "{p}'s batting today makes watching paint dry seem like an adrenaline sport. Thoughts and prayers, {m}.",
     "{m}, {p} ({d}) is currently occupying the crease like it's a government job. No urgency whatsoever.",
     "Hey {m}, even your WiFi router delivers packets faster than {p} is scoring runs right now.",
+    "{p} scored a quick few, but the strike rate penalty means {m} is basically paying capital gains tax on it.",
+    "Picking {p} at that SR is the fantasy equivalent of buying high and selling low. Classic {m}.",
   ],
 
   expensive_bowling: [
@@ -52,6 +56,8 @@ const TEMPLATES: TemplatePool = {
     "{m}, your premium pacer {p} ({d}) is distributing runs like free prasad at a pandal. The whole league thanks you!",
     "{p} is being hit so far that NASA is tracking the ball. Top-tier pick, {m}!",
     "{m}, {p}'s bowling today is charity work. Someone should register it as a tax deduction.",
+    "{m}'s bowler {p}'s economy rate is currently higher than the national inflation rate.",
+    "{p} got a wicket but went for 50 runs. That's a toxic asset disguised as a return. Well played, {m}.",
   ],
 
   wicketless: [
@@ -59,6 +65,7 @@ const TEMPLATES: TemplatePool = {
     "{m}, your star bowler {p} ({d}) has been as threatening as a wet noodle. Zero wickets, maximum vibes.",
     "Hey {m}, {p} bowled {d} without a single wicket. Even the batsmen felt bad for him.",
     "{m}, {p} is currently playing the role of a bowling machine. Just feeding balls, no wickets.",
+    "I've seen better defensive strategies from hedge funds right before they blew up. {m}'s {p}: {d}.",
   ],
 
   captain_fail: [
@@ -66,12 +73,18 @@ const TEMPLATES: TemplatePool = {
     "{m}, your captain {p} scored {d}. That's your 2x multiplier working overtime... on nothing.",
     "A moment of silence for {m}'s captaincy choice. {p} with a captain's knock of {d}. Inspirational.",
     "{m}, even a random number generator would've picked a better captain than {p} today.",
+    "{m} put all liquidity into captain {p}, and the market crashed. {d}. Textbook systemic risk.",
+    "Making {p} captain was a highly speculative asset class, and {m} just got liquidated.",
+    "{m}'s captain {p}'s stock just got delisted from the IPL. {d}.",
+    "{m} double-downed on {p} as Captain? That's not a diversified portfolio, that's degenerate gambling.",
   ],
 
   vc_fail: [
     "Even Virat Kohli needs a rest day, {m}. Pity {p} chose the exact day you made them your Vice-Captain.",
     "{m}, your VC {p} scored {d}. The 1.5x multiplier is doing negative work.",
     "Hey {m}, your Vice-Captain {p} is giving you vice... as in suffering. {d} and counting down.",
+    "{m}'s Vice-Captain {p} is currently yielding negative interest. {d}. Impressive.",
+    "I'd ask who {m}'s financial advisor is, but clearly VC {p} embezzled all the capital.",
   ],
 
   bottom_rank: [
@@ -79,6 +92,13 @@ const TEMPLATES: TemplatePool = {
     "Looking at your total points, {m}, I'm starting to think you drafted this team using a dartboard while blindfolded.",
     "{m}, look on the bright side. At least your fantasy team is consistently bad. You can't put a price on reliability!",
     "{m}, your team is currently in last place. The wooden spoon is being polished as we speak.",
+    "Looking at the leaderboard, {m}'s team is definitely classified as a Non-Performing Asset.",
+    "{m} is deep in the red. Time to ask the league commissioner for a bailout.",
+    "{m}'s rank is dropping faster than the Rupee against the Dollar.",
+    "{m}'s team is the Evergrande of this league. Massively hyped, deeply in debt, completely collapsing.",
+    "Congratulations {m}, your fantasy team has officially reached junk bond status.",
+    "If {m}'s fantasy team was a startup, the VCs would have fired them as CEO by week two.",
+    "{m}'s team performance graph is just a straight line pointing to the earth's core.",
   ],
 
   century: [
@@ -103,12 +123,14 @@ const TEMPLATES: TemplatePool = {
     "{m} is currently sitting pretty at #1 in the league. Don't let it go to your head... too late.",
     "Crown alert! {m} leads the pack. Remember this moment — they'll remind you about it for weeks.",
     "{m} is on top! The rest of you, take notes. Or don't. They'll gladly teach you... for a fee.",
+    "{m}'s current league rank is providing great liquidity for the rest of us. Thanks for the free points! Oh wait, they're WINNING.",
   ],
 
   ugly_dismissal: [
     "I've seen better footwork from a drunk uncle at a wedding than {p} showed just now. RIP your fantasy points, {m}.",
     "{m}, choosing {p} was a bold move. The kind of bold move that sinks the Titanic.",
     "That dismissal was so ugly it needs its own therapy session. Condolences, {m}.",
+    "Picking {p} that fast? {m} saw a dead cat bounce and went all in.",
   ],
 
   great_economy: [
