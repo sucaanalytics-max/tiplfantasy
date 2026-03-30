@@ -14,6 +14,8 @@ import { LiveRefresher } from "@/components/live-refresher"
 import { LiveScoreWidget } from "@/components/live-score-widget"
 import { getInitials, getAvatarColor } from "@/lib/avatar"
 import { cn } from "@/lib/utils"
+import { DonutChart } from "@/components/charts/donut-chart"
+import { StackedBar } from "@/components/charts/stacked-bar"
 
 // ─── Types ──────────────────────────────────────────────────────────────
 
@@ -204,6 +206,44 @@ export function ScoresClient({
             </div>
           </div>
           {myScore.rank != null && <RankBadge rank={myScore.rank} size="lg" />}
+        </div>
+      )}
+
+      {/* ── Score Breakdown Charts ──────────────────────── */}
+      {myScore && myXI.length > 0 && (
+        <div className="mx-4 md:mx-6 mb-4 flex gap-4 items-start">
+          {/* Donut: scoring category breakdown */}
+          {(() => {
+            let battingPts = 0, bowlingPts = 0, fieldingPts = 0
+            for (const p of myXI) {
+              const base = Number(p.fantasy_points)
+              if ((p.runs > 0 || p.balls_faced > 0) && Number(p.overs_bowled) === 0) battingPts += base
+              else if (Number(p.overs_bowled) > 0 && p.runs === 0 && p.balls_faced === 0) bowlingPts += base
+              else if (Number(p.overs_bowled) > 0) { battingPts += base * 0.4; bowlingPts += base * 0.6 }
+              fieldingPts += (p.catches * 8) + (p.stumpings * 25) + (p.run_outs * 12)
+            }
+            const segments = [
+              { label: "Batting", value: Math.round(battingPts), color: "#60a5fa" },
+              { label: "Bowling", value: Math.round(bowlingPts), color: "#a78bfa" },
+              { label: "Fielding", value: Math.round(fieldingPts), color: "#34d399" },
+            ].filter(s => s.value > 0)
+            if (segments.length === 0) return null
+            return <DonutChart segments={segments} size={100} strokeWidth={10} centerLabel="Split" centerValue={`${segments.length}`} />
+          })()}
+
+          {/* Stacked bar: captain impact */}
+          <div className="flex-1 space-y-2">
+            <p className="text-[10px] text-muted-foreground uppercase tracking-widest">Points Breakdown</p>
+            <StackedBar
+              segments={[
+                { label: "Base", value: Number(myScore.total_points) - Number(myScore.captain_points) - Number(myScore.vc_points), color: "hsl(var(--muted-foreground))" },
+                ...(Number(myScore.captain_points) > 0 ? [{ label: "C ×2", value: Number(myScore.captain_points), color: "#fbbf24" }] : []),
+                ...(Number(myScore.vc_points) > 0 ? [{ label: "VC ×1.5", value: Number(myScore.vc_points), color: "#a78bfa" }] : []),
+              ]}
+              height={20}
+              showLegend
+            />
+          </div>
         </div>
       )}
 

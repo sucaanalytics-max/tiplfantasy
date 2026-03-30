@@ -10,6 +10,7 @@ import {
 import { Badge } from "@/components/ui/badge"
 import { ROLE_COLORS, ROLE_LABELS } from "@/lib/badges"
 import type { PlayerWithTeam, PlayerVenueStats, PlayerVsTeamStats, PlayerSeasonStats } from "@/lib/types"
+import { Heatmap } from "@/components/charts/heatmap"
 
 function StatCell({ label, value }: { label: string; value: string | number | null }) {
   if (value === null || value === undefined) return null
@@ -297,6 +298,14 @@ export function PlayerStatsDrawer({
                 Avg: <span className="text-foreground font-semibold">{tiplAvg} pts</span>
                 {" "}(last {tiplScores.length})
               </p>
+              {/* Form heatmap */}
+              <div className="mt-3">
+                <Heatmap
+                  values={tiplScores}
+                  labels={tiplScores.map((_, i) => `M${i + 1}`)}
+                  className="justify-center"
+                />
+              </div>
             </>
           )}
         </div>
