@@ -5,7 +5,7 @@ import { createAdminClient } from "@/lib/supabase/admin"
 import { fetchSquad, fetchScorecard, fetchMatchPoints, fetchSeriesInfo, parseScorecardToStats, fuzzyMatchName, testMatchPointsEndpoint, SPORTMONKS_TEAM_MAP } from "@/lib/api/sportmonks"
 import { savePlayerScores, calculateMatchPoints } from "@/actions/scoring"
 import type { PlayerStats } from "@/lib/scoring"
-import { formatMatchMemo, detectBanterEvents, detectRankBanter, generateBanter, type MemoHighlights } from "@/lib/banter"
+import { formatMatchMemo, detectBanterEvents, detectRankBanter, generateBanter, type MemoHighlights, type BanterEvent } from "@/lib/banter"
 
 async function requireAdmin() {
   const supabase = await createClient()
@@ -688,47 +688,85 @@ export async function generateMatchBanter(matchId: string): Promise<{ generated?
     .order("total_points", { ascending: false })
 
   const psMap = new Map(playerScores.map((ps) => [ps.player_id, ps]))
-  const banterRows: Array<{ match_id: string; user_id: string; player_id: string | null; message: string; event_type: string }> = []
+  const banterRows: Array<{ match_id: string; user_id: string | null; player_id: string | null; message: string; event_type: string }> = []
+
+  // Build: who owns each player + who captained/VC'd them
+  const playerOwners = new Map<string, string[]>()       // player_id → member names
+  const playerCaptains = new Map<string, string[]>()     // player_id → captain owner names
+  const playerVCs = new Map<string, string[]>()          // player_id → VC owner names
+  const nameMap = new Map<string, string>()              // user_id → display name
 
   for (const sel of selections) {
     const memberName = (sel.profile as unknown as { display_name: string })?.display_name ?? "Unknown"
+    nameMap.set(sel.user_id, memberName)
     const playerIds = (sel.selection_players as { player_id: string }[]).map((sp) => sp.player_id)
-
     for (const pid of playerIds) {
-      const ps = psMap.get(pid)
-      if (!ps) continue
-      const playerName = (ps.player as unknown as { name: string })?.name ?? "Unknown"
-
-      const events = detectBanterEvents(
-        {
-          player_id: pid,
-          playerName,
-          runs: ps.runs,
-          balls_faced: ps.balls_faced,
-          wickets: ps.wickets,
-          overs_bowled: Number(ps.overs_bowled),
-          runs_conceded: ps.runs_conceded,
-          fantasy_points: Number(ps.fantasy_points),
-        },
-        {
-          memberName,
-          isCaptain: sel.captain_id === pid,
-          isViceCaptain: sel.vice_captain_id === pid,
-        }
-      )
-
-      for (const evt of events) {
-        const msg = generateBanter(evt)
-        if (msg) banterRows.push({ match_id: matchId, user_id: sel.user_id, player_id: pid, message: msg, event_type: evt.type })
+      const owners = playerOwners.get(pid) ?? []
+      owners.push(memberName)
+      playerOwners.set(pid, owners)
+      if (sel.captain_id === pid) {
+        const caps = playerCaptains.get(pid) ?? []
+        caps.push(memberName)
+        playerCaptains.set(pid, caps)
+      }
+      if (sel.vice_captain_id === pid) {
+        const vcs = playerVCs.get(pid) ?? []
+        vcs.push(memberName)
+        playerVCs.set(pid, vcs)
       }
     }
   }
 
-  // Rank banter
+  // For each player, detect events ONCE, group all owners into one message
+  for (const [pid, ps] of psMap) {
+    const owners = playerOwners.get(pid)
+    if (!owners || owners.length === 0) continue
+    const playerName = (ps.player as unknown as { name: string })?.name ?? "Unknown"
+
+    // Player-level events (duck, low SR, etc.) — shared by ALL owners
+    const playerEvents = detectBanterEvents(
+      {
+        player_id: pid, playerName,
+        runs: ps.runs, balls_faced: ps.balls_faced, wickets: ps.wickets,
+        overs_bowled: Number(ps.overs_bowled), runs_conceded: ps.runs_conceded,
+        fantasy_points: Number(ps.fantasy_points),
+      },
+      { memberName: owners[0], isCaptain: false, isViceCaptain: false }
+    )
+
+    // Filter to non-captain/VC events (shared across all owners)
+    const sharedEvents = playerEvents.filter((e) => !["captain_fail", "captain_haul", "vc_fail"].includes(e.type))
+    for (const evt of sharedEvents) {
+      evt.memberNames = owners
+      const msg = generateBanter(evt)
+      if (msg) banterRows.push({ match_id: matchId, user_id: null, player_id: pid, message: msg, event_type: evt.type })
+    }
+
+    // Captain-specific events — one per captain owner
+    const captainOwners = playerCaptains.get(pid) ?? []
+    if (captainOwners.length > 0 && Number(ps.fantasy_points) < 15) {
+      const evt: BanterEvent = { type: "captain_fail", memberNames: captainOwners, memberName: captainOwners[0], playerName, detail: `${Number(ps.fantasy_points)} pts` }
+      const msg = generateBanter(evt)
+      if (msg) banterRows.push({ match_id: matchId, user_id: null, player_id: pid, message: msg, event_type: "captain_fail" })
+    } else if (captainOwners.length > 0 && Number(ps.fantasy_points) >= 60) {
+      const evt: BanterEvent = { type: "captain_haul", memberNames: captainOwners, memberName: captainOwners[0], playerName, detail: `${Number(ps.fantasy_points)} pts at 2x` }
+      const msg = generateBanter(evt)
+      if (msg) banterRows.push({ match_id: matchId, user_id: null, player_id: pid, message: msg, event_type: "captain_haul" })
+    }
+
+    // VC-specific events
+    const vcOwners = playerVCs.get(pid) ?? []
+    if (vcOwners.length > 0 && Number(ps.fantasy_points) < 10) {
+      const evt: BanterEvent = { type: "vc_fail", memberNames: vcOwners, memberName: vcOwners[0], playerName, detail: `${Number(ps.fantasy_points)} pts` }
+      const msg = generateBanter(evt)
+      if (msg) banterRows.push({ match_id: matchId, user_id: null, player_id: pid, message: msg, event_type: "vc_fail" })
+    }
+  }
+
+  // Rank banter — user-specific
   if (userScores && userScores.length >= 3) {
     for (const us of userScores) {
-      const sel = selections.find((s) => s.user_id === us.user_id)
-      const memberName = (sel?.profile as unknown as { display_name: string })?.display_name ?? "Unknown"
+      const memberName = nameMap.get(us.user_id) ?? "Unknown"
       const rank = us.rank ?? 0
       const evt = detectRankBanter(memberName, rank, userScores.length)
       if (evt) {

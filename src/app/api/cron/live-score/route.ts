@@ -2,7 +2,7 @@ import { type NextRequest } from "next/server"
 import { createAdminClient } from "@/lib/supabase/admin"
 import { fetchMatchPoints, parseScorecardToStats, fuzzyMatchName, fetchMatchInfo } from "@/lib/api/sportmonks"
 import { loadScoringRules, calculatePlayerPoints, calculateUserMatchScore } from "@/lib/scoring"
-import { detectBanterEvents, detectRankBanter, generateBanter } from "@/lib/banter"
+import { detectBanterEvents, detectRankBanter, generateBanter, type BanterEvent } from "@/lib/banter"
 
 export async function GET(req: NextRequest) {
   if (req.headers.get("authorization") !== `Bearer ${process.env.CRON_SECRET}`) {
@@ -250,53 +250,61 @@ export async function GET(req: NextRequest) {
         // Build player name lookup from dbPlayers
         const playerNameMap = new Map(dbPlayers.map((p) => [p.id, p.name]))
 
-        const banterRows: Array<{ match_id: string; user_id: string; player_id: string | null; message: string; event_type: string }> = []
+        const banterRows: Array<{ match_id: string; user_id: string | null; player_id: string | null; message: string; event_type: string }> = []
 
+        // Build: who owns each player + captain/VC owners
+        const playerOwners = new Map<string, string[]>()
+        const playerCaptains = new Map<string, string[]>()
+        const playerVCs = new Map<string, string[]>()
         for (const sel of selections) {
-          const memberName = nameMap.get(sel.user_id) ?? "Unknown"
-          const playerIds = playersBySelection.get(sel.id) ?? []
-
-          for (const pid of playerIds) {
-            const ps = scoreRows.find((r) => r.player_id === pid)
-            if (!ps) continue
-
-            const events = detectBanterEvents(
-              {
-                player_id: pid,
-                playerName: playerNameMap.get(pid) ?? "Unknown",
-                runs: ps.runs,
-                balls_faced: ps.balls_faced,
-                wickets: ps.wickets,
-                overs_bowled: Number(ps.overs_bowled),
-                runs_conceded: ps.runs_conceded,
-                fantasy_points: ps.fantasy_points,
-              },
-              {
-                memberName,
-                isCaptain: sel.captain_id === pid,
-                isViceCaptain: sel.vice_captain_id === pid,
-              }
-            )
-
-            for (const evt of events) {
-              const msg = generateBanter(evt)
-              if (msg) {
-                banterRows.push({ match_id: match.id, user_id: sel.user_id, player_id: pid, message: msg, event_type: evt.type })
-              }
-            }
+          const mn = nameMap.get(sel.user_id) ?? "Unknown"
+          const pids = playersBySelection.get(sel.id) ?? []
+          for (const pid of pids) {
+            const o = playerOwners.get(pid) ?? []; o.push(mn); playerOwners.set(pid, o)
+            if (sel.captain_id === pid) { const c = playerCaptains.get(pid) ?? []; c.push(mn); playerCaptains.set(pid, c) }
+            if (sel.vice_captain_id === pid) { const v = playerVCs.get(pid) ?? []; v.push(mn); playerVCs.set(pid, v) }
           }
         }
 
-        // Rank-based banter
+        // For each scored player, detect events ONCE, group all owners
+        for (const ps of scoreRows) {
+          const owners = playerOwners.get(ps.player_id)
+          if (!owners || owners.length === 0) continue
+          const pn = playerNameMap.get(ps.player_id) ?? "Unknown"
+
+          const events = detectBanterEvents(
+            { player_id: ps.player_id, playerName: pn, runs: ps.runs, balls_faced: ps.balls_faced, wickets: ps.wickets, overs_bowled: Number(ps.overs_bowled), runs_conceded: ps.runs_conceded, fantasy_points: ps.fantasy_points },
+            { memberName: owners[0], isCaptain: false, isViceCaptain: false }
+          )
+          for (const evt of events.filter(e => !["captain_fail","captain_haul","vc_fail"].includes(e.type))) {
+            evt.memberNames = owners
+            const msg = generateBanter(evt)
+            if (msg) banterRows.push({ match_id: match.id, user_id: null, player_id: ps.player_id, message: msg, event_type: evt.type })
+          }
+          // Captain/VC specific
+          const co = playerCaptains.get(ps.player_id) ?? []
+          if (co.length > 0 && ps.fantasy_points < 15) {
+            const e: BanterEvent = { type: "captain_fail", memberNames: co, memberName: co[0], playerName: pn, detail: `${ps.fantasy_points} pts` }
+            const m = generateBanter(e); if (m) banterRows.push({ match_id: match.id, user_id: null, player_id: ps.player_id, message: m, event_type: "captain_fail" })
+          } else if (co.length > 0 && ps.fantasy_points >= 60) {
+            const e: BanterEvent = { type: "captain_haul", memberNames: co, memberName: co[0], playerName: pn, detail: `${ps.fantasy_points} pts at 2x` }
+            const m = generateBanter(e); if (m) banterRows.push({ match_id: match.id, user_id: null, player_id: ps.player_id, message: m, event_type: "captain_haul" })
+          }
+          const vo = playerVCs.get(ps.player_id) ?? []
+          if (vo.length > 0 && ps.fantasy_points < 10) {
+            const e: BanterEvent = { type: "vc_fail", memberNames: vo, memberName: vo[0], playerName: pn, detail: `${ps.fantasy_points} pts` }
+            const m = generateBanter(e); if (m) banterRows.push({ match_id: match.id, user_id: null, player_id: ps.player_id, message: m, event_type: "vc_fail" })
+          }
+        }
+
+        // Rank-based banter — user-specific
         const sorted = [...userScores].sort((a, b) => b.total - a.total)
         for (const us of sorted) {
           const rank = us.rank
           const evt = detectRankBanter(nameMap.get(us.userId) ?? "Unknown", rank, sorted.length)
           if (evt) {
             const msg = generateBanter(evt)
-            if (msg) {
-              banterRows.push({ match_id: match.id, user_id: us.userId, player_id: null, message: msg, event_type: evt.type })
-            }
+            if (msg) banterRows.push({ match_id: match.id, user_id: us.userId, player_id: null, message: msg, event_type: evt.type })
           }
         }
 

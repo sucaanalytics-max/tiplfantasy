@@ -21,7 +21,8 @@ export type BanterEventType =
 
 export type BanterEvent = {
   type: BanterEventType
-  memberName: string
+  memberName: string  // single name or pre-joined string
+  memberNames?: string[]  // multiple owners for grouped banter
   playerName: string
   detail?: string // e.g. "0(3)", "1/52 (4 ov)", "SR 45.2"
 }
@@ -127,12 +128,24 @@ function pickRandom<T>(arr: T[]): T {
   return arr[Math.floor(Math.random() * arr.length)]
 }
 
+/** Join names with commas and "&" before the last: "A, B & C" */
+function joinNames(names: string[]): string {
+  if (names.length === 0) return ""
+  if (names.length === 1) return names[0]
+  if (names.length === 2) return `${names[0]} & ${names[1]}`
+  return `${names.slice(0, -1).join(", ")} & ${names[names.length - 1]}`
+}
+
 export function generateBanter(event: BanterEvent): string {
   const templates = TEMPLATES[event.type]
   if (!templates || templates.length === 0) return ""
 
+  const displayName = event.memberNames && event.memberNames.length > 0
+    ? joinNames(event.memberNames)
+    : event.memberName
+
   let msg = pickRandom(templates)
-  msg = msg.replace(/\{m\}/g, event.memberName)
+  msg = msg.replace(/\{m\}/g, displayName)
   msg = msg.replace(/\{p\}/g, event.playerName)
   msg = msg.replace(/\{d\}/g, event.detail ?? "")
   return msg
