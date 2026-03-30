@@ -513,14 +513,25 @@ export async function getMatchMemo(matchId: string): Promise<{ memo?: string; er
 
   if (!match) return { error: "Match not found" }
 
+  // Get league member IDs (first league — Tusk)
+  const { data: leagues } = await admin.from("leagues").select("id").limit(1)
+  const leagueId = leagues?.[0]?.id
+  let memberIds: string[] = []
+  if (leagueId) {
+    const { data: members } = await admin.from("league_members").select("user_id").eq("league_id", leagueId)
+    memberIds = (members ?? []).map((m) => m.user_id)
+  }
+
   const [{ data: userScores }, { data: banter }, { data: playerScores }, { data: selectionsRaw }] = await Promise.all([
     admin.from("user_match_scores")
       .select("user_id, total_points, rank, captain_points, profile:profiles(display_name)")
       .eq("match_id", matchId)
-      .order("rank", { ascending: true }),
+      .in("user_id", memberIds.length > 0 ? memberIds : ["__none__"])
+      .order("total_points", { ascending: false }),
     admin.from("match_banter")
       .select("message")
       .eq("match_id", matchId)
+      .in("user_id", memberIds.length > 0 ? memberIds : ["__none__"])
       .order("created_at", { ascending: true })
       .limit(10),
     admin.from("match_player_scores")
@@ -529,7 +540,8 @@ export async function getMatchMemo(matchId: string): Promise<{ memo?: string; er
       .order("fantasy_points", { ascending: false }),
     admin.from("selections")
       .select("user_id, captain_id, selection_players(player_id), profile:profiles(display_name), captain:players!selections_captain_id_fkey(name)")
-      .eq("match_id", matchId),
+      .eq("match_id", matchId)
+      .in("user_id", memberIds.length > 0 ? memberIds : ["__none__"]),
   ])
 
   const home = (match.team_home as unknown as { short_name: string }).short_name

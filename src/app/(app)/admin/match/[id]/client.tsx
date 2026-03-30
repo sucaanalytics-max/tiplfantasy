@@ -415,8 +415,17 @@ export function AdminMatchClient({
             Test Fantasy API
           </Button>
           {userScores.length > 0 && (
-            <Button variant="secondary" size="sm" onClick={handleWhatsApp}>
-              Copy WhatsApp Message
+            <Button variant="secondary" size="sm" onClick={() => {
+              startTransition(async () => {
+                const res = await getMatchMemo(match.id)
+                if (res.error) { showMsg("error", res.error); return }
+                if (res.memo) {
+                  navigator.clipboard.writeText(res.memo)
+                  showMsg("success", "Match Memo copied!")
+                }
+              })
+            }}>
+              Copy Memo
             </Button>
           )}
           {userScores.length > 0 && (
@@ -425,12 +434,12 @@ export function AdminMatchClient({
                 const res = await getMatchMemo(match.id)
                 if (res.error) { showMsg("error", res.error); return }
                 if (res.memo) {
-                  navigator.clipboard.writeText(res.memo)
-                  showMsg("success", "Match Memo copied to clipboard!")
+                  const url = `https://wa.me/?text=${encodeURIComponent(res.memo)}`
+                  window.open(url, "_blank")
                 }
               })
             }}>
-              Copy Match Memo
+              Share via WhatsApp
             </Button>
           )}
           {userScores.length > 0 && (
