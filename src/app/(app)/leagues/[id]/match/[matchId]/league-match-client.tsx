@@ -206,6 +206,14 @@ export function LeagueMatchClient({
         </div>
       </div>
 
+      {/* Team sheet link */}
+      <Link
+        href={`/leagues/${leagueId}/match/${match.id}/sheet`}
+        className="flex items-center justify-center gap-2 py-2 px-4 rounded-lg border border-border/30 bg-secondary/20 text-xs text-muted-foreground hover:text-foreground hover:bg-secondary/40 transition-colors"
+      >
+        📋 View Team Sheet — All XIs + Differentials
+      </Link>
+
       {match.status === "live" && <LiveRefresher interval={30000} />}
 
       {/* Tabs: Scores + Compare */}
