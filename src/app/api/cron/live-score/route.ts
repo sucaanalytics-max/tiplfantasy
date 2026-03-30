@@ -3,6 +3,7 @@ import { createAdminClient } from "@/lib/supabase/admin"
 import { fetchMatchPoints, parseScorecardToStats, fuzzyMatchName, fetchMatchInfo } from "@/lib/api/sportmonks"
 import { loadScoringRules, calculatePlayerPoints, calculateUserMatchScore } from "@/lib/scoring"
 import { detectBanterEvents, detectRankBanter, generateBanter, type BanterEvent } from "@/lib/banter"
+import { sendPushToAll } from "@/lib/push"
 
 export async function GET(req: NextRequest) {
   if (req.headers.get("authorization") !== `Bearer ${process.env.CRON_SECRET}`) {
@@ -330,6 +331,18 @@ export async function GET(req: NextRequest) {
         }).eq("id", match.id)
         // Refresh season leaderboard materialized view
         await admin.rpc("refresh_leaderboard")
+
+        // Push notification: match completed
+        const winner = userScores.sort((a, b) => b.total - a.total)[0]
+        const winnerName = nameMap?.get(winner?.userId ?? "") ?? "Unknown"
+        try {
+          await sendPushToAll({
+            title: `🏆 Match #${match.cricapi_match_id ? "" : ""}${note ? "" : "Final"} Results`,
+            body: `${winnerName} wins with ${winner?.total ?? 0} pts! ${note || ""}`.trim(),
+            url: `/match/${match.id}/scores`,
+            tag: `match-${match.id}-final`,
+          })
+        } catch { /* non-critical */ }
       }
       }
 

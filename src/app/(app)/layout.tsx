@@ -1,5 +1,6 @@
 import { NavBar } from "@/components/nav-bar"
 import { InstallPrompt } from "@/components/install-prompt"
+import { PushPrompt } from "@/components/push-prompt"
 import { createClient, getAuthUser } from "@/lib/supabase/server"
 
 export default async function AppLayout({
@@ -27,6 +28,7 @@ export default async function AppLayout({
         {children}
       </main>
       <InstallPrompt />
+      <PushPrompt />
     </>
   )
 }
