@@ -357,6 +357,12 @@ export function PickTeamClient({
           </div>
           <div className="flex items-center gap-1">
             <Badge variant="outline" className="text-[8px] h-3 px-0.5 py-0">{player.role}</Badge>
+            <span
+              className="text-[8px] font-semibold px-1 py-0 rounded"
+              style={{ color: player.team.color, backgroundColor: `${player.team.color}18` }}
+            >
+              {player.team.short_name}
+            </span>
             <span className="text-[9px] text-muted-foreground">{player.credit_cost}</span>
             {matchupChip && (
               <span className="text-[8px] text-emerald-500 truncate">{matchupChip}</span>

@@ -99,7 +99,10 @@ export function TeamPreviewSheet({ matchId, matchLabel, status }: Props) {
                             VC
                           </span>
                         )}
-                        <span className="text-[11px] text-muted-foreground w-10 text-right shrink-0">
+                        <span
+                          className="text-[10px] font-semibold px-1.5 py-0.5 rounded text-right shrink-0"
+                          style={{ color: player.team.color, backgroundColor: `${player.team.color}18` }}
+                        >
                           {player.team.short_name}
                         </span>
                       </div>
