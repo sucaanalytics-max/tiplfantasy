@@ -224,24 +224,7 @@ export function LeagueDetailClient({ league, members, isCreator, leaderboard, aw
       {/* Season Awards — compact 2x2 grid */}
       <SeasonAwards awards={awards} />
 
-      {/* Match Highlights — banter feed */}
-      {recentBanter.length > 0 && (
-        <div className="rounded-lg border border-border/30 bg-[hsl(var(--background))] overflow-hidden">
-          <div className="px-4 py-2.5 border-b border-border/30 bg-secondary/20 flex items-center gap-2">
-            <span className="text-sm">🎭</span>
-            <span className="text-xs font-semibold text-muted-foreground uppercase tracking-widest">Match Highlights</span>
-          </div>
-          <div className="divide-y divide-border/10 max-h-48 overflow-y-auto">
-            {recentBanter.map((b, i) => (
-              <div key={i} className="px-4 py-2.5 text-sm text-foreground/90">
-                {b.message}
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* Tabs — Live, Match Teams, Prizes (no Leaderboard tab) */}
+      {/* Tabs — Live, Match Teams, Prizes */}
       <div>
       <Tabs defaultValue={liveMatchData ? "live" : "match-teams"}>
         <TabsList className={cn("w-full mb-4", liveMatchData ? "grid grid-cols-3" : "grid grid-cols-2")}>
@@ -377,15 +360,16 @@ export function LeagueDetailClient({ league, members, isCreator, leaderboard, aw
 
             {/* Banter Feed */}
             {liveMatchData.banter && liveMatchData.banter.length > 0 && (
-              <div className="mt-4 rounded-lg border border-border/30 bg-secondary/10 overflow-hidden">
-                <div className="px-3 py-2 border-b border-border/20 flex items-center gap-2">
-                  <span className="text-sm">🎭</span>
-                  <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Live Commentary</span>
+              <div className="mt-4 rounded-xl border border-amber-400/20 bg-gradient-to-b from-amber-400/5 to-transparent overflow-hidden">
+                <div className="px-4 py-3 border-b border-amber-400/10 flex items-center gap-2">
+                  <span className="text-base">🎭</span>
+                  <span className="text-sm font-bold text-amber-400 uppercase tracking-wider">Live Commentary</span>
+                  <span className="ml-auto text-[10px] text-muted-foreground">{liveMatchData.banter.length} moments</span>
                 </div>
-                <div className="divide-y divide-border/10 max-h-64 overflow-y-auto">
+                <div className="divide-y divide-border/10 max-h-[28rem] overflow-y-auto">
                   {liveMatchData.banter.map((b, i) => (
-                    <div key={i} className="px-3 py-2 text-xs text-muted-foreground">
-                      <span className="text-foreground">{b.message}</span>
+                    <div key={i} className="px-4 py-3 text-sm text-foreground leading-relaxed">
+                      {b.message}
                     </div>
                   ))}
                 </div>
