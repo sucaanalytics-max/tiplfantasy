@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useTransition } from "react"
+import { useState, useTransition, useRef } from "react"
 import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -77,6 +77,8 @@ export function AdminMatchClient({
   const [editUserId, setEditUserId] = useState<string>("")
   const [editCaptainId, setEditCaptainId] = useState<string>("")
   const [editVcId, setEditVcId] = useState<string>("")
+  const [memoText, setMemoText] = useState<string | null>(null)
+  const memoRef = useRef<HTMLPreElement>(null)
 
   // Initialize score entries from existing scores or empty
   const initScores = (): ScoreEntry => {
@@ -419,27 +421,10 @@ export function AdminMatchClient({
               startTransition(async () => {
                 const res = await getMatchMemo(match.id)
                 if (res.error) { showMsg("error", res.error); return }
-                if (res.memo) {
-                  navigator.clipboard.writeText(res.memo)
-                  showMsg("success", "Match Memo copied!")
-                }
+                if (res.memo) setMemoText(res.memo)
               })
             }}>
-              Copy Memo
-            </Button>
-          )}
-          {userScores.length > 0 && (
-            <Button variant="secondary" size="sm" onClick={() => {
-              startTransition(async () => {
-                const res = await getMatchMemo(match.id)
-                if (res.error) { showMsg("error", res.error); return }
-                if (res.memo) {
-                  const url = `https://wa.me/?text=${encodeURIComponent(res.memo)}`
-                  window.open(url, "_blank")
-                }
-              })
-            }}>
-              Share via WhatsApp
+              Generate Memo
             </Button>
           )}
           {userScores.length > 0 && (
@@ -455,6 +440,40 @@ export function AdminMatchClient({
           )}
         </CardContent>
       </Card>
+
+      {/* Match Memo Output */}
+      {memoText && (
+        <Card className="border border-border">
+          <CardHeader className="pb-2">
+            <div className="flex items-center justify-between">
+              <CardTitle className="text-base">Match Memo</CardTitle>
+              <div className="flex gap-2">
+                <Button variant="outline" size="sm" onClick={() => {
+                  try { navigator.clipboard.writeText(memoText); showMsg("success", "Copied!") } catch { /* fallback: user selects text manually */ }
+                }}>
+                  Copy
+                </Button>
+                <Button variant="outline" size="sm" onClick={() => {
+                  window.open(`https://wa.me/?text=${encodeURIComponent(memoText)}`, "_blank")
+                }}>
+                  WhatsApp
+                </Button>
+                <Button variant="ghost" size="sm" onClick={() => setMemoText(null)}>
+                  ✕
+                </Button>
+              </div>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <pre
+              ref={memoRef}
+              className="whitespace-pre-wrap text-sm bg-secondary/50 rounded-lg p-4 max-h-[60vh] overflow-y-auto select-all font-sans leading-relaxed"
+            >
+              {memoText}
+            </pre>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Fantasy API diagnostic output */}
       {fantasyApiResult !== null && (
