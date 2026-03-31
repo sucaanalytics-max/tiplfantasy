@@ -5,7 +5,7 @@ import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs"
-import { ArrowLeft, ChevronDown, Trophy, Users, ClipboardList } from "lucide-react"
+import { ArrowLeft, ChevronDown, Trophy, Users, ClipboardList, BarChart3 } from "lucide-react"
 import { RankBadge } from "@/components/rank-badge"
 import { Podium } from "@/components/podium"
 import { TeamLogo } from "@/components/team-logo"
@@ -217,18 +217,22 @@ export function ScoresClient({
       {/* ── Tabs ─────────────────────────────────────────── */}
       {playerScores.length > 0 ? (
         <Tabs defaultValue="leaderboard" className="px-4 md:px-6">
-          <TabsList className="w-full grid grid-cols-3 mb-4">
-            <TabsTrigger value="leaderboard" className="gap-1.5 text-xs">
+          <TabsList className="w-full grid grid-cols-4 mb-4">
+            <TabsTrigger value="leaderboard" className="gap-1 text-[11px]">
               <Trophy className="h-3.5 w-3.5" />
-              Leaderboard
+              Board
             </TabsTrigger>
-            <TabsTrigger value="your-xi" className="gap-1.5 text-xs">
+            <TabsTrigger value="your-xi" className="gap-1 text-[11px]">
               <ClipboardList className="h-3.5 w-3.5" />
               Your XI
             </TabsTrigger>
-            <TabsTrigger value="scorecard" className="gap-1.5 text-xs">
+            <TabsTrigger value="scorecard" className="gap-1 text-[11px]">
               <Users className="h-3.5 w-3.5" />
               Scorecard
+            </TabsTrigger>
+            <TabsTrigger value="breakdown" className="gap-1 text-[11px]">
+              <BarChart3 className="h-3.5 w-3.5" />
+              Fantasy
             </TabsTrigger>
           </TabsList>
 
@@ -544,6 +548,90 @@ export function ScoresClient({
                 </div>
               )
             })}
+          </TabsContent>
+
+          {/* ── Tab: Fantasy Breakdown ──────────────────────── */}
+          <TabsContent value="breakdown">
+            {playerScores.length === 0 ? (
+              <p className="text-sm text-muted-foreground text-center py-8">No scores yet.</p>
+            ) : (
+              <div className="space-y-6">
+                {[
+                  { team: away, players: awayTeamPlayers, label: away.short_name },
+                  { team: home, players: homeTeamPlayers, label: home.short_name },
+                ].map(({ team, players: teamPlayers, label }) => {
+                  const sorted = [...teamPlayers].sort((a, b) => Number(b.fantasy_points) - Number(a.fantasy_points))
+                  return (
+                    <div key={team.short_name} className="rounded-lg border border-border/30 bg-[hsl(var(--background))] overflow-hidden">
+                      {/* Team header */}
+                      <div className="flex items-center gap-2 px-3 py-2 border-b border-border/20 bg-secondary/20">
+                        <div className="w-1 h-4 rounded-full" style={{ backgroundColor: team.color }} />
+                        <TeamLogo team={team} size="sm" />
+                        <span className="text-xs font-bold font-display uppercase tracking-wider" style={{ color: team.color }}>{label}</span>
+                      </div>
+
+                      {/* Player rows */}
+                      {sorted.map((ps, idx) => {
+                        const bd = ps.breakdown as Record<string, number> | null
+                        const entries = bd ? Object.entries(bd).filter(([, v]) => v !== 0) : []
+                        const isMine = myPlayerSet.has(ps.player_id)
+                        const isLast = idx === sorted.length - 1
+
+                        return (
+                          <div
+                            key={ps.player_id}
+                            className={cn(
+                              "px-3 py-2.5",
+                              !isLast && "border-b border-border/10",
+                              isMine && "bg-primary/5",
+                              idx % 2 === 1 && !isMine && "bg-secondary/5"
+                            )}
+                          >
+                            {/* Row: Name + Role | Stats | Total */}
+                            <div className="flex items-center gap-2">
+                              <Badge variant="outline" className={cn("text-[8px] px-1 py-0 h-[14px] border leading-none shrink-0", ROLE_COLORS[ps.player.role])}>
+                                {ps.player.role}
+                              </Badge>
+                              <span className="text-[13px] font-semibold truncate min-w-0 flex-1">
+                                {ps.player.name}
+                                {isMine && <span className="text-[8px] text-primary ml-1">●</span>}
+                              </span>
+                              <span className="text-xs text-muted-foreground/60 tabular-nums shrink-0">
+                                {ps.runs > 0 || ps.balls_faced > 0 ? `${ps.runs}(${ps.balls_faced})` : ""}
+                                {ps.runs > 0 && Number(ps.overs_bowled) > 0 ? " · " : ""}
+                                {Number(ps.overs_bowled) > 0 ? `${ps.wickets}/${ps.runs_conceded}` : ""}
+                              </span>
+                              <span className="text-base font-bold font-display tabular-nums shrink-0 ml-2 min-w-[2.5rem] text-right">
+                                {Number(ps.fantasy_points)}
+                              </span>
+                            </div>
+
+                            {/* Breakdown pills */}
+                            {entries.length > 0 && (
+                              <div className="flex flex-wrap gap-1 mt-1.5 ml-7">
+                                {entries
+                                  .sort((a, b) => Math.abs(b[1]) - Math.abs(a[1]))
+                                  .map(([key, pts]) => (
+                                    <span
+                                      key={key}
+                                      className={cn(
+                                        "text-[9px] font-medium px-1.5 py-0.5 rounded",
+                                        pts > 0 ? "text-emerald-400 bg-emerald-400/10" : "text-red-400 bg-red-400/10"
+                                      )}
+                                    >
+                                      {BREAKDOWN_LABELS[key] ?? key} {pts > 0 ? "+" : ""}{pts}
+                                    </span>
+                                  ))}
+                              </div>
+                            )}
+                          </div>
+                        )
+                      })}
+                    </div>
+                  )
+                })}
+              </div>
+            )}
           </TabsContent>
         </Tabs>
       ) : (
