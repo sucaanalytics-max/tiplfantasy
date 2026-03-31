@@ -74,6 +74,7 @@ type Props = {
   captainPicks: Record<string, { name: string }>
   currentUserId: string
   banter?: Array<{ message: string; event_type: string }>
+  userLeagues?: { id: string; name: string; memberIds: string[] }[]
 }
 
 // ─── Helpers ────────────────────────────────────────────────────────────
@@ -107,24 +108,17 @@ function econ(runs: number, overs: number): string {
 export function ScoresClient({
   match, home, away, playerScores, userScores, myScore,
   myPlayerIds, myCaptainId, myVcId, allSelections,
-  captainPicks, currentUserId, banter = [],
+  captainPicks, currentUserId, banter = [], userLeagues = [],
 }: Props) {
   const [expandedUserId, setExpandedUserId] = useState<string | null>(null)
+  const [leagueFilter, setLeagueFilter] = useState<string | null>(
+    userLeagues.length > 0 ? userLeagues[0].id : null
+  )
   const myPlayerSet = new Set(myPlayerIds)
 
   // Build lookup maps
   const psMap = new Map(playerScores.map((ps) => [ps.player_id, ps]))
   const selMap = new Map(allSelections.map((s) => [s.user_id, s]))
-
-  // Podium data
-  const podiumEntries = userScores.length >= 3
-    ? userScores.slice(0, 3).map((s, i) => ({
-        name: s.profile.display_name,
-        points: Number(s.total_points),
-        rank: i + 1,
-        isCurrentUser: s.user_id === currentUserId,
-      }))
-    : undefined
 
   // My XI sorted by effective points
   const myXI = myPlayerIds
@@ -144,41 +138,41 @@ export function ScoresClient({
 
   return (
     <div className="space-y-0 max-w-3xl">
-      {/* ── Match Header ────────────────────────────────── */}
-      <div className="px-4 pt-4 pb-3 md:px-6 md:pt-6">
-        <div className="flex items-center gap-3 mb-3">
+      {/* ── Match Header (compact) ─────────────────────── */}
+      <div className="px-4 pt-3 pb-2 md:px-6 md:pt-4">
+        <div className="flex items-center gap-2">
           <Link href="/matches">
-            <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+            <Button variant="ghost" size="sm" className="h-8 w-8 p-0 shrink-0">
               <ArrowLeft className="h-4 w-4" />
             </Button>
           </Link>
-          <span className="text-sm font-medium text-muted-foreground">Match #{match.match_number}</span>
-        </div>
-
-        {/* Team score line */}
-        <div className="flex items-center justify-center gap-4">
-          <div className="flex items-center gap-2">
-            <TeamLogo team={home} size="md" />
-            <span className="text-base font-bold font-display" style={{ color: home.color }}>{home.short_name}</span>
+          <span className="text-xs font-medium text-muted-foreground shrink-0">#{match.match_number}</span>
+          <div className="flex-1 flex items-center justify-center gap-3">
+            <div className="flex items-center gap-1.5">
+              <TeamLogo team={home} size="md" />
+              <span className="text-sm font-bold font-display" style={{ color: home.color }}>{home.short_name}</span>
+            </div>
+            <span className="text-[10px] font-bold text-muted-foreground/60">vs</span>
+            <div className="flex items-center gap-1.5">
+              <span className="text-sm font-bold font-display" style={{ color: away.color }}>{away.short_name}</span>
+              <TeamLogo team={away} size="md" />
+            </div>
           </div>
-          <span className="text-xs font-bold text-muted-foreground tracking-wider">VS</span>
-          <div className="flex items-center gap-2">
-            <span className="text-base font-bold font-display" style={{ color: away.color }}>{away.short_name}</span>
-            <TeamLogo team={away} size="md" />
-          </div>
+          {match.status === "live" && (
+            <div className="flex items-center gap-1 text-[10px] text-red-400 font-semibold shrink-0">
+              <span className="h-1.5 w-1.5 rounded-full bg-red-500 animate-pulse" />
+              LIVE
+            </div>
+          )}
         </div>
 
         {match.result_summary && (
-          <p className="text-center text-xs text-muted-foreground mt-2">{match.result_summary}</p>
+          <p className="text-center text-[11px] text-muted-foreground mt-1">{match.result_summary}</p>
         )}
 
         {match.status === "live" && (
           <>
             <LiveRefresher interval={30000} />
-            <div className="flex items-center justify-center gap-2 mt-2 text-xs text-red-400">
-              <span className="h-1.5 w-1.5 rounded-full bg-red-500 animate-pulse" />
-              LIVE
-            </div>
             {match.cricapi_match_id && (
               <div className="mt-1 text-center">
                 <LiveScoreWidget cricapiMatchId={match.cricapi_match_id} startTime={match.start_time} />
@@ -187,25 +181,6 @@ export function ScoresClient({
           </>
         )}
       </div>
-
-      {/* ── Your Score Bar ───────────────────────────────── */}
-      {myScore && (
-        <div className="mx-4 md:mx-6 mb-4 flex items-center justify-between py-3 px-4 rounded-xl bg-gradient-to-r from-primary/10 via-transparent to-transparent border border-primary/15">
-          <div>
-            <p className="text-3xl font-bold font-display tracking-tight">{Number(myScore.total_points)}</p>
-            <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground mt-0.5">
-              {Number(myScore.captain_points) > 0 && (
-                <span>C ×2 <span className="text-primary/70">+{Number(myScore.captain_points)}</span></span>
-              )}
-              {Number(myScore.captain_points) > 0 && Number(myScore.vc_points) > 0 && <span>·</span>}
-              {Number(myScore.vc_points) > 0 && (
-                <span>VC ×1.5 <span className="text-primary/70">+{Number(myScore.vc_points)}</span></span>
-              )}
-            </div>
-          </div>
-          {myScore.rank != null && <RankBadge rank={myScore.rank} size="lg" />}
-        </div>
-      )}
 
       {/* ── Match Highlights (Banter) ──────────────────── */}
       {banter.length > 0 && (
@@ -226,15 +201,15 @@ export function ScoresClient({
 
       {/* ── Tabs ─────────────────────────────────────────── */}
       {playerScores.length > 0 ? (
-        <Tabs defaultValue="your-xi" className="px-4 md:px-6">
+        <Tabs defaultValue="leaderboard" className="px-4 md:px-6">
           <TabsList className="w-full grid grid-cols-3 mb-4">
-            <TabsTrigger value="your-xi" className="gap-1.5 text-xs">
-              <ClipboardList className="h-3.5 w-3.5" />
-              Your XI
-            </TabsTrigger>
             <TabsTrigger value="leaderboard" className="gap-1.5 text-xs">
               <Trophy className="h-3.5 w-3.5" />
               Leaderboard
+            </TabsTrigger>
+            <TabsTrigger value="your-xi" className="gap-1.5 text-xs">
+              <ClipboardList className="h-3.5 w-3.5" />
+              Your XI
             </TabsTrigger>
             <TabsTrigger value="scorecard" className="gap-1.5 text-xs">
               <Users className="h-3.5 w-3.5" />
@@ -326,10 +301,52 @@ export function ScoresClient({
               <p className="text-sm text-muted-foreground text-center py-8">No scores yet.</p>
             ) : (
               <div>
-                {podiumEntries && <Podium entries={podiumEntries} />}
+                {/* League filter pills */}
+                {userLeagues.length > 0 && (
+                  <div className="flex gap-1.5 mb-3">
+                    <button
+                      onClick={() => setLeagueFilter(null)}
+                      className={cn(
+                        "px-3 py-1 rounded-full text-xs font-medium transition-colors",
+                        !leagueFilter ? "bg-primary text-primary-foreground" : "bg-secondary/50 text-muted-foreground hover:bg-secondary/70"
+                      )}
+                    >
+                      All
+                    </button>
+                    {userLeagues.map((league) => (
+                      <button
+                        key={league.id}
+                        onClick={() => setLeagueFilter(league.id)}
+                        className={cn(
+                          "px-3 py-1 rounded-full text-xs font-medium transition-colors",
+                          leagueFilter === league.id ? "bg-primary text-primary-foreground" : "bg-secondary/50 text-muted-foreground hover:bg-secondary/70"
+                        )}
+                      >
+                        {league.name}
+                      </button>
+                    ))}
+                  </div>
+                )}
 
-                <div className="flex flex-col gap-1 mt-3">
-                  {userScores.map((user) => {
+                {(() => {
+                  const activeLeague = userLeagues.find((l) => l.id === leagueFilter)
+                  const filteredScores = activeLeague
+                    ? userScores.filter((s) => activeLeague.memberIds.includes(s.user_id))
+                    : userScores
+                  const filteredPodium = filteredScores.length >= 3
+                    ? filteredScores.slice(0, 3).map((s, i) => ({
+                        name: s.profile.display_name,
+                        points: Number(s.total_points),
+                        rank: i + 1,
+                        isCurrentUser: s.user_id === currentUserId,
+                      }))
+                    : undefined
+
+                  return (
+                    <>
+                      {filteredPodium && <Podium entries={filteredPodium} />}
+                      <div className="flex flex-col gap-1 mt-3">
+                        {filteredScores.map((user, idx) => {
                     const isExpanded = expandedUserId === user.user_id
                     const isMe = user.user_id === currentUserId
                     const sel = selMap.get(user.user_id)
@@ -345,7 +362,7 @@ export function ScoresClient({
                             isExpanded && !isMe && "bg-secondary/30"
                           )}
                         >
-                          <RankBadge rank={user.rank ?? 0} size="sm" />
+                          <RankBadge rank={leagueFilter ? idx + 1 : (user.rank ?? 0)} size="sm" />
                           <div className={cn("h-7 w-7 rounded-full flex items-center justify-center shrink-0", getAvatarColor(user.profile.display_name))}>
                             <span className="text-white text-[10px] font-semibold">{getInitials(user.profile.display_name)}</span>
                           </div>
@@ -393,8 +410,11 @@ export function ScoresClient({
                         )}
                       </div>
                     )
-                  })}
-                </div>
+                        })}
+                      </div>
+                    </>
+                  )
+                })()}
               </div>
             )}
           </TabsContent>

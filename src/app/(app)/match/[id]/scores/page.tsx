@@ -18,7 +18,7 @@ export default async function ScoresPage({
   const admin = createAdminClient()
 
   // All queries in parallel
-  const [matchRes, playerScoresRes, userScoresRes, mySelectionRes, allSelectionsRes, captainPicksRes, banterRes] = await Promise.all([
+  const [matchRes, playerScoresRes, userScoresRes, mySelectionRes, allSelectionsRes, captainPicksRes, banterRes, myLeaguesRes] = await Promise.all([
     admin
       .from("matches")
       .select("*, team_home:teams!matches_team_home_id_fkey(short_name, color, logo_url), team_away:teams!matches_team_away_id_fkey(short_name, color, logo_url)")
@@ -58,6 +58,10 @@ export default async function ScoresPage({
       .eq("match_id", id)
       .order("created_at", { ascending: false })
       .limit(15),
+    admin
+      .from("league_members")
+      .select("league_id, leagues(id, name)")
+      .eq("user_id", user.id),
   ])
 
   const match = matchRes.data
@@ -88,6 +92,28 @@ export default async function ScoresPage({
     captainPicks[s.user_id] = { name: (s.captain as unknown as { name: string })?.name ?? "—" }
   }
 
+  // Build league filter data
+  const leagueIds = (myLeaguesRes.data ?? []).map((lm) => lm.league_id)
+  let userLeagues: { id: string; name: string; memberIds: string[] }[] = []
+  if (leagueIds.length > 0) {
+    const membersRes = await admin
+      .from("league_members")
+      .select("league_id, user_id")
+      .in("league_id", leagueIds)
+    const membersData = membersRes.data ?? []
+    const leagueMap = new Map<string, { id: string; name: string; memberIds: string[] }>()
+    for (const lm of myLeaguesRes.data ?? []) {
+      const league = lm.leagues as unknown as { id: string; name: string }
+      if (league && !leagueMap.has(league.id)) {
+        leagueMap.set(league.id, { id: league.id, name: league.name, memberIds: [] })
+      }
+    }
+    for (const m of membersData) {
+      leagueMap.get(m.league_id)?.memberIds.push(m.user_id)
+    }
+    userLeagues = Array.from(leagueMap.values())
+  }
+
   return (
     <PageTransition>
       <ScoresClient
@@ -111,6 +137,7 @@ export default async function ScoresPage({
         captainPicks={captainPicks}
         currentUserId={user.id}
         banter={(banterRes.data ?? []).map((b) => ({ message: b.message, event_type: b.event_type }))}
+        userLeagues={userLeagues}
       />
     </PageTransition>
   )
