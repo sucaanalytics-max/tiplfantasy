@@ -238,15 +238,17 @@ export async function GET(req: NextRequest) {
       // 14. Stamp when live points were last calculated
       await admin.from("matches").update({ live_scores_at: new Date().toISOString() }).eq("id", match.id)
 
-      // 14b. Generate banter for noteworthy events
+      // 14b. Load display names (used by banter + push notifications)
+      const userIds = selections.map((s) => s.user_id)
+      const { data: profiles } = await admin
+        .from("profiles")
+        .select("id, display_name")
+        .in("id", userIds)
+      const profileNameMap = new Map((profiles ?? []).map((p) => [p.id, p.display_name ?? "Unknown"]))
+
+      // 14c. Generate banter for noteworthy events
       try {
-        // Load display names for league members
-        const userIds = selections.map((s) => s.user_id)
-        const { data: profiles } = await admin
-          .from("profiles")
-          .select("id, display_name")
-          .in("id", userIds)
-        const nameMap = new Map((profiles ?? []).map((p) => [p.id, p.display_name ?? "Unknown"]))
+        const nameMap = profileNameMap
 
         // Build player name lookup from dbPlayers
         const playerNameMap = new Map(dbPlayers.map((p) => [p.id, p.name]))
@@ -332,13 +334,16 @@ export async function GET(req: NextRequest) {
         // Refresh season leaderboard materialized view
         await admin.rpc("refresh_leaderboard")
 
-        // Push notification: match completed
-        const winner = userScores.sort((a, b) => b.total - a.total)[0]
-        const winnerName = nameMap?.get(winner?.userId ?? "") ?? "Unknown"
+        // Push notification: match completed — show top 2
+        const sortedForPush = [...userScores].sort((a, b) => b.total - a.total)
+        const top2 = sortedForPush.slice(0, 2).map((u) => {
+          const name = profileNameMap.get(u.userId) ?? "Unknown"
+          return `${name} (${u.total})`
+        })
         try {
           await sendPushToAll({
-            title: `🏆 Match #${match.cricapi_match_id ? "" : ""}${note ? "" : "Final"} Results`,
-            body: `${winnerName} wins with ${winner?.total ?? 0} pts! ${note || ""}`.trim(),
+            title: `🏆 Match Complete`,
+            body: `${top2.join(" · ")}${note ? ` · ${note}` : ""}`,
             url: `/match/${match.id}/scores`,
             tag: `match-${match.id}-final`,
           })
