@@ -586,7 +586,7 @@ export function AdminMatchClient({
                             type="number"
                             min={0}
                             step={f.key === "overs_bowled" ? 0.1 : 1}
-                            value={s[f.key]}
+                            value={s[f.key] as number ?? 0}
                             onChange={(e) =>
                               updateScore(
                                 player.id,
