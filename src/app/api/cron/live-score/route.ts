@@ -320,10 +320,9 @@ export async function GET(req: NextRequest) {
         // Banter generation is non-critical — don't fail the cron
       }
 
-      // 15. Auto-detect match finished — only check API when both innings have data
-      if (result.innings.length >= 2) {
+      // 15. Auto-detect match finished — check fixture status directly
       const fixtureInfo = await fetchMatchInfo(match.cricapi_match_id)
-      if (fixtureInfo && fixtureInfo.status === "Finished") {
+      if (fixtureInfo && fixtureInfo.status === "Finished" && fixtureInfo.winner_team_id) {
         const note = (fixtureInfo.note ?? "")
           .replace(/\s{2,}/g, " ")
           .trim()
@@ -348,7 +347,6 @@ export async function GET(req: NextRequest) {
             tag: `match-${match.id}-final`,
           })
         } catch { /* non-critical */ }
-      }
       }
 
       updated.push(match.id)
