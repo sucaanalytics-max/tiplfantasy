@@ -34,6 +34,7 @@ export type PlayerScoreRow = {
   catches: number
   stumpings: number
   run_outs: number
+  breakdown: Record<string, number> | null
   player: { name: string; role: string; team_id: string; team: { short_name: string; color: string } }
 }
 
@@ -79,6 +80,19 @@ type Props = {
 
 // ─── Helpers ────────────────────────────────────────────────────────────
 
+const BREAKDOWN_LABELS: Record<string, string> = {
+  run: "Runs", four_bonus: "4s Bonus", six_bonus: "6s Bonus",
+  thirty: "30+", half_century: "50 Bonus", century: "100 Bonus",
+  duck: "Duck", sr_above_170: "SR>170", sr_150_170: "SR 150-170",
+  sr_below_70: "SR<70", sr_70_80: "SR 70-80",
+  wicket: "Wickets", maiden: "Maiden", three_wicket_haul: "3W Haul",
+  four_wicket_haul: "4W Haul", five_wicket_haul: "5W Haul",
+  econ_below_5: "Econ<5", econ_5_6: "Econ 5-6",
+  econ_10_11: "Econ 10-11", econ_above_11: "Econ>11",
+  catch: "Catches", stumping: "Stumping", run_out: "Run Out",
+  three_catch_bonus: "3+ Catches",
+}
+
 const ROLE_COLORS: Record<string, string> = {
   WK: "text-amber-400 border-amber-400/30 bg-amber-400/10",
   BAT: "text-blue-400 border-blue-400/30 bg-blue-400/10",
@@ -111,6 +125,7 @@ export function ScoresClient({
   captainPicks, currentUserId, banter = [], userLeagues = [],
 }: Props) {
   const [expandedUserId, setExpandedUserId] = useState<string | null>(null)
+  const [expandedPlayerId, setExpandedPlayerId] = useState<string | null>(null)
   const [leagueFilter, setLeagueFilter] = useState<string | null>(
     userLeagues.length > 0 ? userLeagues[0].id : null
   )
@@ -243,35 +258,57 @@ export function ScoresClient({
                   const role = ps.player.role
                   const isLast = idx === myXI.length - 1
                   const bowled = Number(ps.overs_bowled) > 0
+                  const isPlayerExpanded = expandedPlayerId === ps.player_id
+                  const bd = ps.breakdown as Record<string, number> | null
                   return (
-                    <div key={ps.player_id} className={cn(
-                      "grid grid-cols-[2.5rem_1fr_1.5rem_1.5rem_1.5rem_1.5rem_1px_1.5rem_1.8rem_1.8rem_1.5rem_3.2rem] gap-px items-center px-3 py-1.5 min-w-[420px]",
-                      !isLast && "border-b border-border/15"
-                    )}>
-                      <div className="flex items-center gap-0.5">
-                        {ps.isC && <span className="text-[8px] font-bold text-amber-400 mr-px">C</span>}
-                        {ps.isVC && <span className="text-[8px] font-bold text-sky-400 mr-px">VC</span>}
-                        <Badge variant="outline" className={cn("text-[8px] px-1 py-0 h-[14px] border leading-none", ROLE_COLORS[role])}>
-                          {role}
-                        </Badge>
-                      </div>
-                      <span className="text-[13px] font-medium truncate text-foreground">{ps.player.name}</span>
-                      <span className="text-[13px] text-right tabular-nums text-foreground">{ps.runs > 0 ? ps.runs : "-"}</span>
-                      <span className="text-[13px] text-right tabular-nums text-muted-foreground/60">{ps.balls_faced > 0 ? ps.balls_faced : "-"}</span>
-                      <span className="text-[13px] text-right tabular-nums text-muted-foreground/60">{ps.fours > 0 ? ps.fours : "-"}</span>
-                      <span className="text-[13px] text-right tabular-nums text-muted-foreground/60">{ps.sixes > 0 ? ps.sixes : "-"}</span>
-                      {/* Separator between bat and bowl */}
-                      <span className="h-4 bg-border/20" />
-                      <span className="text-[13px] text-right tabular-nums text-foreground">{bowled ? ps.wickets : "-"}</span>
-                      <span className="text-[13px] text-right tabular-nums text-muted-foreground/60">{bowled ? ps.overs_bowled : "-"}</span>
-                      <span className="text-[13px] text-right tabular-nums text-muted-foreground/60">{bowled ? ps.runs_conceded : "-"}</span>
-                      <span className="text-[13px] text-right tabular-nums text-muted-foreground/60">{bowled ? ps.maidens : "-"}</span>
-                      <div className="text-right">
-                        <span className="text-[13px] font-bold font-display tabular-nums text-foreground">{ps.effective}</span>
-                        {ps.mult > 1 && (
-                          <p className="text-[8px] text-muted-foreground/50">{Number(ps.fantasy_points)}×{ps.mult}</p>
+                    <div key={ps.player_id}>
+                      <button
+                        onClick={() => setExpandedPlayerId((prev) => prev === ps.player_id ? null : ps.player_id)}
+                        className={cn(
+                          "w-full grid grid-cols-[2.5rem_1fr_1.5rem_1.5rem_1.5rem_1.5rem_1px_1.5rem_1.8rem_1.8rem_1.5rem_3.2rem] gap-px items-center px-3 py-1.5 min-w-[420px] text-left",
+                          !isLast && !isPlayerExpanded && "border-b border-border/15",
+                          isPlayerExpanded && "bg-secondary/20"
                         )}
-                      </div>
+                      >
+                        <div className="flex items-center gap-0.5">
+                          {ps.isC && <span className="text-[8px] font-bold text-amber-400 mr-px">C</span>}
+                          {ps.isVC && <span className="text-[8px] font-bold text-sky-400 mr-px">VC</span>}
+                          <Badge variant="outline" className={cn("text-[8px] px-1 py-0 h-[14px] border leading-none", ROLE_COLORS[role])}>
+                            {role}
+                          </Badge>
+                        </div>
+                        <span className="text-[13px] font-medium truncate text-foreground">{ps.player.name}</span>
+                        <span className="text-[13px] text-right tabular-nums text-foreground">{ps.runs > 0 ? ps.runs : "-"}</span>
+                        <span className="text-[13px] text-right tabular-nums text-muted-foreground/60">{ps.balls_faced > 0 ? ps.balls_faced : "-"}</span>
+                        <span className="text-[13px] text-right tabular-nums text-muted-foreground/60">{ps.fours > 0 ? ps.fours : "-"}</span>
+                        <span className="text-[13px] text-right tabular-nums text-muted-foreground/60">{ps.sixes > 0 ? ps.sixes : "-"}</span>
+                        <span className="h-4 bg-border/20" />
+                        <span className="text-[13px] text-right tabular-nums text-foreground">{bowled ? ps.wickets : "-"}</span>
+                        <span className="text-[13px] text-right tabular-nums text-muted-foreground/60">{bowled ? ps.overs_bowled : "-"}</span>
+                        <span className="text-[13px] text-right tabular-nums text-muted-foreground/60">{bowled ? ps.runs_conceded : "-"}</span>
+                        <span className="text-[13px] text-right tabular-nums text-muted-foreground/60">{bowled ? ps.maidens : "-"}</span>
+                        <div className="text-right">
+                          <span className="text-[13px] font-bold font-display tabular-nums text-foreground">{ps.effective}</span>
+                          {ps.mult > 1 && (
+                            <p className="text-[8px] text-muted-foreground/50">{Number(ps.fantasy_points)}×{ps.mult}</p>
+                          )}
+                        </div>
+                      </button>
+                      {isPlayerExpanded && bd && Object.keys(bd).length > 0 && (
+                        <div className={cn(
+                          "flex flex-wrap gap-1.5 px-3 py-2 bg-secondary/10 min-w-[420px]",
+                          !isLast && "border-b border-border/15"
+                        )}>
+                          {Object.entries(bd).map(([key, pts]) => (
+                            <span key={key} className={cn(
+                              "text-[10px] font-medium px-1.5 py-0.5 rounded",
+                              pts > 0 ? "text-emerald-400 bg-emerald-400/10" : "text-red-400 bg-red-400/10"
+                            )}>
+                              {BREAKDOWN_LABELS[key] ?? key} {pts > 0 ? "+" : ""}{pts}
+                            </span>
+                          ))}
+                        </div>
+                      )}
                     </div>
                   )
                 })}

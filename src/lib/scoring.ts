@@ -13,6 +13,7 @@ export type PlayerStats = {
   catches: number
   stumpings: number
   run_outs: number
+  isOut?: boolean
 }
 
 export async function loadScoringRules(): Promise<ScoringRule[]> {
@@ -53,8 +54,8 @@ export function calculatePlayerPoints(
     add("thirty")
   }
 
-  // Duck
-  if (stats.runs === 0 && stats.balls_faced >= 1) {
+  // Duck — only if actually dismissed (isOut !== false preserves backwards compat)
+  if (stats.runs === 0 && stats.balls_faced >= 1 && stats.isOut !== false) {
     add("duck")
   }
 

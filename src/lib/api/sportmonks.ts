@@ -14,6 +14,7 @@ export type CricAPIScorecard = {
     "4s": number
     "6s": number
     dismissal?: string
+    isOut?: boolean
   }>
   bowling: Array<{
     bowler: { name: string }
@@ -292,6 +293,7 @@ export async function fetchMatchPoints(fixtureId: string): Promise<CricAPIMatchP
           b: b.ball,
           "4s": b.four_x,
           "6s": b.six_x,
+          isOut: b.wicket_id != null,
         })),
         bowling: inningBowling.map((b) => ({
           bowler: { name: playerNameMap.get(b.player_id) ?? String(b.player_id) },
@@ -509,6 +511,7 @@ export type ParsedStats = Map<
     catches: number
     stumpings: number
     run_outs: number
+    isOut?: boolean
   }
 >
 
@@ -542,6 +545,7 @@ export function parseScorecardToStats(innings: CricAPIScorecard[]): ParsedStats 
       s.balls_faced += b.b
       s.fours += b["4s"]
       s.sixes += b["6s"]
+      if (b.isOut !== undefined) s.isOut = b.isOut
     }
 
     for (const b of inning.bowling ?? []) {
