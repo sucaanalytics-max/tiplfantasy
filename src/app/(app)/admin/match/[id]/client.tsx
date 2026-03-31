@@ -281,9 +281,11 @@ export function AdminMatchClient({
     ? players.filter((p) => playingXIIds.includes(p.id))
     : []
 
-  // Group by team
-  const homePlayers = playingPlayers.filter((p) => p.team_id === match.team_home_id)
-  const awayPlayers = playingPlayers.filter((p) => p.team_id === match.team_away_id)
+  // Group by team, sorted by role
+  const ROLE_SORT = { WK: 0, BAT: 1, AR: 2, BOWL: 3 } as Record<string, number>
+  const sortByRole = (a: PlayerWithTeam, b: PlayerWithTeam) => (ROLE_SORT[a.role] ?? 9) - (ROLE_SORT[b.role] ?? 9)
+  const homePlayers = playingPlayers.filter((p) => p.team_id === match.team_home_id).sort(sortByRole)
+  const awayPlayers = playingPlayers.filter((p) => p.team_id === match.team_away_id).sort(sortByRole)
 
   const statFields: Array<{ key: keyof PlayerStats; label: string; short: string }> = [
     { key: "runs", label: "Runs", short: "R" },
@@ -507,15 +509,16 @@ export function AdminMatchClient({
                 >
                   {match.team_home.short_name} ({homePlayers.length})
                 </h3>
-                <div className="space-y-1">
-                  {homePlayers.map((p) => (
-                    <div key={p.id} className="text-sm flex items-center gap-2">
-                      <Badge variant="outline" className="text-[10px] w-10 justify-center">
-                        {p.role}
-                      </Badge>
-                      {p.name}
-                    </div>
-                  ))}
+                <div className="space-y-0.5">
+                  {homePlayers.map((p) => {
+                    const rc = p.role === "WK" ? "text-amber-400 border-amber-400/30 bg-amber-400/10" : p.role === "BAT" ? "text-blue-400 border-blue-400/30 bg-blue-400/10" : p.role === "AR" ? "text-emerald-400 border-emerald-400/30 bg-emerald-400/10" : "text-purple-400 border-purple-400/30 bg-purple-400/10"
+                    return (
+                      <div key={p.id} className="text-sm flex items-center gap-2 py-1.5 px-2 rounded-md bg-secondary/30">
+                        <Badge variant="outline" className={`text-[9px] w-10 justify-center border ${rc}`}>{p.role}</Badge>
+                        <span className="font-medium">{p.name}</span>
+                      </div>
+                    )
+                  })}
                 </div>
               </div>
               <div>
@@ -525,15 +528,16 @@ export function AdminMatchClient({
                 >
                   {match.team_away.short_name} ({awayPlayers.length})
                 </h3>
-                <div className="space-y-1">
-                  {awayPlayers.map((p) => (
-                    <div key={p.id} className="text-sm flex items-center gap-2">
-                      <Badge variant="outline" className="text-[10px] w-10 justify-center">
-                        {p.role}
-                      </Badge>
-                      {p.name}
-                    </div>
-                  ))}
+                <div className="space-y-0.5">
+                  {awayPlayers.map((p) => {
+                    const rc = p.role === "WK" ? "text-amber-400 border-amber-400/30 bg-amber-400/10" : p.role === "BAT" ? "text-blue-400 border-blue-400/30 bg-blue-400/10" : p.role === "AR" ? "text-emerald-400 border-emerald-400/30 bg-emerald-400/10" : "text-purple-400 border-purple-400/30 bg-purple-400/10"
+                    return (
+                      <div key={p.id} className="text-sm flex items-center gap-2 py-1.5 px-2 rounded-md bg-secondary/30">
+                        <Badge variant="outline" className={`text-[9px] w-10 justify-center border ${rc}`}>{p.role}</Badge>
+                        <span className="font-medium">{p.name}</span>
+                      </div>
+                    )
+                  })}
                 </div>
               </div>
             </div>
