@@ -2,26 +2,17 @@ import { createClient } from "@/lib/supabase/server"
 import { redirect } from "next/navigation"
 import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Trophy as TrophyIcon } from "lucide-react"
+import { Trophy as TrophyIcon, Zap, Crown, Target, Swords } from "lucide-react"
 import { Trophy } from "@/components/icons/trophy"
-import { getMyLeagues, getLeagueLeaderboard } from "@/actions/leagues"
+import { getMyLeagues, getLeagueLeaderboard, getLeagueAwards, getLeagueMatchScores } from "@/actions/leagues"
 import { LeaderboardSelector } from "./leaderboard-selector"
 import { getInitials, getAvatarColor } from "@/lib/avatar"
 import { RankBadge } from "@/components/rank-badge"
-import { Podium } from "@/components/podium"
 import { EmptyState } from "@/components/empty-state"
 import { PageTransition } from "@/components/page-transition"
+import type { LeagueMemberStats, LeagueMatchScore } from "@/lib/types"
 
-type LeaderRow = {
-  user_id: string
-  display_name: string
-  total_points: number
-  rank: number
-  matches_played?: number
-  avg_points?: number
-  podium_count?: number
-}
+const MEDALS = ["🥇", "🥈", "🥉"] as const
 
 export default async function LeaderboardPage({
   searchParams,
@@ -32,302 +23,208 @@ export default async function LeaderboardPage({
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect("/login")
 
-  const { league: leagueId } = await searchParams
+  const { league: leagueIdParam } = await searchParams
   const myLeagues = await getMyLeagues()
 
-  // Season leaderboard — either overall or league-specific
-  let seasonRows: LeaderRow[] = []
+  // Default to first league (Tusk League)
+  const leagueId = leagueIdParam ?? myLeagues[0]?.id ?? null
 
-  if (leagueId) {
-    const leagueData = await getLeagueLeaderboard(leagueId)
-    seasonRows = leagueData.map((e) => ({
-      user_id: e.user_id,
-      display_name: e.display_name,
-      total_points: e.total_points,
-      rank: e.season_rank,
-      matches_played: e.matches_played,
-    }))
-  } else {
-    const { data: seasonData } = await supabase
-      .from("season_leaderboard")
-      .select("*")
-      .order("season_rank", { ascending: true })
-      .limit(500)
-
-    seasonRows = (seasonData ?? []).map((e) => {
-      const entry = e as unknown as {
-        user_id: string; display_name: string; total_points: number
-        season_rank: number; matches_played: number; avg_points: number; podium_count: number
-      }
-      return {
-        user_id: entry.user_id,
-        display_name: entry.display_name,
-        total_points: entry.total_points,
-        rank: entry.season_rank,
-        matches_played: entry.matches_played,
-        avg_points: entry.avg_points,
-        podium_count: entry.podium_count,
-      }
-    })
+  if (!leagueId) {
+    return (
+      <PageTransition>
+        <div className="p-4 md:p-6 max-w-3xl space-y-6">
+          <h1 className="text-2xl font-bold tracking-tight">Leaderboard</h1>
+          <EmptyState icon={TrophyIcon} title="No league yet" description="Join or create a league to see standings" action={{ label: "Go to Leagues", href: "/leagues" }} />
+        </div>
+      </PageTransition>
+    )
   }
 
-  // Last two completed matches
-  const { data: completedMatches } = await supabase
-    .from("matches")
-    .select("id, match_number")
-    .eq("status", "completed")
-    .order("start_time", { ascending: false })
-    .limit(2)
-
-  const lastMatch = completedMatches?.[0] ?? null
-  const prevMatch = completedMatches?.[1] ?? null
-
-  async function getMatchScores(matchId: string): Promise<LeaderRow[]> {
-    if (leagueId) {
-      const { data: members } = await supabase
-        .from("league_members")
-        .select("user_id")
-        .eq("league_id", leagueId)
-        .limit(200)
-      const memberIds = (members ?? []).map((m) => m.user_id)
-      if (memberIds.length === 0) return []
-
-      const { data } = await supabase
-        .from("user_match_scores")
-        .select("user_id, total_points, rank, profile:profiles(display_name)")
-        .eq("match_id", matchId)
-        .in("user_id", memberIds)
-        .order("total_points", { ascending: false })
-        .limit(200)
-
-      return (data ?? []).map((s, i) => ({
-        user_id: s.user_id,
-        total_points: s.total_points,
-        rank: i + 1,
-        display_name: (s.profile as unknown as { display_name: string })?.display_name ?? "Unknown",
-      }))
-    }
-
-    const { data } = await supabase
-      .from("user_match_scores")
-      .select("user_id, total_points, rank, profile:profiles(display_name)")
-      .eq("match_id", matchId)
-      .order("rank", { ascending: true })
-      .limit(200)
-    return (data ?? []).map((s) => ({
-      user_id: s.user_id,
-      total_points: s.total_points,
-      rank: s.rank ?? 0,
-      display_name: (s.profile as unknown as { display_name: string })?.display_name ?? "Unknown",
-    }))
-  }
-
-  const [thisWeekRows, lastWeekRows] = await Promise.all([
-    lastMatch ? getMatchScores(lastMatch.id) : Promise.resolve([]),
-    prevMatch ? getMatchScores(prevMatch.id) : Promise.resolve([]),
+  // Fetch all data in parallel
+  const [leaderboard, awards, matchScores] = await Promise.all([
+    getLeagueLeaderboard(leagueId),
+    getLeagueAwards(leagueId),
+    getLeagueMatchScores(leagueId),
   ])
 
-  const seasonRankMap = new Map(seasonRows.map((r) => [r.user_id, r.rank]))
-  const userId = user.id
+  // Build matchday history (winners per match)
+  type MatchWinner = { matchNumber: number; matchId: string; winners: { name: string; points: number }[]; winnersCount: number }
+  const matchesMap = new Map<number, MatchWinner>()
+  for (const row of matchScores) {
+    if (row.league_rank === 1) {
+      if (!matchesMap.has(row.match_number)) {
+        matchesMap.set(row.match_number, {
+          matchNumber: row.match_number,
+          matchId: row.match_id,
+          winners: [],
+          winnersCount: row.match_winners_count,
+        })
+      }
+      matchesMap.get(row.match_number)!.winners.push({ name: row.display_name, points: row.total_points })
+    }
+  }
+  const matchHistory = [...matchesMap.entries()].sort(([a], [b]) => b - a).map(([, data]) => data)
+
+  // Awards race — sort all members for each category
+  const sortedByHighest = [...awards].sort((a, b) => Number(b.highest_score) - Number(a.highest_score))
+  const sortedByWins = [...awards].sort((a, b) => b.matchday_wins - a.matchday_wins)
+  const sortedByCaptain = [...awards].sort((a, b) => Number(b.total_captain_points) - Number(a.total_captain_points))
+  const sortedByConsistent = [...awards].sort((a, b) => b.top2_finishes - a.top2_finishes)
+
+  // Award leaders
+  const awardLeaders = awards.length > 0 ? {
+    highest: sortedByHighest[0],
+    wins: sortedByWins[0],
+    captain: sortedByCaptain[0],
+    consistent: sortedByConsistent[0],
+  } : null
+
+  const selectedLeague = myLeagues.find((l) => l.id === leagueId)
 
   return (
     <PageTransition>
-    <div className="p-4 md:p-6 space-y-6 max-w-2xl lg:max-w-4xl">
+    <div className="p-4 md:p-6 max-w-3xl space-y-6">
+      {/* Header */}
       <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight font-display flex items-center gap-2">
-            <Trophy className="h-6 w-6 shrink-0" />
-            Leaderboard
-          </h1>
-          <p className="text-muted-foreground mt-0.5">Fantasy rankings</p>
-        </div>
+        <h1 className="text-2xl font-bold tracking-tight">Leaderboard</h1>
         {myLeagues.length > 0 && (
-          <LeaderboardSelector
-            leagues={myLeagues.map((l) => ({ id: l.id, name: l.name }))}
-            currentLeagueId={leagueId ?? null}
-          />
+          <LeaderboardSelector leagues={myLeagues} currentLeagueId={leagueId} />
         )}
       </div>
 
-      <Tabs defaultValue="season">
-        <TabsList className="w-full">
-          <TabsTrigger value="season" className="flex-1">Season</TabsTrigger>
-          <TabsTrigger value="this-week" className="flex-1">
-            {lastMatch ? `Match #${lastMatch.match_number}` : "Latest"}
-          </TabsTrigger>
-          <TabsTrigger value="last-week" className="flex-1">
-            {prevMatch ? `Match #${prevMatch.match_number}` : "Previous"}
-          </TabsTrigger>
-        </TabsList>
+      {selectedLeague && (
+        <Badge variant="secondary" className="gap-1">
+          <TrophyIcon className="h-3 w-3" />
+          {selectedLeague.name}
+        </Badge>
+      )}
 
-        <TabsContent value="season" className="mt-4">
-          <Card className="border border-border">
-            <CardContent className="pt-4">
-              <LeaderTable rows={seasonRows} userId={userId} showMP showPodium showConsistency />
-            </CardContent>
-          </Card>
-        </TabsContent>
+      {/* ═══ SEASON STANDINGS ═══ */}
+      <div className="rounded-lg border border-border/30 bg-[hsl(var(--background))] overflow-hidden">
+        <div className="px-4 py-2.5 border-b border-border/30 bg-secondary/20">
+          <span className="text-xs font-semibold text-muted-foreground uppercase tracking-widest">Season Standings</span>
+        </div>
+        {leaderboard.length === 0 ? (
+          <p className="text-sm text-muted-foreground text-center py-8">No scores yet</p>
+        ) : (
+          <div>
+            {leaderboard.map((entry, i) => {
+              const rank = i + 1
+              const isMe = entry.user_id === user.id
+              return (
+                <div
+                  key={entry.user_id}
+                  className={`flex items-center gap-3 px-4 py-2.5 border-b border-border/10 last:border-b-0 ${isMe ? "bg-primary/5" : ""}`}
+                >
+                  <span className="w-6 text-center text-sm shrink-0">
+                    {rank <= 3 ? MEDALS[rank - 1] : <span className="text-muted-foreground">{rank}</span>}
+                  </span>
+                  <div className={`h-7 w-7 rounded-full flex items-center justify-center shrink-0 ${getAvatarColor(entry.display_name)}`}>
+                    <span className="text-white text-[10px] font-semibold">{getInitials(entry.display_name)}</span>
+                  </div>
+                  <span className={`text-sm flex-1 ${isMe ? "font-bold" : "font-medium"}`}>
+                    {entry.display_name}
+                    {isMe && <span className="text-primary text-[10px] ml-1">(you)</span>}
+                  </span>
+                  <span className="text-sm font-bold font-display tabular-nums">{Number(entry.total_points)}</span>
+                  <span className="text-[10px] text-muted-foreground tabular-nums w-8 text-right">{entry.matches_played}M</span>
+                  <span className="text-[10px] text-muted-foreground tabular-nums w-12 text-right">{entry.avg_points.toFixed(0)} avg</span>
+                </div>
+              )
+            })}
+          </div>
+        )}
+      </div>
 
-        <TabsContent value="this-week" className="mt-4">
-          <Card className="border border-border">
-            <CardContent className="pt-4">
-              <LeaderTable rows={thisWeekRows} userId={userId} showBanner showPodium seasonRankMap={seasonRankMap} />
-            </CardContent>
-          </Card>
-        </TabsContent>
+      {/* ═══ KEY STATS ═══ */}
+      {awardLeaders && (
+        <div>
+          <p className="text-xs font-semibold text-muted-foreground uppercase tracking-widest mb-3">Key Stats</p>
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+            {[
+              { icon: Zap, label: "Highest Score", name: awardLeaders.highest?.display_name, stat: `${Number(awardLeaders.highest?.highest_score)} pts` },
+              { icon: TrophyIcon, label: "Most Wins", name: awardLeaders.wins?.display_name, stat: `${awardLeaders.wins?.matchday_wins} wins` },
+              { icon: Crown, label: "Best Captaincy", name: awardLeaders.captain?.display_name, stat: `${Math.round(Number(awardLeaders.captain?.total_captain_points))} pts` },
+              { icon: Target, label: "Most Consistent", name: awardLeaders.consistent?.display_name, stat: `${awardLeaders.consistent?.top2_finishes} top-2s` },
+            ].map((award) => (
+              <Card key={award.label} className="border border-border/40">
+                <CardContent className="pt-3 pb-3 px-3">
+                  <div className="flex items-center gap-1.5 mb-2">
+                    <award.icon className="h-3.5 w-3.5 text-muted-foreground" />
+                    <span className="text-[10px] text-muted-foreground font-medium">{award.label}</span>
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    {award.name && (
+                      <div className={`h-5 w-5 rounded-full flex items-center justify-center shrink-0 ${getAvatarColor(award.name)}`}>
+                        <span className="text-white text-[8px] font-bold">{getInitials(award.name)}</span>
+                      </div>
+                    )}
+                    <span className="text-xs font-medium truncate">{award.name ?? "—"}</span>
+                  </div>
+                  <p className="text-lg font-bold font-display mt-1">{award.stat}</p>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        </div>
+      )}
 
-        <TabsContent value="last-week" className="mt-4">
-          <Card className="border border-border">
-            <CardContent className="pt-4">
-              <LeaderTable rows={lastWeekRows} userId={userId} showBanner showPodium seasonRankMap={seasonRankMap} />
-            </CardContent>
-          </Card>
-        </TabsContent>
-      </Tabs>
+      {/* ═══ AWARDS RACE ═══ */}
+      {awards.length >= 3 && (
+        <div>
+          <p className="text-xs font-semibold text-muted-foreground uppercase tracking-widest mb-3">Awards Race</p>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            {[
+              { icon: Zap, label: "Highest Score", data: sortedByHighest, getValue: (a: LeagueMemberStats) => `${Number(a.highest_score)} pts` },
+              { icon: TrophyIcon, label: "Matchday Wins", data: sortedByWins, getValue: (a: LeagueMemberStats) => `${a.matchday_wins} wins` },
+              { icon: Crown, label: "Best Captaincy", data: sortedByCaptain, getValue: (a: LeagueMemberStats) => `${Math.round(Number(a.total_captain_points))} pts` },
+              { icon: Target, label: "Most Consistent", data: sortedByConsistent, getValue: (a: LeagueMemberStats) => `${a.top2_finishes} top-2s` },
+            ].map(({ icon: Icon, label, data, getValue }) => (
+              <div key={label} className="rounded-lg border border-border/30 bg-secondary/10 overflow-hidden">
+                <div className="px-3 py-2 border-b border-border/20 flex items-center gap-2">
+                  <Icon className="h-3.5 w-3.5 text-muted-foreground" />
+                  <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">{label}</span>
+                </div>
+                <div className="divide-y divide-border/10">
+                  {data.slice(0, 3).map((entry, i) => (
+                    <div key={entry.user_id} className="flex items-center gap-2 px-3 py-2">
+                      <span className="text-xs w-4 text-center shrink-0">
+                        {i === 0 ? "🥇" : i === 1 ? "🥈" : "🥉"}
+                      </span>
+                      <span className="text-sm flex-1 truncate">{entry.display_name}</span>
+                      <span className="text-sm font-bold font-display tabular-nums shrink-0">{getValue(entry)}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* ═══ MATCHDAY HISTORY ═══ */}
+      {matchHistory.length > 0 && (
+        <div>
+          <p className="text-xs font-semibold text-muted-foreground uppercase tracking-widest mb-3">Matchday History</p>
+          <div className="rounded-lg border border-border/30 bg-[hsl(var(--background))] overflow-hidden divide-y divide-border/10">
+            {matchHistory.map((match) => (
+              <div key={match.matchNumber} className="flex items-center justify-between px-4 py-3">
+                <div>
+                  <span className="text-xs text-muted-foreground">Match #{match.matchNumber}</span>
+                  <div className="flex items-center gap-1.5 mt-0.5">
+                    <span className="text-sm">🏆</span>
+                    <span className="text-sm font-medium">
+                      {match.winners.map((w) => w.name).join(" & ")}
+                    </span>
+                  </div>
+                </div>
+                <span className="text-sm font-bold font-display tabular-nums">{match.winners[0]?.points} pts</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
     </PageTransition>
   )
 }
-
-function LeaderTable({
-    rows,
-    userId,
-    showMP,
-    showBanner,
-    showPodium,
-    seasonRankMap,
-    showConsistency,
-  }: {
-    rows: LeaderRow[]
-    userId: string
-    showMP?: boolean
-    showBanner?: boolean
-    showPodium?: boolean
-    seasonRankMap?: Map<string, number>
-    showConsistency?: boolean
-  }) {
-    if (rows.length === 0) {
-      return (
-        <EmptyState
-          icon={TrophyIcon}
-          title="No data yet"
-          description="Rankings will appear after the first match"
-        />
-      )
-    }
-
-    const podiumEntries = showPodium && rows.length >= 3
-      ? rows.slice(0, 3).map((r) => ({
-          name: r.display_name,
-          points: r.total_points,
-          rank: r.rank,
-          isCurrentUser: r.user_id === userId,
-        }))
-      : null
-
-    const tableRows = podiumEntries ? rows.slice(3) : rows
-    const startRank = podiumEntries ? 4 : 1
-
-    return (
-      <div className="space-y-2">
-        {/* Manager of the Match banner */}
-        {showBanner && rows[0] && (
-          <div className="flex items-center gap-3 p-4 rounded-xl bg-gradient-to-r from-amber-500/15 via-amber-400/5 to-transparent border border-amber-500/20 mb-4">
-            <div className="rounded-full bg-amber-500/20 p-2">
-              <TrophyIcon className="h-6 w-6 text-amber-500" />
-            </div>
-            <div className={`h-9 w-9 rounded-full ${getAvatarColor(rows[0].display_name)} flex items-center justify-center flex-shrink-0 ring-2 ring-amber-500/30`}>
-              <span className="text-white text-sm font-semibold">{getInitials(rows[0].display_name)}</span>
-            </div>
-            <div className="flex-1">
-              <p className="text-sm font-bold text-amber-400">Manager of the Match</p>
-              <p className="text-sm">{rows[0].display_name}</p>
-            </div>
-            <p className="text-xl font-bold font-display text-amber-400">{rows[0].total_points} pts</p>
-          </div>
-        )}
-
-        {/* Podium */}
-        {podiumEntries && <Podium entries={podiumEntries} />}
-
-        {/* Table header */}
-        {tableRows.length > 0 && (
-          <>
-            <div className="flex items-center py-2 px-3 text-xs font-medium text-muted-foreground uppercase tracking-wide mt-2">
-              <span className="w-10">#</span>
-              <span className="flex-1">Name</span>
-              {showMP && <span className="w-12 text-center">MP</span>}
-              {showConsistency && <span className="w-14 text-center">Avg</span>}
-              {showConsistency && <span className="w-14 text-center">Top-3</span>}
-              <span className="w-16 text-right">Points</span>
-            </div>
-
-            {tableRows.map((row, i) => {
-              const isMe = row.user_id === userId
-              const displayRank = podiumEntries ? row.rank : i + startRank
-              return (
-                <div
-                  key={row.user_id}
-                  className={`flex items-center py-2.5 px-3 rounded-lg transition-all border-b border-border/30 last:border-b-0 ${
-                    isMe
-                      ? "bg-primary/10 border border-primary/20"
-                      : displayRank === 1 ? "bg-emerald-500/5"
-                      : displayRank === 2 ? "bg-amber-500/5"
-                      : displayRank === 3 ? "bg-orange-700/5"
-                      : ""
-                  }`}
-                >
-                  <span className="w-10">
-                    <RankBadge rank={displayRank} size="sm" />
-                  </span>
-                  <div className={`flex-1 flex items-center gap-2 text-sm ${isMe ? "font-semibold" : ""}`}>
-                    <div className={`h-7 w-7 rounded-full ${getAvatarColor(row.display_name)} flex items-center justify-center flex-shrink-0 ${
-                      displayRank === 1 ? "ring-gold" : displayRank === 2 ? "ring-silver" : displayRank === 3 ? "ring-bronze" : ""
-                    }`}>
-                      <span className="text-white text-xs font-semibold">{getInitials(row.display_name)}</span>
-                    </div>
-                    <span>
-                      {row.display_name}
-                      {isMe && (
-                        <Badge variant="outline" className="ml-1.5 text-[9px] px-1.5 py-0 h-4 border-primary/30 text-primary">
-                          You
-                        </Badge>
-                      )}
-                    </span>
-                    {showBanner && seasonRankMap?.has(row.user_id) && (
-                      <span className="text-[10px] text-muted-foreground ml-1">#{seasonRankMap.get(row.user_id)}</span>
-                    )}
-                  </div>
-                  {showMP && (
-                    <span className="w-12 text-center text-sm text-muted-foreground">
-                      {row.matches_played ?? 0}
-                    </span>
-                  )}
-                  {showConsistency && (
-                    <span className="w-14 text-center text-sm text-muted-foreground">
-                      {row.avg_points != null ? row.avg_points.toFixed(0) : "—"}
-                    </span>
-                  )}
-                  {showConsistency && (() => {
-                    const pct = row.matches_played && row.podium_count != null
-                      ? Math.round((row.podium_count / row.matches_played) * 100)
-                      : null
-                    const isHot = pct != null && pct >= 75
-                    return (
-                      <span className={`w-14 text-center text-sm ${isHot ? "text-amber-400 font-semibold" : "text-muted-foreground"}`}>
-                        {row.podium_count != null && row.matches_played
-                          ? `${row.podium_count}/${row.matches_played}`
-                          : "—"}
-                      </span>
-                    )
-                  })()}
-                  <span className="w-16 text-right font-bold text-sm font-display">{row.total_points}</span>
-                </div>
-              )
-            })}
-          </>
-        )}
-      </div>
-    )
-  }
-
