@@ -887,7 +887,8 @@ export async function getPreMatchAnalysis(matchId: string, leagueId: string): Pr
   const away = (match.team_away as unknown as { short_name: string })?.short_name ?? "?"
   const matchLabel = `Match ${match.match_number}: ${home} vs ${away}`
 
-  const analysis = buildAnalysis(matchLabel, selectionData)
+  const excludeNames = ["Mark Kleinhans"]
+  const analysis = buildAnalysis(matchLabel, selectionData, excludeNames)
   const whatsapp = formatPreMatchWhatsApp(analysis)
 
   return { analysis, whatsapp }

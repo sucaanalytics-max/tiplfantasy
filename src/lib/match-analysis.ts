@@ -13,12 +13,17 @@ export interface PlayerPick {
 
 export interface UserAnalysis {
   displayName: string
+  captainId: string | null
+  vcId: string | null
   captainName: string | null
   vcName: string | null
   playerIds: string[]
   missing: { name: string; ownership: number; ownerCount: number }[]  // highly owned players they don't have
   unique: string[]          // players only they have
 }
+
+// Matrix cell: what role does this player have in this user's team?
+export type MatrixCell = "C" | "VC" | "picked" | null
 
 export interface CaptainPick {
   playerName: string
@@ -55,13 +60,18 @@ export function buildAnalysis(
     captainName: string | null
     vcName: string | null
     players: Array<{ id: string; name: string; role: string; team: string }>
-  }>
+  }>,
+  excludeNames: string[] = []
 ): PreMatchAnalysis {
-  const totalMembers = selections.length
+  // Filter out excluded members
+  const filtered = excludeNames.length > 0
+    ? selections.filter((s) => !excludeNames.includes(s.displayName))
+    : selections
+  const totalMembers = filtered.length
 
   // Build pick frequency map
   const playerMap = new Map<string, { name: string; role: string; team: string; owners: string[] }>()
-  for (const sel of selections) {
+  for (const sel of filtered) {
     for (const p of sel.players) {
       const existing = playerMap.get(p.id)
       if (existing) {
@@ -90,7 +100,7 @@ export function buildAnalysis(
   const vcMap = new Map<string, { playerName: string; owners: string[] }>()
   const noCaptain: string[] = []
 
-  for (const sel of selections) {
+  for (const sel of filtered) {
     if (sel.captainId && sel.captainName) {
       const c = captainMap.get(sel.captainId)
       if (c) c.owners.push(sel.displayName)
@@ -111,7 +121,7 @@ export function buildAnalysis(
       .sort((a, b) => b.count - a.count)
 
   // Per-user analysis
-  const users: UserAnalysis[] = selections.map((sel) => {
+  const users: UserAnalysis[] = filtered.map((sel) => {
     const myIds = new Set(sel.players.map((p) => p.id))
     // Missing: players owned by 40%+ of the league that this user doesn't have
     const missing = picks
@@ -124,6 +134,8 @@ export function buildAnalysis(
 
     return {
       displayName: sel.displayName,
+      captainId: sel.captainId,
+      vcId: sel.viceCaptainId,
       captainName: sel.captainName,
       vcName: sel.vcName,
       playerIds: sel.players.map((p) => p.id),
