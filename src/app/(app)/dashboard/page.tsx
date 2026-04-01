@@ -263,20 +263,25 @@ export default async function DashboardPage() {
                     </Link>
                   )}
                 </div>
-                {myLeagues.length > 0 && (
-                  <div className="flex items-center gap-2 px-1">
-                    {myLeagues.slice(0, 2).map((league) => (
-                      <Link
-                        key={league.id}
-                        href={`/leagues/${league.id}/match/${match.id}`}
-                        className="text-[11px] text-muted-foreground hover:text-foreground transition-colors flex items-center gap-1"
-                      >
-                        <Users className="h-3 w-3" />
-                        {league.name} →
-                      </Link>
-                    ))}
-                  </div>
-                )}
+                <div className="flex items-center gap-2 mt-1">
+                  <Link
+                    href={`/match/${match.id}/scores`}
+                    className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg border border-border/40 bg-secondary/30 text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-secondary/50 transition-colors"
+                  >
+                    <Trophy className="h-3.5 w-3.5" />
+                    Live Scores
+                  </Link>
+                  {myLeagues.slice(0, 1).map((league) => (
+                    <Link
+                      key={league.id}
+                      href={`/leagues/${league.id}/match/${match.id}`}
+                      className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg border border-primary/30 bg-primary/10 text-xs font-medium text-primary hover:bg-primary/20 transition-colors"
+                    >
+                      <Users className="h-3.5 w-3.5" />
+                      {league.name} League
+                    </Link>
+                  ))}
+                </div>
               </div>
             )
           })}
