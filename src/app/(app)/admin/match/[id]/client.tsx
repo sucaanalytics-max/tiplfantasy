@@ -10,7 +10,7 @@ import { Separator } from "@/components/ui/separator"
 import { formatIST } from "@/lib/utils"
 import type { MatchWithTeams, PlayerWithTeam, MatchPlayerScore } from "@/lib/types"
 import type { PlayerStats } from "@/lib/scoring"
-import { lockMatch, markNoResult, fetchPlayingXI, fetchMatchScorecard, autoScoreMatch, testMatchPoints, getMatchMemo, generateMatchBanter } from "@/actions/matches"
+import { lockMatch, markNoResult, fetchPlayingXI, fetchMatchScorecard, autoScoreMatch, testMatchPoints, getMatchMemo, generateMatchBanter, getPreMatchAnalysis } from "@/actions/matches"
 import { savePlayerScores, calculateMatchPoints, calculateLiveMatchPoints } from "@/actions/scoring"
 import { adminUpdateCaptainVc } from "@/actions/selections"
 import { formatMatchMessage } from "@/lib/whatsapp"
@@ -417,6 +417,16 @@ export function AdminMatchClient({
             disabled={isPending || !match.cricapi_match_id}
           >
             Test Fantasy API
+          </Button>
+          <Button variant="secondary" size="sm" onClick={() => {
+            startTransition(async () => {
+              // Fetch first league for analysis
+              const res = await getPreMatchAnalysis(match.id, "__first__")
+              if (res.error) showMsg("error", res.error)
+              else if (res.whatsapp) setMemoText(res.whatsapp)
+            })
+          }}>
+            Pre-Match Analysis
           </Button>
           {userScores.length > 0 && (
             <Button variant="secondary" size="sm" onClick={() => {

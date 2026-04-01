@@ -1,8 +1,8 @@
 "use client"
 
 import Link from "next/link"
-import { useState, useMemo } from "react"
-import { ArrowLeft, Trophy, GitCompareArrows, ChevronDown } from "lucide-react"
+import { useState, useMemo, useCallback } from "react"
+import { ArrowLeft, Trophy, GitCompareArrows, ChevronDown, BarChart3, Copy, Check } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs"
@@ -12,6 +12,8 @@ import { getInitials, getAvatarColor, getAvatarHexColor } from "@/lib/avatar"
 import { LiveRefresher } from "@/components/live-refresher"
 import { PlayerRow as SharedPlayerRow } from "@/components/shared/player-row"
 import { LeaderboardRow } from "@/components/shared/leaderboard-row"
+import { getPreMatchAnalysis } from "@/actions/matches"
+import type { PreMatchAnalysis } from "@/lib/match-analysis"
 import type { PlayerWithTeam, PlayerRole } from "@/lib/types"
 
 type MemberSelection = {
@@ -113,6 +115,29 @@ export function LeagueMatchClient({
   memberScores = [],
 }: Props) {
   const [expandedUserId, setExpandedUserId] = useState<string | null>(null)
+  const [analysis, setAnalysis] = useState<PreMatchAnalysis | null>(null)
+  const [analysisWhatsapp, setAnalysisWhatsapp] = useState<string>("")
+  const [analysisLoading, setAnalysisLoading] = useState(false)
+  const [copied, setCopied] = useState(false)
+
+  const loadAnalysis = useCallback(async () => {
+    if (analysis) return // already loaded
+    setAnalysisLoading(true)
+    try {
+      const res = await getPreMatchAnalysis(match.id, leagueId)
+      if (res.analysis) setAnalysis(res.analysis)
+      if (res.whatsapp) setAnalysisWhatsapp(res.whatsapp)
+    } finally {
+      setAnalysisLoading(false)
+    }
+  }, [analysis, match.id, leagueId])
+
+  const copyWhatsapp = useCallback(async () => {
+    if (!analysisWhatsapp) return
+    await navigator.clipboard.writeText(analysisWhatsapp)
+    setCopied(true)
+    setTimeout(() => setCopied(false), 2000)
+  }, [analysisWhatsapp])
 
   const opponents = useMemo(
     () => memberSelections.filter((m) => m.user_id !== currentUserId),
@@ -218,7 +243,7 @@ export function LeagueMatchClient({
 
       {/* Tabs: Scores + Compare */}
       <Tabs defaultValue={defaultTab}>
-        <TabsList className="w-full grid grid-cols-2">
+        <TabsList className="w-full grid grid-cols-3">
           <TabsTrigger value="scores" className="gap-1.5 text-xs">
             <Trophy className="h-3.5 w-3.5" />
             Scores
@@ -226,6 +251,10 @@ export function LeagueMatchClient({
           <TabsTrigger value="compare" className="gap-1.5 text-xs">
             <GitCompareArrows className="h-3.5 w-3.5" />
             Compare
+          </TabsTrigger>
+          <TabsTrigger value="analysis" className="gap-1.5 text-xs" onClick={loadAnalysis}>
+            <BarChart3 className="h-3.5 w-3.5" />
+            Analysis
           </TabsTrigger>
         </TabsList>
 
@@ -472,6 +501,120 @@ export function LeagueMatchClient({
                 </div>
               )}
             </>
+          )}
+        </TabsContent>
+
+        {/* ── Analysis Tab ──────────────────────────────── */}
+        <TabsContent value="analysis" className="mt-4">
+          {analysisLoading ? (
+            <div className="text-center py-12">
+              <p className="text-sm text-muted-foreground animate-pulse">Loading analysis...</p>
+            </div>
+          ) : !analysis ? (
+            <div className="text-center py-12">
+              <p className="text-sm text-muted-foreground">Tap the Analysis tab to load pre-match intelligence.</p>
+            </div>
+          ) : (
+            <div className="space-y-5">
+              {/* Copy button */}
+              <Button variant="outline" size="sm" className="w-full gap-2 text-xs" onClick={copyWhatsapp}>
+                {copied ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />}
+                {copied ? "Copied!" : "Copy for WhatsApp"}
+              </Button>
+
+              {/* Pick Ownership */}
+              <div>
+                <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">Pick Ownership</h3>
+                <div className="space-y-1">
+                  {analysis.picks.map((p) => {
+                    const statusColor: Record<string, string> = {
+                      UNIVERSAL: "bg-emerald-500/15 text-emerald-400 border-emerald-500/30",
+                      CORE: "bg-blue-500/15 text-blue-400 border-blue-500/30",
+                      COMMON: "bg-yellow-500/15 text-yellow-400 border-yellow-500/30",
+                      SPLIT: "bg-orange-500/15 text-orange-400 border-orange-500/30",
+                      DIFF: "bg-red-500/15 text-red-400 border-red-500/30",
+                      UNIQUE: "bg-purple-500/15 text-purple-400 border-purple-500/30",
+                    }
+                    return (
+                      <div key={p.id} className="flex items-center gap-2 py-1.5 px-3 rounded-lg bg-secondary/30">
+                        <span className="text-sm font-medium flex-1 min-w-0 truncate">{p.name}</span>
+                        <span className="text-[10px] text-muted-foreground shrink-0">{p.team}</span>
+                        <span className="text-xs font-bold tabular-nums shrink-0 w-8 text-right">{p.ownerCount}/{analysis.totalMembers}</span>
+                        <Badge variant="outline" className={cn("text-[9px] px-1.5 py-0 shrink-0", statusColor[p.status])}>
+                          {p.status}
+                        </Badge>
+                      </div>
+                    )
+                  })}
+                </div>
+              </div>
+
+              {/* Captaincy */}
+              <div>
+                <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">Captaincy Table</h3>
+                <div className="space-y-2">
+                  <p className="text-[10px] text-muted-foreground font-semibold uppercase">Captain (2x)</p>
+                  {analysis.captains.map((c) => (
+                    <div key={c.playerName} className="flex items-center gap-2 py-1.5 px-3 rounded-lg bg-amber-500/5 border border-amber-500/10">
+                      <span className="text-sm font-semibold flex-1">{c.playerName}</span>
+                      <span className="text-xs font-bold tabular-nums">{c.count}/{analysis.totalMembers}</span>
+                      <span className="text-[10px] text-muted-foreground">{c.owners.join(", ")}</span>
+                    </div>
+                  ))}
+                  {analysis.noCaptain.length > 0 && (
+                    <div className="flex items-center gap-2 py-1.5 px-3 rounded-lg bg-red-500/5 border border-red-500/10">
+                      <span className="text-sm flex-1 text-red-400">No Captain ⚠️</span>
+                      <span className="text-[10px] text-muted-foreground">{analysis.noCaptain.join(", ")}</span>
+                    </div>
+                  )}
+                  <p className="text-[10px] text-muted-foreground font-semibold uppercase mt-3">Vice Captain (1.5x)</p>
+                  {analysis.viceCaptains.map((v) => (
+                    <div key={v.playerName} className="flex items-center gap-2 py-1.5 px-3 rounded-lg bg-secondary/30">
+                      <span className="text-sm font-medium flex-1">{v.playerName}</span>
+                      <span className="text-xs font-bold tabular-nums">{v.count}/{analysis.totalMembers}</span>
+                      <span className="text-[10px] text-muted-foreground">{v.owners.join(", ")}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Per-user threats */}
+              <div>
+                <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">Threats Per User</h3>
+                <div className="space-y-3">
+                  {analysis.users.map((u) => (
+                    <div key={u.displayName} className="rounded-lg border border-border/30 bg-secondary/20 p-3 space-y-1.5">
+                      <div className="flex items-center gap-2">
+                        <div
+                          className="w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold text-white shrink-0"
+                          style={{ backgroundColor: getAvatarHexColor(u.displayName) }}
+                        >
+                          {getInitials(u.displayName)}
+                        </div>
+                        <span className="text-sm font-semibold">{u.displayName}</span>
+                        {u.captainName ? (
+                          <span className="text-[10px] text-amber-400">C: {u.captainName}</span>
+                        ) : (
+                          <span className="text-[10px] text-red-400">⚠️ No Captain</span>
+                        )}
+                      </div>
+                      {u.missing.length > 0 && (
+                        <div className="text-[11px] text-muted-foreground">
+                          <span className="text-red-400 font-medium">Missing: </span>
+                          {u.missing.map((m) => `${m.name} (${m.ownership}%)`).join(", ")}
+                        </div>
+                      )}
+                      {u.unique.length > 0 && (
+                        <div className="text-[11px]">
+                          <span className="text-purple-400 font-medium">Unique: </span>
+                          {u.unique.join(", ")} 🔥
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
           )}
         </TabsContent>
       </Tabs>

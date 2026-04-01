@@ -6,6 +6,7 @@ import { fetchSquad, fetchScorecard, fetchMatchPoints, fetchSeriesInfo, parseSco
 import { savePlayerScores, calculateMatchPoints } from "@/actions/scoring"
 import type { PlayerStats } from "@/lib/scoring"
 import { formatMatchMemo, detectBanterEvents, detectRankBanter, generateBanter, type MemoHighlights, type BanterEvent } from "@/lib/banter"
+import { buildAnalysis, formatPreMatchWhatsApp, type PreMatchAnalysis } from "@/lib/match-analysis"
 
 async function requireAdmin() {
   const supabase = await createClient()
@@ -785,4 +786,109 @@ export async function generateMatchBanter(matchId: string): Promise<{ generated?
   if (error) return { error: error.message }
 
   return { generated: banterRows.length }
+}
+
+export async function getPreMatchAnalysis(matchId: string, leagueId: string): Promise<{ analysis?: PreMatchAnalysis; whatsapp?: string; error?: string }> {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { error: "Not authenticated" }
+
+  const admin = createAdminClient()
+
+  // Admin shortcut: __first__ picks the user's first league
+  let resolvedLeagueId = leagueId
+  if (leagueId === "__first__") {
+    const { data: firstMembership } = await admin
+      .from("league_members")
+      .select("league_id")
+      .eq("user_id", user.id)
+      .limit(1)
+      .single()
+    if (!firstMembership) return { error: "Not in any league" }
+    resolvedLeagueId = firstMembership.league_id
+  } else {
+    // Verify user is a member of this league
+    const { data: membership } = await admin
+      .from("league_members")
+      .select("id")
+      .eq("league_id", leagueId)
+      .eq("user_id", user.id)
+      .single()
+    if (!membership) return { error: "Not a league member" }
+  }
+
+  // Get match info
+  const { data: match } = await admin
+    .from("matches")
+    .select("id, match_number, status, team_home:teams!matches_team_home_id_fkey(short_name), team_away:teams!matches_team_away_id_fkey(short_name)")
+    .eq("id", matchId)
+    .single()
+  if (!match) return { error: "Match not found" }
+
+  // Only allow analysis when teams are locked
+  if (match.status === "upcoming") return { error: "Teams not locked yet" }
+
+  // Get league members
+  const { data: members } = await admin
+    .from("league_members")
+    .select("user_id, profiles(display_name)")
+    .eq("league_id", resolvedLeagueId)
+  if (!members || members.length === 0) return { error: "No league members" }
+
+  const memberIds = members.map((m) => m.user_id)
+  const nameMap = new Map(members.map((m) => [m.user_id, (m.profiles as unknown as { display_name: string })?.display_name ?? "Unknown"]))
+
+  // Get selections for this match, filtered to league members
+  const { data: selections } = await admin
+    .from("selections")
+    .select("user_id, captain_id, vice_captain_id, selection_players(player_id)")
+    .eq("match_id", matchId)
+    .in("user_id", memberIds)
+
+  if (!selections || selections.length === 0) return { error: "No selections found" }
+
+  // Get all player details
+  const allPlayerIds = new Set<string>()
+  for (const sel of selections) {
+    if (sel.captain_id) allPlayerIds.add(sel.captain_id as string)
+    if (sel.vice_captain_id) allPlayerIds.add(sel.vice_captain_id as string)
+    for (const sp of sel.selection_players as { player_id: string }[]) {
+      allPlayerIds.add(sp.player_id)
+    }
+  }
+
+  const { data: players } = await admin
+    .from("players")
+    .select("id, name, role, team:teams(short_name)")
+    .in("id", [...allPlayerIds])
+
+  if (!players) return { error: "Failed to load players" }
+
+  const playerLookup = new Map(players.map((p) => [p.id, { name: p.name, role: p.role, team: (p.team as unknown as { short_name: string })?.short_name ?? "?" }]))
+
+  // Build selection data for analysis
+  const selectionData = selections.map((sel) => {
+    const captainInfo = sel.captain_id ? playerLookup.get(sel.captain_id as string) : null
+    const vcInfo = sel.vice_captain_id ? playerLookup.get(sel.vice_captain_id as string) : null
+    return {
+      displayName: nameMap.get(sel.user_id) ?? "Unknown",
+      captainId: sel.captain_id as string | null,
+      viceCaptainId: sel.vice_captain_id as string | null,
+      captainName: captainInfo?.name ?? null,
+      vcName: vcInfo?.name ?? null,
+      players: (sel.selection_players as { player_id: string }[]).map((sp) => {
+        const info = playerLookup.get(sp.player_id)
+        return { id: sp.player_id, name: info?.name ?? "Unknown", role: info?.role ?? "?", team: info?.team ?? "?" }
+      }),
+    }
+  })
+
+  const home = (match.team_home as unknown as { short_name: string })?.short_name ?? "?"
+  const away = (match.team_away as unknown as { short_name: string })?.short_name ?? "?"
+  const matchLabel = `Match ${match.match_number}: ${home} vs ${away}`
+
+  const analysis = buildAnalysis(matchLabel, selectionData)
+  const whatsapp = formatPreMatchWhatsApp(analysis)
+
+  return { analysis, whatsapp }
 }
