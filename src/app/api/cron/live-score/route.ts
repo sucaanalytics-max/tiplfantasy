@@ -3,7 +3,7 @@ import { createAdminClient } from "@/lib/supabase/admin"
 import { fetchMatchPoints, parseScorecardToStats, fuzzyMatchName, fetchMatchInfo } from "@/lib/api/sportmonks"
 import { loadScoringRules, calculatePlayerPoints, calculateUserMatchScore } from "@/lib/scoring"
 import { detectBanterEvents, detectRankBanter, generateBanter, type BanterEvent } from "@/lib/banter"
-import { sendPushToAll } from "@/lib/push"
+import { sendPushToAll, sendPushToUsers } from "@/lib/push"
 
 export async function GET(req: NextRequest) {
   if (req.headers.get("authorization") !== `Bearer ${process.env.CRON_SECRET}`) {
@@ -12,10 +12,44 @@ export async function GET(req: NextRequest) {
 
   const admin = createAdminClient()
 
+  // ── Push: Lock reminder (30 min before match start) ──
+  // Runs every 5 min, so check for upcoming matches starting in 25-35 min
+  try {
+    const now = new Date()
+    const in25 = new Date(now.getTime() + 25 * 60 * 1000).toISOString()
+    const in35 = new Date(now.getTime() + 35 * 60 * 1000).toISOString()
+
+    const { data: soonMatches } = await admin
+      .from("matches")
+      .select("id, match_number, team_home:teams!matches_team_home_id_fkey(short_name), team_away:teams!matches_team_away_id_fkey(short_name)")
+      .eq("status", "upcoming")
+      .gte("start_time", in25)
+      .lte("start_time", in35)
+
+    for (const sm of soonMatches ?? []) {
+      // Find users who have NOT submitted a selection for this match
+      const { data: allUsers } = await admin.from("profiles").select("id").limit(200)
+      const { data: submitted } = await admin.from("selections").select("user_id").eq("match_id", sm.id)
+      const submittedIds = new Set((submitted ?? []).map((s) => s.user_id))
+      const missingIds = (allUsers ?? []).map((u) => u.id).filter((id) => !submittedIds.has(id))
+
+      if (missingIds.length > 0) {
+        const home = (sm.team_home as unknown as { short_name: string })?.short_name ?? "?"
+        const away = (sm.team_away as unknown as { short_name: string })?.short_name ?? "?"
+        await sendPushToUsers(missingIds, {
+          title: "⏰ Team Not Submitted!",
+          body: `${home} vs ${away} starts in ~30 min — pick your XI!`,
+          url: `/match/${sm.id}/pick`,
+          tag: `lock-reminder-${sm.id}`,
+        })
+      }
+    }
+  } catch { /* lock reminder is non-critical */ }
+
   // Find live matches with a cricapi_match_id — exit early if none (zero CricAPI calls)
   const { data: liveMatches } = await admin
     .from("matches")
-    .select("id, cricapi_match_id, team_home_id, team_away_id")
+    .select("id, cricapi_match_id, team_home_id, team_away_id, live_scores_at, halfway_notified_at, team_home:teams!matches_team_home_id_fkey(short_name), team_away:teams!matches_team_away_id_fkey(short_name)")
     .eq("status", "live")
     .not("cricapi_match_id", "is", null)
 
@@ -29,6 +63,21 @@ export async function GET(req: NextRequest) {
 
   for (const match of liveMatches) {
     try {
+      // ── Push: Match started (first live detection) ──
+      const isFirstLiveTick = !match.live_scores_at
+      if (isFirstLiveTick) {
+        try {
+          const home = (match.team_home as unknown as { short_name: string })?.short_name ?? "?"
+          const away = (match.team_away as unknown as { short_name: string })?.short_name ?? "?"
+          await sendPushToAll({
+            title: "🏏 Match Started!",
+            body: `${home} vs ${away} is LIVE — fantasy points updating`,
+            url: `/match/${match.id}/scores`,
+            tag: `match-${match.id}-live`,
+          })
+        } catch { /* non-critical */ }
+      }
+
       // 1. Fetch fixture stats from SportMonks
       const result = await fetchMatchPoints(match.cricapi_match_id)
       if (!result || result.innings.length === 0) {
@@ -215,6 +264,52 @@ export async function GET(req: NextRequest) {
         userScores[i].rank = currentRank
       }
 
+      // 12a. Load display names (used by push notifications + banter)
+      const userIds = selections.map((s) => s.user_id)
+      const { data: profiles } = await admin
+        .from("profiles")
+        .select("id, display_name")
+        .in("id", userIds)
+      const profileNameMap = new Map((profiles ?? []).map((p) => [p.id, p.display_name ?? "Unknown"]))
+
+      // 12b. ── Push: Rank milestone (#1 or last place change) ──
+      if (!isFirstLiveTick) {
+        try {
+          const { data: prevScores } = await admin
+            .from("user_match_scores")
+            .select("user_id, rank")
+            .eq("match_id", match.id)
+          if (prevScores && prevScores.length > 0) {
+            const prevRankMap = new Map(prevScores.map((s) => [s.user_id, s.rank as number]))
+            const lastPlace = Math.max(...userScores.map((s) => s.rank))
+            for (const us of userScores) {
+              const prevRank = prevRankMap.get(us.userId)
+              if (prevRank == null) continue
+              // New #1 who wasn't #1 before
+              if (us.rank === 1 && prevRank !== 1) {
+                const name = profileNameMap.get(us.userId) ?? "Unknown"
+                await sendPushToAll({
+                  title: "🚀 New Leader!",
+                  body: `${name} takes the lead with ${us.total} pts`,
+                  url: `/match/${match.id}/scores`,
+                  tag: `milestone-${match.id}-lead`,
+                })
+              }
+              // New last place who wasn't last before
+              if (us.rank === lastPlace && prevRank !== lastPlace && lastPlace > 1) {
+                const name = profileNameMap.get(us.userId) ?? "Unknown"
+                await sendPushToAll({
+                  title: "📉 Dropped to Last!",
+                  body: `${name} falls to last place with ${us.total} pts`,
+                  url: `/match/${match.id}/scores`,
+                  tag: `milestone-${match.id}-last`,
+                })
+              }
+            }
+          }
+        } catch { /* non-critical */ }
+      }
+
       // 13. Upsert user match scores — safe to run repeatedly
       const userRows = userScores.map((s) => ({
         user_id: s.userId,
@@ -238,15 +333,28 @@ export async function GET(req: NextRequest) {
       // 14. Stamp when live points were last calculated
       await admin.from("matches").update({ live_scores_at: new Date().toISOString() }).eq("id", match.id)
 
-      // 14b. Load display names (used by banter + push notifications)
-      const userIds = selections.map((s) => s.user_id)
-      const { data: profiles } = await admin
-        .from("profiles")
-        .select("id, display_name")
-        .in("id", userIds)
-      const profileNameMap = new Map((profiles ?? []).map((p) => [p.id, p.display_name ?? "Unknown"]))
+      // 14a. ── Push: Halfway leaderboard (2nd innings started) ──
+      if (!match.halfway_notified_at && result.innings.length >= 2) {
+        try {
+          const sortedHalf = [...userScores].sort((a, b) => b.total - a.total)
+          const top3 = sortedHalf.slice(0, 3)
+          // We need profile names — load them now (they'll be reused below)
+          const halfUserIds = selections!.map((s) => s.user_id)
+          const { data: halfProfiles } = await admin.from("profiles").select("id, display_name").in("id", halfUserIds)
+          const halfNameMap = new Map((halfProfiles ?? []).map((p) => [p.id, p.display_name ?? "Unknown"]))
 
-      // 14c. Generate banter for noteworthy events
+          const leaderText = top3.map((u, i) => `${i + 1}. ${halfNameMap.get(u.userId) ?? "Unknown"} (${u.total})`).join(" · ")
+          await sendPushToAll({
+            title: "📊 Halfway Leaderboard",
+            body: leaderText,
+            url: `/match/${match.id}/scores`,
+            tag: `match-${match.id}-halfway`,
+          })
+          await admin.from("matches").update({ halfway_notified_at: new Date().toISOString() }).eq("id", match.id)
+        } catch { /* non-critical */ }
+      }
+
+      // 14b. Generate banter for noteworthy events
       try {
         const nameMap = profileNameMap
 

@@ -40,6 +40,9 @@ export function calculatePlayerPoints(
     }
   }
 
+  // Playing XI bonus (every player in the scorecard gets this)
+  add("playing_xi_bonus")
+
   // Batting
   add("run", stats.runs)
   add("four_bonus", stats.fours)
