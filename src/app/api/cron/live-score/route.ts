@@ -284,7 +284,6 @@ export async function GET(req: NextRequest) {
             .eq("match_id", match.id)
           if (prevScores && prevScores.length > 0) {
             const prevRankMap = new Map(prevScores.map((s) => [s.user_id, s.rank as number]))
-            const lastPlace = Math.max(...userScores.map((s) => s.rank))
             for (const us of userScores) {
               const prevRank = prevRankMap.get(us.userId)
               if (prevRank == null) continue
@@ -298,16 +297,7 @@ export async function GET(req: NextRequest) {
                   tag: `milestone-${match.id}-lead`,
                 })
               }
-              // New last place who wasn't last before
-              if (us.rank === lastPlace && prevRank !== lastPlace && lastPlace > 1) {
-                const name = profileNameMap.get(us.userId) ?? "Unknown"
-                await sendPushToAll({
-                  title: "📉 Dropped to Last!",
-                  body: `${name} falls to last place with ${us.total} pts`,
-                  url: `/match/${match.id}/scores`,
-                  tag: `milestone-${match.id}-last`,
-                })
-              }
+              // (dropped-to-last notification removed)
             }
           }
         } catch { /* non-critical */ }

@@ -38,44 +38,27 @@ export function StackedBar({
 
   return (
     <div className={cn('flex flex-col gap-2', className)}>
-      <svg
-        viewBox={`0 0 100 ${height}`}
-        preserveAspectRatio="none"
-        className="w-full overflow-hidden rounded-md"
-        style={{ height }}
-      >
-        <defs>
-          <clipPath id="bar-clip">
-            <rect x="0" y="0" width="100" height={height} rx={radius} />
-          </clipPath>
-        </defs>
-
-        <g clipPath="url(#bar-clip)">
-          {rects.map((r, i) => (
-            <g key={i}>
-              <rect
-                x={`${r.x}%`}
-                y="0"
-                width={`${r.width}%`}
-                height={height}
-                fill={r.color}
-                className="transition-all duration-500"
-              />
-              {showLabels && r.width > 12 && (
-                <text
-                  x={`${r.x + r.width / 2}%`}
-                  y={height / 2}
-                  textAnchor="middle"
-                  dominantBaseline="central"
-                  className="fill-black font-display text-[4px] font-semibold"
-                >
-                  {r.value}
-                </text>
-              )}
-            </g>
-          ))}
-        </g>
-      </svg>
+      <div className="flex w-full overflow-hidden rounded-md" style={{ height }}>
+        {rects.map((r, i) => (
+          <div
+            key={i}
+            className="flex items-center justify-center transition-all duration-500"
+            style={{
+              width: `${r.width}%`,
+              backgroundColor: r.color,
+              height,
+              borderTopLeftRadius: r.isFirst ? radius : 0,
+              borderBottomLeftRadius: r.isFirst ? radius : 0,
+              borderTopRightRadius: r.isLast ? radius : 0,
+              borderBottomRightRadius: r.isLast ? radius : 0,
+            }}
+          >
+            {showLabels && r.width > 15 && (
+              <span className="text-[10px] font-semibold text-black/80">{r.value}</span>
+            )}
+          </div>
+        ))}
+      </div>
 
       {showLegend && (
         <div className="flex flex-wrap gap-x-4 gap-y-1">
