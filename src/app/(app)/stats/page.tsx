@@ -39,7 +39,7 @@ export default async function StatsPage() {
   const playerIds = [...new Set((allScores ?? []).map((s) => s.player_id))]
   const { data: players } = await admin
     .from("players")
-    .select("id, name, role, team:teams(short_name, color)")
+    .select("id, name, role, team:teams(short_name, color, logo_url)")
     .in("id", playerIds)
 
   const playerMap = new Map((players ?? []).map((p) => [p.id, {
@@ -47,6 +47,7 @@ export default async function StatsPage() {
     role: p.role,
     team: (p.team as unknown as { short_name: string })?.short_name ?? "?",
     color: (p.team as unknown as { color: string })?.color ?? "#888",
+    logoUrl: (p.team as unknown as { logo_url: string | null })?.logo_url ?? null,
   }]))
 
   // Aggregate stats per player
@@ -56,6 +57,7 @@ export default async function StatsPage() {
     role: string
     team: string
     color: string
+    logoUrl: string | null
     matches: number
     runs: number
     ballsFaced: number
@@ -82,7 +84,7 @@ export default async function StatsPage() {
     let agg = aggMap.get(s.player_id)
     if (!agg) {
       agg = {
-        id: s.player_id, name: info.name, role: info.role, team: info.team, color: info.color,
+        id: s.player_id, name: info.name, role: info.role, team: info.team, color: info.color, logoUrl: info.logoUrl,
         matches: 0, runs: 0, ballsFaced: 0, fours: 0, sixes: 0,
         wickets: 0, oversBowled: 0, runsConceded: 0, maidens: 0,
         catches: 0, stumpings: 0, runOuts: 0, totalFantasy: 0, ducks: 0, scores: [],

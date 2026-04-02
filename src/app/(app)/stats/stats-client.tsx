@@ -11,6 +11,7 @@ type PlayerAgg = {
   role: string
   team: string
   color: string
+  logoUrl: string | null
   matches: number
   runs: number
   ballsFaced: number
@@ -37,12 +38,17 @@ function StatRow({ rank, player, stat, sub, accent }: { rank: number; player: Pl
       )}>
         {rank}
       </span>
-      <div
-        className="w-6 h-6 rounded-full flex items-center justify-center text-[9px] font-bold text-white shrink-0"
-        style={{ backgroundColor: player.color }}
-      >
-        {player.name.split(" ").map(w => w[0]).slice(0, 2).join("").toUpperCase()}
-      </div>
+      {player.logoUrl ? (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img src={player.logoUrl} alt={player.team} className="w-6 h-6 rounded-full object-contain shrink-0" />
+      ) : (
+        <div
+          className="w-6 h-6 rounded-full flex items-center justify-center text-[9px] font-bold text-white shrink-0"
+          style={{ backgroundColor: player.color }}
+        >
+          {player.team.slice(0, 2)}
+        </div>
+      )}
       <div className="flex-1 min-w-0">
         <p className="text-sm font-medium truncate">{player.name}</p>
         <p className="text-[10px] text-muted-foreground">{player.role} · {player.team}{sub ? ` · ${sub}` : ""}</p>
@@ -82,13 +88,6 @@ export function StatsClient({ players, matchCount }: { players: PlayerAgg[]; mat
 
   // --- Most Sixes ---
   const mostSixes = [...players].filter((p) => p.sixes > 0).sort((a, b) => b.sixes - a.sixes).slice(0, 7)
-
-  // --- Best Economy (min 8 overs) ---
-  const bestEconomy = [...players]
-    .filter((p) => p.oversBowled >= 8)
-    .map((p) => ({ ...p, economy: p.runsConceded / p.oversBowled }))
-    .sort((a, b) => a.economy - b.economy)
-    .slice(0, 7)
 
   // --- Form Table (last 3 matches avg, min 2 matches) ---
   const formTable = [...players]
@@ -199,12 +198,17 @@ export function StatsClient({ players, matchCount }: { players: PlayerAgg[]; mat
             )}>
               {i + 1}
             </span>
-            <div
-              className="w-6 h-6 rounded-full flex items-center justify-center text-[9px] font-bold text-white shrink-0"
-              style={{ backgroundColor: p.color }}
-            >
-              {p.name.split(" ").map(w => w[0]).slice(0, 2).join("").toUpperCase()}
-            </div>
+            {p.logoUrl ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={p.logoUrl} alt={p.team} className="w-6 h-6 rounded-full object-contain shrink-0" />
+            ) : (
+              <div
+                className="w-6 h-6 rounded-full flex items-center justify-center text-[9px] font-bold text-white shrink-0"
+                style={{ backgroundColor: p.color }}
+              >
+                {p.team.slice(0, 2)}
+              </div>
+            )}
             <div className="flex-1 min-w-0">
               <p className="text-sm font-medium truncate">{p.name}</p>
               <div className="flex items-center gap-1 mt-0.5">
@@ -229,33 +233,18 @@ export function StatsClient({ players, matchCount }: { players: PlayerAgg[]; mat
         ))}
       </SectionCard>
 
-      {/* Most Sixes + Best Economy side by side */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <SectionCard title="Most Sixes" emoji="💥">
-          {mostSixes.map((p, i) => (
-            <StatRow
-              key={p.id}
-              rank={i + 1}
-              player={p}
-              stat={`${p.sixes}`}
-              sub={`${p.fours} fours`}
-            />
-          ))}
-        </SectionCard>
-
-        <SectionCard title="Best Economy" emoji="🎯" accent="text-blue-400">
-          {bestEconomy.map((p, i) => (
-            <StatRow
-              key={p.id}
-              rank={i + 1}
-              player={p}
-              stat={p.economy.toFixed(1)}
-              sub={`${p.oversBowled.toFixed(0)} ov · ${p.wickets}w`}
-              accent="text-blue-400"
-            />
-          ))}
-        </SectionCard>
-      </div>
+      {/* Most Sixes */}
+      <SectionCard title="Most Sixes" emoji="💥">
+        {mostSixes.map((p, i) => (
+          <StatRow
+            key={p.id}
+            rank={i + 1}
+            player={p}
+            stat={`${p.sixes}`}
+            sub={`${p.fours} fours`}
+          />
+        ))}
+      </SectionCard>
 
       {/* Duck Club */}
       {duckClub.length > 0 && (
