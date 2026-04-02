@@ -319,6 +319,10 @@ export function PickTeamClient({
     const formIndicator = player.form_indicator
     const matchupChip = getMatchupChip(player)
 
+    const scores = tiplScores[player.id] ?? []
+    const avgPts = scores.length > 0 ? Math.round(scores.reduce((a, b) => a + b, 0) / scores.length) : null
+    const lastPts = scores.length > 0 ? scores[scores.length - 1] : null
+
     return (
       <button
         key={player.id}
@@ -328,104 +332,93 @@ export function PickTeamClient({
         disabled={isDisabled}
         title={disabledReason ?? undefined}
         className={cn(
-          "w-full flex items-center gap-2 px-2.5 py-2.5 text-left transition-colors",
+          "w-full px-2.5 py-2 text-left transition-colors",
           ROLE_ACCENT[player.role],
           isSelected ? "bg-primary/5" : isDisabled ? "opacity-40" : "hover:bg-secondary/50",
           hasPlayingXI && !isInXI && "opacity-50"
         )}
       >
-        {/* Player avatar */}
-        {player.image_url ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
-            src={player.image_url}
-            alt={player.name}
-            className="h-5 w-5 rounded-full object-cover shrink-0 ring-1 ring-border"
-          />
-        ) : (
-          <div
-            className="h-5 w-5 rounded-full flex items-center justify-center shrink-0 text-[8px] font-bold text-white"
-            style={{ backgroundColor: player.team.color }}
+        {/* Row 1: Avatar + checkbox + full player name */}
+        <div className="flex items-center gap-2">
+          {player.image_url ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={player.image_url}
+              alt={player.name}
+              className="h-5 w-5 rounded-full object-cover shrink-0 ring-1 ring-border"
+            />
+          ) : (
+            <div
+              className="h-5 w-5 rounded-full flex items-center justify-center shrink-0 text-[8px] font-bold text-white"
+              style={{ backgroundColor: player.team.color }}
+            >
+              {player.name.split(" ").map(w => w[0]).slice(0, 2).join("").toUpperCase()}
+            </div>
+          )}
+          <div className={cn(
+            "h-4 w-4 rounded-full border-2 flex items-center justify-center shrink-0",
+            isSelected ? "border-primary bg-primary" : "border-muted-foreground/30"
+          )}>
+            {isSelected && <Check className="h-2.5 w-2.5 text-primary-foreground" />}
+          </div>
+          <span
+            className="text-xs font-medium cursor-pointer underline-offset-2 hover:underline text-foreground inline-flex items-center gap-0.5 min-w-0"
+            onClick={(e) => { e.stopPropagation(); setStatsPlayerId(player.id) }}
           >
-            {player.name.split(" ").map(w => w[0]).slice(0, 2).join("").toUpperCase()}
+            {player.name}
+            <Info className="h-2.5 w-2.5 text-muted-foreground/50 shrink-0 ml-0.5" />
+          </span>
+          <FormIcon indicator={formIndicator} />
+          {isCaptain && <span className="text-[8px] font-bold text-amber-500 shrink-0">C</span>}
+          {isVC && <span className="text-[8px] font-bold text-violet-400 shrink-0">VC</span>}
+          {hasPlayingXI && isInXI && (
+            <span className="text-[7px] font-bold text-emerald-400 bg-emerald-400/15 px-1 rounded shrink-0">XI</span>
+          )}
+          {hasPlayingXI && !isInXI && (
+            <span className="text-[7px] font-bold text-red-400/60 bg-red-400/10 px-1 rounded shrink-0">BENCH</span>
+          )}
+        </div>
+
+        {/* Row 2: Role + Team + Price ... AVG + LAST */}
+        <div className="flex items-center gap-1 mt-1 pl-[52px]">
+          <Badge variant="outline" className="text-[8px] h-3 px-0.5 py-0">{player.role}</Badge>
+          <span
+            className="text-[8px] font-semibold px-1 py-0 rounded"
+            style={{ color: player.team.color, backgroundColor: `${player.team.color}18` }}
+          >
+            {player.team.short_name}
+          </span>
+          <span className="text-[8px] text-muted-foreground/50">{player.credit_cost}</span>
+          {matchupChip && (
+            <span className="text-[8px] text-emerald-500 truncate max-w-[60px]">{matchupChip}</span>
+          )}
+          <div className="flex items-center ml-auto shrink-0">
+            <span className={cn("text-[10px] font-bold tabular-nums w-6 text-right", avgPts != null ? "text-foreground" : "text-muted-foreground/30")}>
+              {avgPts ?? "—"}
+            </span>
+            <span className={cn("text-[10px] tabular-nums w-6 text-right", lastPts != null ? "text-muted-foreground" : "text-muted-foreground/30")}>
+              {lastPts ?? "—"}
+            </span>
+          </div>
+        </div>
+
+        {/* Selection % bar */}
+        {selectionPcts[player.id] != null && selectionPcts[player.id] > 0 && (
+          <div className="flex items-center gap-1 mt-0.5 pl-[52px]">
+            <div className="flex-1 h-[3px] rounded-full bg-border overflow-hidden">
+              <div
+                className={cn("h-full rounded-full transition-all", isSelected ? "bg-primary" : "bg-muted-foreground/40")}
+                style={{ width: `${selectionPcts[player.id]}%` }}
+              />
+            </div>
+            <span className={cn("text-[8px] tabular-nums shrink-0", isSelected ? "text-primary" : "text-muted-foreground/60")}>
+              {selectionPcts[player.id]}%
+            </span>
           </div>
         )}
-        {/* Selection dot */}
-        <div className={cn(
-          "h-4 w-4 rounded-full border-2 flex items-center justify-center shrink-0",
-          isSelected ? "border-primary bg-primary" : "border-muted-foreground/30"
-        )}>
-          {isSelected && <Check className="h-2.5 w-2.5 text-primary-foreground" />}
-        </div>
-
-        {/* Player info — left side */}
-        <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-1">
-            <span
-              className="text-xs font-medium truncate cursor-pointer underline-offset-2 hover:underline text-foreground inline-flex items-center gap-0.5"
-              onClick={(e) => { e.stopPropagation(); setStatsPlayerId(player.id) }}
-            >
-              {player.name}
-              <Info className="h-2.5 w-2.5 text-muted-foreground/50 shrink-0 inline ml-0.5" />
-            </span>
-            <FormIcon indicator={formIndicator} />
-            {isCaptain && <span className="text-[8px] font-bold text-amber-500">C</span>}
-            {isVC && <span className="text-[8px] font-bold text-violet-400">VC</span>}
-            {hasPlayingXI && isInXI && (
-              <span className="text-[7px] font-bold text-emerald-400 bg-emerald-400/15 px-1 rounded">XI</span>
-            )}
-            {hasPlayingXI && !isInXI && (
-              <span className="text-[7px] font-bold text-red-400/60 bg-red-400/10 px-1 rounded">BENCH</span>
-            )}
-          </div>
-          <div className="flex items-center gap-1">
-            <Badge variant="outline" className="text-[8px] h-3 px-0.5 py-0">{player.role}</Badge>
-            <span
-              className="text-[8px] font-semibold px-1 py-0 rounded"
-              style={{ color: player.team.color, backgroundColor: `${player.team.color}18` }}
-            >
-              {player.team.short_name}
-            </span>
-            <span className="text-[8px] text-muted-foreground/50">{player.credit_cost}</span>
-            {matchupChip && (
-              <span className="text-[8px] text-emerald-500 truncate max-w-[60px]">{matchupChip}</span>
-            )}
-          </div>
-          {/* Selection % bar */}
-          {selectionPcts[player.id] != null && selectionPcts[player.id] > 0 && (
-            <div className="flex items-center gap-1 mt-0.5">
-              <div className="flex-1 h-[3px] rounded-full bg-border overflow-hidden">
-                <div
-                  className={cn("h-full rounded-full transition-all", isSelected ? "bg-primary" : "bg-muted-foreground/40")}
-                  style={{ width: `${selectionPcts[player.id]}%` }}
-                />
-              </div>
-              <span className={cn("text-[8px] tabular-nums shrink-0", isSelected ? "text-primary" : "text-muted-foreground/60")}>
-                {selectionPcts[player.id]}%
-              </span>
-            </div>
-          )}
-          {isDisabled && (
-            <span className="text-[10px] text-status-danger">{disabledReason}</span>
-          )}
-        </div>
-
-        {/* Right-aligned TIPL stats columns */}
-        {(() => {
-          const scores = tiplScores[player.id] ?? []
-          const avgPts = scores.length > 0 ? Math.round(scores.reduce((a, b) => a + b, 0) / scores.length) : null
-          const lastPts = scores.length > 0 ? scores[scores.length - 1] : null
-          return (
-            <div className="flex items-center shrink-0">
-              <span className={cn("text-[10px] font-bold tabular-nums w-6 text-right", avgPts != null ? "text-foreground" : "text-muted-foreground/30")}>
-                {avgPts ?? "—"}
-              </span>
-              <span className={cn("text-[10px] tabular-nums w-6 text-right", lastPts != null ? "text-muted-foreground" : "text-muted-foreground/30")}>
-                {lastPts ?? "—"}
-              </span>
-            </div>
-          )
-        })()}
+        {isDisabled && (
+          <p className="text-[10px] text-status-danger mt-0.5 pl-[52px]">{disabledReason}</p>
+        )}
       </button>
     )
   }
