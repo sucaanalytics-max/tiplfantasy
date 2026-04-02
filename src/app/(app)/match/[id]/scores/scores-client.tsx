@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useCallback } from "react"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -14,6 +14,9 @@ import { LiveRefresher } from "@/components/live-refresher"
 import { LiveScoreWidget } from "@/components/live-score-widget"
 import { getInitials, getAvatarColor } from "@/lib/avatar"
 import { cn } from "@/lib/utils"
+import { getPreMatchAnalysis } from "@/actions/matches"
+import { AnalysisContent } from "@/components/analysis-content"
+import type { PreMatchAnalysis } from "@/lib/match-analysis"
 
 // ─── Types ──────────────────────────────────────────────────────────────
 
@@ -129,6 +132,31 @@ export function ScoresClient({
   const [leagueFilter, setLeagueFilter] = useState<string | null>(
     userLeagues.length > 0 ? userLeagues[0].id : null
   )
+  const [analysis, setAnalysis] = useState<PreMatchAnalysis | null>(null)
+  const [analysisWhatsapp, setAnalysisWhatsapp] = useState<string>("")
+  const [analysisLoading, setAnalysisLoading] = useState(false)
+  const [analysisCopied, setAnalysisCopied] = useState(false)
+
+  const loadAnalysis = useCallback(async () => {
+    if (analysis) return
+    setAnalysisLoading(true)
+    try {
+      const leagueId = userLeagues.length > 0 ? userLeagues[0].id : "__first__"
+      const res = await getPreMatchAnalysis(match.id, leagueId)
+      if (res.analysis) setAnalysis(res.analysis)
+      if (res.whatsapp) setAnalysisWhatsapp(res.whatsapp)
+    } finally {
+      setAnalysisLoading(false)
+    }
+  }, [analysis, match.id, userLeagues])
+
+  const copyAnalysisWhatsapp = useCallback(async () => {
+    if (!analysisWhatsapp) return
+    await navigator.clipboard.writeText(analysisWhatsapp)
+    setAnalysisCopied(true)
+    setTimeout(() => setAnalysisCopied(false), 2000)
+  }, [analysisWhatsapp])
+
   const myPlayerSet = new Set(myPlayerIds)
 
   // Build lookup maps
@@ -217,7 +245,7 @@ export function ScoresClient({
       {/* ── Tabs ─────────────────────────────────────────── */}
       {playerScores.length > 0 ? (
         <Tabs defaultValue="leaderboard" className="px-4 md:px-6">
-          <TabsList className="w-full grid grid-cols-4 mb-4">
+          <TabsList className="w-full grid grid-cols-5 mb-4">
             <TabsTrigger value="leaderboard" className="gap-1 text-[11px]">
               <Trophy className="h-3.5 w-3.5" />
               Board
@@ -233,6 +261,10 @@ export function ScoresClient({
             <TabsTrigger value="breakdown" className="gap-1 text-[11px]">
               <BarChart3 className="h-3.5 w-3.5" />
               Fantasy
+            </TabsTrigger>
+            <TabsTrigger value="analysis" className="gap-1 text-[11px]" onClick={loadAnalysis}>
+              <ClipboardList className="h-3.5 w-3.5" />
+              Analysis
             </TabsTrigger>
           </TabsList>
 
@@ -631,6 +663,21 @@ export function ScoresClient({
                   )
                 })}
               </div>
+            )}
+          </TabsContent>
+
+          {/* ── Tab: Analysis ──────────────────────────────── */}
+          <TabsContent value="analysis" className="mt-0">
+            {analysisLoading ? (
+              <div className="text-center py-12">
+                <p className="text-sm text-muted-foreground animate-pulse">Loading analysis...</p>
+              </div>
+            ) : !analysis ? (
+              <div className="text-center py-12">
+                <p className="text-sm text-muted-foreground">Tap the Analysis tab to load ownership matrix.</p>
+              </div>
+            ) : (
+              <AnalysisContent analysis={analysis} whatsapp={analysisWhatsapp} copied={analysisCopied} onCopy={copyAnalysisWhatsapp} />
             )}
           </TabsContent>
         </Tabs>
