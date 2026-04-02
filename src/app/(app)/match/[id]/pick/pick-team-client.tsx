@@ -96,7 +96,7 @@ export function PickTeamClient({
   const [error, setError] = useState<string | null>(null)
   const [showConfetti, setShowConfetti] = useState(false)
   const [showSubmitPreview, setShowSubmitPreview] = useState(false)
-  const [sortBy, setSortBy] = useState<"default" | "credits">("default")
+  const [sortBy, setSortBy] = useState<"default" | "credits" | "points">("default")
   const [cvDrawerOpen, setCvDrawerOpen] = useState(false)
   const prevSelectedCount = useRef(selectedIds.size)
   const [statsPlayerId, setStatsPlayerId] = useState<string | null>(null)
@@ -180,12 +180,20 @@ export function PickTeamClient({
       const rest = list.filter((p) => !playingXIIds.includes(p.id))
       list = [...xi, ...rest]
     }
-    // Sort by credits if selected
+    // Sort
     if (sortBy === "credits") {
       list = [...list].sort((a, b) => b.credit_cost - a.credit_cost)
+    } else if (sortBy === "points") {
+      list = [...list].sort((a, b) => {
+        const aScores = tiplScores[a.id] ?? []
+        const bScores = tiplScores[b.id] ?? []
+        const aAvg = aScores.length > 0 ? aScores.reduce((x, y) => x + y, 0) / aScores.length : -1
+        const bAvg = bScores.length > 0 ? bScores.reduce((x, y) => x + y, 0) / bScores.length : -1
+        return bAvg - aAvg
+      })
     }
     return list
-  }, [players, activeFilter, teamFilter, deferredSearch, match, hasPlayingXI, playingXIIds, sortBy])
+  }, [players, activeFilter, teamFilter, deferredSearch, match, hasPlayingXI, playingXIIds, sortBy, tiplScores])
 
   const getDisabledReason = useCallback(
     (player: PlayerWithTeam): string | null => {
@@ -326,7 +334,7 @@ export function PickTeamClient({
           hasPlayingXI && !isInXI && "opacity-50"
         )}
       >
-        {/* Player avatar — photo if available, else team-colored initial */}
+        {/* Player avatar */}
         {player.image_url ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img
@@ -350,7 +358,7 @@ export function PickTeamClient({
           {isSelected && <Check className="h-2.5 w-2.5 text-primary-foreground" />}
         </div>
 
-        {/* Player info */}
+        {/* Player info — left side */}
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-1">
             <span
@@ -382,17 +390,6 @@ export function PickTeamClient({
             {matchupChip && (
               <span className="text-[8px] text-emerald-500 truncate">{matchupChip}</span>
             )}
-            {(() => {
-              const scores = tiplScores[player.id] ?? []
-              const avgPts = scores.length > 0 ? Math.round(scores.reduce((a, b) => a + b, 0) / scores.length) : null
-              const lastPts = scores.length > 0 ? scores[scores.length - 1] : null
-              if (avgPts == null) return null
-              return (
-                <span className="text-[8px] text-muted-foreground/70 tabular-nums">
-                  avg {avgPts}{lastPts != null ? ` · last ${lastPts}` : ""}
-                </span>
-              )
-            })()}
           </div>
           {/* Selection % bar */}
           {selectionPcts[player.id] != null && selectionPcts[player.id] > 0 && (
@@ -412,6 +409,27 @@ export function PickTeamClient({
             <span className="text-[10px] text-status-danger">{disabledReason}</span>
           )}
         </div>
+
+        {/* Right-aligned TIPL stats columns */}
+        {(() => {
+          const scores = tiplScores[player.id] ?? []
+          const avgPts = scores.length > 0 ? Math.round(scores.reduce((a, b) => a + b, 0) / scores.length) : null
+          const lastPts = scores.length > 0 ? scores[scores.length - 1] : null
+          return (
+            <div className="flex items-center gap-1 shrink-0 ml-auto">
+              <div className="w-7 text-center">
+                <span className={cn("text-[10px] font-bold tabular-nums", avgPts != null ? "text-foreground" : "text-muted-foreground/30")}>
+                  {avgPts ?? "—"}
+                </span>
+              </div>
+              <div className="w-7 text-center">
+                <span className={cn("text-[10px] tabular-nums", lastPts != null ? "text-muted-foreground" : "text-muted-foreground/30")}>
+                  {lastPts ?? "—"}
+                </span>
+              </div>
+            </div>
+          )
+        })()}
       </button>
     )
   }
@@ -672,16 +690,22 @@ export function PickTeamClient({
             )}
           </div>
           <button
-            onClick={() => setSortBy(sortBy === "default" ? "credits" : "default")}
+            onClick={() => setSortBy(sortBy === "default" ? "points" : sortBy === "points" ? "credits" : "default")}
             className={cn(
               "flex items-center gap-1 px-2 py-1 rounded border text-xs transition-colors shrink-0",
-              sortBy === "credits" ? "border-primary/30 text-primary" : "border-border text-muted-foreground"
+              sortBy !== "default" ? "border-primary/30 text-primary" : "border-border text-muted-foreground"
             )}
-            title={sortBy === "credits" ? "Sort: by credits" : "Sort: default"}
+            title={sortBy === "points" ? "Sort: TIPL pts" : sortBy === "credits" ? "Sort: credits" : "Sort: default"}
           >
             <ArrowUpDown className="h-3 w-3" />
-            {sortBy === "credits" ? "Cr" : ""}
+            {sortBy === "points" ? "Pts" : sortBy === "credits" ? "Cr" : ""}
           </button>
+        </div>
+
+        {/* Column headers for stats */}
+        <div className="px-4 pb-1 flex items-center justify-end gap-1">
+          <span className="text-[8px] font-semibold text-muted-foreground uppercase w-7 text-center">Avg</span>
+          <span className="text-[8px] font-semibold text-muted-foreground uppercase w-7 text-center">Last</span>
         </div>
 
         {hasPlayingXI && (
