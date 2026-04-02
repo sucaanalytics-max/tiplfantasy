@@ -49,7 +49,7 @@ export async function GET(req: NextRequest) {
   // Find live matches with a cricapi_match_id — exit early if none (zero CricAPI calls)
   const { data: liveMatches } = await admin
     .from("matches")
-    .select("id, cricapi_match_id, team_home_id, team_away_id, live_scores_at, halfway_notified_at, last_banter_push_at, team_home:teams!matches_team_home_id_fkey(short_name), team_away:teams!matches_team_away_id_fkey(short_name)")
+    .select("id, cricapi_match_id, team_home_id, team_away_id, live_scores_at, halfway_notified_at, last_banter_push_at, last_banter_message, team_home:teams!matches_team_home_id_fkey(short_name), team_away:teams!matches_team_away_id_fkey(short_name)")
     .eq("status", "live")
     .not("cricapi_match_id", "is", null)
 
@@ -421,24 +421,26 @@ export async function GET(req: NextRequest) {
         // Banter generation is non-critical — don't fail the cron
       }
 
-      // 14c. ── Push: Banter highlight every ~30 min ──
+      // 14c. ── Push: Banter highlight every ~30 min (rotating, no repeats) ──
       try {
         const lastBanterPush = match.last_banter_push_at ? new Date(match.last_banter_push_at as string).getTime() : 0
         const minutesSinceLastPush = (Date.now() - lastBanterPush) / 60_000
         if (minutesSinceLastPush >= 25) {
-          // Load current banter for this match
           const { data: currentBanter } = await admin
             .from("match_banter")
             .select("message, event_type")
             .eq("match_id", match.id)
           if (currentBanter && currentBanter.length > 0) {
-            // Priority: captain_haul > captain_fail > vc_fail > duck/high_fantasy > rest
             const priorityMap: Record<string, number> = {
               captain_haul: 5, captain_fail: 4, vc_fail: 3,
               century: 2, fifty: 2, high_fantasy: 2, duck: 2,
               expensive_bowling: 1, low_sr: 1, three_wicket_haul: 1,
             }
-            const sorted = [...currentBanter].sort((a, b) => {
+            // Exclude the last sent message to avoid repeats
+            const lastMsg = (match.last_banter_message as string | null) ?? ""
+            const candidates = currentBanter.filter((b) => b.message !== lastMsg)
+            const pool = candidates.length > 0 ? candidates : currentBanter
+            const sorted = [...pool].sort((a, b) => {
               const pa = priorityMap[a.event_type] ?? 0
               const pb = priorityMap[b.event_type] ?? 0
               if (pb !== pa) return pb - pa
@@ -446,13 +448,17 @@ export async function GET(req: NextRequest) {
             })
             const best = sorted[0]
             if (best?.message) {
+              const pushCount = Math.floor(Date.now() / 1000)
               await sendPushToAll({
                 title: "Baba T 🧘🏽",
                 body: best.message,
                 url: `/match/${match.id}/scores`,
-                tag: `banter-${match.id}`,
+                tag: `banter-${match.id}-${pushCount}`,
               })
-              await admin.from("matches").update({ last_banter_push_at: new Date().toISOString() }).eq("id", match.id)
+              await admin.from("matches").update({
+                last_banter_push_at: new Date().toISOString(),
+                last_banter_message: best.message,
+              }).eq("id", match.id)
             }
           }
         }
