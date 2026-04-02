@@ -447,7 +447,7 @@ export async function GET(req: NextRequest) {
             const best = sorted[0]
             if (best?.message) {
               await sendPushToAll({
-                title: "🗣️ Match Banter",
+                title: "Baba T 🧘🏽",
                 body: best.message,
                 url: `/match/${match.id}/scores`,
                 tag: `banter-${match.id}`,
