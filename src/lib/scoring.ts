@@ -14,6 +14,7 @@ export type PlayerStats = {
   stumpings: number
   run_outs: number
   isOut?: boolean
+  role?: string
 }
 
 export async function loadScoringRules(): Promise<ScoringRule[]> {
@@ -57,8 +58,9 @@ export function calculatePlayerPoints(
     add("thirty")
   }
 
-  // Duck — only if actually dismissed (isOut !== false preserves backwards compat)
-  if (stats.runs === 0 && stats.balls_faced >= 1 && stats.isOut !== false) {
+  // Duck — BAT/WK/AR only, not bowlers. (isOut !== false preserves backwards compat)
+  const duckEligible = !stats.role || stats.role !== "BOWL"
+  if (duckEligible && stats.runs === 0 && stats.balls_faced >= 1 && stats.isOut !== false) {
     add("duck")
   }
 

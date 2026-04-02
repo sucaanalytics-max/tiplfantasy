@@ -91,7 +91,7 @@ export async function GET(req: NextRequest) {
       // 3. Load DB players for this match's two teams
       const { data: dbPlayers } = await admin
         .from("players")
-        .select("id, name, team_id, cricapi_id")
+        .select("id, name, team_id, cricapi_id, role")
         .in("team_id", [match.team_home_id, match.team_away_id])
 
       if (!dbPlayers) {
@@ -160,10 +160,13 @@ export async function GET(req: NextRequest) {
         breakdown: unknown
       }> = []
 
+      // Build id → role lookup for duck eligibility
+      const roleMap = new Map(dbPlayers.map((p) => [p.id, p.role ?? ""]))
+
       for (const [apiName, stats] of parsed) {
         const dbId = fuzzyMatchName(apiName, nameMap)
         if (!dbId) continue
-        const { total, breakdown } = calculatePlayerPoints(stats, rules)
+        const { total, breakdown } = calculatePlayerPoints({ ...stats, role: roleMap.get(dbId) ?? "" }, rules)
         scoreRows.push({
           match_id: match.id,
           player_id: dbId,
