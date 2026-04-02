@@ -1,3 +1,4 @@
+import Link from "next/link"
 import { createClient } from "@/lib/supabase/server"
 import { redirect } from "next/navigation"
 import { Card, CardContent } from "@/components/ui/card"
@@ -98,6 +99,14 @@ export default async function LeaderboardPage({
           {selectedLeague.name}
         </Badge>
       )}
+
+      {/* Player Stats link */}
+      <Link
+        href="/stats"
+        className="flex items-center justify-center gap-2 py-2.5 px-4 rounded-lg border border-border/30 bg-secondary/20 text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-secondary/40 transition-colors"
+      >
+        📊 Player Stats — Orange Cap, Purple Cap, Form & More
+      </Link>
 
       {/* ═══ SEASON STANDINGS ═══ */}
       <div className="rounded-lg border border-border/30 bg-[hsl(var(--background))] overflow-hidden">
