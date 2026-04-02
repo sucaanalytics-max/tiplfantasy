@@ -10,7 +10,22 @@ import {
 import { Badge } from "@/components/ui/badge"
 import { ROLE_COLORS, ROLE_LABELS } from "@/lib/badges"
 import type { PlayerWithTeam, PlayerVenueStats, PlayerVsTeamStats, PlayerSeasonStats } from "@/lib/types"
-import { Heatmap } from "@/components/charts/heatmap"
+import { StackedBar } from "@/components/charts/stacked-bar"
+
+const BAT_KEYS = new Set(["run", "four_bonus", "six_bonus", "thirty", "half_century", "century", "duck", "sr_above_170", "sr_150_170", "sr_70_80", "sr_below_70"])
+const BOWL_KEYS = new Set(["wicket", "maiden", "three_wicket_haul", "four_wicket_haul", "five_wicket_haul", "econ_below_5", "econ_5_6", "econ_10_11", "econ_above_11"])
+const FIELD_KEYS = new Set(["catch", "stumping", "run_out", "three_catch_bonus"])
+
+function categorize(breakdown: Record<string, number>): { bat: number; bowl: number; field: number; bonus: number } {
+  let bat = 0, bowl = 0, field = 0, bonus = 0
+  for (const [k, v] of Object.entries(breakdown)) {
+    if (BAT_KEYS.has(k)) bat += v
+    else if (BOWL_KEYS.has(k)) bowl += v
+    else if (FIELD_KEYS.has(k)) field += v
+    else bonus += v
+  }
+  return { bat, bowl, field, bonus }
+}
 
 function StatCell({ label, value }: { label: string; value: string | number | null }) {
   if (value === null || value === undefined) return null
@@ -66,7 +81,7 @@ export function PlayerStatsDrawer({
   onClose,
 }: {
   player: PlayerWithTeam | null
-  tiplScores: number[]
+  tiplScores: Array<{ total: number; breakdown: Record<string, number> }>
   venueStats: PlayerVenueStats | null
   vsTeamStats: PlayerVsTeamStats | null
   seasonStats: PlayerSeasonStats[]
@@ -81,9 +96,42 @@ export function PlayerStatsDrawer({
   const hasBowling = (player.ipl_wickets ?? 0) > 0
   const hasRecentForm = player.ipl_recent_scores && player.ipl_recent_scores.length > 0
   const hasTiplScores = tiplScores.length > 0
+  const tiplTotals = tiplScores.map((s) => s.total)
   const tiplAvg = hasTiplScores
-    ? (tiplScores.reduce((a, b) => a + b, 0) / tiplScores.length).toFixed(1)
+    ? Math.round(tiplTotals.reduce((a, b) => a + b, 0) / tiplTotals.length)
     : null
+  const tiplHigh = hasTiplScores ? Math.max(...tiplTotals) : null
+  const tiplLast = hasTiplScores ? tiplTotals[tiplTotals.length - 1] : null
+
+  // Category averages across all matches
+  const avgCategories = hasTiplScores ? (() => {
+    let bat = 0, bowl = 0, field = 0
+    for (const s of tiplScores) {
+      const c = categorize(s.breakdown)
+      bat += c.bat; bowl += c.bowl; field += c.field
+    }
+    const n = tiplScores.length
+    return { bat: Math.round(bat / n), bowl: Math.round(bowl / n), field: Math.round(field / n) }
+  })() : null
+
+  // Form trend: compare avg of last 2 vs first 2
+  const formTrend = tiplTotals.length >= 3 ? (() => {
+    const recent = tiplTotals.slice(-2).reduce((a, b) => a + b, 0) / 2
+    const early = tiplTotals.slice(0, 2).reduce((a, b) => a + b, 0) / 2
+    const diff = recent - early
+    if (diff > 10) return "rising" as const
+    if (diff < -10) return "falling" as const
+    return "steady" as const
+  })() : null
+
+  // Consistency: 100 - (CV * 100), capped 0-100
+  const consistency = tiplTotals.length >= 2 ? (() => {
+    const mean = tiplTotals.reduce((a, b) => a + b, 0) / tiplTotals.length
+    if (mean === 0) return 0
+    const variance = tiplTotals.reduce((a, b) => a + (b - mean) ** 2, 0) / tiplTotals.length
+    const cv = Math.sqrt(variance) / Math.abs(mean)
+    return Math.max(0, Math.min(100, Math.round(100 - cv * 100)))
+  })() : null
   const hasMatchContext = venueStats || vsTeamStats
   const hasSeasonStats = seasonStats.length > 0
 
@@ -118,6 +166,68 @@ export function PlayerStatsDrawer({
             <div className="text-center py-8 text-muted-foreground text-sm">
               No stats available
             </div>
+          )}
+
+          {/* TIPL Form — prominent at top */}
+          {hasTiplScores && (
+            <>
+              <SectionHeader>TIPL Form ({tiplScores.length} match{tiplScores.length > 1 ? "es" : ""})</SectionHeader>
+
+              {/* Summary: Avg / Last / High */}
+              <div className="grid grid-cols-3 gap-3 mb-3">
+                <div className="text-center rounded-lg bg-secondary/40 py-2">
+                  <p className="text-lg font-bold text-foreground">{tiplAvg}</p>
+                  <p className="text-[10px] uppercase tracking-wide text-muted-foreground">Avg</p>
+                </div>
+                <div className="text-center rounded-lg bg-secondary/40 py-2">
+                  <p className="text-lg font-bold text-foreground">{tiplLast}</p>
+                  <p className="text-[10px] uppercase tracking-wide text-muted-foreground">Last</p>
+                </div>
+                <div className="text-center rounded-lg bg-secondary/40 py-2">
+                  <p className="text-lg font-bold text-foreground">{tiplHigh}</p>
+                  <p className="text-[10px] uppercase tracking-wide text-muted-foreground">High</p>
+                </div>
+              </div>
+
+              {/* Category split bar */}
+              {avgCategories && (avgCategories.bat > 0 || avgCategories.bowl > 0 || avgCategories.field > 0) && (
+                <div className="mb-3">
+                  <StackedBar
+                    segments={[
+                      { label: "BAT", value: avgCategories.bat, color: "#4ade80" },
+                      { label: "BOWL", value: avgCategories.bowl, color: "#60a5fa" },
+                      { label: "FLD", value: avgCategories.field, color: "#fb923c" },
+                    ]}
+                    height={20}
+                    showLabels
+                    showLegend
+                  />
+                </div>
+              )}
+
+              {/* Per-match bar chart */}
+              <MiniBarChart scores={tiplTotals} color="oklch(0.68 0.16 265)" />
+
+              {/* Form trend + Consistency */}
+              <div className="flex items-center justify-center gap-4 mt-2">
+                {formTrend && (
+                  <span className="text-xs text-muted-foreground">
+                    Form:{" "}
+                    <span className={formTrend === "rising" ? "text-emerald-400 font-semibold" : formTrend === "falling" ? "text-red-400 font-semibold" : "text-muted-foreground font-medium"}>
+                      {formTrend === "rising" ? "↑ Rising" : formTrend === "falling" ? "↓ Falling" : "→ Steady"}
+                    </span>
+                  </span>
+                )}
+                {consistency !== null && (
+                  <span className="text-xs text-muted-foreground">
+                    Consistency:{" "}
+                    <span className={consistency >= 70 ? "text-emerald-400 font-semibold" : consistency >= 40 ? "text-amber-400 font-semibold" : "text-red-400 font-semibold"}>
+                      {consistency}%
+                    </span>
+                  </span>
+                )}
+              </div>
+            </>
           )}
 
           {/* Match Context — vs opponent + at venue */}
@@ -289,25 +399,7 @@ export function PlayerStatsDrawer({
             </>
           )}
 
-          {/* TIPL Fantasy Scores */}
-          {hasTiplScores && (
-            <>
-              <SectionHeader>TIPL Fantasy</SectionHeader>
-              <MiniBarChart scores={tiplScores} color="oklch(0.68 0.16 265)" />
-              <p className="text-xs text-muted-foreground mt-1.5 text-center">
-                Avg: <span className="text-foreground font-semibold">{tiplAvg} pts</span>
-                {" "}(last {tiplScores.length})
-              </p>
-              {/* Form heatmap */}
-              <div className="mt-3">
-                <Heatmap
-                  values={tiplScores}
-                  labels={tiplScores.map((_, i) => `M${i + 1}`)}
-                  className="justify-center"
-                />
-              </div>
-            </>
-          )}
+          {/* (TIPL Form section moved to top of drawer) */}
         </div>
       </DrawerContent>
     </Drawer>

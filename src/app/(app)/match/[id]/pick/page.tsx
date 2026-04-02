@@ -143,10 +143,10 @@ export default async function PickTeamPage({
     { data: vsTeamStatsRaw },
     { data: seasonStatsRaw },
   ] = await Promise.all([
-    // Last 5 TIPL fantasy scores per player, scoped to recent matches (was limit(2000))
+    // Last 5 TIPL fantasy scores per player with breakdown, scoped to recent matches
     supabase
       .from("match_player_scores")
-      .select("player_id, fantasy_points")
+      .select("player_id, fantasy_points, breakdown")
       .in("player_id", playerIds)
       .in("match_id", recentMatchIds)
       .order("created_at", { ascending: false }),
@@ -174,11 +174,14 @@ export default async function PickTeamPage({
       .order("season", { ascending: false }),
   ])
 
-  const tiplScoreMap: Record<string, number[]> = {}
+  const tiplScoreMap: Record<string, Array<{ total: number; breakdown: Record<string, number> }>> = {}
   for (const s of tiplScoresRaw ?? []) {
     if (!tiplScoreMap[s.player_id]) tiplScoreMap[s.player_id] = []
     if (tiplScoreMap[s.player_id].length < 5) {
-      tiplScoreMap[s.player_id].push(s.fantasy_points)
+      tiplScoreMap[s.player_id].push({
+        total: Number(s.fantasy_points),
+        breakdown: (s.breakdown as Record<string, number>) ?? {},
+      })
     }
   }
 

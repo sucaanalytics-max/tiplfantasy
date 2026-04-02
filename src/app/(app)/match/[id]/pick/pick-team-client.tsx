@@ -41,7 +41,7 @@ type Props = {
   initialSelectedIds: string[]
   initialCaptainId: string | null
   initialViceCaptainId: string | null
-  tiplScores: Record<string, number[]>
+  tiplScores: Record<string, Array<{ total: number; breakdown: Record<string, number> }>>
   venueStats: Record<string, PlayerVenueStats>
   vsTeamStats: Record<string, PlayerVsTeamStats>
   seasonStats: Record<string, PlayerSeasonStats[]>
@@ -187,8 +187,8 @@ export function PickTeamClient({
       list = [...list].sort((a, b) => {
         const aScores = tiplScores[a.id] ?? []
         const bScores = tiplScores[b.id] ?? []
-        const aAvg = aScores.length > 0 ? aScores.reduce((x, y) => x + y, 0) / aScores.length : -1
-        const bAvg = bScores.length > 0 ? bScores.reduce((x, y) => x + y, 0) / bScores.length : -1
+        const aAvg = aScores.length > 0 ? aScores.reduce((x, y) => x + y.total, 0) / aScores.length : -1
+        const bAvg = bScores.length > 0 ? bScores.reduce((x, y) => x + y.total, 0) / bScores.length : -1
         return bAvg - aAvg
       })
     }
@@ -320,8 +320,8 @@ export function PickTeamClient({
     const matchupChip = getMatchupChip(player)
 
     const scores = tiplScores[player.id] ?? []
-    const avgPts = scores.length > 0 ? Math.round(scores.reduce((a, b) => a + b, 0) / scores.length) : null
-    const lastPts = scores.length > 0 ? scores[scores.length - 1] : null
+    const avgPts = scores.length > 0 ? Math.round(scores.reduce((a, b) => a + b.total, 0) / scores.length) : null
+    const lastPts = scores.length > 0 ? scores[scores.length - 1].total : null
 
     return (
       <button
