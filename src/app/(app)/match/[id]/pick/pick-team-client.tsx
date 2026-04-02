@@ -386,9 +386,9 @@ export function PickTeamClient({
             >
               {player.team.short_name}
             </span>
-            <span className="text-[9px] text-muted-foreground">{player.credit_cost}</span>
+            <span className="text-[8px] text-muted-foreground/50">{player.credit_cost}</span>
             {matchupChip && (
-              <span className="text-[8px] text-emerald-500 truncate">{matchupChip}</span>
+              <span className="text-[8px] text-emerald-500 truncate max-w-[60px]">{matchupChip}</span>
             )}
           </div>
           {/* Selection % bar */}
@@ -416,17 +416,13 @@ export function PickTeamClient({
           const avgPts = scores.length > 0 ? Math.round(scores.reduce((a, b) => a + b, 0) / scores.length) : null
           const lastPts = scores.length > 0 ? scores[scores.length - 1] : null
           return (
-            <div className="flex items-center gap-1 shrink-0 ml-auto">
-              <div className="w-7 text-center">
-                <span className={cn("text-[10px] font-bold tabular-nums", avgPts != null ? "text-foreground" : "text-muted-foreground/30")}>
-                  {avgPts ?? "—"}
-                </span>
-              </div>
-              <div className="w-7 text-center">
-                <span className={cn("text-[10px] tabular-nums", lastPts != null ? "text-muted-foreground" : "text-muted-foreground/30")}>
-                  {lastPts ?? "—"}
-                </span>
-              </div>
+            <div className="flex items-center shrink-0">
+              <span className={cn("text-[10px] font-bold tabular-nums w-6 text-right", avgPts != null ? "text-foreground" : "text-muted-foreground/30")}>
+                {avgPts ?? "—"}
+              </span>
+              <span className={cn("text-[10px] tabular-nums w-6 text-right", lastPts != null ? "text-muted-foreground" : "text-muted-foreground/30")}>
+                {lastPts ?? "—"}
+              </span>
             </div>
           )
         })()}
@@ -703,9 +699,9 @@ export function PickTeamClient({
         </div>
 
         {/* Column headers for stats */}
-        <div className="px-4 pb-1 flex items-center justify-end gap-1">
-          <span className="text-[8px] font-semibold text-muted-foreground uppercase w-7 text-center">Avg</span>
-          <span className="text-[8px] font-semibold text-muted-foreground uppercase w-7 text-center">Last</span>
+        <div className="px-4 pb-1 flex items-center justify-end">
+          <span className="text-[8px] font-semibold text-muted-foreground uppercase w-6 text-right">Avg</span>
+          <span className="text-[8px] font-semibold text-muted-foreground uppercase w-6 text-right">Last</span>
         </div>
 
         {hasPlayingXI && (
