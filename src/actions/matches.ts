@@ -92,15 +92,6 @@ export async function fetchPlayingXI(matchId: string, cricapiMatchId: string) {
 
   if (!dbPlayers) return { error: "Failed to load players" }
 
-  // Try match_points first — returns only players who actually played (the real Playing XI)
-  const pointsResult = await fetchMatchPoints(cricapiMatchId)
-
-  if (!pointsResult || pointsResult.totals.length === 0) {
-    return {
-      error: "Match points data not available yet. Playing XI auto-populates from match scorecard ~15 min after the match starts. Try again shortly.",
-    }
-  }
-
   // Build lookup maps
   const cricapiIdMap = new Map<string, { id: string; team_id: string }>()
   const nameMap = new Map<string, string>()
@@ -112,11 +103,31 @@ export async function fetchPlayingXI(matchId: string, cricapiMatchId: string) {
     nameMap.set(norm, p.id)
   }
 
+  // Try two sources: 1) match_points (has scorecard data), 2) lineup-only (pre-match)
+  let apiPlayers: Array<{ id: string; name: string }> = []
+
+  const pointsResult = await fetchMatchPoints(cricapiMatchId)
+  if (pointsResult && pointsResult.totals.length > 0) {
+    apiPlayers = pointsResult.totals
+  } else {
+    // Fallback: fetch lineup (available before match starts, once announced)
+    const squad = await fetchSquad(cricapiMatchId)
+    if (squad && squad.length > 0) {
+      apiPlayers = squad.map((p) => ({ id: p.id, name: p.name }))
+    }
+  }
+
+  if (apiPlayers.length === 0) {
+    return {
+      error: "Lineup data not available yet from Sportmonks. Try again closer to match time or after toss.",
+    }
+  }
+
   // Match API players to DB — prefer cricapi_id, fallback to fuzzy name
   const matched = new Map<string, string>() // player_id → team_id
   const unmatched: string[] = []
 
-  for (const apiPlayer of pointsResult.totals) {
+  for (const apiPlayer of apiPlayers) {
     const byId = cricapiIdMap.get(apiPlayer.id)
     if (byId) {
       matched.set(byId.id, byId.team_id)
@@ -132,10 +143,10 @@ export async function fetchPlayingXI(matchId: string, cricapiMatchId: string) {
   }
 
   if (matched.size === 0) {
-    return { error: "No players matched from match_points response" }
+    return { error: "No players matched from API response" }
   }
 
-  // Validate: must be exactly 11 per team (22 total)
+  // Validate: 11-12 per team (impact sub allowed), 2 teams
   const byTeam = new Map<string, string[]>()
   for (const [pid, tid] of matched) {
     const list = byTeam.get(tid) ?? []
@@ -144,9 +155,9 @@ export async function fetchPlayingXI(matchId: string, cricapiMatchId: string) {
   }
 
   const teamCounts = [...byTeam.values()].map((v) => v.length)
-  if (teamCounts.length !== 2 || teamCounts.some((c) => c !== 11)) {
+  if (teamCounts.length !== 2 || teamCounts.some((c) => c < 11 || c > 12)) {
     return {
-      error: `Partial data (${matched.size} players: ${teamCounts.join(" + ")}${unmatched.length > 0 ? `, ${unmatched.length} unmatched: ${unmatched.join(", ")}` : ""}). Match may still be in progress — try again in a few minutes.`,
+      error: `Unexpected team sizes (${matched.size} players: ${teamCounts.join(" + ")}${unmatched.length > 0 ? `, ${unmatched.length} unmatched: ${unmatched.join(", ")}` : ""}). Try again in a few minutes.`,
     }
   }
 

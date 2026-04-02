@@ -126,7 +126,7 @@ export async function GET(req: NextRequest) {
           const list = byTeam.get(tid) ?? []; list.push(pid); byTeam.set(tid, list)
         }
         const teamCounts = [...byTeam.values()].map((v) => v.length)
-        if (teamCounts.length === 2 && teamCounts.every((c) => c === 11)) {
+        if (teamCounts.length === 2 && teamCounts.every((c) => c >= 11 && c <= 12)) {
           await admin.from("playing_xi").delete().eq("match_id", match.id)
           await admin.from("playing_xi").insert(
             [...xiMatched.entries()].map(([pid, tid]) => ({ match_id: match.id, player_id: pid, team_id: tid }))
