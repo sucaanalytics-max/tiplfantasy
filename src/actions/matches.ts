@@ -146,7 +146,7 @@ export async function fetchPlayingXI(matchId: string, cricapiMatchId: string) {
     return { error: "No players matched from API response" }
   }
 
-  // Validate: 11-12 per team (impact sub allowed), 2 teams
+  // Validate: need at least 11 per team from 2 teams
   const byTeam = new Map<string, string[]>()
   for (const [pid, tid] of matched) {
     const list = byTeam.get(tid) ?? []
@@ -155,9 +155,9 @@ export async function fetchPlayingXI(matchId: string, cricapiMatchId: string) {
   }
 
   const teamCounts = [...byTeam.values()].map((v) => v.length)
-  if (teamCounts.length !== 2 || teamCounts.some((c) => c < 11 || c > 12)) {
+  if (teamCounts.length !== 2 || teamCounts.some((c) => c < 11)) {
     return {
-      error: `Unexpected team sizes (${matched.size} players: ${teamCounts.join(" + ")}${unmatched.length > 0 ? `, ${unmatched.length} unmatched: ${unmatched.join(", ")}` : ""}). Try again in a few minutes.`,
+      error: `Incomplete data (${matched.size} players: ${teamCounts.join(" + ")}${unmatched.length > 0 ? `, ${unmatched.length} unmatched: ${unmatched.join(", ")}` : ""}). Try again in a few minutes.`,
     }
   }
 
