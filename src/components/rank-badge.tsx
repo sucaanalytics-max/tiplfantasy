@@ -9,9 +9,9 @@ const sizeClasses: Record<RankBadgeSize, string> = {
 }
 
 const rankStyles: Record<number, string> = {
-  1: "bg-gradient-to-br from-amber-400 to-yellow-600 text-amber-950 shadow-sm shadow-amber-500/30",
-  2: "bg-gradient-to-br from-gray-300 to-gray-500 text-gray-900 shadow-sm shadow-gray-400/30",
-  3: "bg-gradient-to-br from-amber-600 to-amber-800 text-amber-100 shadow-sm shadow-amber-700/30",
+  1: "bg-gradient-to-br from-amber-400 to-yellow-600 text-amber-950 shadow-sm ring-gold animate-shimmer bg-[length:200%_100%] bg-[linear-gradient(110deg,oklch(0.78_0.17_86)_0%,oklch(0.85_0.14_86)_40%,oklch(0.78_0.17_86)_60%,oklch(0.78_0.17_86)_100%)]",
+  2: "bg-gradient-to-br from-gray-300 to-gray-500 text-gray-900 shadow-sm ring-silver",
+  3: "bg-gradient-to-br from-amber-600 to-amber-800 text-amber-100 shadow-sm ring-bronze",
 }
 
 export function RankBadge({

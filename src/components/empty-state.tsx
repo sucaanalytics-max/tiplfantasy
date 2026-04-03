@@ -14,8 +14,8 @@ export function EmptyState({
   action?: { label: string; href: string }
 }) {
   return (
-    <div className="flex flex-col items-center text-center py-16 gap-3">
-      <div className="rounded-full bg-muted p-4">
+    <div className="flex flex-col items-center text-center py-16 gap-3 animate-fade-in">
+      <div className="rounded-full glass p-4">
         <Icon className="h-8 w-8 text-muted-foreground/50" />
       </div>
       <div>

@@ -38,6 +38,7 @@
   --color-popover: var(--popover);
   --color-card-foreground: var(--card-foreground);
   --color-card: var(--card);
+  --color-surface: var(--surface);
   --radius-sm: calc(var(--radius) - 4px);
   --radius-md: calc(var(--radius) - 2px);
   --radius-lg: var(--radius);
@@ -131,6 +132,9 @@
   --role-ar: oklch(0.52 0.17 145);
   --role-bowl: oklch(0.55 0.20 304);
 
+  /* Surface — between background and card */
+  --surface: oklch(0.955 0.006 255);
+
   /* Light mode glass/elevation */
   --glass-bg: oklch(1 0 0 / 0.80);
   --glass-bg-hover: oklch(1 0 0 / 0.90);
@@ -205,6 +209,9 @@
   --role-ar: oklch(0.65 0.20 145);
   --role-bowl: oklch(0.65 0.20 304);
 
+  /* Surface — between background and card */
+  --surface: oklch(0.13 0.025 255);
+
   /* Glass effect tokens */
   --glass-bg: oklch(0.12 0.025 255 / 0.75);
   --glass-bg-hover: oklch(0.15 0.025 255 / 0.80);
@@ -234,7 +241,17 @@
     display: none;
   }
 
-  /* Glass card base */
+  /* ── Glass System (3 tiers) ─────────────────────── */
+
+  /* Tier 1: Subtle — nav bars, filter rows, secondary surfaces */
+  .glass-subtle {
+    background: var(--glass-bg);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    border: 1px solid var(--glass-border);
+  }
+
+  /* Tier 2: Default — cards, rows, primary surfaces */
   .glass {
     background: var(--glass-bg);
     backdrop-filter: blur(12px);
@@ -243,33 +260,56 @@
     box-shadow: var(--glass-shadow);
   }
 
-  /* Glass panel — cleaner variant for overlays and buttons */
+  /* Tier 3: Elevated — modals, drawers, hero cards, overlays */
+  .glass-elevated {
+    background: var(--glass-bg-hover);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border: 1px solid var(--glass-border-hover);
+    box-shadow: var(--glass-shadow-lg);
+  }
+
+  /* Glass panel — buttons, pills, compact surfaces */
   .glass-panel {
     background: var(--glass-bg);
     backdrop-filter: blur(16px);
     -webkit-backdrop-filter: blur(16px);
-    border: 1px solid oklch(1 0 0 / 0.08);
+    border: 1px solid var(--glass-border);
     box-shadow: 0 4px 30px oklch(0 0 0 / 0.1);
   }
 
-  /* Display font for headings and scores */
-  .font-display {
-    font-family: var(--font-rajdhani), var(--font-geist-sans), sans-serif;
+  .glass-hover {
+    transition: background 0.2s, border-color 0.2s, box-shadow 0.2s;
   }
-
   .glass-hover:hover {
     background: var(--glass-bg-hover);
     border-color: var(--glass-border-hover);
+    box-shadow: var(--glass-shadow);
   }
 
+  /* ── Glow utilities ─────────────────────────────── */
   .glow-primary {
     box-shadow: var(--glow-primary);
   }
   .glow-accent {
     box-shadow: var(--glow-accent);
   }
+  .glow-ring {
+    box-shadow: 0 0 0 1px var(--primary), var(--glow-primary);
+  }
 
-  /* Horizontal scroll carousel */
+  /* ── Display font ───────────────────────────────── */
+  .font-display {
+    font-family: var(--font-rajdhani), var(--font-geist-sans), sans-serif;
+  }
+
+  /* ── Text size: 10px (not in Tailwind defaults) ─── */
+  .text-2xs {
+    font-size: 0.625rem;
+    line-height: 0.875rem;
+  }
+
+  /* ── Scroll carousel ────────────────────────────── */
   .snap-x-mandatory {
     scroll-snap-type: x mandatory;
     -webkit-overflow-scrolling: touch;
@@ -278,15 +318,27 @@
     scroll-snap-align: start;
   }
 
-  /* Animation utilities */
+  /* ── Animation utilities ────────────────────────── */
+  .animate-fade-in {
+    animation: fade-in 0.25s ease-out both;
+  }
+  .animate-scale-in {
+    animation: scale-in 0.2s ease-out both;
+  }
   .animate-slide-up {
     animation: slide-up 0.3s ease-out both;
+  }
+  .animate-slide-in-bottom {
+    animation: slide-in-bottom 0.3s cubic-bezier(0.16, 1, 0.3, 1) both;
   }
   .animate-count-up {
     animation: count-up 0.5s ease-out both;
   }
   .animate-urgency-pulse {
     animation: urgency-pulse 1s ease-in-out infinite;
+  }
+  .animate-shimmer {
+    animation: shimmer 2s linear infinite;
   }
 }
 
@@ -314,8 +366,23 @@
 }
 
 /* UX animation keyframes */
+@keyframes fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes scale-in {
+  from { opacity: 0; transform: scale(0.95); }
+  to { opacity: 1; transform: scale(1); }
+}
+
 @keyframes slide-up {
   from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes slide-in-bottom {
+  from { opacity: 0; transform: translateY(16px); }
   to { opacity: 1; transform: translateY(0); }
 }
 
@@ -329,6 +396,11 @@
   50% { opacity: 0.6; }
 }
 
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
 @keyframes confetti-fall {
   0% { transform: translateY(-100vh) rotate(0deg); opacity: 1; }
   100% { transform: translateY(10vh) rotate(720deg); opacity: 0; }
@@ -337,9 +409,13 @@
 /* Disable all custom animations for reduced motion */
 @media (prefers-reduced-motion: reduce) {
   .ambient-orb,
+  .animate-fade-in,
+  .animate-scale-in,
   .animate-slide-up,
+  .animate-slide-in-bottom,
   .animate-count-up,
-  .animate-urgency-pulse {
+  .animate-urgency-pulse,
+  .animate-shimmer {
     animation: none !important;
   }
 }

@@ -1,10 +1,10 @@
 "use client"
 
 export function PageTransition({ children }: { children: React.ReactNode }) {
-  return <>{children}</>
+  return <div className="animate-fade-in">{children}</div>
 }
 
-// Staggered container + item variants for lists
+// Staggered container + item variants for lists (framer-motion)
 export const staggerContainer = {
   hidden: {},
   show: {

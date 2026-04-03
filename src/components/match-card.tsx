@@ -51,7 +51,7 @@ export function MatchCard({ match, userPoints, userRank, hasSubmitted, compact =
     return (
       <Link href={href} className="snap-start">
         <Card
-          className={`border border-border min-w-[160px] w-[160px] hover:border-primary/30 transition-colors relative overflow-hidden ${isLive ? "live-glow" : ""}`}
+          className={`glass min-w-[160px] w-[160px] glass-hover transition-all relative overflow-hidden ${isLive ? "live-glow" : ""}`}
         >
           {/* Top color bar */}
           <div
@@ -94,7 +94,7 @@ export function MatchCard({ match, userPoints, userRank, hasSubmitted, compact =
   // Full card
   const startDate = new Date(match.start_time)
   return (
-    <Card className={`border border-border overflow-hidden relative ${isLive ? "live-glow" : ""}`}>
+    <Card className={`glass overflow-hidden relative ${isLive ? "live-glow" : ""}`}>
       {/* Team color gradient background */}
       <div
         className="absolute inset-0 pointer-events-none"
