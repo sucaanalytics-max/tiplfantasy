@@ -168,7 +168,7 @@ export function LeaguesClient({ leagues }: LeaguesClientProps) {
         <div className="grid gap-3">
           {leagues.map((league) => (
             <Link key={league.id} href={`/leagues/${league.id}`}>
-              <Card className="border border-border hover:bg-accent/50 transition-colors">
+              <Card className="glass hover:bg-accent/50 transition-colors">
                 <CardContent className="pt-5 pb-5">
                   <div className="flex items-center justify-between">
                     <div className="space-y-1 min-w-0">

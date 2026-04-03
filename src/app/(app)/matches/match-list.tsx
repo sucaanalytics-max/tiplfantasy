@@ -131,7 +131,7 @@ export function MatchList({
                   const hasSubmitted = submittedMatches.has(match.id)
 
                   return (
-                    <Card key={match.id} className={`border border-border overflow-hidden ${match.status === "live" ? "border-status-live/20 live-glow" : ""}`}>
+                    <Card key={match.id} className={`glass overflow-hidden ${match.status === "live" ? "border-status-live/20 live-glow" : ""}`}>
                       {/* Team color gradient bar */}
                       <div
                         className="h-1"

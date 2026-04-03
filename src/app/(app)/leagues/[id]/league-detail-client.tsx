@@ -188,7 +188,7 @@ export function LeagueDetailClient({ league, members, isCreator, leaderboard, aw
       </div>
 
       {/* Season Leaderboard — always visible, above tabs */}
-      <div className="rounded-lg border border-border/30 bg-[hsl(var(--background))] overflow-hidden">
+      <div className="rounded-lg glass overflow-hidden">
         <div className="flex items-center justify-between px-4 py-2.5 border-b border-border/30 bg-secondary/20">
           <span className="text-xs font-semibold text-muted-foreground uppercase tracking-widest">Season Standings</span>
           <Link href={`/leagues/${league.id}/h2h`}>
@@ -391,7 +391,7 @@ export function LeagueDetailClient({ league, members, isCreator, leaderboard, aw
             </div>
           ) : (
             lockedMatches.map((match) => (
-              <Card key={match.id} className="border border-border">
+              <Card key={match.id} className="glass">
                 <CardContent className="py-3 px-4">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-3 min-w-0">
@@ -463,7 +463,7 @@ function SeasonAwards({ awards }: { awards: LeagueMemberStats[] }) {
   ]
 
   return (
-    <Card className="border border-border">
+    <Card className="glass">
       <CardHeader className="pb-3">
         <CardTitle className="text-base flex items-center gap-2">
           <Zap className="h-4 w-4" />
@@ -473,7 +473,7 @@ function SeasonAwards({ awards }: { awards: LeagueMemberStats[] }) {
       <CardContent>
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
           {cards.map(({ Icon, label, winner, stat }) => (
-            <div key={label} className="flex flex-col gap-2 p-3 rounded-lg bg-secondary/50">
+            <div key={label} className="flex flex-col gap-2 p-3 rounded-lg glass-subtle">
               <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
                 <Icon className="h-3.5 w-3.5" />
                 <span>{label}</span>
@@ -618,7 +618,7 @@ export function PrizesTab({ awards, matchScores, leaderboard }: PrizesTabProps) 
     <div className="space-y-6">
       {/* Award Leaders */}
       {awardCards.length > 0 && (
-        <Card className="border border-border">
+        <Card className="glass">
           <CardHeader className="pb-3">
             <CardTitle className="text-base flex items-center gap-2">
               <Trophy className="h-4 w-4" />
@@ -629,7 +629,7 @@ export function PrizesTab({ awards, matchScores, leaderboard }: PrizesTabProps) 
           <CardContent>
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
               {awardCards.map(({ Icon, label, winner, stat }) => (
-                <div key={label} className="flex flex-col gap-2 p-3 rounded-lg bg-secondary/50">
+                <div key={label} className="flex flex-col gap-2 p-3 rounded-lg glass-subtle">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
                       <Icon className="h-3.5 w-3.5" />
@@ -654,7 +654,7 @@ export function PrizesTab({ awards, matchScores, leaderboard }: PrizesTabProps) 
 
       {/* Matchday History */}
       {matchHistory.length > 0 && (
-        <Card className="border border-border">
+        <Card className="glass">
           <CardHeader className="pb-3">
             <CardTitle className="text-base flex items-center gap-2">
               <Trophy className="h-4 w-4" />
@@ -702,7 +702,7 @@ export function PrizesTab({ awards, matchScores, leaderboard }: PrizesTabProps) 
 
       {/* Awards */}
       {earnings.length > 0 && (
-        <Card className="border border-border">
+        <Card className="glass">
           <CardHeader className="pb-3">
             <CardTitle className="text-base flex items-center gap-2">
               <Crown className="h-4 w-4" />
@@ -724,7 +724,7 @@ export function PrizesTab({ awards, matchScores, leaderboard }: PrizesTabProps) 
                 return (
                   <div
                     key={e.userId}
-                    className="grid grid-cols-[1fr_4rem_4rem] gap-2 items-center py-2.5 px-3 rounded-lg bg-secondary/50"
+                    className="grid grid-cols-[1fr_4rem_4rem] gap-2 items-center py-2.5 px-3 rounded-lg glass-subtle"
                   >
                     <div className="flex items-center gap-2 min-w-0">
                       <AvatarInitial name={e.name} size="sm" />

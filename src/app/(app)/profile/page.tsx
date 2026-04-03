@@ -147,7 +147,7 @@ export default async function ProfilePage() {
       <div className="lg:grid lg:grid-cols-2 lg:gap-6 space-y-6 lg:space-y-0">
       <div className="space-y-6">
       {/* Extra stats */}
-      <Card className="border border-border">
+      <Card className="glass">
         <CardContent className="pt-5 space-y-3">
           <div className="flex justify-between text-sm">
             <span className="text-muted-foreground">Matches Played</span>
@@ -197,7 +197,7 @@ export default async function ProfilePage() {
         currentStreak = streak
 
         return (
-          <Card className="border border-border">
+          <Card className="glass">
             <CardHeader className="pb-3">
               <CardTitle className="text-base">Performance</CardTitle>
             </CardHeader>
@@ -265,7 +265,7 @@ export default async function ProfilePage() {
         const latestRank = ranks[ranks.length - 1]
 
         return (
-          <Card className="border border-border">
+          <Card className="glass">
             <CardHeader className="pb-2">
               <CardTitle className="text-base">Rank Progression</CardTitle>
             </CardHeader>
@@ -332,7 +332,7 @@ export default async function ProfilePage() {
       <div className="space-y-6">
       {/* Role Preferences */}
       {totalPicks > 0 && (
-        <Card className="border border-border">
+        <Card className="glass">
           <CardHeader className="pb-3">
             <CardTitle className="text-base">Role Preferences</CardTitle>
           </CardHeader>
@@ -367,7 +367,7 @@ export default async function ProfilePage() {
 
       {/* Match history */}
       {matchScores && matchScores.length > 0 && (
-        <Card className="border border-border">
+        <Card className="glass">
           <CardHeader className="pb-3">
             <CardTitle className="text-base">Match History</CardTitle>
           </CardHeader>
@@ -421,7 +421,7 @@ export default async function ProfilePage() {
       )}
 
       <Link href="/rules">
-        <Card className="border border-border hover:bg-accent/40 transition-colors cursor-pointer">
+        <Card className="glass hover:bg-accent/40 transition-colors cursor-pointer">
           <CardContent className="flex items-center justify-between py-4 px-5">
             <div className="flex items-center gap-3">
               <div className="rounded-full bg-primary/10 p-2">
