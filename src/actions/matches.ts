@@ -543,9 +543,8 @@ export async function getMatchMemo(matchId: string): Promise<{ memo?: string; er
     admin.from("match_banter")
       .select("message")
       .eq("match_id", matchId)
-      .in("user_id", memberIds.length > 0 ? memberIds : ["__none__"])
-      .order("created_at", { ascending: true })
-      .limit(10),
+      .order("created_at", { ascending: false })
+      .limit(15),
     admin.from("match_player_scores")
       .select("player_id, runs, balls_faced, wickets, overs_bowled, runs_conceded, catches, stumpings, fantasy_points, player:players(name)")
       .eq("match_id", matchId)

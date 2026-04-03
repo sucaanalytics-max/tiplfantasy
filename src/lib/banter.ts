@@ -333,10 +333,11 @@ export function formatMatchMemo(
     lines.push("")
   }
 
-  // Banter
+  // Banter — shuffle and pick up to 6 for variety
   if (banterMessages.length > 0) {
     lines.push("━━━ 🎭 *BANTER* ━━━")
-    for (const msg of banterMessages.slice(0, 5)) {
+    const shuffled = [...banterMessages].sort(() => Math.random() - 0.5)
+    for (const msg of shuffled.slice(0, 6)) {
       lines.push(`• ${msg}`)
     }
     lines.push("")
