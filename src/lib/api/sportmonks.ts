@@ -62,6 +62,7 @@ export type FixtureInfo = {
   toss_won_team_id: number | null
   elected: string | null
   winner_team_id: number | null
+  man_of_match_id: number | null
   note: string | null
   starting_at: string
   localteam_id: number
@@ -135,6 +136,7 @@ type SMFixture = {
   toss_won_team_id: number | null
   elected: string | null
   winner_team_id: number | null
+  man_of_match_id?: number | null
   batting?: SMBatting[]
   bowling?: SMBowling[]
   lineup?: SMLineupPlayer[]
@@ -481,6 +483,7 @@ export async function fetchMatchInfo(fixtureId: string): Promise<FixtureInfo | n
       toss_won_team_id: f.toss_won_team_id,
       elected: f.elected,
       winner_team_id: f.winner_team_id,
+      man_of_match_id: f.man_of_match_id ?? null,
       note: f.note,
       starting_at: f.starting_at,
       localteam_id: f.localteam_id,

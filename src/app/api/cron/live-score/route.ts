@@ -489,6 +489,31 @@ export async function GET(req: NextRequest) {
         const note = (fixtureInfo.note ?? "")
           .replace(/\s{2,}/g, " ")
           .trim()
+
+        // 15a. Apply POTM bonus (+25 pts) if Man of Match is announced
+        if (fixtureInfo.man_of_match_id) {
+          try {
+            const { data: potmPlayer } = await admin
+              .from("players").select("id").eq("cricapi_id", String(fixtureInfo.man_of_match_id)).single()
+            if (potmPlayer) {
+              const { data: mps } = await admin
+                .from("match_player_scores")
+                .select("fantasy_points, breakdown")
+                .eq("match_id", match.id).eq("player_id", potmPlayer.id).single()
+              if (mps) {
+                const bd = (mps.breakdown as Record<string, number>) ?? {}
+                if (!bd.potm) {
+                  bd.potm = 25
+                  const newTotal = Object.values(bd).reduce((a, b) => a + b, 0)
+                  await admin.from("match_player_scores")
+                    .update({ fantasy_points: newTotal, breakdown: bd })
+                    .eq("match_id", match.id).eq("player_id", potmPlayer.id)
+                }
+              }
+            }
+          } catch { /* POTM bonus is non-critical */ }
+        }
+
         await admin.from("matches").update({
           status: "completed",
           ...(note ? { result_summary: note } : {}),
