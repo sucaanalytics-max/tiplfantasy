@@ -151,8 +151,8 @@ export default async function DashboardPage() {
       <div className="lg:col-span-3 space-y-6">
 
       {/* Season rank + points */}
-      <div className="grid grid-cols-2 gap-4">
-        <Card className="border border-border overflow-hidden relative bg-gradient-to-br from-amber-500/10 via-transparent to-transparent">
+      <div className="grid grid-cols-2 gap-4 animate-slide-up">
+        <Card className="glass overflow-hidden relative bg-gradient-to-br from-amber-500/10 via-transparent to-transparent">
           <CardContent className="pt-6">
             <div className="flex items-center gap-3">
               <div className="rounded-full bg-amber-500/15 p-2.5">
@@ -172,7 +172,7 @@ export default async function DashboardPage() {
             </div>
           </CardContent>
         </Card>
-        <Card className="border border-border overflow-hidden relative bg-gradient-to-br from-primary/10 via-transparent to-transparent">
+        <Card className="glass overflow-hidden relative bg-gradient-to-br from-primary/10 via-transparent to-transparent">
           <CardContent className="pt-6">
             <div className="flex items-center gap-3">
               <div className="rounded-full bg-primary/15 p-2.5">
@@ -198,7 +198,7 @@ export default async function DashboardPage() {
       {(tokenBalance > 0 || h2hResults.length > 0 || (myRank as unknown as { avg_points?: number })?.avg_points != null) && (
         <div className="grid grid-cols-3 gap-3">
           {tokenBalance > 0 && (
-            <Card className="border border-border">
+            <Card className="glass">
               <CardContent className="pt-4 pb-3">
                 <div className="flex flex-col gap-0.5">
                   <span className="text-xl font-bold font-display">{tokenBalance}</span>
@@ -208,7 +208,7 @@ export default async function DashboardPage() {
             </Card>
           )}
           {h2hResults.length > 0 && (
-            <Card className="border border-border">
+            <Card className="glass">
               <CardContent className="pt-4 pb-3">
                 <div className="flex flex-col gap-0.5">
                   <span className="text-xl font-bold font-display">
@@ -222,7 +222,7 @@ export default async function DashboardPage() {
             </Card>
           )}
           {(myRank as unknown as { avg_points?: number })?.avg_points != null && (
-            <Card className="border border-border">
+            <Card className="glass">
               <CardContent className="pt-4 pb-3">
                 <div className="flex flex-col gap-0.5">
                   <span className="text-xl font-bold font-display">
@@ -329,7 +329,7 @@ export default async function DashboardPage() {
         const home = lastMatch.team_home as unknown as { short_name: string; color: string; logo_url: string | null }
         const away = lastMatch.team_away as unknown as { short_name: string; color: string; logo_url: string | null }
         return (
-          <Card className="border border-border">
+          <Card className="glass">
             <CardHeader className="pb-3">
               <div className="flex items-center justify-between">
                 <CardTitle className="text-base">Last Match</CardTitle>
@@ -387,7 +387,7 @@ export default async function DashboardPage() {
       <div className="lg:col-span-2 space-y-6 mt-6 lg:mt-0">
 
       {/* Mini leaderboard */}
-      <Card className="border border-border">
+      <Card className="glass">
         <CardHeader className="pb-3">
           <div className="flex items-center justify-between">
             <CardTitle className="text-base flex items-center gap-2">
@@ -451,7 +451,7 @@ export default async function DashboardPage() {
       </Card>
 
       {/* My Leagues */}
-      <Card className="border border-border">
+      <Card className="glass">
         <CardHeader className="pb-3">
           <div className="flex items-center justify-between">
             <CardTitle className="text-base flex items-center gap-2">
