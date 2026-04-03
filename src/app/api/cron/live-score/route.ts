@@ -14,11 +14,11 @@ export async function GET(req: NextRequest) {
   const admin = createAdminClient()
 
   // ── Push: Lock reminder (30 min before match start) ──
-  // Runs every 5 min, so check for upcoming matches starting in 25-35 min
+  // Runs every 1 min, so check for upcoming matches starting in 29-31 min
   try {
     const now = new Date()
-    const in25 = new Date(now.getTime() + 25 * 60 * 1000).toISOString()
-    const in35 = new Date(now.getTime() + 35 * 60 * 1000).toISOString()
+    const in25 = new Date(now.getTime() + 29 * 60 * 1000).toISOString()
+    const in35 = new Date(now.getTime() + 31 * 60 * 1000).toISOString()
 
     const { data: soonMatches } = await admin
       .from("matches")
@@ -67,7 +67,7 @@ export async function GET(req: NextRequest) {
   // Find live matches with a cricapi_match_id — exit early if none (zero CricAPI calls)
   const { data: liveMatches } = await admin
     .from("matches")
-    .select("id, cricapi_match_id, team_home_id, team_away_id, live_scores_at, halfway_notified_at, last_banter_push_at, last_banter_message, team_home:teams!matches_team_home_id_fkey(short_name), team_away:teams!matches_team_away_id_fkey(short_name)")
+    .select("id, cricapi_match_id, team_home_id, team_away_id, live_scores_at, halfway_notified_at, last_banter_push_at, last_banter_message, last_lead_push_at, team_home:teams!matches_team_home_id_fkey(short_name), team_away:teams!matches_team_away_id_fkey(short_name)")
     .eq("status", "live")
     .not("cricapi_match_id", "is", null)
 
@@ -305,15 +305,20 @@ export async function GET(req: NextRequest) {
             for (const us of userScores) {
               const prevRank = prevRankMap.get(us.userId)
               if (prevRank == null) continue
-              // New #1 who wasn't #1 before
+              // New #1 who wasn't #1 before — throttle to max once per ~5 overs (20 min)
               if (us.rank === 1 && prevRank !== 1) {
-                const name = profileNameMap.get(us.userId) ?? "Unknown"
-                await sendPushToAll({
-                  title: "🚀 New Leader!",
-                  body: `${name} takes the lead with ${us.total} pts`,
-                  url: `/match/${match.id}/scores`,
-                  tag: `milestone-${match.id}-lead`,
-                })
+                const lastLeadPush = match.last_lead_push_at ? new Date(match.last_lead_push_at as string).getTime() : 0
+                const minsSinceLeadPush = (Date.now() - lastLeadPush) / 60_000
+                if (minsSinceLeadPush >= 20) {
+                  const name = profileNameMap.get(us.userId) ?? "Unknown"
+                  await sendPushToAll({
+                    title: "🚀 New Leader!",
+                    body: `${name} takes the lead with ${us.total} pts`,
+                    url: `/match/${match.id}/scores`,
+                    tag: `milestone-${match.id}-lead`,
+                  })
+                  await admin.from("matches").update({ last_lead_push_at: new Date().toISOString() }).eq("id", match.id)
+                }
               }
               // (dropped-to-last notification removed)
             }
