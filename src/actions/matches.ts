@@ -3,6 +3,7 @@
 import { createClient } from "@/lib/supabase/server"
 import { createAdminClient } from "@/lib/supabase/admin"
 import { fetchSquad, fetchScorecard, fetchMatchPoints, fetchSeriesInfo, parseScorecardToStats, fuzzyMatchName, testMatchPointsEndpoint, SPORTMONKS_TEAM_MAP } from "@/lib/api/sportmonks"
+import { generatePostMatchBanter, type MatchBanterContext } from "@/lib/banter-ai"
 import { savePlayerScores, calculateMatchPoints } from "@/actions/scoring"
 import type { PlayerStats } from "@/lib/scoring"
 import { formatMatchMemo, detectBanterEvents, detectRankBanter, generateBanter, type MemoHighlights, type BanterEvent } from "@/lib/banter"
@@ -536,7 +537,7 @@ export async function getMatchMemo(matchId: string): Promise<{ memo?: string; er
 
   const [{ data: userScores }, { data: banter }, { data: playerScores }, { data: selectionsRaw }] = await Promise.all([
     admin.from("user_match_scores")
-      .select("user_id, total_points, rank, captain_points, profile:profiles(display_name)")
+      .select("user_id, total_points, rank, captain_points, vc_points, profile:profiles(display_name)")
       .eq("match_id", matchId)
       .in("user_id", memberIds.length > 0 ? memberIds : ["__none__"])
       .order("total_points", { ascending: false }),
@@ -550,7 +551,7 @@ export async function getMatchMemo(matchId: string): Promise<{ memo?: string; er
       .eq("match_id", matchId)
       .order("fantasy_points", { ascending: false }),
     admin.from("selections")
-      .select("user_id, captain_id, selection_players(player_id), profile:profiles(display_name), captain:players!selections_captain_id_fkey(name)")
+      .select("user_id, captain_id, vice_captain_id, selection_players(player_id), profile:profiles(display_name), captain:players!selections_captain_id_fkey(name)")
       .eq("match_id", matchId)
       .in("user_id", memberIds.length > 0 ? memberIds : ["__none__"]),
   ])
@@ -655,7 +656,52 @@ export async function getMatchMemo(matchId: string): Promise<{ memo?: string; er
     }
   }
 
-  const banterMessages = (banter ?? []).map((b) => b.message)
+  // Build AI banter context
+  const banterCtx: MatchBanterContext = {
+    matchNumber: match.match_number,
+    home,
+    away,
+    resultSummary: match.result_summary,
+    standings: (userScores ?? []).map((s) => {
+      const sel = (selectionsRaw ?? []).find((sr) => sr.user_id === s.user_id)
+      const vcName = sel?.vice_captain_id
+        ? ((ps.find((p) => p.player_id === sel.vice_captain_id)?.player as unknown as { name: string })?.name ?? null)
+        : null
+      return {
+        name: (s.profile as unknown as { display_name: string })?.display_name ?? "Unknown",
+        points: Number(s.total_points),
+        rank: s.rank as number,
+        captainName: captainMap.get(s.user_id) ?? null,
+        captainPoints: Number(s.captain_points),
+        viceCaptainName: vcName,
+        viceCaptainPoints: Math.round(Number(s.vc_points)),
+      }
+    }),
+    topScorer: highlights.topScorer ?? null,
+    bestBowler: highlights.bestBowler ?? null,
+    highestFantasy: highlights.highestFantasy ?? null,
+    differentials: highlights.differentialPick
+      ? [{ playerName: highlights.differentialPick.playerName, pts: highlights.differentialPick.pts, pickedBy: highlights.differentialPick.pickedBy, totalUsers }]
+      : [],
+    worstCaptain: (() => {
+      const worst = [...(userScores ?? [])].sort((a, b) => Number(a.captain_points) - Number(b.captain_points))[0]
+      if (!worst || Number(worst.captain_points) >= 20) return null
+      return {
+        ownerName: (worst.profile as unknown as { display_name: string })?.display_name ?? "?",
+        playerName: captainMap.get(worst.user_id) ?? "?",
+        pts: Number(worst.captain_points),
+      }
+    })(),
+  }
+
+  // Try AI-generated banter first, fall back to DB banter
+  let banterMessages: string[]
+  try {
+    const aiBanter = await generatePostMatchBanter(banterCtx)
+    banterMessages = aiBanter.length >= 4 ? aiBanter : (banter ?? []).map((b) => b.message)
+  } catch {
+    banterMessages = (banter ?? []).map((b) => b.message)
+  }
 
   const memo = formatMatchMemo(
     match.match_number,
