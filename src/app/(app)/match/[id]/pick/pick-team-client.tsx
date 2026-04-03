@@ -52,10 +52,10 @@ type Props = {
 const ROLE_ORDER: PlayerRole[] = ["WK", "BAT", "AR", "BOWL"]
 
 const ROLE_ACCENT: Record<PlayerRole, string> = {
-  WK:   "border-l-[3px] border-l-amber-400",
-  BAT:  "border-l-[3px] border-l-blue-400",
-  AR:   "border-l-[3px] border-l-emerald-400",
-  BOWL: "border-l-[3px] border-l-purple-400",
+  WK:   "role-wk",
+  BAT:  "role-bat",
+  AR:   "role-ar",
+  BOWL: "role-bowl",
 }
 
 const ROLE_LABELS: Record<PlayerRole, string> = {
@@ -543,7 +543,7 @@ export function PickTeamClient({
     <div className="min-h-dvh pb-[calc(10rem+env(safe-area-inset-bottom))] md:pb-28 lg:pb-0">
       {showConfetti && <Confetti />}
       {/* Header */}
-      <div className="sticky top-0 z-30 bg-background/95 backdrop-blur border-b border-border">
+      <div className="sticky top-0 z-30 glass-subtle border-b border-border/50">
         <div className="px-4 py-3">
           <button
             onClick={() => router.back()}
@@ -709,7 +709,7 @@ export function PickTeamClient({
       {/* Desktop split-panel layout */}
       <div className="lg:grid lg:grid-cols-12 lg:h-[calc(100dvh-180px)]">
         {/* Left panel — desktop only: field + C/VC + actions */}
-        <div className="hidden lg:flex lg:flex-col lg:col-span-5 lg:border-r lg:border-border lg:overflow-y-auto lg:p-6 lg:gap-6">
+        <div className="hidden lg:flex lg:flex-col lg:col-span-5 lg:border-r lg:border-border/50 lg:overflow-y-auto lg:p-6 lg:gap-6 glass-subtle">
           {renderDesktopSelectedPlayers()}
 
           {/* Budget & composition summary */}
@@ -791,7 +791,7 @@ export function PickTeamClient({
                 <div key={role}>
                   {/* Role header */}
                   {showHeaders && (
-                    <div className="sticky top-0 z-10 px-4 py-1.5 bg-secondary/80 backdrop-blur-sm border-b border-border flex items-center justify-between">
+                    <div className="sticky top-0 z-10 px-4 py-1.5 glass-subtle border-b border-border/50 flex items-center justify-between">
                       <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
                         {ROLE_LABELS[role]}s
                       </span>
@@ -858,7 +858,7 @@ export function PickTeamClient({
       </div>{/* end split-panel grid */}
 
       {/* Bottom action bar — mobile only */}
-      <div className="fixed bottom-[calc(3.5rem+env(safe-area-inset-bottom))] left-0 right-0 md:bottom-0 z-40 border-t border-border bg-background/95 backdrop-blur lg:hidden">
+      <div className="fixed bottom-[calc(3.5rem+env(safe-area-inset-bottom))] left-0 right-0 md:bottom-0 z-40 border-t border-border/50 glass-elevated lg:hidden">
         {error && (
           <div className="px-4 py-2 bg-destructive/10 border-b border-destructive/20 flex items-center gap-2">
             <AlertCircle className="h-3.5 w-3.5 text-destructive shrink-0" />
