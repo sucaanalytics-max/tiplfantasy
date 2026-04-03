@@ -207,15 +207,41 @@ export function fuzzyMatchName(
 ): string | null {
   const normalized = normalizeName(apiName)
 
+  // 1. Exact match
   if (dbNames.has(normalized)) return dbNames.get(normalized)!
 
+  // 2. Substring match (either direction)
   for (const [dbNorm, dbId] of dbNames) {
     if (dbNorm.includes(normalized) || normalized.includes(dbNorm)) {
       return dbId
     }
   }
 
-  const apiLast = normalized.split(" ").pop() ?? ""
+  // 3. Reversed name match (e.g., "vijaykumar vyshak" ↔ "vyshak vijaykumar")
+  const apiParts = normalized.split(" ")
+  if (apiParts.length >= 2) {
+    const reversed = [...apiParts].reverse().join(" ")
+    if (dbNames.has(reversed)) return dbNames.get(reversed)!
+    for (const [dbNorm, dbId] of dbNames) {
+      if (dbNorm.includes(reversed) || reversed.includes(dbNorm)) {
+        return dbId
+      }
+    }
+  }
+
+  // 4. All name parts match (any order) — handles "A B C" vs "C B A"
+  if (apiParts.length >= 2) {
+    const apiSet = new Set(apiParts)
+    for (const [dbNorm, dbId] of dbNames) {
+      const dbParts = dbNorm.split(" ")
+      if (dbParts.length >= 2 && dbParts.every((p) => apiSet.has(p))) {
+        return dbId
+      }
+    }
+  }
+
+  // 5. Last-name match (min 4 chars to avoid false positives)
+  const apiLast = apiParts[apiParts.length - 1] ?? ""
   for (const [dbNorm, dbId] of dbNames) {
     const dbLast = dbNorm.split(" ").pop() ?? ""
     if (apiLast === dbLast && apiLast.length > 3) {
