@@ -4,6 +4,7 @@ import { fetchMatchPoints, parseScorecardToStats, fuzzyMatchName, fetchMatchInfo
 import { loadScoringRules, calculatePlayerPoints, calculateUserMatchScore } from "@/lib/scoring"
 import { detectBanterEvents, detectRankBanter, generateBanter, type BanterEvent } from "@/lib/banter"
 import { sendPushToAll, sendPushToUsers } from "@/lib/push"
+import { generateText } from "@/lib/ai"
 
 export async function GET(req: NextRequest) {
   if (req.headers.get("authorization") !== `Bearer ${process.env.CRON_SECRET}`) {
@@ -33,9 +34,10 @@ export async function GET(req: NextRequest) {
       const submittedIds = new Set((submitted ?? []).map((s) => s.user_id))
       const missingIds = (allUsers ?? []).map((u) => u.id).filter((id) => !submittedIds.has(id))
 
+      const home = (sm.team_home as unknown as { short_name: string })?.short_name ?? "?"
+      const away = (sm.team_away as unknown as { short_name: string })?.short_name ?? "?"
+
       if (missingIds.length > 0) {
-        const home = (sm.team_home as unknown as { short_name: string })?.short_name ?? "?"
-        const away = (sm.team_away as unknown as { short_name: string })?.short_name ?? "?"
         await sendPushToUsers(missingIds, {
           title: "⏰ Team Not Submitted!",
           body: `${home} vs ${away} starts in ~30 min — pick your XI!`,
@@ -43,6 +45,22 @@ export async function GET(req: NextRequest) {
           tag: `lock-reminder-${sm.id}`,
         })
       }
+
+      // Pre-match hype push to ALL users (tag dedup = once per match)
+      let banterLine = `${home} vs ${away} in 30 min. Fantasy teams locked at toss! 🏏`
+      try {
+        const aiLine = await generateText(
+          `You are Baba T, the banter master of an office fantasy cricket league called TIPL.\n${home} vs ${away} starts in 30 minutes.\nWrite ONE short, punchy pre-match hype/trash-talk message (max 15 words) for a push notification.\nMix cricket excitement with office humor. No hashtags, no emojis at start. Just the message, nothing else.`
+        )
+        if (aiLine) banterLine = aiLine.trim().split("\n")[0].replace(/^["']|["']$/g, "")
+      } catch { /* use default */ }
+
+      await sendPushToAll({
+        title: `🏏 ${home} vs ${away} — 30 min!`,
+        body: banterLine,
+        url: `/match/${sm.id}/pick`,
+        tag: `prematch-hype-${sm.id}`,
+      })
     }
   } catch { /* lock reminder is non-critical */ }
 
