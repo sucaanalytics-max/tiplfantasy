@@ -12,6 +12,8 @@ import { TeamLogo } from "@/components/team-logo"
 import { EmptyState } from "@/components/empty-state"
 import { LiveRefresher } from "@/components/live-refresher"
 import { LiveScoreWidget } from "@/components/live-score-widget"
+import { BallTicker } from "@/components/ball-ticker"
+import { MomentumChart } from "@/components/momentum-chart"
 import { getInitials, getAvatarColor } from "@/lib/avatar"
 import { cn } from "@/lib/utils"
 import { getPreMatchAnalysis } from "@/actions/matches"
@@ -79,6 +81,9 @@ type Props = {
   currentUserId: string
   banter?: Array<{ message: string; event_type: string }>
   userLeagues?: { id: string; name: string; memberIds: string[] }[]
+  lastBalls?: Array<{ ball: number; runs: number; four: boolean; six: boolean; wicket: boolean }>
+  snapshots?: Array<{ over_number: number; scores: Record<string, number> }>
+  userNames?: Record<string, string>
 }
 
 // ─── Helpers ────────────────────────────────────────────────────────────
@@ -126,6 +131,7 @@ export function ScoresClient({
   match, home, away, playerScores, userScores, myScore,
   myPlayerIds, myCaptainId, myVcId, allSelections,
   captainPicks, currentUserId, banter = [], userLeagues = [],
+  lastBalls = [], snapshots = [], userNames = {},
 }: Props) {
   const [expandedUserId, setExpandedUserId] = useState<string | null>(null)
   const [expandedPlayerId, setExpandedPlayerId] = useState<string | null>(null)
@@ -221,6 +227,7 @@ export function ScoresClient({
                 <LiveScoreWidget cricapiMatchId={match.cricapi_match_id} startTime={match.start_time} />
               </div>
             )}
+            {lastBalls.length > 0 && <BallTicker balls={lastBalls} />}
           </>
         )}
       </div>
@@ -488,6 +495,17 @@ export function ScoresClient({
                     </>
                   )
                 })()}
+
+                {/* Momentum graph below leaderboard */}
+                {snapshots.length >= 2 && (
+                  <div className="mt-4">
+                    <MomentumChart
+                      snapshots={snapshots}
+                      userNames={userNames}
+                      currentUserId={currentUserId}
+                    />
+                  </div>
+                )}
               </div>
             )}
           </TabsContent>

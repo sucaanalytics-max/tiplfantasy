@@ -31,9 +31,20 @@ export type CricAPIScorecard = {
   }>
 }
 
+export type BallEvent = {
+  ball: number
+  runs: number
+  four: boolean
+  six: boolean
+  wicket: boolean
+  scoreboard: string
+}
+
 export type CricAPIMatchPointsResult = {
   innings: CricAPIScorecard[]
   totals: Array<{ id: string; name: string }>
+  balls?: BallEvent[]
+  totalOversPlayed?: number
 }
 
 export type CricScoreItem = {
@@ -141,6 +152,8 @@ type SMFixture = {
   bowling?: SMBowling[]
   lineup?: SMLineupPlayer[]
   runs?: SMRun[]
+  balls?: Array<{ ball: number; scoreboard: string; score?: { runs: number; four: boolean; six: boolean; is_wicket: boolean } }>
+  total_overs_played?: number
   localteam?: SMTeam
   visitorteam?: SMTeam
 }
@@ -264,7 +277,7 @@ export function fuzzyMatchName(
 export async function fetchMatchPoints(fixtureId: string): Promise<CricAPIMatchPointsResult | null> {
   try {
     const res = await fetchWithTimeout(
-      buildUrl(`/fixtures/${fixtureId}`, { include: "batting,bowling,lineup" })
+      buildUrl(`/fixtures/${fixtureId}`, { include: "batting,bowling,lineup,balls" })
     )
     if (!res.ok) { console.error(`[SportMonks] /fixtures/${fixtureId} ${res.status}`); return null }
     const json = await res.json()
@@ -353,7 +366,23 @@ export async function fetchMatchPoints(fixtureId: string): Promise<CricAPIMatchP
       name: p.fullname,
     }))
 
-    return { innings, totals }
+    // Parse ball-by-ball events (last 18 balls for ticker)
+    const rawBalls = fixture.balls ?? []
+    const balls: BallEvent[] = rawBalls
+      .sort((a, b) => {
+        if (a.scoreboard !== b.scoreboard) return a.scoreboard < b.scoreboard ? -1 : 1
+        return a.ball - b.ball
+      })
+      .map((b) => ({
+        ball: b.ball,
+        runs: b.score?.runs ?? 0,
+        four: b.score?.four ?? false,
+        six: b.score?.six ?? false,
+        wicket: b.score?.is_wicket ?? false,
+        scoreboard: b.scoreboard,
+      }))
+
+    return { innings, totals, balls: balls.slice(-18), totalOversPlayed: fixture.total_overs_played ?? undefined }
   } catch (err) {
     console.error(`[SportMonks] /fixtures/${fixtureId} failed:`, err)
     return null

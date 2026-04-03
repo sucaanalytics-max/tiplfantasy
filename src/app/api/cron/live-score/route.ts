@@ -346,8 +346,24 @@ export async function GET(req: NextRequest) {
         continue
       }
 
-      // 14. Stamp when live points were last calculated
-      await admin.from("matches").update({ live_scores_at: new Date().toISOString() }).eq("id", match.id)
+      // 14. Stamp when live points were last calculated + store last balls for ticker
+      await admin.from("matches").update({
+        live_scores_at: new Date().toISOString(),
+        ...(result.balls && result.balls.length > 0 ? { last_balls: result.balls.slice(-12) } : {}),
+      }).eq("id", match.id)
+
+      // 14-snapshot. Store per-over fantasy point snapshot for momentum graph
+      if (result.totalOversPlayed && result.totalOversPlayed > 0) {
+        try {
+          const scores: Record<string, number> = {}
+          for (const us of userScores) scores[us.userId] = us.total
+          await admin.from("match_score_snapshots").upsert({
+            match_id: match.id,
+            over_number: result.totalOversPlayed,
+            scores,
+          }, { onConflict: "match_id,over_number" })
+        } catch { /* snapshots non-critical */ }
+      }
 
       // 14a. ── Push: Halfway leaderboard (2nd innings started) ──
       if (!match.halfway_notified_at && result.innings.length >= 2) {

@@ -18,7 +18,7 @@ export default async function ScoresPage({
   const admin = createAdminClient()
 
   // All queries in parallel
-  const [matchRes, playerScoresRes, userScoresRes, mySelectionRes, allSelectionsRes, captainPicksRes, banterRes, myLeaguesRes] = await Promise.all([
+  const [matchRes, playerScoresRes, userScoresRes, mySelectionRes, allSelectionsRes, captainPicksRes, banterRes, myLeaguesRes, snapshotsRes] = await Promise.all([
     admin
       .from("matches")
       .select("*, team_home:teams!matches_team_home_id_fkey(short_name, color, logo_url), team_away:teams!matches_team_away_id_fkey(short_name, color, logo_url)")
@@ -62,6 +62,11 @@ export default async function ScoresPage({
       .from("league_members")
       .select("league_id, leagues(id, name)")
       .eq("user_id", user.id),
+    admin
+      .from("match_score_snapshots")
+      .select("over_number, scores")
+      .eq("match_id", id)
+      .order("over_number", { ascending: true }),
   ])
 
   const match = matchRes.data
@@ -138,6 +143,9 @@ export default async function ScoresPage({
         currentUserId={user.id}
         banter={(banterRes.data ?? []).map((b) => ({ message: b.message, event_type: b.event_type }))}
         userLeagues={userLeagues}
+        lastBalls={(match.last_balls as Array<{ ball: number; runs: number; four: boolean; six: boolean; wicket: boolean }>) ?? []}
+        snapshots={(snapshotsRes.data ?? []) as Array<{ over_number: number; scores: Record<string, number> }>}
+        userNames={Object.fromEntries(userScores.map((s) => [s.user_id, (s.profile as unknown as { display_name: string })?.display_name ?? "?"]))}
       />
     </PageTransition>
   )
