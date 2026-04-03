@@ -2,18 +2,20 @@ import { createClient, getAuthUser } from "@/lib/supabase/server"
 import { redirect } from "next/navigation"
 import Link from "next/link"
 import Image from "next/image"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
+import { Button } from "@/components/ui/button"
 import { format } from "date-fns"
-import { TeamBadge } from "@/components/team-badge"
+import { TeamLogo } from "@/components/team-logo"
 import { MatchCard } from "@/components/match-card"
-import { Target, Users, ChevronRight } from "lucide-react"
+import { Target, Users, ChevronRight, Swords, CheckCircle2, Pencil } from "lucide-react"
 import { Trophy } from "@/components/icons/trophy"
 import { getMyLeagues } from "@/actions/leagues"
 import { getInitials, getAvatarColor } from "@/lib/avatar"
 import { RankBadge } from "@/components/rank-badge"
 import { PageTransition } from "@/components/page-transition"
 import { LiveScoreWidget } from "@/components/live-score-widget"
+import { CountdownTimer } from "@/components/countdown-timer"
+import { cn, formatIST } from "@/lib/utils"
 
 export default async function DashboardPage() {
   const [user, supabase] = await Promise.all([getAuthUser(), createClient()])
@@ -126,374 +128,377 @@ export default async function DashboardPage() {
 
   const firstName = profile?.display_name?.split(" ")[0] ?? "Player"
 
+  // Hero match: live takes priority, then next upcoming
+  const heroMatch = liveMatches[0] ?? nextMatch
+  const heroIsLive = liveMatches.length > 0
+  const heroHome = heroMatch ? (heroMatch.team_home as unknown as { short_name: string; color: string; logo_url: string | null }) : null
+  const heroAway = heroMatch ? (heroMatch.team_away as unknown as { short_name: string; color: string; logo_url: string | null }) : null
+  const heroSubmitted = heroMatch ? submittedMatchIds.has(heroMatch.id) : false
+  const heroLiveScore = heroMatch ? liveScoreMap.get(heroMatch.id) : undefined
+
+  // Remaining matches for carousel (exclude hero)
+  const remainingMatches = [
+    ...liveMatches.slice(heroIsLive ? 1 : 0),
+    ...(heroIsLive ? (upcomingMatches ?? []) : moreMatches),
+  ]
+
   return (
     <PageTransition>
-    <div className="p-4 md:p-6 space-y-6 max-w-2xl lg:max-w-5xl">
-      {/* Greeting */}
-      <div>
-        <div className="flex items-center gap-2.5 mb-2">
-          <Image src="/icons/icon-192.png" alt="TIPL" width={28} height={28} />
-          <span className="text-xs text-muted-foreground font-medium tracking-widest uppercase">TIPL Fantasy 2026</span>
-        </div>
-        <h1 className="text-2xl font-bold tracking-tight font-display">
-          Hey, {firstName} &#127951;
-          {streak > 1 && (
-            <span className="ml-2 text-base font-semibold text-status-warning">
-              &#128293; {streak} match streak
-            </span>
-          )}
-        </h1>
-      </div>
+    <div className="space-y-6 pb-8">
 
-      {/* Desktop 2-column layout */}
-      <div className="lg:grid lg:grid-cols-5 lg:gap-6">
-      {/* Left column — main content */}
-      <div className="lg:col-span-3 space-y-6">
+      {/* ═══════════════════════════════════════════════════════
+          SECTION 1: Hero Match Banner — full bleed
+          ═══════════════════════════════════════════════════════ */}
+      {heroMatch && heroHome && heroAway ? (
+        <section className="relative overflow-hidden min-h-[300px] md:min-h-[340px] flex flex-col justify-end px-4 md:px-6 pb-6 pt-16">
+          {/* Team color gradient background */}
+          <div
+            className="absolute inset-0 pointer-events-none"
+            style={{
+              background: `linear-gradient(135deg, ${heroHome.color}35 0%, transparent 40%, transparent 60%, ${heroAway.color}35 100%)`,
+            }}
+          />
+          {/* Dark fade overlay for readability */}
+          <div className="absolute inset-0 bg-gradient-to-t from-background via-background/70 to-background/30 pointer-events-none" />
 
-      {/* Season rank + points */}
-      <div className="grid grid-cols-2 gap-4 animate-slide-up">
-        <Card className="glass overflow-hidden relative bg-gradient-to-br from-amber-500/10 via-transparent to-transparent">
-          <CardContent className="pt-6">
-            <div className="flex items-center gap-3">
-              <div className="rounded-full bg-amber-500/15 p-2.5">
-                <Trophy className="h-5 w-5 text-yellow-500" />
+          <div className="relative z-10 max-w-2xl lg:max-w-5xl mx-auto w-full">
+            {/* Live badge or match info */}
+            {heroIsLive ? (
+              <div className="flex items-center gap-2 mb-4">
+                <span className="h-2.5 w-2.5 rounded-full bg-status-live animate-pulse" />
+                <span className="text-xs font-bold uppercase tracking-widest text-status-live">LIVE</span>
+                <span className="text-xs text-muted-foreground">Match #{heroMatch.match_number}</span>
               </div>
-              <div>
-                <p className="text-2xl font-bold font-display">
-                  {myRank ? `#${myRank.season_rank}` : "\u2014"}
-                </p>
-                <p className="text-xs text-muted-foreground">Season Rank</p>
-                {(myRank as unknown as { matches_played?: number })?.matches_played != null && (
-                  <p className="text-[10px] text-muted-foreground/70 tabular-nums">
-                    {(myRank as unknown as { matches_played: number }).matches_played} MP
+            ) : (
+              <div className="flex items-center gap-2 mb-4">
+                <span className="text-xs text-muted-foreground">
+                  Match #{heroMatch.match_number} &middot; {formatIST(heroMatch.start_time, "EEE, MMM d")}
+                </span>
+              </div>
+            )}
+
+            {/* Teams row: Logo + Name ... VS ... Name + Logo */}
+            <div className="flex items-center justify-between gap-4">
+              <div className="flex items-center gap-3">
+                <TeamLogo team={heroHome} size="lg" />
+                <div>
+                  <p className="text-2xl font-bold font-display tracking-tight" style={{ color: heroHome.color }}>
+                    {heroHome.short_name}
                   </p>
-                )}
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-        <Card className="glass overflow-hidden relative bg-gradient-to-br from-primary/10 via-transparent to-transparent">
-          <CardContent className="pt-6">
-            <div className="flex items-center gap-3">
-              <div className="rounded-full bg-primary/15 p-2.5">
-                <Target className="h-5 w-5 text-primary" />
-              </div>
-              <div>
-                <p className="text-2xl font-bold font-display">
-                  {myRank?.total_points ?? 0}
-                </p>
-                <p className="text-xs text-muted-foreground">Total Points</p>
-                {(myRank as unknown as { avg_points?: number })?.avg_points != null && (
-                  <p className="text-[10px] text-muted-foreground/70 tabular-nums">
-                    avg {(myRank as unknown as { avg_points: number }).avg_points.toFixed(1)}/match
-                  </p>
-                )}
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Quick Stats row */}
-      {(tokenBalance > 0 || h2hResults.length > 0 || (myRank as unknown as { avg_points?: number })?.avg_points != null) && (
-        <div className="grid grid-cols-3 gap-3">
-          {tokenBalance > 0 && (
-            <Card className="glass">
-              <CardContent className="pt-4 pb-3">
-                <div className="flex flex-col gap-0.5">
-                  <span className="text-xl font-bold font-display">{tokenBalance}</span>
-                  <span className="text-xs text-muted-foreground">Tokens</span>
-                </div>
-              </CardContent>
-            </Card>
-          )}
-          {h2hResults.length > 0 && (
-            <Card className="glass">
-              <CardContent className="pt-4 pb-3">
-                <div className="flex flex-col gap-0.5">
-                  <span className="text-xl font-bold font-display">
-                    <span className="text-green-500">{h2hWins}W</span>
-                    {" – "}
-                    <span className="text-red-500">{h2hLosses}L</span>
-                  </span>
-                  <span className="text-xs text-muted-foreground">H2H Record</span>
-                </div>
-              </CardContent>
-            </Card>
-          )}
-          {(myRank as unknown as { avg_points?: number })?.avg_points != null && (
-            <Card className="glass">
-              <CardContent className="pt-4 pb-3">
-                <div className="flex flex-col gap-0.5">
-                  <span className="text-xl font-bold font-display">
-                    {(myRank as unknown as { avg_points: number }).avg_points.toFixed(1)}
-                  </span>
-                  <span className="text-xs text-muted-foreground">Avg / Match</span>
-                </div>
-              </CardContent>
-            </Card>
-          )}
-        </div>
-      )}
-
-      {/* Live matches — shown prominently above everything else */}
-      {liveMatches.length > 0 && (
-        <div className="space-y-3">
-          <div className="flex items-center gap-2">
-            <span className="h-2 w-2 rounded-full bg-red-500 animate-pulse" />
-            <p className="text-sm font-semibold text-red-400">Live Now</p>
-          </div>
-          {liveMatches.map((match) => {
-            const myLiveScore = liveScoreMap.get(match.id)
-            return (
-              <div key={match.id} className="space-y-1.5">
-                <MatchCard
-                  match={match as unknown as Parameters<typeof MatchCard>[0]["match"]}
-                  hasSubmitted={submittedMatchIds.has(match.id)}
-                />
-                <div className="flex items-center justify-between px-1">
-                  <LiveScoreWidget
-                    cricapiMatchId={(match as unknown as { cricapi_match_id: string | null }).cricapi_match_id}
-                    startTime={match.start_time}
-                  />
-                  {myLiveScore && (
-                    <Link href={`/match/${match.id}/scores`} className="text-xs text-muted-foreground hover:text-foreground transition-colors">
-                      Your pts: <span className="font-bold text-foreground">{myLiveScore.total_points}</span>
-                      {myLiveScore.rank != null && <span> (#{myLiveScore.rank})</span>}
-                    </Link>
+                  {heroIsLive && heroLiveScore && (
+                    <p className="text-xs text-muted-foreground tabular-nums">
+                      {heroLiveScore.total_points} pts · #{heroLiveScore.rank}
+                    </p>
                   )}
                 </div>
-                <div className="flex items-center gap-2 mt-1">
-                  <Link
-                    href={`/match/${match.id}/scores`}
-                    className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg border border-border/40 bg-secondary/30 text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-secondary/50 transition-colors"
-                  >
-                    <Trophy className="h-3.5 w-3.5" />
-                    Live Scores
+              </div>
+
+              <div className="flex flex-col items-center">
+                <span className="inline-flex items-center justify-center rounded-full bg-white/5 text-muted-foreground/60 text-xs font-bold font-display h-8 w-8 ring-1 ring-white/10">
+                  VS
+                </span>
+              </div>
+
+              <div className="flex items-center gap-3">
+                <div className="text-right">
+                  <p className="text-2xl font-bold font-display tracking-tight" style={{ color: heroAway.color }}>
+                    {heroAway.short_name}
+                  </p>
+                </div>
+                <TeamLogo team={heroAway} size="lg" />
+              </div>
+            </div>
+
+            {/* Countdown / Live score + CTA */}
+            <div className="mt-5 flex items-center justify-between gap-4">
+              <div>
+                {heroIsLive ? (
+                  <LiveScoreWidget
+                    cricapiMatchId={(heroMatch as unknown as { cricapi_match_id: string | null }).cricapi_match_id}
+                    startTime={heroMatch.start_time}
+                  />
+                ) : (
+                  <CountdownTimer targetTime={heroMatch.start_time} variant="full" />
+                )}
+              </div>
+
+              <div className="flex items-center gap-2">
+                {heroIsLive ? (
+                  <Link href={`/match/${heroMatch.id}/scores`}>
+                    <Button size="sm" className="bg-status-live hover:bg-status-live/90 text-white font-semibold gap-1.5 rounded-xl">
+                      Live Scores <ChevronRight className="h-4 w-4" />
+                    </Button>
                   </Link>
-                  {myLeagues.slice(0, 1).map((league) => (
-                    <Link
-                      key={league.id}
-                      href={`/leagues/${league.id}/match/${match.id}`}
-                      className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg border border-primary/30 bg-primary/10 text-xs font-medium text-primary hover:bg-primary/20 transition-colors"
-                    >
-                      <Users className="h-3.5 w-3.5" />
-                      {league.name} League
+                ) : heroSubmitted ? (
+                  <>
+                    <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-status-success/10 border border-status-success/20">
+                      <CheckCircle2 className="h-3.5 w-3.5 text-status-success" />
+                      <span className="text-xs font-semibold text-status-success">Picked</span>
+                    </div>
+                    <Link href={`/match/${heroMatch.id}/pick`}>
+                      <Button size="sm" variant="outline" className="gap-1 border-primary/40 text-primary rounded-xl">
+                        <Pencil className="h-3.5 w-3.5" /> Edit
+                      </Button>
                     </Link>
+                  </>
+                ) : (
+                  <Link href={`/match/${heroMatch.id}/pick`}>
+                    <Button size="sm" className="bg-gradient-to-r from-primary to-emerald-500 hover:from-primary/90 hover:to-emerald-500/90 text-black font-bold rounded-xl px-5">
+                      Pick Your Team
+                    </Button>
+                  </Link>
+                )}
+              </div>
+            </div>
+          </div>
+        </section>
+      ) : (
+        /* No match — greeting hero */
+        <section className="px-4 md:px-6 pt-8 pb-4">
+          <div className="max-w-2xl lg:max-w-5xl mx-auto flex items-center gap-3">
+            <Image src="/icons/icon-192.png" alt="TIPL" width={40} height={40} />
+            <div>
+              <h1 className="text-2xl font-bold font-display tracking-tight">
+                Hey, {firstName} &#127951;
+              </h1>
+              <p className="text-sm text-muted-foreground">TIPL Fantasy 2026</p>
+            </div>
+          </div>
+        </section>
+      )}
+
+      {/* ═══════════════════════════════════════════════════════
+          SECTIONS 2-7: Padded content
+          ═══════════════════════════════════════════════════════ */}
+      <div className="px-4 md:px-6 max-w-2xl lg:max-w-5xl mx-auto space-y-6">
+
+        {/* ── SECTION 2: Quick Stats Strip ──────────────────── */}
+        <div className="flex items-center gap-3 overflow-x-auto scrollbar-hide py-1 animate-slide-up">
+          <div className="glass-panel rounded-full px-4 py-2.5 flex items-center gap-2.5 shrink-0">
+            <div className="rounded-full bg-amber-500/15 p-1.5">
+              <Trophy className="h-4 w-4 text-amber-500" />
+            </div>
+            <span className="text-base font-bold font-display tabular-nums">{myRank ? `#${myRank.season_rank}` : "\u2014"}</span>
+            <span className="text-2xs text-muted-foreground uppercase tracking-wider">Rank</span>
+          </div>
+
+          <div className="glass-panel rounded-full px-4 py-2.5 flex items-center gap-2.5 shrink-0">
+            <div className="rounded-full bg-primary/15 p-1.5">
+              <Target className="h-4 w-4 text-primary" />
+            </div>
+            <span className="text-base font-bold font-display tabular-nums">{myRank?.total_points ?? 0}</span>
+            <span className="text-2xs text-muted-foreground uppercase tracking-wider">Pts</span>
+          </div>
+
+          {streak > 1 && (
+            <div className="glass-panel rounded-full px-4 py-2.5 flex items-center gap-2 shrink-0">
+              <span className="text-sm">&#128293;</span>
+              <span className="text-base font-bold font-display">{streak}</span>
+              <span className="text-2xs text-muted-foreground uppercase tracking-wider">Streak</span>
+            </div>
+          )}
+
+          {(myRank as unknown as { avg_points?: number })?.avg_points != null && (
+            <div className="glass-panel rounded-full px-4 py-2.5 flex items-center gap-2 shrink-0">
+              <span className="text-base font-bold font-display tabular-nums">
+                {(myRank as unknown as { avg_points: number }).avg_points.toFixed(1)}
+              </span>
+              <span className="text-2xs text-muted-foreground uppercase tracking-wider">Avg/M</span>
+            </div>
+          )}
+
+          {h2hResults.length > 0 && (
+            <div className="glass-panel rounded-full px-4 py-2.5 flex items-center gap-2 shrink-0">
+              <Swords className="h-4 w-4 text-muted-foreground" />
+              <span className="text-base font-bold font-display">
+                <span className="text-green-500">{h2hWins}W</span>
+                <span className="text-muted-foreground mx-0.5">-</span>
+                <span className="text-red-500">{h2hLosses}L</span>
+              </span>
+            </div>
+          )}
+        </div>
+
+        {/* ── Desktop 2-column grid ─────────────────────────── */}
+        <div className="lg:grid lg:grid-cols-5 lg:gap-6">
+          {/* Left column */}
+          <div className="lg:col-span-3 space-y-6">
+
+            {/* ── SECTION 3: Additional live matches ──────────── */}
+            {liveMatches.length > 1 && (
+              <div className="space-y-3">
+                <div className="flex items-center gap-2">
+                  <span className="h-2 w-2 rounded-full bg-status-live animate-pulse" />
+                  <p className="text-sm font-bold text-status-live">Also Live</p>
+                </div>
+                {liveMatches.slice(1).map((match) => (
+                  <MatchCard
+                    key={match.id}
+                    match={match as unknown as Parameters<typeof MatchCard>[0]["match"]}
+                    hasSubmitted={submittedMatchIds.has(match.id)}
+                  />
+                ))}
+              </div>
+            )}
+
+            {/* ── SECTION 4: Upcoming Matches Carousel ────────── */}
+            {remainingMatches.length > 0 && (
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <h2 className="text-base font-bold font-display">Upcoming</h2>
+                  <Link href="/matches" className="text-xs text-primary flex items-center gap-0.5">
+                    See All <ChevronRight className="h-3 w-3" />
+                  </Link>
+                </div>
+                <div className="flex gap-3 overflow-x-auto scrollbar-hide snap-x-mandatory pb-2 -mx-4 px-4">
+                  {remainingMatches.map((match) => (
+                    <MatchCard
+                      key={match.id}
+                      match={match as unknown as Parameters<typeof MatchCard>[0]["match"]}
+                      hasSubmitted={submittedMatchIds.has(match.id)}
+                      compact
+                    />
                   ))}
                 </div>
               </div>
-            )
-          })}
-        </div>
-      )}
+            )}
 
-      {/* Hero match card */}
-      {nextMatch && (
-        <div className="space-y-1.5">
-          <MatchCard
-            match={nextMatch as unknown as Parameters<typeof MatchCard>[0]["match"]}
-            hasSubmitted={hasSubmitted}
-          />
-          <LiveScoreWidget
-            cricapiMatchId={(nextMatch as unknown as { cricapi_match_id: string | null }).cricapi_match_id}
-            startTime={nextMatch.start_time}
-          />
-        </div>
-      )}
-
-      {/* Upcoming matches — horizontal carousel */}
-      {moreMatches.length > 0 && (
-        <div className="space-y-3">
-          <div className="flex items-center justify-between">
-            <p className="text-sm font-semibold">Upcoming Matches</p>
-            <Link href="/matches" className="text-xs text-primary flex items-center gap-0.5 hover:underline">
-              See All <ChevronRight className="h-3 w-3" />
-            </Link>
-          </div>
-          <div className="flex gap-3 overflow-x-auto scrollbar-hide snap-x-mandatory pb-1">
-            {moreMatches.map((match) => (
-              <MatchCard
-                key={match.id}
-                match={match as unknown as Parameters<typeof MatchCard>[0]["match"]}
-                hasSubmitted={submittedMatchIds.has(match.id)}
-                compact
-              />
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* Last match result */}
-      {lastMatch && lastMatchScore && (() => {
-        const home = lastMatch.team_home as unknown as { short_name: string; color: string; logo_url: string | null }
-        const away = lastMatch.team_away as unknown as { short_name: string; color: string; logo_url: string | null }
-        return (
-          <Card className="glass">
-            <CardHeader className="pb-3">
-              <div className="flex items-center justify-between">
-                <CardTitle className="text-base">Last Match</CardTitle>
+            {/* ── SECTION 5: Last Match Result ────────────────── */}
+            {lastMatch && lastMatchScore && (() => {
+              const home = lastMatch.team_home as unknown as { short_name: string; color: string; logo_url: string | null }
+              const away = lastMatch.team_away as unknown as { short_name: string; color: string; logo_url: string | null }
+              return (
                 <Link href={`/match/${lastMatch.id}/scores`}>
-                  <Badge variant="outline" className="text-xs cursor-pointer hover:bg-accent">
-                    View Scores
-                  </Badge>
+                  <div className="glass glass-hover rounded-2xl p-4 flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <div className="flex items-center gap-2">
+                        <TeamLogo team={home} size="sm" />
+                        <span className="text-2xs text-muted-foreground font-bold">vs</span>
+                        <TeamLogo team={away} size="sm" />
+                      </div>
+                      <div>
+                        <p className="text-xs text-muted-foreground">Last Match #{lastMatch.match_number}</p>
+                        {lastCaptainName && (
+                          <p className="text-2xs text-muted-foreground">C: {lastCaptainName}</p>
+                        )}
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-2xl font-bold font-display tabular-nums">{lastMatchScore.total_points}</p>
+                      <p className="text-2xs text-muted-foreground">Rank #{lastMatchScore.rank ?? "\u2014"}</p>
+                    </div>
+                  </div>
+                </Link>
+              )
+            })()}
+
+          </div>{/* end left column */}
+
+          {/* Right column — standings & leagues */}
+          <div className="lg:col-span-2 space-y-6 mt-6 lg:mt-0">
+
+            {/* ── SECTION 6: Season Leaderboard ─────────────── */}
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <h2 className="text-base font-bold font-display flex items-center gap-2">
+                  <Trophy className="h-5 w-5" /> Season Standings
+                </h2>
+                <Link href="/leaderboard" className="text-xs text-primary flex items-center gap-0.5">
+                  Full Table <ChevronRight className="h-3 w-3" />
                 </Link>
               </div>
-            </CardHeader>
-            <CardContent>
+
+              <div className="glass rounded-2xl overflow-hidden divide-y divide-white/[0.04]">
+                {(top5 ?? []).map((entry) => {
+                  const e = entry as unknown as { user_id: string; display_name: string; total_points: number; season_rank: number }
+                  const isMe = e.user_id === user.id
+                  const rank = e.season_rank
+
+                  return (
+                    <div
+                      key={e.user_id}
+                      className={cn(
+                        "flex items-center justify-between px-4 py-3 transition-colors",
+                        rank === 1 && "bg-amber-500/[0.06]",
+                        rank === 2 && "bg-gray-400/[0.05]",
+                        rank === 3 && "bg-amber-700/[0.05]",
+                        isMe && "bg-primary/10 border-l-2 border-l-primary"
+                      )}
+                    >
+                      <div className="flex items-center gap-3">
+                        <RankBadge rank={rank} size="sm" />
+                        <div className={cn("h-8 w-8 rounded-full flex items-center justify-center shrink-0", getAvatarColor(e.display_name))}>
+                          <span className="text-white text-xs font-semibold">{getInitials(e.display_name)}</span>
+                        </div>
+                        <span className={cn("text-sm", isMe && "font-semibold")}>
+                          {e.display_name}{isMe && " (you)"}
+                        </span>
+                      </div>
+                      <span className="font-bold text-sm font-display tabular-nums">
+                        {e.total_points} <span className="text-muted-foreground font-normal text-xs">pts</span>
+                      </span>
+                    </div>
+                  )
+                })}
+
+                {myRank && myRank.season_rank > 5 && (
+                  <>
+                    <div className="text-center py-1.5 text-muted-foreground text-xs">&middot;&middot;&middot;</div>
+                    <div className="flex items-center justify-between px-4 py-3 bg-primary/10 border-l-2 border-l-primary">
+                      <div className="flex items-center gap-3">
+                        <RankBadge rank={myRank.season_rank} size="sm" />
+                        <div className={cn("h-8 w-8 rounded-full flex items-center justify-center shrink-0", getAvatarColor(myRank.display_name))}>
+                          <span className="text-white text-xs font-semibold">{getInitials(myRank.display_name)}</span>
+                        </div>
+                        <span className="text-sm font-semibold">{myRank.display_name} (you)</span>
+                      </div>
+                      <span className="font-bold text-sm font-display tabular-nums">
+                        {myRank.total_points} <span className="text-muted-foreground font-normal text-xs">pts</span>
+                      </span>
+                    </div>
+                  </>
+                )}
+              </div>
+            </div>
+
+            {/* ── SECTION 7: My Leagues ─────────────────────── */}
+            <div className="space-y-3">
               <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <div className="flex items-center gap-1.5">
-                    <TeamBadge shortName={home.short_name} color={home.color} logoUrl={home.logo_url} size="sm" />
-                    <span className="text-xs text-muted-foreground">vs</span>
-                    <TeamBadge shortName={away.short_name} color={away.color} logoUrl={away.logo_url} size="sm" />
-                  </div>
-                  <span className="text-xs text-muted-foreground">
-                    #{lastMatch.match_number}
-                  </span>
-                </div>
-                <div className="text-right">
-                  <p className="text-2xl font-bold font-display">{lastMatchScore.total_points}</p>
-                  <p className="text-xs text-muted-foreground">
-                    Rank #{lastMatchScore.rank ?? "\u2014"}
+                <h2 className="text-base font-bold font-display flex items-center gap-2">
+                  <Users className="h-4 w-4 text-muted-foreground" /> My Leagues
+                </h2>
+                <Link href="/leagues" className="text-xs text-primary flex items-center gap-0.5">
+                  {myLeagues.length > 0 ? "View All" : "Join"} <ChevronRight className="h-3 w-3" />
+                </Link>
+              </div>
+
+              {myLeagues.length === 0 ? (
+                <div className="glass rounded-2xl flex flex-col items-center py-8 gap-2">
+                  <Users className="h-10 w-10 text-muted-foreground/30" />
+                  <p className="text-sm text-muted-foreground text-center">
+                    No leagues yet. Create or join one.
                   </p>
                 </div>
-              </div>
-              {lastCaptainName && (
-                <div className="mt-3 pt-3 border-t border-border/30 space-y-1">
-                  <div className="flex items-center justify-between text-xs">
-                    <span className="text-muted-foreground flex items-center gap-1">
-                      <span>&#128081;</span> Captain
-                    </span>
-                    <span className="font-medium">{lastCaptainName}</span>
-                  </div>
-                  {lastVcName && (
-                    <div className="flex items-center justify-between text-xs">
-                      <span className="text-muted-foreground flex items-center gap-1">
-                        <span>&#129352;</span> Vice-Captain
-                      </span>
-                      <span className="font-medium">{lastVcName}</span>
-                    </div>
-                  )}
+              ) : (
+                <div className="glass rounded-2xl overflow-hidden divide-y divide-white/[0.04]">
+                  {myLeagues.slice(0, 3).map((league) => (
+                    <Link key={league.id} href={`/leagues/${league.id}`}>
+                      <div className="flex items-center justify-between px-4 py-3 glass-hover transition-colors">
+                        <div className="flex items-center gap-2.5">
+                          <Users className="h-4 w-4 text-primary" />
+                          <span className="text-sm font-medium">{league.name}</span>
+                        </div>
+                        <span className="text-2xs text-muted-foreground">{league.member_count} members</span>
+                      </div>
+                    </Link>
+                  ))}
                 </div>
               )}
-            </CardContent>
-          </Card>
-        )
-      })()}
-
-      </div>{/* end left column */}
-      {/* Right column — standings & leagues */}
-      <div className="lg:col-span-2 space-y-6 mt-6 lg:mt-0">
-
-      {/* Mini leaderboard */}
-      <Card className="glass">
-        <CardHeader className="pb-3">
-          <div className="flex items-center justify-between">
-            <CardTitle className="text-base flex items-center gap-2">
-              <Trophy className="h-4 w-4" />
-              Season Standings
-            </CardTitle>
-            <Link href="/leaderboard">
-              <Badge variant="outline" className="text-xs cursor-pointer hover:bg-accent">
-                Full Table
-              </Badge>
-            </Link>
-          </div>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-2">
-            {(top5 ?? []).map((entry, i) => {
-              const e = entry as unknown as { user_id: string; display_name: string; total_points: number; season_rank: number }
-              const isMe = e.user_id === user.id
-              return (
-                <div
-                  key={e.user_id}
-                  className={`flex items-center justify-between py-2 px-3 rounded-lg border-b border-border/30 last:border-b-0 ${
-                    isMe ? "bg-primary/10 border border-primary/20" : ""
-                  }`}
-                >
-                  <div className="flex items-center gap-2.5">
-                    <RankBadge rank={e.season_rank} size="sm" />
-                    <div className={`h-7 w-7 rounded-full ${getAvatarColor(e.display_name)} flex items-center justify-center flex-shrink-0`}>
-                      <span className="text-white text-xs font-semibold">{getInitials(e.display_name)}</span>
-                    </div>
-                    <span className={`text-sm ${isMe ? "font-semibold" : ""}`}>
-                      {e.display_name}
-                      {isMe && " (you)"}
-                    </span>
-                  </div>
-                  <span className="font-bold text-sm font-display">{e.total_points} pts</span>
-                </div>
-              )
-            })}
-
-            {/* Show user's row if not in top 5 */}
-            {myRank && myRank.season_rank > 5 && (
-              <>
-                <div className="text-center text-xs text-muted-foreground py-1">&middot;&middot;&middot;</div>
-                <div className="flex items-center justify-between py-2 px-3 rounded-lg bg-primary/10 border border-primary/20">
-                  <div className="flex items-center gap-2.5">
-                    <RankBadge rank={myRank.season_rank} size="sm" />
-                    <div className={`h-7 w-7 rounded-full ${getAvatarColor(myRank.display_name)} flex items-center justify-center flex-shrink-0`}>
-                      <span className="text-white text-xs font-semibold">{getInitials(myRank.display_name)}</span>
-                    </div>
-                    <span className="text-sm font-semibold">
-                      {myRank.display_name} (you)
-                    </span>
-                  </div>
-                  <span className="font-bold text-sm font-display">{myRank.total_points} pts</span>
-                </div>
-              </>
-            )}
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* My Leagues */}
-      <Card className="glass">
-        <CardHeader className="pb-3">
-          <div className="flex items-center justify-between">
-            <CardTitle className="text-base flex items-center gap-2">
-              <Users className="h-4 w-4 text-muted-foreground" />
-              My Leagues
-            </CardTitle>
-            <Link href="/leagues">
-              <Badge variant="outline" className="text-xs cursor-pointer hover:bg-accent">
-                {myLeagues.length > 0 ? "View All" : "Create / Join"}
-              </Badge>
-            </Link>
-          </div>
-        </CardHeader>
-        <CardContent>
-          {myLeagues.length === 0 ? (
-            <div className="flex flex-col items-center py-6 gap-2">
-              <Users className="h-10 w-10 text-muted-foreground/30" />
-              <p className="text-sm text-muted-foreground text-center">
-                No leagues yet. Create one or join with an invite code.
-              </p>
             </div>
-          ) : (
-            <div className="space-y-2">
-              {myLeagues.slice(0, 3).map((league) => (
-                <Link key={league.id} href={`/leagues/${league.id}`}>
-                  <div className="flex items-center justify-between py-2 px-3 rounded-lg bg-secondary/50 hover:bg-secondary transition-colors">
-                    <div className="flex items-center gap-2">
-                      <Users className="h-4 w-4 text-primary" />
-                      <span className="text-sm font-medium">{league.name}</span>
-                    </div>
-                    <Badge variant="outline" className="text-[10px]">
-                      {league.member_count} members
-                    </Badge>
-                  </div>
-                </Link>
-              ))}
-            </div>
-          )}
-        </CardContent>
-      </Card>
-      </div>{/* end right column */}
-      </div>{/* end desktop grid */}
+
+          </div>{/* end right column */}
+        </div>{/* end desktop grid */}
+      </div>{/* end padded content */}
     </div>
     </PageTransition>
   )
