@@ -431,22 +431,18 @@ export async function GET(req: NextRequest) {
             .select("message, event_type")
             .eq("match_id", match.id)
           if (currentBanter && currentBanter.length > 0) {
-            const priorityMap: Record<string, number> = {
-              captain_haul: 5, captain_fail: 4, vc_fail: 3,
-              century: 2, fifty: 2, high_fantasy: 2, duck: 2,
-              expensive_bowling: 1, low_sr: 1, three_wicket_haul: 1,
-            }
-            // Exclude the last sent message to avoid repeats
+            // Push-worthy event types (skip mild/generic)
+            const pushWorthy = new Set([
+              "expensive_bowling", "wicketless", "captain_fail", "bottom_rank",
+              "duck", "low_sr", "vc_fail", "captain_haul", "fifty", "century",
+              "top_rank", "three_plus_wickets", "three_wicket_haul",
+            ])
+            // Exclude last sent message + filter to push-worthy types
             const lastMsg = (match.last_banter_message as string | null) ?? ""
-            const candidates = currentBanter.filter((b) => b.message !== lastMsg)
-            const pool = candidates.length > 0 ? candidates : currentBanter
-            const sorted = [...pool].sort((a, b) => {
-              const pa = priorityMap[a.event_type] ?? 0
-              const pb = priorityMap[b.event_type] ?? 0
-              if (pb !== pa) return pb - pa
-              return (b.message?.length ?? 0) - (a.message?.length ?? 0)
-            })
-            const best = sorted[0]
+            const candidates = currentBanter.filter((b) => pushWorthy.has(b.event_type) && b.message !== lastMsg)
+            const pool = candidates.length > 0 ? candidates : currentBanter.filter((b) => b.message !== lastMsg)
+            // Random pick
+            const best = pool.length > 0 ? pool[Math.floor(Math.random() * pool.length)] : null
             if (best?.message) {
               const pushCount = Math.floor(Date.now() / 1000)
               await sendPushToAll({
