@@ -103,13 +103,13 @@ export default async function LeaderboardPage({
       {/* Player Stats link */}
       <Link
         href="/stats"
-        className="flex items-center justify-center gap-2 py-2.5 px-4 rounded-lg border border-border/30 bg-secondary/20 text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-secondary/40 transition-colors"
+        className="flex items-center justify-center gap-2 py-2.5 px-4 rounded-lg glass-panel text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-secondary/40 transition-colors"
       >
         📊 Player Stats — Orange Cap, Purple Cap, Form & More
       </Link>
 
       {/* ═══ SEASON STANDINGS ═══ */}
-      <div className="rounded-lg border border-border/30 bg-[hsl(var(--background))] overflow-hidden">
+      <div className="rounded-lg glass overflow-hidden">
         <div className="px-4 py-2.5 border-b border-border/30 bg-secondary/20">
           <span className="text-xs font-semibold text-muted-foreground uppercase tracking-widest">Season Standings</span>
         </div>
@@ -156,7 +156,7 @@ export default async function LeaderboardPage({
               { icon: Crown, label: "Best Captaincy", name: awardLeaders.captain?.display_name, stat: `${Math.round(Number(awardLeaders.captain?.total_captain_points))} pts` },
               { icon: Target, label: "Most Consistent", name: awardLeaders.consistent?.display_name, stat: `${awardLeaders.consistent?.top2_finishes} top-2s` },
             ].map((award) => (
-              <Card key={award.label} className="border border-border/40">
+              <Card key={award.label} className="glass">
                 <CardContent className="pt-3 pb-3 px-3">
                   <div className="flex items-center gap-1.5 mb-2">
                     <award.icon className="h-3.5 w-3.5 text-muted-foreground" />
@@ -189,7 +189,7 @@ export default async function LeaderboardPage({
               { icon: Crown, label: "Best Captaincy", data: sortedByCaptain, getValue: (a: LeagueMemberStats) => `${Math.round(Number(a.total_captain_points))} pts` },
               { icon: Target, label: "Most Consistent", data: sortedByConsistent, getValue: (a: LeagueMemberStats) => `${a.top2_finishes} top-2s` },
             ].map(({ icon: Icon, label, data, getValue }) => (
-              <div key={label} className="rounded-lg border border-border/30 bg-secondary/10 overflow-hidden">
+              <div key={label} className="rounded-lg glass overflow-hidden">
                 <div className="px-3 py-2 border-b border-border/20 flex items-center gap-2">
                   <Icon className="h-3.5 w-3.5 text-muted-foreground" />
                   <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">{label}</span>
@@ -215,7 +215,7 @@ export default async function LeaderboardPage({
       {matchHistory.length > 0 && (
         <div>
           <p className="text-xs font-semibold text-muted-foreground uppercase tracking-widest mb-3">Matchday History</p>
-          <div className="rounded-lg border border-border/30 bg-[hsl(var(--background))] overflow-hidden divide-y divide-border/10">
+          <div className="rounded-lg glass overflow-hidden divide-y divide-border/10">
             {matchHistory.map((match) => (
               <div key={match.matchNumber} className="flex items-center justify-between px-4 py-3">
                 <div>

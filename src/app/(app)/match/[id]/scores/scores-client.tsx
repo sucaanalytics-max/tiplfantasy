@@ -234,7 +234,7 @@ export function ScoresClient({
 
       {/* ── Match Highlights (Banter) ──────────────────── */}
       {banter.length > 0 && (
-        <div className="mx-4 md:mx-6 mb-4 rounded-lg border border-border/30 bg-[hsl(var(--background))] overflow-hidden">
+        <div className="mx-4 md:mx-6 mb-4 rounded-lg glass overflow-hidden">
           <div className="px-3 py-2 border-b border-border/20 bg-secondary/20 flex items-center gap-2">
             <span className="text-sm">🎭</span>
             <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-widest">Match Highlights</span>
@@ -280,7 +280,7 @@ export function ScoresClient({
             {myXI.length === 0 ? (
               <p className="text-sm text-muted-foreground text-center py-8">You didn&apos;t pick a team for this match.</p>
             ) : (
-              <div className="rounded-lg border border-border/30 bg-[hsl(var(--background))] overflow-x-auto">
+              <div className="rounded-lg glass overflow-x-auto">
                 {/* Table header */}
                 <div className="grid grid-cols-[2.5rem_1fr_1.5rem_1.5rem_1.5rem_1.5rem_1px_1.5rem_1.8rem_1.8rem_1.5rem_3.2rem] gap-px px-3 py-2 text-[9px] text-muted-foreground/70 uppercase tracking-widest font-semibold border-b border-border/40 bg-secondary/30 min-w-[420px]">
                   <span></span>
@@ -388,7 +388,7 @@ export function ScoresClient({
                       onClick={() => setLeagueFilter(null)}
                       className={cn(
                         "px-3 py-1 rounded-full text-xs font-medium transition-colors",
-                        !leagueFilter ? "bg-primary text-primary-foreground" : "bg-secondary/50 text-muted-foreground hover:bg-secondary/70"
+                        !leagueFilter ? "bg-primary text-primary-foreground" : "glass-panel text-muted-foreground glass-hover"
                       )}
                     >
                       All
@@ -399,7 +399,7 @@ export function ScoresClient({
                         onClick={() => setLeagueFilter(league.id)}
                         className={cn(
                           "px-3 py-1 rounded-full text-xs font-medium transition-colors",
-                          leagueFilter === league.id ? "bg-primary text-primary-foreground" : "bg-secondary/50 text-muted-foreground hover:bg-secondary/70"
+                          leagueFilter === league.id ? "bg-primary text-primary-foreground" : "glass-panel text-muted-foreground glass-hover"
                         )}
                       >
                         {league.name}
@@ -612,7 +612,7 @@ export function ScoresClient({
                 ].map(({ team, players: teamPlayers, label }) => {
                   const sorted = [...teamPlayers].sort((a, b) => Number(b.fantasy_points) - Number(a.fantasy_points))
                   return (
-                    <div key={team.short_name} className="rounded-lg border border-border/30 bg-[hsl(var(--background))] overflow-hidden">
+                    <div key={team.short_name} className="rounded-lg glass overflow-hidden">
                       {/* Team header */}
                       <div className="flex items-center gap-2 px-3 py-2 border-b border-border/20 bg-secondary/20">
                         <div className="w-1 h-4 rounded-full" style={{ backgroundColor: team.color }} />
