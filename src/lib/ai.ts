@@ -1,34 +1,36 @@
-const GEMINI_API_KEY = process.env.GEMINI_API_KEY
-const GEMINI_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent"
+const GROQ_API_KEY = process.env.GROQ_API_KEY
+const GROQ_URL = "https://api.groq.com/openai/v1/chat/completions"
 
 export async function generateText(prompt: string): Promise<string | null> {
-  if (!GEMINI_API_KEY) {
-    console.error("[AI] GEMINI_API_KEY not set")
+  if (!GROQ_API_KEY) {
+    console.error("[AI] GROQ_API_KEY not set")
     return null
   }
 
   try {
-    const res = await fetch(`${GEMINI_URL}?key=${GEMINI_API_KEY}`, {
+    const res = await fetch(GROQ_URL, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${GROQ_API_KEY}`,
+      },
       body: JSON.stringify({
-        contents: [{ parts: [{ text: prompt }] }],
-        generationConfig: {
-          temperature: 1.0,
-          maxOutputTokens: 1024,
-        },
+        model: "llama-3.3-70b-versatile",
+        messages: [{ role: "user", content: prompt }],
+        temperature: 1.0,
+        max_tokens: 1024,
       }),
     })
 
     if (!res.ok) {
-      console.error(`[AI] Gemini ${res.status}: ${await res.text()}`)
+      console.error(`[AI] Groq ${res.status}: ${await res.text()}`)
       return null
     }
 
     const json = await res.json()
-    return json.candidates?.[0]?.content?.parts?.[0]?.text ?? null
+    return json.choices?.[0]?.message?.content ?? null
   } catch (err) {
-    console.error("[AI] Gemini failed:", err)
+    console.error("[AI] Groq failed:", err)
     return null
   }
 }
