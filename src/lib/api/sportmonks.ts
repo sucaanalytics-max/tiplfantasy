@@ -111,7 +111,7 @@ type SMLineupPlayer = {
   id: number
   fullname: string
   position?: { name: string }
-  lineup?: { team_id: number; captain: boolean; wicketkeeper: boolean }
+  lineup?: { team_id: number; captain: boolean; wicketkeeper: boolean; substitution?: boolean }
 }
 
 type SMTeam = {
@@ -318,8 +318,9 @@ export async function fetchMatchPoints(fixtureId: string): Promise<CricAPIMatchP
       }
     })
 
-    // Build totals from lineup (equivalent to CricAPI totals)
-    const totals = lineup.map((p) => ({
+    // Build totals from playing XI only (exclude impact sub options)
+    const playingLineup = lineup.filter((p) => !p.lineup?.substitution)
+    const totals = playingLineup.map((p) => ({
       id: String(p.id),
       name: p.fullname,
     }))
@@ -420,8 +421,9 @@ export async function fetchSquad(fixtureId: string): Promise<Array<{ name: strin
     if (!res.ok) { console.error(`[SportMonks] /fixtures/${fixtureId}/lineup ${res.status}`); return null }
     const json = await res.json()
     const lineup: SMLineupPlayer[] = json.data?.lineup ?? []
+    const playingXI = lineup.filter((p) => !p.lineup?.substitution)
 
-    return lineup.map((p) => ({
+    return playingXI.map((p) => ({
       name: p.fullname,
       id: String(p.id),
       img: undefined,
