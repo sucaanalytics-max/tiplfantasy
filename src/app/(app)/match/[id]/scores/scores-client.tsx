@@ -191,7 +191,7 @@ export function ScoresClient({
       <div className="relative overflow-hidden">
         {/* Team color gradient background */}
         <div
-          className="absolute inset-0 pointer-events-none opacity-20"
+          className="absolute inset-0 pointer-events-none opacity-30"
           style={{
             background: `linear-gradient(135deg, ${home.color} 0%, transparent 40%, transparent 60%, ${away.color} 100%)`,
           }}

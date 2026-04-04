@@ -803,38 +803,12 @@ export function PickTeamClient({
                   )}
 
                   {teamFilter === "ALL" ? (
-                    /* 2-column home/away grid */
-                    <div className="grid grid-cols-2 gap-px bg-border">
-                      <div className="bg-background">
-                        {role === rolesToShow[0] && (
-                          <div className="px-3 py-1 text-center border-b border-border">
-                            <span className="text-[10px] font-semibold" style={{ color: match.team_home.color }}>
-                              {match.team_home.short_name}
-                            </span>
-                          </div>
-                        )}
-                        <div className="divide-y divide-border">
-                          {homePlayers.map((player) => renderPlayerCompact(player))}
-                          {homePlayers.length === 0 && (
-                            <div className="py-4 text-center text-[10px] text-muted-foreground">—</div>
-                          )}
-                        </div>
-                      </div>
-                      <div className="bg-background">
-                        {role === rolesToShow[0] && (
-                          <div className="px-3 py-1 text-center border-b border-border">
-                            <span className="text-[10px] font-semibold" style={{ color: match.team_away.color }}>
-                              {match.team_away.short_name}
-                            </span>
-                          </div>
-                        )}
-                        <div className="divide-y divide-border">
-                          {awayPlayers.map((player) => renderPlayerCompact(player))}
-                          {awayPlayers.length === 0 && (
-                            <div className="py-4 text-center text-[10px] text-muted-foreground">—</div>
-                          )}
-                        </div>
-                      </div>
+                    /* Single-column list — interleaved home/away */
+                    <div>
+                      {rolePlayers.map((player) => renderPlayerCompact(player))}
+                      {rolePlayers.length === 0 && (
+                        <div className="py-8 text-center text-2xs text-muted-foreground">No players</div>
+                      )}
                     </div>
                   ) : (
                     /* Single column for HOME/AWAY filter */
