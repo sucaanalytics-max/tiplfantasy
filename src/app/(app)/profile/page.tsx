@@ -12,6 +12,7 @@ import { RankBadge } from "@/components/rank-badge"
 import { TeamBadge } from "@/components/team-badge"
 import { getInitials, getAvatarColor } from "@/lib/avatar"
 import { PageTransition } from "@/components/page-transition"
+import { cn } from "@/lib/utils"
 
 export default async function ProfilePage() {
   const supabase = await createClient()
@@ -95,35 +96,46 @@ export default async function ProfilePage() {
   return (
     <PageTransition>
     <div className="p-4 md:p-6 space-y-6 max-w-2xl lg:max-w-4xl">
-      {/* Hero section */}
-      <div className="flex flex-col items-center text-center py-4 space-y-3">
-        <div className={`h-20 w-20 rounded-full ${getAvatarColor(profile?.display_name ?? "U")} flex items-center justify-center ring-2 ring-border`}>
+      {/* Hero section — rank-focused */}
+      <div className="flex items-center gap-5 py-4">
+        <div className={cn(
+          "h-20 w-20 rounded-full flex items-center justify-center shrink-0 ring-2",
+          getAvatarColor(profile?.display_name ?? "U"),
+          rankEntry?.season_rank === 1 ? "ring-amber-400 glow-accent"
+            : rankEntry?.season_rank === 2 ? "ring-gray-400"
+            : rankEntry?.season_rank === 3 ? "ring-amber-600"
+            : "ring-white/10"
+        )}>
           <span className="text-white text-2xl font-bold font-display">
             {getInitials(profile?.display_name ?? "U")}
           </span>
         </div>
-        <div>
+        <div className="flex-1 min-w-0">
           <ProfileNameForm currentName={profile?.display_name ?? ""} />
-          <p className="text-xs text-muted-foreground mt-1">{user.email}</p>
+          <p className="text-2xs text-muted-foreground mt-0.5">{user.email}</p>
+          {rankEntry && (
+            <div className="flex items-center gap-3 mt-2">
+              <div>
+                <span className="text-3xl font-bold font-display tabular-nums">#{rankEntry.season_rank}</span>
+                <span className="text-2xs text-muted-foreground ml-1">Rank</span>
+              </div>
+              <div className="h-6 w-px bg-white/[0.08]" />
+              <div>
+                <span className="text-xl font-bold font-display tabular-nums">{rankEntry.total_points}</span>
+                <span className="text-2xs text-muted-foreground ml-1">Pts</span>
+              </div>
+              <div className="h-6 w-px bg-white/[0.08]" />
+              <div>
+                <span className="text-xl font-bold font-display tabular-nums">{rankEntry.matches_played}</span>
+                <span className="text-2xs text-muted-foreground ml-1">MP</span>
+              </div>
+            </div>
+          )}
         </div>
       </div>
 
-      {/* Stats grid */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <StatCard
-          icon={Trophy}
-          value={rankEntry ? `#${rankEntry.season_rank}` : "\u2014"}
-          label="Season Rank"
-          gradient="from-amber-500/10"
-          iconColor="bg-amber-500/15 text-yellow-500"
-        />
-        <StatCard
-          icon={Target}
-          value={rankEntry?.total_points ?? 0}
-          label="Total Points"
-          gradient="from-primary/10"
-          iconColor="bg-blue-500/15 text-blue-500"
-        />
+      {/* Quick stats — secondary tier */}
+      <div className="grid grid-cols-3 gap-3">
         <StatCard
           icon={TrendingUp}
           value={bestMatch ? bestMatch.total_points : "\u2014"}
@@ -137,6 +149,13 @@ export default async function ProfilePage() {
           label="Worst Match"
           gradient="from-red-500/10"
           iconColor="bg-red-500/15 text-red-500"
+        />
+        <StatCard
+          icon={Target}
+          value={rankEntry?.avg_points?.toFixed(1) ?? "\u2014"}
+          label="Avg / Match"
+          gradient="from-primary/10"
+          iconColor="bg-primary/15 text-primary"
         />
       </div>
 
