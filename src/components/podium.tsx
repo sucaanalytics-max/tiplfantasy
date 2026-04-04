@@ -12,9 +12,9 @@ type PodiumEntry = {
 }
 
 const podiumConfig = [
-  { index: 1, height: 72, gradient: "from-gray-300/20 to-gray-400/10 border-t-2 border-gray-400/40" },
-  { index: 0, height: 96, gradient: "from-amber-400/20 to-yellow-500/10 border-t-2 border-amber-400/40" },
-  { index: 2, height: 56, gradient: "from-amber-700/20 to-amber-800/10 border-t-2 border-amber-700/40" },
+  { index: 1, height: 72, gradient: "from-gray-300/20 to-gray-400/10 border-t-2 border-gray-400/40", glow: "" },
+  { index: 0, height: 96, gradient: "from-amber-400/20 to-yellow-500/10 border-t-2 border-amber-400/40", glow: "shadow-[0_0_24px_oklch(0.78_0.17_86/0.2)]" },
+  { index: 2, height: 56, gradient: "from-amber-700/20 to-amber-800/10 border-t-2 border-amber-700/40", glow: "" },
 ]
 
 export function Podium({ entries }: { entries: PodiumEntry[] }) {
@@ -22,13 +22,13 @@ export function Podium({ entries }: { entries: PodiumEntry[] }) {
 
   return (
     <div className="flex items-end justify-center gap-3 px-4 pb-2 pt-6">
-      {podiumConfig.map(({ index, height, gradient }, i) => {
+      {podiumConfig.map(({ index, height, gradient, glow }, i) => {
         const entry = entries[index]
         if (!entry) return null
         return (
           <motion.div
             key={entry.rank}
-            className="flex flex-col items-center gap-2 flex-1 max-w-[120px]"
+            className={`flex flex-col items-center gap-2 flex-1 max-w-[130px] ${glow}`}
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.4, delay: i * 0.15, ease: "easeOut" }}
@@ -36,9 +36,9 @@ export function Podium({ entries }: { entries: PodiumEntry[] }) {
             {/* Avatar + rank badge */}
             <div className="relative">
               <div
-                className={`h-12 w-12 rounded-full ${getAvatarColor(entry.name)} flex items-center justify-center ring-2 ring-background`}
+                className={`h-14 w-14 rounded-full ${getAvatarColor(entry.name)} flex items-center justify-center ring-2 ring-background`}
               >
-                <span className="text-white text-sm font-semibold">
+                <span className="text-white text-base font-semibold">
                   {getInitials(entry.name)}
                 </span>
               </div>
@@ -55,8 +55,9 @@ export function Podium({ entries }: { entries: PodiumEntry[] }) {
               )}
             </p>
 
-            {/* Points */}
-            <p className="text-sm font-bold font-display">{entry.points} pts</p>
+            {/* Points — using text-score scale */}
+            <p className="text-score">{entry.points}</p>
+            <span className="text-label -mt-1">pts</span>
 
             {/* Podium bar — animates upward */}
             <motion.div

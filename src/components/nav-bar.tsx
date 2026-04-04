@@ -11,8 +11,6 @@ import {
   User,
   Shield,
   LogOut,
-  Award,
-  Coins,
   BookOpen,
   BarChart3,
 } from "lucide-react"
@@ -34,11 +32,9 @@ const sidebarNavItems = [
   { href: "/dashboard", label: "Home", icon: LayoutDashboard },
   { href: "/matches", label: "Matches", icon: Swords },
   { href: "/leagues", label: "Leagues", icon: Users },
+  { href: "/leaderboard", label: "Board", icon: Trophy },
   { href: "/stats", label: "Stats", icon: BarChart3 },
-  { href: "/predictions", label: "Predict", icon: Award },
-  { href: "/h2h", label: "H2H", icon: Coins },
   { href: "/rules", label: "Rules", icon: BookOpen },
-  { href: "/leaderboard", label: "Leaderboard", icon: Trophy },
   { href: "/profile", label: "Profile", icon: User },
 ]
 

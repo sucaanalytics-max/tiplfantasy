@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button"
 import { format } from "date-fns"
 import { TeamLogo } from "@/components/team-logo"
 import { MatchCard } from "@/components/match-card"
-import { Target, Users, ChevronRight, Swords, CheckCircle2, Pencil } from "lucide-react"
+import { Target, Users, ChevronRight, CheckCircle2, Pencil } from "lucide-react"
 import { Trophy } from "@/components/icons/trophy"
 import { getMyLeagues } from "@/actions/leagues"
 import { getInitials, getAvatarColor } from "@/lib/avatar"
@@ -31,8 +31,6 @@ export default async function DashboardPage() {
     top5Res,
     myLeagues,
     completedRes,
-    tokenRes,
-    h2hRes,
   ] = await Promise.all([
     supabase.from("profiles").select("display_name, avatar_url").eq("id", user.id).single(),
     supabase.from("season_leaderboard").select("*").eq("user_id", user.id).maybeSingle(),
@@ -58,11 +56,6 @@ export default async function DashboardPage() {
     supabase.from("season_leaderboard").select("*").order("season_rank", { ascending: true }).limit(5),
     getMyLeagues(),
     supabase.from("matches").select("id").eq("status", "completed").order("start_time", { ascending: false }).limit(20),
-    supabase.from("user_tokens").select("balance").eq("user_id", user.id).maybeSingle(),
-    supabase.from("h2h_challenges")
-      .select("winner_id, status")
-      .eq("status", "completed")
-      .or(`challenger_id.eq.${user.id},opponent_id.eq.${user.id}`),
   ])
 
   const profile = profileRes.data
@@ -72,10 +65,6 @@ export default async function DashboardPage() {
   const lastMatch = lastMatchRes.data
   const top5 = top5Res.data
   const completedMatches = completedRes.data
-  const tokenBalance = tokenRes.data?.balance ?? 0
-  const h2hResults = h2hRes.data ?? []
-  const h2hWins = h2hResults.filter(c => c.winner_id === user.id).length
-  const h2hLosses = h2hResults.filter(c => c.winner_id !== null && c.winner_id !== user.id).length
 
   const nextMatch = upcomingMatches?.[0] ?? null
   const moreMatches = upcomingMatches?.slice(1) ?? []
@@ -151,15 +140,22 @@ export default async function DashboardPage() {
           ═══════════════════════════════════════════════════════ */}
       {heroMatch && heroHome && heroAway ? (
         <section className="relative overflow-hidden min-h-[300px] md:min-h-[340px] flex flex-col justify-end px-4 md:px-6 pb-6 pt-16">
-          {/* Team color gradient background */}
+          {/* Team color gradient background — 50% opacity for energy */}
           <div
             className="absolute inset-0 pointer-events-none"
             style={{
-              background: `linear-gradient(135deg, ${heroHome.color}35 0%, transparent 40%, transparent 60%, ${heroAway.color}35 100%)`,
+              background: `linear-gradient(135deg, ${heroHome.color}50 0%, transparent 35%, transparent 65%, ${heroAway.color}50 100%)`,
+            }}
+          />
+          {/* Subtle diagonal stripe texture */}
+          <div
+            className="absolute inset-0 pointer-events-none opacity-[0.03]"
+            style={{
+              backgroundImage: `repeating-linear-gradient(45deg, transparent, transparent 10px, white 10px, white 11px)`,
             }}
           />
           {/* Dark fade overlay for readability */}
-          <div className="absolute inset-0 bg-gradient-to-t from-background via-background/70 to-background/30 pointer-events-none" />
+          <div className="absolute inset-0 bg-gradient-to-t from-background via-background/60 to-background/20 pointer-events-none" />
 
           <div className="relative z-10 max-w-2xl lg:max-w-5xl mx-auto w-full">
             {/* Live badge or match info */}
@@ -209,8 +205,11 @@ export default async function DashboardPage() {
               </div>
             </div>
 
+            {/* Venue */}
+            <p className="text-center text-2xs text-muted-foreground mt-3">{heroMatch.venue}</p>
+
             {/* Countdown / Live score + CTA */}
-            <div className="mt-5 flex items-center justify-between gap-4">
+            <div className="mt-4 flex items-center justify-between gap-4">
               <div>
                 {heroIsLive ? (
                   <LiveScoreWidget
@@ -218,7 +217,7 @@ export default async function DashboardPage() {
                     startTime={heroMatch.start_time}
                   />
                 ) : (
-                  <CountdownTimer targetTime={heroMatch.start_time} variant="full" />
+                  <CountdownTimer targetTime={heroMatch.start_time} variant="full" className="text-stat text-primary" />
                 )}
               </div>
 
@@ -307,16 +306,6 @@ export default async function DashboardPage() {
             </div>
           )}
 
-          {h2hResults.length > 0 && (
-            <div className="glass-panel rounded-full px-4 py-2.5 flex items-center gap-2 shrink-0">
-              <Swords className="h-4 w-4 text-muted-foreground" />
-              <span className="text-base font-bold font-display">
-                <span className="text-green-500">{h2hWins}W</span>
-                <span className="text-muted-foreground mx-0.5">-</span>
-                <span className="text-red-500">{h2hLosses}L</span>
-              </span>
-            </div>
-          )}
         </div>
 
         {/* ── Desktop 2-column grid ─────────────────────────── */}
@@ -408,7 +397,7 @@ export default async function DashboardPage() {
                 </Link>
               </div>
 
-              <div className="glass rounded-xl overflow-hidden divide-y divide-white/[0.04]">
+              <div className="glass rounded-xl overflow-hidden divide-y divide-white/[0.04] stagger-children">
                 {(top5 ?? []).map((entry) => {
                   const e = entry as unknown as { user_id: string; display_name: string; total_points: number; season_rank: number }
                   const isMe = e.user_id === user.id
