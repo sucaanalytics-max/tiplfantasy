@@ -268,12 +268,13 @@ export default async function ProfilePage() {
         if (ranks.length < 2) return null
         const maxRank = Math.max(...ranks)
         const displayMax = Math.max(maxRank + 1, 5)
-        const width = 280
-        const height = 80
-        const padX = 16
-        const padY = 8
+        const width = 320
+        const height = 140
+        const padX = 28
+        const padY = 16
+        const padBottom = 24
         const chartW = width - padX * 2
-        const chartH = height - padY * 2
+        const chartH = height - padY - padBottom
         const points = ranks.map((r, i) => {
           const x = padX + (i / (ranks.length - 1)) * chartW
           const y = padY + ((r - 1) / (displayMax - 1)) * chartH
@@ -283,6 +284,18 @@ export default async function ProfilePage() {
         const bestRank = Math.min(...ranks)
         const latestRank = ranks[ranks.length - 1]
 
+        // Gradient fill area points
+        const firstPt = points.split(" ")[0]
+        const lastPt = points.split(" ").at(-1)!
+        const areaPoints = `${padX},${padY + chartH} ${points} ${lastPt.split(",")[0]},${padY + chartH}`
+
+        // Color based on rank value (lower = better = greener)
+        const rankColor = (r: number) => {
+          if (r === 1) return "#22c55e"
+          if (r <= 3) return "#3b82f6"
+          return "#f59e0b"
+        }
+
         return (
           <Card className="glass">
             <CardHeader className="pb-2">
@@ -290,24 +303,42 @@ export default async function ProfilePage() {
             </CardHeader>
             <CardContent className="space-y-3">
               <div className="overflow-x-auto">
-                <svg width={width} height={height} className="block">
+                <svg width={width} height={height} viewBox={`0 0 ${width} ${height}`} className="block w-full h-auto">
+                  <defs>
+                    <linearGradient id="rankFill" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="0%" stopColor="hsl(var(--primary))" stopOpacity={0.25} />
+                      <stop offset="100%" stopColor="hsl(var(--primary))" stopOpacity={0} />
+                    </linearGradient>
+                  </defs>
                   {/* Grid lines */}
                   {[1, Math.ceil(displayMax / 2), displayMax].map((r) => {
                     const y = padY + ((r - 1) / (displayMax - 1)) * chartH
                     return (
                       <g key={r}>
                         <line x1={padX} y1={y} x2={width - padX} y2={y}
-                          stroke="currentColor" strokeOpacity={0.1} strokeWidth={1} />
-                        <text x={2} y={y + 3} fontSize={8} fill="currentColor" fillOpacity={0.4}>#{r}</text>
+                          stroke="currentColor" strokeOpacity={0.15} strokeWidth={1} strokeDasharray="4 4" />
+                        <text x={4} y={y + 4} fontSize={10} fill="currentColor" fillOpacity={0.5} fontFamily="monospace">#{r}</text>
                       </g>
                     )
                   })}
-                  {/* Polyline */}
+                  {/* Match labels on x-axis */}
+                  {sorted.map((ms, i) => {
+                    const x = padX + (i / (ranks.length - 1)) * chartW
+                    const matchNum = (ms.match as unknown as { match_number: number })?.match_number
+                    return matchNum ? (
+                      <text key={ms.match_id} x={x} y={height - 4} fontSize={9} fill="currentColor" fillOpacity={0.4} textAnchor="middle">
+                        M{matchNum}
+                      </text>
+                    ) : null
+                  })}
+                  {/* Area fill */}
+                  <polygon points={areaPoints} fill="url(#rankFill)" />
+                  {/* Line */}
                   <polyline
                     points={points}
                     fill="none"
                     stroke="hsl(var(--primary))"
-                    strokeWidth={2}
+                    strokeWidth={2.5}
                     strokeLinejoin="round"
                     strokeLinecap="round"
                   />
@@ -316,14 +347,15 @@ export default async function ProfilePage() {
                     const x = padX + (i / (ranks.length - 1)) * chartW
                     const y = padY + ((r - 1) / (displayMax - 1)) * chartH
                     const isLatest = i === ranks.length - 1
+                    const color = rankColor(r)
                     return (
-                      <circle
-                        key={sorted[i].match_id}
-                        cx={x} cy={y} r={isLatest ? 4 : 3}
-                        fill={isLatest ? "hsl(var(--primary))" : "hsl(var(--background))"}
-                        stroke="hsl(var(--primary))"
-                        strokeWidth={2}
-                      />
+                      <g key={sorted[i].match_id}>
+                        <circle cx={x} cy={y} r={isLatest ? 6 : 4.5}
+                          fill={color} stroke="hsl(var(--background))" strokeWidth={2} />
+                        <text x={x} y={y - 8} fontSize={9} fill="currentColor" fillOpacity={0.7} textAnchor="middle" fontWeight="600">
+                          #{r}
+                        </text>
+                      </g>
                     )
                   })}
                 </svg>
