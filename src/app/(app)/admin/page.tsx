@@ -103,17 +103,6 @@ export default async function AdminPage() {
 
       {/* Quick links */}
       <div className="grid grid-cols-2 gap-4">
-        <Link href="/admin/tokens">
-          <Card className="hover:bg-accent/50 transition-colors cursor-pointer">
-            <CardContent className="flex items-center gap-3 py-4 px-4">
-              <span className="text-2xl">&#129689;</span>
-              <div>
-                <p className="font-medium">Token Management</p>
-                <p className="text-xs text-muted-foreground">Grant & manage H2H tokens</p>
-              </div>
-            </CardContent>
-          </Card>
-        </Link>
         <Link href="/admin/players">
           <Card className="hover:bg-accent/50 transition-colors cursor-pointer">
             <CardContent className="flex items-center gap-3 py-4 px-4">

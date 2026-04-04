@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button"
 import { format } from "date-fns"
 import { TeamLogo } from "@/components/team-logo"
 import { MatchCard } from "@/components/match-card"
-import { Target, Users, ChevronRight, Swords, CheckCircle2, Pencil } from "lucide-react"
+import { Target, Users, ChevronRight, CheckCircle2, Pencil } from "lucide-react"
 import { Trophy } from "@/components/icons/trophy"
 import { getMyLeagues } from "@/actions/leagues"
 import { getInitials, getAvatarColor } from "@/lib/avatar"
@@ -31,8 +31,6 @@ export default async function DashboardPage() {
     top5Res,
     myLeagues,
     completedRes,
-    tokenRes,
-    h2hRes,
   ] = await Promise.all([
     supabase.from("profiles").select("display_name, avatar_url").eq("id", user.id).single(),
     supabase.from("season_leaderboard").select("*").eq("user_id", user.id).maybeSingle(),
@@ -58,11 +56,6 @@ export default async function DashboardPage() {
     supabase.from("season_leaderboard").select("*").order("season_rank", { ascending: true }).limit(5),
     getMyLeagues(),
     supabase.from("matches").select("id").eq("status", "completed").order("start_time", { ascending: false }).limit(20),
-    supabase.from("user_tokens").select("balance").eq("user_id", user.id).maybeSingle(),
-    supabase.from("h2h_challenges")
-      .select("winner_id, status")
-      .eq("status", "completed")
-      .or(`challenger_id.eq.${user.id},opponent_id.eq.${user.id}`),
   ])
 
   const profile = profileRes.data
@@ -72,10 +65,6 @@ export default async function DashboardPage() {
   const lastMatch = lastMatchRes.data
   const top5 = top5Res.data
   const completedMatches = completedRes.data
-  const tokenBalance = tokenRes.data?.balance ?? 0
-  const h2hResults = h2hRes.data ?? []
-  const h2hWins = h2hResults.filter(c => c.winner_id === user.id).length
-  const h2hLosses = h2hResults.filter(c => c.winner_id !== null && c.winner_id !== user.id).length
 
   const nextMatch = upcomingMatches?.[0] ?? null
   const moreMatches = upcomingMatches?.slice(1) ?? []
@@ -307,16 +296,6 @@ export default async function DashboardPage() {
             </div>
           )}
 
-          {h2hResults.length > 0 && (
-            <div className="glass-panel rounded-full px-4 py-2.5 flex items-center gap-2 shrink-0">
-              <Swords className="h-4 w-4 text-muted-foreground" />
-              <span className="text-base font-bold font-display">
-                <span className="text-green-500">{h2hWins}W</span>
-                <span className="text-muted-foreground mx-0.5">-</span>
-                <span className="text-red-500">{h2hLosses}L</span>
-              </span>
-            </div>
-          )}
         </div>
 
         {/* ── Desktop 2-column grid ─────────────────────────── */}

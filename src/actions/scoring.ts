@@ -4,7 +4,6 @@ import { createClient } from "@/lib/supabase/server"
 import { createAdminClient } from "@/lib/supabase/admin"
 import { loadScoringRules, calculatePlayerPoints, calculateUserMatchScore } from "@/lib/scoring"
 import type { PlayerStats } from "@/lib/scoring"
-import { resolveMatchChallenges } from "@/actions/h2h"
 
 async function requireAdmin() {
   const supabase = await createClient()
@@ -162,11 +161,6 @@ export async function calculateMatchPoints(matchId: string) {
 
   // Refresh leaderboard
   await admin.rpc("refresh_leaderboard")
-
-  // Resolve H2H challenges for this match
-  await resolveMatchChallenges(matchId).catch(() => {
-    // Non-critical — don't fail scoring if H2H resolution fails
-  })
 
   // Fire-and-forget: update player stats tables (season/venue/vs-team)
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
