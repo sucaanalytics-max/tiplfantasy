@@ -69,29 +69,26 @@ export function InstallPrompt() {
   if (!showPrompt) return null
 
   return (
-    <div className="fixed bottom-16 left-4 right-4 z-50 md:bottom-4 md:left-auto md:right-4 md:w-80">
-      <div className="rounded-lg border border-white/[0.06] bg-card p-4 shadow-lg">
-        <div className="flex items-start justify-between gap-2">
-          <div className="flex-1">
-            <p className="font-medium text-sm">Install TIPL Fantasy</p>
-            <p className="text-xs text-muted-foreground mt-1">
-              {isIOS
-                ? "Tap the share button, then \"Add to Home Screen\""
-                : "Add to your home screen for the best experience"}
-            </p>
-          </div>
+    <div className="fixed top-0 left-0 right-0 z-[60] md:left-56">
+      <div className="flex items-center justify-between gap-3 px-4 py-2 bg-primary/10 border-b border-primary/20 text-xs">
+        <span className="text-foreground/80">
+          {isIOS
+            ? "📱 Tap Share → Add to Home Screen"
+            : "📱 Add to home screen for the best experience"}
+        </span>
+        <div className="flex items-center gap-2 shrink-0">
+          {!isIOS && (
+            <button onClick={handleInstall} className="font-semibold text-primary hover:underline">
+              Install
+            </button>
+          )}
           <button
             onClick={handleDismiss}
-            className="min-w-[44px] min-h-[44px] flex items-center justify-center text-muted-foreground hover:text-foreground"
+            className="min-w-[28px] min-h-[28px] flex items-center justify-center text-muted-foreground hover:text-foreground"
           >
-            <X className="h-4 w-4" />
+            <X className="h-3.5 w-3.5" />
           </button>
         </div>
-        {!isIOS && (
-          <Button onClick={handleInstall} size="sm" className="w-full mt-3">
-            Install
-          </Button>
-        )}
       </div>
     </div>
   )

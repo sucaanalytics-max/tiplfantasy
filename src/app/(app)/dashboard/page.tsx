@@ -140,15 +140,22 @@ export default async function DashboardPage() {
           ═══════════════════════════════════════════════════════ */}
       {heroMatch && heroHome && heroAway ? (
         <section className="relative overflow-hidden min-h-[300px] md:min-h-[340px] flex flex-col justify-end px-4 md:px-6 pb-6 pt-16">
-          {/* Team color gradient background */}
+          {/* Team color gradient background — 50% opacity for energy */}
           <div
             className="absolute inset-0 pointer-events-none"
             style={{
-              background: `linear-gradient(135deg, ${heroHome.color}35 0%, transparent 40%, transparent 60%, ${heroAway.color}35 100%)`,
+              background: `linear-gradient(135deg, ${heroHome.color}50 0%, transparent 35%, transparent 65%, ${heroAway.color}50 100%)`,
+            }}
+          />
+          {/* Subtle diagonal stripe texture */}
+          <div
+            className="absolute inset-0 pointer-events-none opacity-[0.03]"
+            style={{
+              backgroundImage: `repeating-linear-gradient(45deg, transparent, transparent 10px, white 10px, white 11px)`,
             }}
           />
           {/* Dark fade overlay for readability */}
-          <div className="absolute inset-0 bg-gradient-to-t from-background via-background/70 to-background/30 pointer-events-none" />
+          <div className="absolute inset-0 bg-gradient-to-t from-background via-background/60 to-background/20 pointer-events-none" />
 
           <div className="relative z-10 max-w-2xl lg:max-w-5xl mx-auto w-full">
             {/* Live badge or match info */}
@@ -198,8 +205,11 @@ export default async function DashboardPage() {
               </div>
             </div>
 
+            {/* Venue */}
+            <p className="text-center text-2xs text-muted-foreground mt-3">{heroMatch.venue}</p>
+
             {/* Countdown / Live score + CTA */}
-            <div className="mt-5 flex items-center justify-between gap-4">
+            <div className="mt-4 flex items-center justify-between gap-4">
               <div>
                 {heroIsLive ? (
                   <LiveScoreWidget
@@ -207,7 +217,7 @@ export default async function DashboardPage() {
                     startTime={heroMatch.start_time}
                   />
                 ) : (
-                  <CountdownTimer targetTime={heroMatch.start_time} variant="full" />
+                  <CountdownTimer targetTime={heroMatch.start_time} variant="full" className="text-stat text-primary" />
                 )}
               </div>
 
@@ -387,7 +397,7 @@ export default async function DashboardPage() {
                 </Link>
               </div>
 
-              <div className="glass rounded-xl overflow-hidden divide-y divide-white/[0.04]">
+              <div className="glass rounded-xl overflow-hidden divide-y divide-white/[0.04] stagger-children">
                 {(top5 ?? []).map((entry) => {
                   const e = entry as unknown as { user_id: string; display_name: string; total_points: number; season_rank: number }
                   const isMe = e.user_id === user.id

@@ -655,7 +655,7 @@ export function ScoresClient({
                               "px-3 py-2.5",
                               !isLast && "border-b border-white/[0.04]",
                               isMine && "bg-primary/5",
-                              idx % 2 === 1 && !isMine && "bg-secondary/5"
+                              idx % 2 === 1 && !isMine && "bg-white/[0.015]"
                             )}
                           >
                             {/* Row: Name + Role | Stats | Total */}
