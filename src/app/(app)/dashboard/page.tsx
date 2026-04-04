@@ -144,7 +144,7 @@ export default async function DashboardPage() {
 
   return (
     <PageTransition>
-    <div className="space-y-6 pb-8">
+    <div className="space-y-5 pb-8">
 
       {/* ═══════════════════════════════════════════════════════
           SECTION 1: Hero Match Banner — full bleed
@@ -243,7 +243,7 @@ export default async function DashboardPage() {
                   </>
                 ) : (
                   <Link href={`/match/${heroMatch.id}/pick`}>
-                    <Button size="sm" className="bg-gradient-to-r from-primary to-emerald-500 hover:from-primary/90 hover:to-emerald-500/90 text-black font-bold rounded-xl px-5">
+                    <Button size="sm" className="bg-primary hover:bg-primary/90 text-white font-bold rounded-xl px-6 glow-card">
                       Pick Your Team
                     </Button>
                   </Link>
@@ -419,7 +419,7 @@ export default async function DashboardPage() {
                       key={e.user_id}
                       className={cn(
                         "flex items-center justify-between px-4 py-3 transition-colors",
-                        rank === 1 && "bg-amber-500/[0.06]",
+                        rank === 1 && "bg-amber-500/[0.08] shadow-[inset_0_0_20px_oklch(0.78_0.17_86/0.06)]",
                         rank === 2 && "bg-gray-400/[0.05]",
                         rank === 3 && "bg-amber-700/[0.05]",
                         isMe && "bg-primary/10 border-l-2 border-l-primary"
