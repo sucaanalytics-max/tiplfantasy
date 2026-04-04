@@ -187,59 +187,80 @@ export function ScoresClient({
 
   return (
     <div className="space-y-0 max-w-3xl">
-      {/* ── Match Header (compact) ─────────────────────── */}
-      <div className="px-4 pt-3 pb-2 md:px-6 md:pt-4">
-        <div className="flex items-center gap-2">
-          <Link href="/matches">
-            <Button variant="ghost" size="sm" className="h-8 w-8 p-0 shrink-0">
-              <ArrowLeft className="h-4 w-4" />
-            </Button>
-          </Link>
-          <span className="text-xs font-medium text-muted-foreground shrink-0">#{match.match_number}</span>
-          <div className="flex-1 flex items-center justify-center gap-3">
-            <div className="flex items-center gap-1.5">
-              <TeamLogo team={home} size="md" />
-              <span className="text-sm font-bold font-display" style={{ color: home.color }}>{home.short_name}</span>
+      {/* ── Match Score Banner ─────────────────────────── */}
+      <div className="relative overflow-hidden">
+        {/* Team color gradient background */}
+        <div
+          className="absolute inset-0 pointer-events-none opacity-30"
+          style={{
+            background: `linear-gradient(135deg, ${home.color} 0%, transparent 40%, transparent 60%, ${away.color} 100%)`,
+          }}
+        />
+        <div className="relative px-4 pt-4 pb-3 md:px-6">
+          {/* Back + match number + LIVE badge */}
+          <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center gap-2">
+              <Link href="/matches">
+                <Button variant="ghost" size="sm" className="h-8 w-8 p-0 shrink-0">
+                  <ArrowLeft className="h-4 w-4" />
+                </Button>
+              </Link>
+              <span className="text-xs text-muted-foreground">Match #{match.match_number}</span>
             </div>
-            <span className="text-[10px] font-bold text-muted-foreground/60">vs</span>
-            <div className="flex items-center gap-1.5">
-              <span className="text-sm font-bold font-display" style={{ color: away.color }}>{away.short_name}</span>
-              <TeamLogo team={away} size="md" />
-            </div>
-          </div>
-          {match.status === "live" && (
-            <div className="flex items-center gap-1 text-[10px] text-red-400 font-semibold shrink-0">
-              <span className="h-1.5 w-1.5 rounded-full bg-red-500 animate-pulse" />
-              LIVE
-            </div>
-          )}
-        </div>
-
-        {match.result_summary && (
-          <p className="text-center text-[11px] text-muted-foreground mt-1">{match.result_summary}</p>
-        )}
-
-        {match.status === "live" && (
-          <>
-            <LiveRefresher interval={30000} />
-            {match.cricapi_match_id && (
-              <div className="mt-1 text-center">
-                <LiveScoreWidget cricapiMatchId={match.cricapi_match_id} startTime={match.start_time} />
+            {match.status === "live" && (
+              <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-status-live/15 border border-status-live/20">
+                <span className="h-2 w-2 rounded-full bg-status-live animate-pulse" />
+                <span className="text-2xs font-bold uppercase tracking-wider text-status-live">LIVE</span>
               </div>
             )}
-            {lastBalls.length > 0 && <BallTicker balls={lastBalls} />}
-          </>
-        )}
+          </div>
+
+          {/* Score line: Logo Score VS Score Logo */}
+          <div className="flex items-center justify-center gap-4">
+            <div className="flex items-center gap-2.5">
+              <TeamLogo team={home} size="lg" />
+              <div>
+                <p className="text-base font-bold font-display" style={{ color: home.color }}>{home.short_name}</p>
+              </div>
+            </div>
+
+            <span className="inline-flex items-center justify-center rounded-full bg-white/[0.05] text-muted-foreground/50 text-2xs font-bold font-display h-7 w-7 ring-1 ring-white/[0.08]">VS</span>
+
+            <div className="flex items-center gap-2.5">
+              <div className="text-right">
+                <p className="text-base font-bold font-display" style={{ color: away.color }}>{away.short_name}</p>
+              </div>
+              <TeamLogo team={away} size="lg" />
+            </div>
+          </div>
+
+          {/* Result / Live score */}
+          {match.result_summary && (
+            <p className="text-center text-xs text-muted-foreground mt-2">{match.result_summary}</p>
+          )}
+
+          {match.status === "live" && (
+            <>
+              <LiveRefresher interval={30000} />
+              {match.cricapi_match_id && (
+                <div className="mt-2 text-center">
+                  <LiveScoreWidget cricapiMatchId={match.cricapi_match_id} startTime={match.start_time} />
+                </div>
+              )}
+              {lastBalls.length > 0 && <BallTicker balls={lastBalls} />}
+            </>
+          )}
+        </div>
       </div>
 
       {/* ── Match Highlights (Banter) ──────────────────── */}
       {banter.length > 0 && (
-        <div className="mx-4 md:mx-6 mb-4 rounded-lg border border-border/30 bg-[hsl(var(--background))] overflow-hidden">
-          <div className="px-3 py-2 border-b border-border/20 bg-secondary/20 flex items-center gap-2">
+        <div className="mx-4 md:mx-6 mb-3 rounded-xl border border-white/[0.06] overflow-hidden">
+          <div className="px-3 py-2 border-b border-white/[0.04] bg-white/[0.03] flex items-center gap-2">
             <span className="text-sm">🎭</span>
-            <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-widest">Match Highlights</span>
+            <span className="text-2xs font-semibold text-muted-foreground uppercase tracking-widest">Match Highlights</span>
           </div>
-          <div className="divide-y divide-border/10 max-h-40 overflow-y-auto">
+          <div className="divide-y divide-white/[0.04] max-h-36 overflow-y-auto">
             {banter.map((b, i) => (
               <div key={i} className="px-3 py-2 text-xs text-foreground/90">
                 {b.message}
@@ -280,9 +301,9 @@ export function ScoresClient({
             {myXI.length === 0 ? (
               <p className="text-sm text-muted-foreground text-center py-8">You didn&apos;t pick a team for this match.</p>
             ) : (
-              <div className="rounded-lg border border-border/30 bg-[hsl(var(--background))] overflow-x-auto">
+              <div className="rounded-xl border border-white/[0.06] overflow-x-auto">
                 {/* Table header */}
-                <div className="grid grid-cols-[2.5rem_1fr_1.5rem_1.5rem_1.5rem_1.5rem_1px_1.5rem_1.8rem_1.8rem_1.5rem_3.2rem] gap-px px-3 py-2 text-[9px] text-muted-foreground/70 uppercase tracking-widest font-semibold border-b border-border/40 bg-secondary/30 min-w-[420px]">
+                <div className="grid grid-cols-[2.5rem_1fr_1.5rem_1.5rem_1.5rem_1.5rem_1px_1.5rem_1.8rem_1.8rem_1.5rem_3.2rem] gap-px px-3 py-2 text-[9px] text-muted-foreground/70 uppercase tracking-widest font-semibold border-b border-white/[0.06] bg-secondary/40 min-w-[420px]">
                   <span></span>
                   <span>Player</span>
                   <span className="text-right">R</span>
@@ -309,8 +330,8 @@ export function ScoresClient({
                         onClick={() => setExpandedPlayerId((prev) => prev === ps.player_id ? null : ps.player_id)}
                         className={cn(
                           "w-full grid grid-cols-[2.5rem_1fr_1.5rem_1.5rem_1.5rem_1.5rem_1px_1.5rem_1.8rem_1.8rem_1.5rem_3.2rem] gap-px items-center px-3 py-1.5 min-w-[420px] text-left",
-                          !isLast && !isPlayerExpanded && "border-b border-border/15",
-                          isPlayerExpanded && "bg-secondary/20"
+                          !isLast && !isPlayerExpanded && "border-b border-white/[0.04]",
+                          isPlayerExpanded && "bg-white/[0.03]"
                         )}
                       >
                         <div className="flex items-center gap-0.5">
@@ -340,7 +361,7 @@ export function ScoresClient({
                       {isPlayerExpanded && bd && Object.keys(bd).length > 0 && (
                         <div className={cn(
                           "flex flex-wrap gap-1.5 px-3 py-2 bg-secondary/10 min-w-[420px]",
-                          !isLast && "border-b border-border/15"
+                          !isLast && "border-b border-white/[0.04]"
                         )}>
                           {Object.entries(bd).map(([key, pts]) => (
                             <span key={key} className={cn(
@@ -388,7 +409,7 @@ export function ScoresClient({
                       onClick={() => setLeagueFilter(null)}
                       className={cn(
                         "px-3 py-1 rounded-full text-xs font-medium transition-colors",
-                        !leagueFilter ? "bg-primary text-primary-foreground" : "bg-secondary/50 text-muted-foreground hover:bg-secondary/70"
+                        !leagueFilter ? "bg-primary text-primary-foreground" : "glass-panel text-muted-foreground glass-hover"
                       )}
                     >
                       All
@@ -399,7 +420,7 @@ export function ScoresClient({
                         onClick={() => setLeagueFilter(league.id)}
                         className={cn(
                           "px-3 py-1 rounded-full text-xs font-medium transition-colors",
-                          leagueFilter === league.id ? "bg-primary text-primary-foreground" : "bg-secondary/50 text-muted-foreground hover:bg-secondary/70"
+                          leagueFilter === league.id ? "bg-primary text-primary-foreground" : "glass-panel text-muted-foreground glass-hover"
                         )}
                       >
                         {league.name}
@@ -437,9 +458,9 @@ export function ScoresClient({
                           onClick={() => setExpandedUserId((prev) => prev === user.user_id ? null : user.user_id)}
                           className={cn(
                             "w-full flex items-center gap-2.5 px-3 py-2.5 rounded-lg transition-colors",
-                            "hover:bg-secondary/50 active:bg-secondary/70",
+                            "hover:bg-white/[0.03] active:bg-white/[0.05]",
                             isMe && "bg-primary/10 border border-primary/20",
-                            isExpanded && !isMe && "bg-secondary/30"
+                            isExpanded && !isMe && "bg-white/[0.03]"
                           )}
                         >
                           <RankBadge rank={leagueFilter ? idx + 1 : (user.rank ?? 0)} size="sm" />
@@ -529,7 +550,7 @@ export function ScoresClient({
                   {/* Batting */}
                   {batsmen.length > 0 && (
                     <div className="mb-3">
-                      <div className="grid grid-cols-[1fr_2rem_2rem_2rem_2rem_3rem_3.5rem] gap-1 px-3 py-1 text-[10px] text-muted-foreground uppercase tracking-wider border-b border-border/40">
+                      <div className="grid grid-cols-[1fr_2rem_2rem_2rem_2rem_3rem_3.5rem] gap-1 px-3 py-1 text-[10px] text-muted-foreground uppercase tracking-wider border-b border-white/[0.06]">
                         <span>Batter</span>
                         <span className="text-right">R</span>
                         <span className="text-right">B</span>
@@ -542,7 +563,7 @@ export function ScoresClient({
                         const isMine = myPlayerSet.has(ps.player_id)
                         return (
                           <div key={ps.player_id} className={cn(
-                            "grid grid-cols-[1fr_2rem_2rem_2rem_2rem_3rem_3.5rem] gap-1 items-center px-3 py-1.5 border-b border-border/20",
+                            "grid grid-cols-[1fr_2rem_2rem_2rem_2rem_3rem_3.5rem] gap-1 items-center px-3 py-1.5 border-b border-white/[0.04]",
                             isMine && "bg-primary/5"
                           )}>
                             <div className="flex items-center gap-1 min-w-0">
@@ -564,7 +585,7 @@ export function ScoresClient({
                   {/* Bowling */}
                   {bowlers.length > 0 && (
                     <div>
-                      <div className="grid grid-cols-[1fr_2.5rem_2rem_2.5rem_2rem_3rem_3.5rem] gap-1 px-3 py-1 text-[10px] text-muted-foreground uppercase tracking-wider border-b border-border/40">
+                      <div className="grid grid-cols-[1fr_2.5rem_2rem_2.5rem_2rem_3rem_3.5rem] gap-1 px-3 py-1 text-[10px] text-muted-foreground uppercase tracking-wider border-b border-white/[0.06]">
                         <span>Bowler</span>
                         <span className="text-right">O</span>
                         <span className="text-right">M</span>
@@ -577,7 +598,7 @@ export function ScoresClient({
                         const isMine = myPlayerSet.has(ps.player_id)
                         return (
                           <div key={`bowl-${ps.player_id}`} className={cn(
-                            "grid grid-cols-[1fr_2.5rem_2rem_2.5rem_2rem_3rem_3.5rem] gap-1 items-center px-3 py-1.5 border-b border-border/20",
+                            "grid grid-cols-[1fr_2.5rem_2rem_2.5rem_2rem_3rem_3.5rem] gap-1 items-center px-3 py-1.5 border-b border-white/[0.04]",
                             isMine && "bg-primary/5"
                           )}>
                             <div className="flex items-center gap-1 min-w-0">
@@ -612,9 +633,9 @@ export function ScoresClient({
                 ].map(({ team, players: teamPlayers, label }) => {
                   const sorted = [...teamPlayers].sort((a, b) => Number(b.fantasy_points) - Number(a.fantasy_points))
                   return (
-                    <div key={team.short_name} className="rounded-lg border border-border/30 bg-[hsl(var(--background))] overflow-hidden">
+                    <div key={team.short_name} className="rounded-xl border border-white/[0.06] overflow-hidden">
                       {/* Team header */}
-                      <div className="flex items-center gap-2 px-3 py-2 border-b border-border/20 bg-secondary/20">
+                      <div className="flex items-center gap-2 px-3 py-2 border-b border-white/[0.04] bg-white/[0.03]">
                         <div className="w-1 h-4 rounded-full" style={{ backgroundColor: team.color }} />
                         <TeamLogo team={team} size="sm" />
                         <span className="text-xs font-bold font-display uppercase tracking-wider" style={{ color: team.color }}>{label}</span>
@@ -632,7 +653,7 @@ export function ScoresClient({
                             key={ps.player_id}
                             className={cn(
                               "px-3 py-2.5",
-                              !isLast && "border-b border-border/10",
+                              !isLast && "border-b border-white/[0.04]",
                               isMine && "bg-primary/5",
                               idx % 2 === 1 && !isMine && "bg-secondary/5"
                             )}

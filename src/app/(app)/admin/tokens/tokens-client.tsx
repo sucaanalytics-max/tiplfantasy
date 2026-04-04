@@ -113,7 +113,7 @@ export function TokenManagementClient({ users }: { users: UserRow[] }) {
             <select
               value={grantUserId}
               onChange={(e) => setGrantUserId(e.target.value)}
-              className="flex-1 rounded-md border border-border bg-background px-3 py-2 text-sm"
+              className="flex-1 rounded-md border border-white/[0.06] bg-background px-3 py-2 text-sm"
             >
               <option value="">Select user...</option>
               {users.map((u) => (
@@ -144,7 +144,7 @@ export function TokenManagementClient({ users }: { users: UserRow[] }) {
         <CardContent>
           <div className="space-y-2">
             {users.map((u) => (
-              <div key={u.id} className="flex items-center justify-between py-2 px-3 rounded-lg bg-secondary/50">
+              <div key={u.id} className="flex items-center justify-between py-2 px-3 rounded-lg bg-white/[0.03]">
                 <span className="text-sm font-medium">{u.display_name}</span>
                 <Badge variant="outline" className="font-mono">
                   {u.balance} tokens

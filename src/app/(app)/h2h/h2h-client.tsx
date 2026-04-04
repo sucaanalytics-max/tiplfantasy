@@ -110,17 +110,15 @@ export function H2HClient({
       </div>
 
       {/* Token balance */}
-      <Card className="border border-border bg-gradient-to-br from-amber-500/10 via-transparent to-transparent">
-        <CardContent className="pt-6">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="rounded-full bg-amber-500/15 p-2.5">
-                <Coins className="h-5 w-5 text-yellow-500" />
-              </div>
-              <div>
-                <p className="text-2xl font-bold font-display">{balance}</p>
-                <p className="text-xs text-muted-foreground">Tokens Available</p>
-              </div>
+      <Card className="border border-white/[0.06] bg-gradient-to-br from-amber-500/8 via-transparent to-transparent">
+        <CardContent className="pt-6 pb-5">
+          <div className="flex items-center gap-4">
+            <div className="rounded-full bg-amber-500/15 p-3">
+              <Coins className="h-8 w-8 text-yellow-500" />
+            </div>
+            <div>
+              <p className="text-3xl font-bold font-display tabular-nums">{balance}</p>
+              <p className="text-xs text-muted-foreground">Tokens Available</p>
             </div>
           </div>
         </CardContent>
@@ -181,7 +179,7 @@ export function H2HClient({
 
         {/* Create Challenge */}
         <TabsContent value="create" className="mt-4">
-          <Card className="border border-border">
+          <Card className="border border-white/[0.06]">
             <CardHeader className="pb-3">
               <CardTitle className="text-base flex items-center gap-2">
                 <Plus className="h-4 w-4" />
@@ -195,7 +193,7 @@ export function H2HClient({
                 <select
                   value={selectedMatch}
                   onChange={(e) => setSelectedMatch(e.target.value)}
-                  className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm"
+                  className="w-full rounded-md border border-white/[0.06] bg-background px-3 py-2 text-sm"
                 >
                   <option value="">Select a match...</option>
                   {upcomingMatches.map((m) => (
@@ -214,7 +212,7 @@ export function H2HClient({
                 <select
                   value={selectedOpponent}
                   onChange={(e) => setSelectedOpponent(e.target.value)}
-                  className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm"
+                  className="w-full rounded-md border border-white/[0.06] bg-background px-3 py-2 text-sm"
                 >
                   <option value="">Anyone can accept</option>
                   {allUsers.map((u) => (
@@ -241,7 +239,7 @@ export function H2HClient({
               <Button
                 onClick={handleCreate}
                 disabled={isPending || !selectedMatch || !wager || parseInt(wager) <= 0}
-                className="w-full bg-gradient-to-r from-primary to-blue-400 hover:from-primary/90 hover:to-blue-400/90 text-black font-semibold"
+                className="w-full bg-primary hover:bg-primary/90 text-white font-semibold glow-card"
               >
                 {isPending ? "Creating..." : `Challenge (${wager || 0} tokens)`}
               </Button>
@@ -273,7 +271,7 @@ function ChallengeCard({
   const isDraw = c.status === "completed" && !c.winner_id
 
   return (
-    <Card className="border border-border">
+    <Card className="border border-white/[0.06]">
       <CardContent className="pt-4 pb-4">
         <div className="flex items-start justify-between gap-3">
           <div className="space-y-1.5 flex-1">

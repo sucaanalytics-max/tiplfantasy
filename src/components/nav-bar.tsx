@@ -62,7 +62,7 @@ export function NavBar({ isAdmin = false }: { isAdmin?: boolean }) {
   return (
     <>
       {/* Mobile bottom nav */}
-      <nav aria-label="Main navigation" className="fixed bottom-0 left-0 right-0 z-50 border-t border-white/[0.06] bg-background/90 backdrop-blur-xl supports-[backdrop-filter]:bg-background/70 pb-[env(safe-area-inset-bottom)] md:hidden">
+      <nav aria-label="Main navigation" className="fixed bottom-0 left-0 right-0 z-50 bg-[oklch(0.08_0.005_0)] border-t border-white/[0.06] pb-[env(safe-area-inset-bottom)] md:hidden">
         <div className="flex items-center justify-around h-14">
           {mobileItems.map((item) => {
             const Icon = item.icon
@@ -83,7 +83,7 @@ export function NavBar({ isAdmin = false }: { isAdmin?: boolean }) {
                 <Icon className="h-5 w-5" aria-hidden="true" />
                 <span className="text-[10px]">{item.label}</span>
                 {active && (
-                  <span className="absolute -top-0.5 left-1/2 -translate-x-1/2 w-5 h-0.5 rounded-full bg-primary" />
+                  <span className="absolute -top-0.5 left-1/2 -translate-x-1/2 w-6 h-[3px] rounded-full bg-primary shadow-[0_-2px_8px_oklch(0.72_0.20_45/0.4)]" />
                 )}
               </Link>
             )
@@ -92,7 +92,7 @@ export function NavBar({ isAdmin = false }: { isAdmin?: boolean }) {
       </nav>
 
       {/* Desktop sidebar */}
-      <aside aria-label="Sidebar navigation" className="hidden md:flex fixed left-0 top-0 bottom-0 z-40 w-56 flex-col border-r border-white/[0.06] bg-background/60 backdrop-blur-xl">
+      <aside aria-label="Sidebar navigation" className="hidden md:flex fixed left-0 top-0 bottom-0 z-40 w-56 flex-col glass-subtle border-r border-white/[0.06]">
         <div className="p-4 pb-6 flex items-center gap-3">
           <Image
             src="/icons/icon-192.png"

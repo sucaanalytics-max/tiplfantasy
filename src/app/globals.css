@@ -38,6 +38,7 @@
   --color-popover: var(--popover);
   --color-card-foreground: var(--card-foreground);
   --color-card: var(--card);
+  --color-surface: var(--surface);
   --radius-sm: calc(var(--radius) - 4px);
   --radius-md: calc(var(--radius) - 2px);
   --radius-lg: var(--radius);
@@ -65,7 +66,7 @@
 }
 
 :root {
-  --radius: 1.5rem;
+  --radius: 0.75rem;
 
   /* Clean off-white, very faint navy tint */
   --background: oklch(0.97 0.005 255);
@@ -131,6 +132,9 @@
   --role-ar: oklch(0.52 0.17 145);
   --role-bowl: oklch(0.55 0.20 304);
 
+  /* Surface — between background and card */
+  --surface: oklch(0.955 0.006 255);
+
   /* Light mode glass/elevation */
   --glass-bg: oklch(1 0 0 / 0.80);
   --glass-bg-hover: oklch(1 0 0 / 0.90);
@@ -143,47 +147,47 @@
 }
 
 .dark {
-  /* TIPL brand: very dark navy — matches the shield/logo background */
-  --background: oklch(0.10 0.025 255);
-  --foreground: oklch(0.97 0.005 255);
-  --card: oklch(0.15 0.025 255);
-  --card-foreground: oklch(0.97 0.005 255);
-  --popover: oklch(0.15 0.025 255);
-  --popover-foreground: oklch(0.97 0.005 255);
+  /* True black — #111111 inspired, zero color tint */
+  --background: oklch(0.08 0.005 0);
+  --foreground: oklch(0.97 0 0);
+  --card: oklch(0.12 0.005 0);
+  --card-foreground: oklch(0.97 0 0);
+  --popover: oklch(0.12 0.005 0);
+  --popover-foreground: oklch(0.97 0 0);
 
-  /* TIPL orange — the FANTASY ribbon, batsman uniform, primary action color */
-  --primary: oklch(0.68 0.22 35);
+  /* TIPL orange — bold, solid, high-contrast */
+  --primary: oklch(0.72 0.20 45);
   --primary-foreground: oklch(0.99 0 0);
 
-  /* Dark navy surfaces */
-  --secondary: oklch(0.20 0.020 255);
-  --secondary-foreground: oklch(0.97 0.005 255);
-  --muted: oklch(0.20 0.020 255);
-  --muted-foreground: oklch(0.58 0.015 255);
+  /* Dark surfaces — clean neutral grays, no color tint */
+  --secondary: oklch(0.16 0.005 0);
+  --secondary-foreground: oklch(0.97 0 0);
+  --muted: oklch(0.16 0.005 0);
+  --muted-foreground: oklch(0.55 0.005 0);
 
-  /* TIPL gold — crown, stars, shield outline, prestige elements */
+  /* TIPL gold — crown, stars, prestige */
   --accent: oklch(0.78 0.17 86);
   --accent-foreground: oklch(0.12 0.01 86);
 
   --destructive: oklch(0.577 0.245 27.325);
-  --border: oklch(0.23 0.018 255);
-  --input: oklch(0.23 0.018 255);
-  --ring: oklch(0.68 0.22 35);
+  --border: oklch(0.20 0.005 0);
+  --input: oklch(0.20 0.005 0);
+  --ring: oklch(0.72 0.20 45);
 
-  --chart-1: oklch(0.68 0.22 35);
+  --chart-1: oklch(0.72 0.20 45);
   --chart-2: oklch(0.78 0.17 86);
-  --chart-3: oklch(0.769 0.188 70);
-  --chart-4: oklch(0.627 0.265 304);
-  --chart-5: oklch(0.50 0.18 265);
+  --chart-3: oklch(0.65 0.20 145);
+  --chart-4: oklch(0.65 0.20 304);
+  --chart-5: oklch(0.60 0.16 265);
 
-  --sidebar: oklch(0.10 0.025 255);
-  --sidebar-foreground: oklch(0.97 0.005 255);
-  --sidebar-primary: oklch(0.68 0.22 35);
+  --sidebar: oklch(0.08 0.005 0);
+  --sidebar-foreground: oklch(0.97 0 0);
+  --sidebar-primary: oklch(0.72 0.20 45);
   --sidebar-primary-foreground: oklch(0.99 0 0);
-  --sidebar-accent: oklch(0.20 0.020 255);
-  --sidebar-accent-foreground: oklch(0.97 0.005 255);
-  --sidebar-border: oklch(0.23 0.018 255);
-  --sidebar-ring: oklch(0.68 0.22 35);
+  --sidebar-accent: oklch(0.16 0.005 0);
+  --sidebar-accent-foreground: oklch(0.97 0 0);
+  --sidebar-border: oklch(0.20 0.005 0);
+  --sidebar-ring: oklch(0.72 0.20 45);
 
   /* Semantic status tokens (dark mode) */
   --status-live: oklch(0.65 0.24 25);
@@ -205,15 +209,18 @@
   --role-ar: oklch(0.65 0.20 145);
   --role-bowl: oklch(0.65 0.20 304);
 
-  /* Glass effect tokens */
-  --glass-bg: oklch(0.12 0.025 255 / 0.75);
-  --glass-bg-hover: oklch(0.15 0.025 255 / 0.80);
-  --glass-border: oklch(1 0 0 / 0.08);
-  --glass-border-hover: oklch(1 0 0 / 0.12);
-  --glass-shadow: 0 4px 16px oklch(0 0 0 / 0.4), 0 8px 32px oklch(0 0 0 / 0.3);
-  --glass-shadow-lg: 0 8px 24px oklch(0 0 0 / 0.5), 0 16px 48px oklch(0 0 0 / 0.4);
-  --glow-primary: 0 0 20px oklch(0.68 0.22 35 / 0.35);
-  --glow-accent: 0 0 20px oklch(0.78 0.17 86 / 0.30);
+  /* Surface — between background and card */
+  --surface: oklch(0.10 0.005 0);
+
+  /* Glass — solid dark, minimal blur */
+  --glass-bg: oklch(0.12 0.005 0 / 0.95);
+  --glass-bg-hover: oklch(0.15 0.005 0 / 0.97);
+  --glass-border: oklch(1 0 0 / 0.06);
+  --glass-border-hover: oklch(1 0 0 / 0.10);
+  --glass-shadow: 0 1px 3px oklch(0 0 0 / 0.4);
+  --glass-shadow-lg: 0 4px 16px oklch(0 0 0 / 0.5);
+  --glow-primary: 0 0 16px oklch(0.72 0.20 45 / 0.20);
+  --glow-accent: 0 0 16px oklch(0.78 0.17 86 / 0.20);
 }
 
 @layer base {
@@ -234,42 +241,75 @@
     display: none;
   }
 
-  /* Glass card base */
+  /* ── Glass System (3 tiers) ─────────────────────── */
+
+  /* Tier 1: Subtle — nav bars, filter rows, secondary surfaces */
+  .glass-subtle {
+    background: var(--glass-bg);
+    border: 1px solid var(--glass-border);
+  }
+
+  /* Tier 2: Default — cards, rows, primary surfaces */
   .glass {
     background: var(--glass-bg);
-    backdrop-filter: blur(12px);
-    -webkit-backdrop-filter: blur(12px);
     border: 1px solid var(--glass-border);
     box-shadow: var(--glass-shadow);
   }
 
-  /* Glass panel — cleaner variant for overlays and buttons */
+  /* Tier 3: Elevated — modals, drawers, hero cards, overlays */
+  .glass-elevated {
+    background: var(--glass-bg-hover);
+    border: 1px solid var(--glass-border-hover);
+    box-shadow: var(--glass-shadow-lg);
+  }
+
+  /* Glass panel — pills, compact surfaces */
   .glass-panel {
     background: var(--glass-bg);
-    backdrop-filter: blur(16px);
-    -webkit-backdrop-filter: blur(16px);
-    border: 1px solid oklch(1 0 0 / 0.08);
-    box-shadow: 0 4px 30px oklch(0 0 0 / 0.1);
+    border: 1px solid var(--glass-border);
   }
 
-  /* Display font for headings and scores */
-  .font-display {
-    font-family: var(--font-rajdhani), var(--font-geist-sans), sans-serif;
+  .glass-hover {
+    transition: background 0.2s, border-color 0.2s, box-shadow 0.2s;
   }
-
   .glass-hover:hover {
     background: var(--glass-bg-hover);
     border-color: var(--glass-border-hover);
+    box-shadow: var(--glass-shadow);
   }
 
+  /* ── Glow utilities ─────────────────────────────── */
   .glow-primary {
     box-shadow: var(--glow-primary);
   }
   .glow-accent {
     box-shadow: var(--glow-accent);
   }
+  .glow-ring {
+    box-shadow: 0 0 0 1px var(--primary), var(--glow-primary);
+  }
+  .glow-card {
+    box-shadow: 0 0 16px oklch(0.72 0.20 45 / 0.10);
+  }
+  .glow-card:hover {
+    box-shadow: 0 0 24px oklch(0.72 0.20 45 / 0.18);
+  }
+  .neon-border {
+    border-color: oklch(0.72 0.20 45 / 0.3);
+  }
 
-  /* Horizontal scroll carousel */
+  /* ── Display font ───────────────────────────────── */
+  .font-display {
+    font-family: var(--font-rajdhani), var(--font-geist-sans), sans-serif;
+  }
+
+  /* ── Text size: 10px (not in Tailwind defaults) ─── */
+  .text-2xs {
+    font-size: 0.625rem;
+    line-height: 0.875rem;
+  }
+
+  /* ── Scroll carousel ────────────────────────────── */
   .snap-x-mandatory {
     scroll-snap-type: x mandatory;
     -webkit-overflow-scrolling: touch;
@@ -278,15 +318,27 @@
     scroll-snap-align: start;
   }
 
-  /* Animation utilities */
+  /* ── Animation utilities ────────────────────────── */
+  .animate-fade-in {
+    animation: fade-in 0.25s ease-out both;
+  }
+  .animate-scale-in {
+    animation: scale-in 0.2s ease-out both;
+  }
   .animate-slide-up {
     animation: slide-up 0.3s ease-out both;
+  }
+  .animate-slide-in-bottom {
+    animation: slide-in-bottom 0.3s cubic-bezier(0.16, 1, 0.3, 1) both;
   }
   .animate-count-up {
     animation: count-up 0.5s ease-out both;
   }
   .animate-urgency-pulse {
     animation: urgency-pulse 1s ease-in-out infinite;
+  }
+  .animate-shimmer {
+    animation: shimmer 2s linear infinite;
   }
 }
 
@@ -314,8 +366,23 @@
 }
 
 /* UX animation keyframes */
+@keyframes fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes scale-in {
+  from { opacity: 0; transform: scale(0.95); }
+  to { opacity: 1; transform: scale(1); }
+}
+
 @keyframes slide-up {
   from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes slide-in-bottom {
+  from { opacity: 0; transform: translateY(16px); }
   to { opacity: 1; transform: translateY(0); }
 }
 
@@ -329,6 +396,11 @@
   50% { opacity: 0.6; }
 }
 
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
 @keyframes confetti-fall {
   0% { transform: translateY(-100vh) rotate(0deg); opacity: 1; }
   100% { transform: translateY(10vh) rotate(720deg); opacity: 0; }
@@ -337,9 +409,13 @@
 /* Disable all custom animations for reduced motion */
 @media (prefers-reduced-motion: reduce) {
   .ambient-orb,
+  .animate-fade-in,
+  .animate-scale-in,
   .animate-slide-up,
+  .animate-slide-in-bottom,
   .animate-count-up,
-  .animate-urgency-pulse {
+  .animate-urgency-pulse,
+  .animate-shimmer {
     animation: none !important;
   }
 }

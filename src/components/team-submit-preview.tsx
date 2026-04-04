@@ -65,7 +65,7 @@ export function TeamSubmitPreview({
               return (
                 <div
                   key={player.id}
-                  className="flex items-center gap-3 py-2.5 px-3 rounded-lg bg-secondary/40 border border-border/40"
+                  className="flex items-center gap-3 py-2.5 px-3 rounded-lg bg-white/[0.03] border border-white/[0.06]"
                 >
                   {/* Role pill */}
                   <span
@@ -107,11 +107,11 @@ export function TeamSubmitPreview({
       </div>
 
       {/* Sticky footer */}
-      <div className="fixed bottom-0 left-0 right-0 px-4 pb-[max(1.25rem,env(safe-area-inset-bottom))] pt-3 bg-background/90 backdrop-blur border-t border-border md:left-56">
+      <div className="fixed bottom-0 left-0 right-0 px-4 pb-[max(1.25rem,env(safe-area-inset-bottom))] pt-3 bg-background border-t border-white/[0.06] md:left-56">
         <div className="max-w-xl mx-auto">
           <Button
             onClick={onDone}
-            className="w-full bg-gradient-to-r from-primary to-emerald-400 text-black font-semibold"
+            className="w-full bg-primary hover:bg-primary/90 text-white font-semibold glow-card"
           >
             View Matches
           </Button>

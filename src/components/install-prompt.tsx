@@ -70,7 +70,7 @@ export function InstallPrompt() {
 
   return (
     <div className="fixed bottom-16 left-4 right-4 z-50 md:bottom-4 md:left-auto md:right-4 md:w-80">
-      <div className="rounded-lg border border-border bg-card p-4 shadow-lg">
+      <div className="rounded-lg border border-white/[0.06] bg-card p-4 shadow-lg">
         <div className="flex items-start justify-between gap-2">
           <div className="flex-1">
             <p className="font-medium text-sm">Install TIPL Fantasy</p>

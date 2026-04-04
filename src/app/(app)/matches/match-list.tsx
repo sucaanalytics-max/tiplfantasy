@@ -5,7 +5,7 @@ import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs"
-import { format } from "date-fns"
+import { format, isToday, isTomorrow } from "date-fns"
 import { formatIST, toIST } from "@/lib/utils"
 import { CountdownTimer } from "@/components/countdown-timer"
 import { TeamLogo } from "@/components/team-logo"
@@ -120,8 +120,13 @@ export function MatchList({
             {Array.from(grouped.entries()).map(([dateKey, dayMatches]) => (
               <div key={dateKey} className="space-y-3">
                 <h2 className="flex items-center gap-3 text-sm font-semibold text-muted-foreground uppercase tracking-wide">
-                  {format(new Date(dateKey), "EEEE, MMMM d")}{/* dateKey already in IST */}
-                  <div className="flex-1 h-px bg-border" />
+                  {(() => {
+                    const d = new Date(dateKey)
+                    if (isToday(d)) return <><span className="text-primary">Today</span> · {format(d, "MMM d")}</>
+                    if (isTomorrow(d)) return <><span className="text-status-warning">Tomorrow</span> · {format(d, "MMM d")}</>
+                    return format(d, "EEEE, MMMM d")
+                  })()}
+                  <div className="flex-1 h-px bg-white/[0.06]" />
                 </h2>
                 <div className="lg:grid lg:grid-cols-2 lg:gap-4 space-y-3 lg:space-y-0">
                 {dayMatches.map((match) => {
@@ -131,7 +136,7 @@ export function MatchList({
                   const hasSubmitted = submittedMatches.has(match.id)
 
                   return (
-                    <Card key={match.id} className={`border border-border overflow-hidden ${match.status === "live" ? "border-status-live/20 live-glow" : ""}`}>
+                    <Card key={match.id} className={`glass overflow-hidden ${match.status === "live" ? "border-status-live/20 live-glow" : ""}`}>
                       {/* Team color gradient bar */}
                       <div
                         className="h-1"
@@ -152,17 +157,17 @@ export function MatchList({
                         <div className="flex items-center justify-between">
                           <div className="flex items-center gap-3">
                             <div className="flex flex-col items-center gap-0.5">
-                              <TeamLogo team={home} size="md" />
-                              <span className="text-[10px] font-bold font-display" style={{ color: home.color }}>
+                              <TeamLogo team={home} size="lg" />
+                              <span className="text-xs font-bold font-display" style={{ color: home.color }}>
                                 {home.short_name}
                               </span>
                             </div>
-                            <span className="inline-flex items-center justify-center rounded-full bg-primary/15 text-primary text-[10px] font-bold font-display h-6 w-6 ring-1 ring-primary/20">
+                            <span className="inline-flex items-center justify-center rounded-full bg-primary/15 text-primary text-xs font-bold font-display h-6 w-6 ring-1 ring-primary/20">
                               VS
                             </span>
                             <div className="flex flex-col items-center gap-0.5">
-                              <TeamLogo team={away} size="md" />
-                              <span className="text-[10px] font-bold font-display" style={{ color: away.color }}>
+                              <TeamLogo team={away} size="lg" />
+                              <span className="text-xs font-bold font-display" style={{ color: away.color }}>
                                 {away.short_name}
                               </span>
                             </div>
@@ -186,7 +191,7 @@ export function MatchList({
                           </div>
                         )}
 
-                        <div className="mt-3 pt-3 border-t border-border flex items-center justify-between">
+                        <div className="mt-3 pt-3 border-t border-white/[0.06] flex items-center justify-between">
                           {match.status === "upcoming" && (
                             <>
                               {hasSubmitted ? (
@@ -194,7 +199,7 @@ export function MatchList({
                                   Submitted
                                 </Badge>
                               ) : (
-                                <span className="text-xs text-muted-foreground">No pick yet</span>
+                                <Badge variant="outline" className="text-status-warning border-status-warning/30">No pick yet</Badge>
                               )}
                               <div className="flex gap-2">
                                 {hasSubmitted && (
@@ -209,7 +214,7 @@ export function MatchList({
                                     <Link href={`/match/${match.id}/pick`}>Edit Pick</Link>
                                   </Button>
                                 ) : (
-                                  <Button size="sm" className="bg-gradient-to-r from-primary to-blue-400 text-black font-semibold hover:opacity-90" asChild>
+                                  <Button size="sm" className="bg-primary hover:bg-primary/90 text-white font-semibold glow-card" asChild>
                                     <Link href={`/match/${match.id}/pick`}>Pick Team</Link>
                                   </Button>
                                 )}

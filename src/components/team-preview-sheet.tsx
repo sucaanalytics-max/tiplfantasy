@@ -78,7 +78,7 @@ export function TeamPreviewSheet({ matchId, matchLabel, status }: Props) {
                     return (
                       <div
                         key={player.id}
-                        className="flex items-center gap-3 py-2.5 px-4 border-b border-border/30 last:border-0"
+                        className="flex items-center gap-3 py-2.5 px-4 border-b border-white/[0.04] last:border-0"
                       >
                         <span
                           className={cn(
@@ -113,7 +113,7 @@ export function TeamPreviewSheet({ matchId, matchLabel, status }: Props) {
             </div>
 
             {status === "upcoming" && data !== "loading" && data !== null && (
-              <div className="px-4 pt-3 pb-[max(1rem,env(safe-area-inset-bottom))] border-t border-border">
+              <div className="px-4 pt-3 pb-[max(1rem,env(safe-area-inset-bottom))] border-t border-white/[0.06]">
                 <Button
                   variant="outline"
                   className="w-full gap-2 border-primary/40 text-primary hover:bg-primary/10"

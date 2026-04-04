@@ -52,10 +52,10 @@ type Props = {
 const ROLE_ORDER: PlayerRole[] = ["WK", "BAT", "AR", "BOWL"]
 
 const ROLE_ACCENT: Record<PlayerRole, string> = {
-  WK:   "border-l-[3px] border-l-amber-400",
-  BAT:  "border-l-[3px] border-l-blue-400",
-  AR:   "border-l-[3px] border-l-emerald-400",
-  BOWL: "border-l-[3px] border-l-purple-400",
+  WK:   "role-wk",
+  BAT:  "role-bat",
+  AR:   "role-ar",
+  BOWL: "role-bowl",
 }
 
 const ROLE_LABELS: Record<PlayerRole, string> = {
@@ -96,7 +96,7 @@ export function PickTeamClient({
   const [error, setError] = useState<string | null>(null)
   const [showConfetti, setShowConfetti] = useState(false)
   const [showSubmitPreview, setShowSubmitPreview] = useState(false)
-  const [sortBy, setSortBy] = useState<"default" | "credits" | "points">("default")
+  const [sortBy, setSortBy] = useState<"default" | "credits" | "points">("points")
   const [cvDrawerOpen, setCvDrawerOpen] = useState(false)
   const prevSelectedCount = useRef(selectedIds.size)
   const [statsPlayerId, setStatsPlayerId] = useState<string | null>(null)
@@ -324,102 +324,96 @@ export function PickTeamClient({
     const lastPts = scores.length > 0 ? scores[scores.length - 1].total : null
 
     return (
-      <button
+      <div
         key={player.id}
-        onClick={() => {
-          if (!isDisabled) togglePlayer(player.id)
-        }}
-        disabled={isDisabled}
-        title={disabledReason ?? undefined}
         className={cn(
-          "w-full px-2.5 py-2 text-left transition-colors",
+          "flex items-center gap-3 px-4 py-2.5 border-b border-white/[0.04] transition-colors",
           ROLE_ACCENT[player.role],
-          isSelected ? "bg-primary/5" : isDisabled ? "opacity-40" : "hover:bg-secondary/50",
-          hasPlayingXI && !isInXI && "opacity-50"
+          isSelected && "bg-primary/[0.06]",
+          isDisabled && "opacity-35",
+          hasPlayingXI && !isInXI && "opacity-40"
         )}
       >
-        {/* Row 1: Avatar + checkbox + full player name */}
-        <div className="flex items-center gap-2">
+        {/* Player photo / avatar */}
+        <button
+          className="shrink-0"
+          onClick={(e) => { e.stopPropagation(); setStatsPlayerId(player.id) }}
+        >
           {player.image_url ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img
               src={player.image_url}
               alt={player.name}
-              className="h-5 w-5 rounded-full object-cover shrink-0 ring-1 ring-border"
+              className="h-10 w-10 rounded-full object-cover ring-1 ring-white/[0.08]"
             />
           ) : (
-            <div
-              className="h-5 w-5 rounded-full flex items-center justify-center shrink-0 text-[8px] font-bold text-white"
-              style={{ backgroundColor: player.team.color }}
+            <TeamLogo team={player.team} size="md" />
+          )}
+        </button>
+
+        {/* Name + metadata */}
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-1.5">
+            <span
+              className="text-sm font-semibold truncate cursor-pointer"
+              onClick={(e) => { e.stopPropagation(); setStatsPlayerId(player.id) }}
             >
-              {player.name.split(" ").map(w => w[0]).slice(0, 2).join("").toUpperCase()}
-            </div>
-          )}
-          <div className={cn(
-            "h-4 w-4 rounded-full border-2 flex items-center justify-center shrink-0",
-            isSelected ? "border-primary bg-primary" : "border-muted-foreground/30"
-          )}>
-            {isSelected && <Check className="h-2.5 w-2.5 text-primary-foreground" />}
+              {player.name}
+            </span>
+            {isCaptain && <span className="text-2xs font-bold text-amber-400 bg-amber-400/15 px-1 rounded shrink-0">C</span>}
+            {isVC && <span className="text-2xs font-bold text-violet-400 bg-violet-400/15 px-1 rounded shrink-0">VC</span>}
+            <FormIcon indicator={formIndicator} />
           </div>
-          <span
-            className="text-xs font-medium cursor-pointer underline-offset-2 hover:underline text-foreground inline-flex items-center gap-0.5 min-w-0"
-            onClick={(e) => { e.stopPropagation(); setStatsPlayerId(player.id) }}
-          >
-            {player.name}
-            <Info className="h-2.5 w-2.5 text-muted-foreground/50 shrink-0 ml-0.5" />
-          </span>
-          <FormIcon indicator={formIndicator} />
-          {isCaptain && <span className="text-[8px] font-bold text-amber-500 shrink-0">C</span>}
-          {isVC && <span className="text-[8px] font-bold text-violet-400 shrink-0">VC</span>}
-          {hasPlayingXI && isInXI && (
-            <span className="text-[7px] font-bold text-emerald-400 bg-emerald-400/15 px-1 rounded shrink-0">XI</span>
-          )}
-          {hasPlayingXI && !isInXI && (
-            <span className="text-[7px] font-bold text-red-400/60 bg-red-400/10 px-1 rounded shrink-0">BENCH</span>
+          <div className="flex items-center gap-1.5 mt-0.5">
+            <span className="text-2xs font-medium" style={{ color: player.team.color }}>{player.team.short_name}</span>
+            <span className="text-2xs text-muted-foreground">&middot;</span>
+            <span className="text-2xs text-muted-foreground">{ROLE_LABELS[player.role]}</span>
+            {selectionPcts[player.id] > 0 && (
+              <>
+                <span className="text-2xs text-muted-foreground">&middot;</span>
+                <span className="text-2xs text-muted-foreground">Sel {selectionPcts[player.id]}%</span>
+              </>
+            )}
+            {hasPlayingXI && isInXI && (
+              <span className="text-2xs font-bold text-status-success">XI</span>
+            )}
+          </div>
+          {isDisabled && (
+            <p className="text-2xs text-status-danger mt-0.5">{disabledReason}</p>
           )}
         </div>
 
-        {/* Row 2: Role + Team + Price ... AVG + LAST */}
-        <div className="flex items-center gap-1 mt-1 pl-[52px]">
-          <Badge variant="outline" className="text-[8px] h-3 px-0.5 py-0">{player.role}</Badge>
-          <span
-            className="text-[8px] font-semibold px-1 py-0 rounded"
-            style={{ color: player.team.color, backgroundColor: `${player.team.color}18` }}
-          >
-            {player.team.short_name}
+        {/* Points column */}
+        <div className="text-right shrink-0 w-10">
+          <span className={cn("text-sm font-bold tabular-nums font-display", avgPts != null ? "text-foreground" : "text-muted-foreground/30")}>
+            {avgPts ?? "—"}
           </span>
-          <span className="text-[8px] text-muted-foreground/50">{player.credit_cost}</span>
-          {matchupChip && (
-            <span className="text-[8px] text-emerald-500 truncate max-w-[60px]">{matchupChip}</span>
+          {lastPts != null && (
+            <p className="text-2xs text-muted-foreground tabular-nums">{lastPts}</p>
           )}
-          <div className="flex items-center ml-auto shrink-0">
-            <span className={cn("text-[10px] font-bold tabular-nums w-6 text-right", avgPts != null ? "text-foreground" : "text-muted-foreground/30")}>
-              {avgPts ?? "—"}
-            </span>
-            <span className={cn("text-[10px] tabular-nums w-6 text-right", lastPts != null ? "text-muted-foreground" : "text-muted-foreground/30")}>
-              {lastPts ?? "—"}
-            </span>
-          </div>
         </div>
 
-        {/* Selection % bar */}
-        {selectionPcts[player.id] != null && selectionPcts[player.id] > 0 && (
-          <div className="flex items-center gap-1 mt-0.5 pl-[52px]">
-            <div className="flex-1 h-[3px] rounded-full bg-border overflow-hidden">
-              <div
-                className={cn("h-full rounded-full transition-all", isSelected ? "bg-primary" : "bg-muted-foreground/40")}
-                style={{ width: `${selectionPcts[player.id]}%` }}
-              />
-            </div>
-            <span className={cn("text-[8px] tabular-nums shrink-0", isSelected ? "text-primary" : "text-muted-foreground/60")}>
-              {selectionPcts[player.id]}%
-            </span>
-          </div>
-        )}
-        {isDisabled && (
-          <p className="text-[10px] text-status-danger mt-0.5 pl-[52px]">{disabledReason}</p>
-        )}
-      </button>
+        {/* Credits */}
+        <span className="text-sm font-bold tabular-nums font-display text-muted-foreground w-10 text-center shrink-0">
+          {player.credit_cost}
+        </span>
+
+        {/* +/- button */}
+        <button
+          onClick={() => { if (!isDisabled) togglePlayer(player.id) }}
+          disabled={isDisabled}
+          className={cn(
+            "h-8 w-8 rounded-full flex items-center justify-center shrink-0 text-sm font-bold transition-all border",
+            isSelected
+              ? "bg-primary/15 border-primary/40 text-primary"
+              : isDisabled
+              ? "border-border/30 text-muted-foreground/30"
+              : "border-white/[0.12] text-muted-foreground hover:border-primary/40 hover:text-primary"
+          )}
+        >
+          {isSelected ? "−" : "+"}
+        </button>
+      </div>
     )
   }
 
@@ -542,117 +536,121 @@ export function PickTeamClient({
   return (
     <div className="min-h-dvh pb-[calc(10rem+env(safe-area-inset-bottom))] md:pb-28 lg:pb-0">
       {showConfetti && <Confetti />}
-      {/* Header */}
-      <div className="sticky top-0 z-30 bg-background/95 backdrop-blur border-b border-border">
-        <div className="px-4 py-3">
-          <button
-            onClick={() => router.back()}
-            className="flex items-center gap-1 text-sm text-muted-foreground mb-1"
-          >
-            <ChevronLeft className="h-4 w-4" /> Back
-          </button>
+      {/* ── Sticky Header ─────────────────────────────── */}
+      <div className="sticky top-0 z-30 bg-background border-b border-white/[0.06]">
+
+        {/* Row 1: Back + Match banner + Credits */}
+        <div className="px-4 pt-3 pb-2">
+          <div className="flex items-center justify-between mb-2">
+            <button
+              onClick={() => router.back()}
+              className="flex items-center gap-1 text-xs text-muted-foreground"
+            >
+              <ChevronLeft className="h-4 w-4" />
+            </button>
+            <CountdownTimer targetTime={match.start_time} variant="compact" />
+          </div>
+
+          {/* Teams + Player count + Credits */}
           <div className="flex items-center justify-between">
-            <div>
-              <div className="flex items-center gap-2">
-                <h1 className="text-lg font-bold">Match {match.match_number}</h1>
-                <div className="flex items-center gap-1.5">
-                  <TeamLogo team={match.team_home} size="sm" />
-                  <span className="text-xs text-muted-foreground">vs</span>
-                  <TeamLogo team={match.team_away} size="sm" />
-                </div>
+            <div className="flex items-center gap-3">
+              <div className="flex items-center gap-1.5">
+                <TeamLogo team={match.team_home} size="md" />
+                <span className="text-xs font-bold" style={{ color: match.team_home.color }}>{(match.team_home as unknown as { short_name: string }).short_name}</span>
               </div>
-              <p className="text-xs text-muted-foreground">
-                {formatIST(match.start_time, "EEE d MMM, h:mm a")} •{" "}
-                {match.venue}
-              </p>
-              <CountdownTimer targetTime={match.start_time} variant="compact" />
-            </div>
-            <div className="flex flex-col items-end gap-1">
-              <SegmentedProgressBar filled={selectedIds.size} total={11} />
-              <span className={cn(
-                "text-[10px] tabular-nums font-medium",
-                remainingBudget < 0 ? "text-destructive" : remainingBudget < 15 ? "text-amber-500" : "text-muted-foreground"
-              )}>
-                {remainingBudget.toFixed(1)} credits left
+              <span className="text-lg font-bold font-display tabular-nums">
+                {teamCount.get(match.team_home_id) ?? 0}
               </span>
             </div>
+
+            <div className="flex flex-col items-center">
+              <span className="text-2xs text-muted-foreground uppercase tracking-wider">Players</span>
+              <span className="text-xl font-bold font-display tabular-nums">{selectedIds.size}<span className="text-muted-foreground text-sm">/11</span></span>
+            </div>
+
+            <div className="flex items-center gap-3">
+              <span className="text-lg font-bold font-display tabular-nums">
+                {teamCount.get(match.team_away_id) ?? 0}
+              </span>
+              <div className="flex items-center gap-1.5">
+                <span className="text-xs font-bold" style={{ color: match.team_away.color }}>{(match.team_away as unknown as { short_name: string }).short_name}</span>
+                <TeamLogo team={match.team_away} size="md" />
+              </div>
+            </div>
+          </div>
+
+          {/* Max 7 per team hint */}
+          <p className="text-center text-2xs text-muted-foreground mt-1">Max 7 players from a team</p>
+
+          {/* Segmented composition bar (Dream11 style) */}
+          <div className="flex gap-[2px] mt-2 h-2 rounded-full overflow-hidden bg-border/30">
+            {Array.from({ length: 11 }).map((_, i) => {
+              const player = selectedPlayers[i]
+              const roleColor = player ? ({
+                WK: "bg-role-wk", BAT: "bg-role-bat", AR: "bg-role-ar", BOWL: "bg-role-bowl"
+              })[player.role] : ""
+              return (
+                <div
+                  key={i}
+                  className={cn(
+                    "flex-1 rounded-sm transition-colors",
+                    player ? roleColor : "bg-border/50"
+                  )}
+                />
+              )
+            })}
           </div>
         </div>
 
-        {/* Composition tracker */}
-        <div className="px-4 pb-2 flex gap-1.5 overflow-x-auto scrollbar-hide">
-          {/* All tab */}
+        {/* Row 2: Role tabs (underline style) */}
+        <div className="flex border-b border-white/[0.04]">
           <button
             onClick={() => setActiveFilter("ALL")}
             className={cn(
-              "flex items-center gap-1 px-2.5 py-1 rounded-md text-xs border transition-colors whitespace-nowrap",
-              activeFilter === "ALL"
-                ? "border-primary bg-primary text-primary-foreground font-semibold"
-                : "border-border text-muted-foreground"
+              "flex-1 py-2 text-xs font-medium text-center transition-colors relative",
+              activeFilter === "ALL" ? "text-foreground" : "text-muted-foreground"
             )}
           >
-            <span className="font-medium">All</span>
-            <span className="tabular-nums">{selectedIds.size}/{11}</span>
+            All ({selectedIds.size})
+            {activeFilter === "ALL" && <span className="absolute bottom-0 left-1/4 right-1/4 h-[2px] bg-primary rounded-full" />}
           </button>
           {ROLE_ORDER.map((role) => {
-            const [min, max] = ROLE_LIMITS[role]
             const count = roleCount[role]
-            const ok = count >= min && count <= max
+            const [min, max] = ROLE_LIMITS[role]
             const isActive = activeFilter === role
-            const roleColors: Record<PlayerRole, string> = {
-              WK: "bg-role-wk", BAT: "bg-role-bat", AR: "bg-role-ar", BOWL: "bg-role-bowl",
-            }
             return (
               <button
                 key={role}
-                onClick={() =>
-                  setActiveFilter(isActive ? "ALL" : role)
-                }
+                onClick={() => setActiveFilter(isActive ? "ALL" : role)}
                 className={cn(
-                  "flex flex-col items-center px-2.5 py-1 rounded-md text-xs border transition-colors whitespace-nowrap gap-0.5",
-                  isActive
-                    ? "border-primary bg-primary text-primary-foreground font-semibold"
-                    : "border-border text-muted-foreground",
-                  !isActive && count > 0 && ok && "text-status-success border-status-success/30",
-                  !isActive && count > 0 && !ok && "text-status-warning border-status-warning/30"
+                  "flex-1 py-2 text-xs font-medium text-center transition-colors relative",
+                  isActive ? "text-foreground" : "text-muted-foreground"
                 )}
               >
-                <div className="flex items-center gap-1">
-                  <span className="font-medium">{role}</span>
-                  <span className="tabular-nums">
-                    {count}/{max}
-                  </span>
-                  {count >= min && <Check className="h-2.5 w-2.5" />}
-                </div>
-                {/* Progress bar */}
-                <div className="w-full h-[2px] rounded-full bg-border/50 overflow-hidden">
-                  <div
-                    className={cn("h-full rounded-full transition-all", isActive ? "bg-primary-foreground/70" : roleColors[role])}
-                    style={{ width: `${Math.min((count / max) * 100, 100)}%` }}
-                  />
-                </div>
+                {role} ({count})
+                {isActive && <span className="absolute bottom-0 left-1/4 right-1/4 h-[2px] bg-primary rounded-full" />}
               </button>
             )
           })}
         </div>
 
-        {/* Team filter + search + sort */}
-        <div className="px-4 pb-2 flex gap-2">
-          <div className="flex rounded-md border border-border overflow-hidden text-xs">
+        {/* Row 3: Team filter + search + sort */}
+        <div className="px-4 py-2 flex gap-2">
+          <div className="flex rounded-lg overflow-hidden border border-white/[0.06] text-xs">
             {(
               [
                 ["ALL", "All"],
-                ["HOME", match.team_home.short_name],
-                ["AWAY", match.team_away.short_name],
+                ["HOME", (match.team_home as unknown as { short_name: string }).short_name],
+                ["AWAY", (match.team_away as unknown as { short_name: string }).short_name],
               ] as const
             ).map(([key, label]) => (
               <button
                 key={key}
                 onClick={() => setTeamFilter(key)}
                 className={cn(
-                  "px-2.5 py-1 transition-colors",
+                  "px-3 py-1.5 transition-colors",
                   teamFilter === key
-                    ? "bg-secondary text-foreground"
+                    ? "bg-secondary text-foreground font-medium"
                     : "text-muted-foreground hover:text-foreground"
                 )}
               >
@@ -661,19 +659,16 @@ export function PickTeamClient({
             ))}
           </div>
           <div className="relative flex-1">
-            <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" aria-hidden="true" />
+            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" aria-hidden="true" />
             <Input
-              placeholder="Search players..."
+              placeholder="Search..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="h-7 pl-7 text-xs"
+              className="h-8 pl-8 text-xs rounded-lg border-white/[0.06] bg-secondary/50"
               aria-label="Search players"
             />
             {search && (
-              <button
-                onClick={() => setSearch("")}
-                className="absolute right-2 top-1/2 -translate-y-1/2"
-              >
+              <button onClick={() => setSearch("")} className="absolute right-2.5 top-1/2 -translate-y-1/2">
                 <X className="h-3 w-3 text-muted-foreground" />
               </button>
             )}
@@ -681,26 +676,27 @@ export function PickTeamClient({
           <button
             onClick={() => setSortBy(sortBy === "default" ? "points" : sortBy === "points" ? "credits" : "default")}
             className={cn(
-              "flex items-center gap-1 px-2 py-1 rounded border text-xs transition-colors shrink-0",
-              sortBy !== "default" ? "border-primary/30 text-primary" : "border-border text-muted-foreground"
+              "flex items-center gap-1 px-2.5 py-1.5 rounded-lg border text-xs transition-colors shrink-0",
+              sortBy !== "default" ? "border-primary/30 text-primary" : "border-white/[0.06] text-muted-foreground"
             )}
-            title={sortBy === "points" ? "Sort: TIPL pts" : sortBy === "credits" ? "Sort: credits" : "Sort: default"}
           >
             <ArrowUpDown className="h-3 w-3" />
             {sortBy === "points" ? "Pts" : sortBy === "credits" ? "Cr" : ""}
           </button>
         </div>
 
-        {/* Column headers for stats */}
-        <div className="px-4 pb-1 flex items-center justify-end">
-          <span className="text-[8px] font-semibold text-muted-foreground uppercase w-6 text-right">Avg</span>
-          <span className="text-[8px] font-semibold text-muted-foreground uppercase w-6 text-right">Last</span>
+        {/* Column headers */}
+        <div className="px-4 pb-1.5 flex items-center">
+          <span className="text-2xs font-semibold text-muted-foreground uppercase flex-1">Player</span>
+          <span className="text-2xs font-semibold text-muted-foreground uppercase w-10 text-right">Pts</span>
+          <span className="text-2xs font-semibold text-muted-foreground uppercase w-10 text-center">Credit</span>
+          <span className="w-8" />
         </div>
 
         {hasPlayingXI && (
           <div className="px-4 pb-2">
-            <p className="text-[10px] text-status-success flex items-center gap-1.5">
-              <span className="h-2 w-2 rounded-full bg-status-success shrink-0" /> Playing XI announced — confirmed players shown first
+            <p className="text-2xs text-status-success flex items-center gap-1.5">
+              <span className="h-1.5 w-1.5 rounded-full bg-status-success shrink-0" /> Playing XI announced
             </p>
           </div>
         )}
@@ -709,7 +705,7 @@ export function PickTeamClient({
       {/* Desktop split-panel layout */}
       <div className="lg:grid lg:grid-cols-12 lg:h-[calc(100dvh-180px)]">
         {/* Left panel — desktop only: field + C/VC + actions */}
-        <div className="hidden lg:flex lg:flex-col lg:col-span-5 lg:border-r lg:border-border lg:overflow-y-auto lg:p-6 lg:gap-6">
+        <div className="hidden lg:flex lg:flex-col lg:col-span-5 lg:border-r lg:border-white/[0.06] lg:overflow-y-auto lg:p-6 lg:gap-6 bg-surface">
           {renderDesktopSelectedPlayers()}
 
           {/* Budget & composition summary */}
@@ -757,7 +753,7 @@ export function PickTeamClient({
             className={cn(
               "w-full",
               validation.valid && captainId && viceCaptainId && !isPending
-                ? "bg-gradient-to-r from-primary to-emerald-400 text-black font-semibold"
+                ? "bg-primary hover:bg-primary/90 text-white font-semibold glow-card"
                 : ""
             )}
           >
@@ -791,49 +787,23 @@ export function PickTeamClient({
                 <div key={role}>
                   {/* Role header */}
                   {showHeaders && (
-                    <div className="sticky top-0 z-10 px-4 py-1.5 bg-secondary/80 backdrop-blur-sm border-b border-border flex items-center justify-between">
-                      <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                    <div className="sticky top-0 z-10 px-4 py-2 bg-secondary/80 border-b border-white/[0.04] flex items-center justify-between">
+                      <span className="text-2xs font-semibold uppercase tracking-widest text-muted-foreground">
                         {ROLE_LABELS[role]}s
                       </span>
-                      <span className="text-[10px] text-muted-foreground tabular-nums">
-                        {roleCount[role]}/{ROLE_LIMITS[role][1]}
+                      <span className="text-2xs text-muted-foreground tabular-nums">
+                        Select {ROLE_LIMITS[role][0]}-{ROLE_LIMITS[role][1]} &middot; {roleCount[role]} picked
                       </span>
                     </div>
                   )}
 
                   {teamFilter === "ALL" ? (
-                    /* 2-column home/away grid */
-                    <div className="grid grid-cols-2 gap-px bg-border">
-                      <div className="bg-background">
-                        {role === rolesToShow[0] && (
-                          <div className="px-3 py-1 text-center border-b border-border">
-                            <span className="text-[10px] font-semibold" style={{ color: match.team_home.color }}>
-                              {match.team_home.short_name}
-                            </span>
-                          </div>
-                        )}
-                        <div className="divide-y divide-border">
-                          {homePlayers.map((player) => renderPlayerCompact(player))}
-                          {homePlayers.length === 0 && (
-                            <div className="py-4 text-center text-[10px] text-muted-foreground">—</div>
-                          )}
-                        </div>
-                      </div>
-                      <div className="bg-background">
-                        {role === rolesToShow[0] && (
-                          <div className="px-3 py-1 text-center border-b border-border">
-                            <span className="text-[10px] font-semibold" style={{ color: match.team_away.color }}>
-                              {match.team_away.short_name}
-                            </span>
-                          </div>
-                        )}
-                        <div className="divide-y divide-border">
-                          {awayPlayers.map((player) => renderPlayerCompact(player))}
-                          {awayPlayers.length === 0 && (
-                            <div className="py-4 text-center text-[10px] text-muted-foreground">—</div>
-                          )}
-                        </div>
-                      </div>
+                    /* Single-column list — interleaved home/away */
+                    <div>
+                      {rolePlayers.map((player) => renderPlayerCompact(player))}
+                      {rolePlayers.length === 0 && (
+                        <div className="py-8 text-center text-2xs text-muted-foreground">No players</div>
+                      )}
                     </div>
                   ) : (
                     /* Single column for HOME/AWAY filter */
@@ -858,7 +828,7 @@ export function PickTeamClient({
       </div>{/* end split-panel grid */}
 
       {/* Bottom action bar — mobile only */}
-      <div className="fixed bottom-[calc(3.5rem+env(safe-area-inset-bottom))] left-0 right-0 md:bottom-0 z-40 border-t border-border bg-background/95 backdrop-blur lg:hidden">
+      <div className="fixed bottom-[calc(3.5rem+env(safe-area-inset-bottom))] left-0 right-0 md:bottom-0 z-40 border-t border-white/[0.06] bg-background lg:hidden">
         {error && (
           <div className="px-4 py-2 bg-destructive/10 border-b border-destructive/20 flex items-center gap-2">
             <AlertCircle className="h-3.5 w-3.5 text-destructive shrink-0" />
@@ -963,7 +933,7 @@ export function PickTeamClient({
                     </DrawerClose>
                     <DrawerClose asChild>
                       <Button
-                        className="flex-1 bg-gradient-to-r from-primary to-emerald-400 text-black font-semibold"
+                        className="flex-1 bg-primary hover:bg-primary/90 text-white font-semibold glow-card"
                         onClick={handleSubmit}
                         disabled={!validation.valid || isPending}
                       >
@@ -1049,7 +1019,7 @@ export function PickTeamClient({
             className={cn(
               "w-full",
               validation.valid && captainId && viceCaptainId && !isPending
-                ? "bg-gradient-to-r from-primary to-emerald-400 text-black font-semibold"
+                ? "bg-primary hover:bg-primary/90 text-white font-semibold glow-card"
                 : ""
             )}
           >

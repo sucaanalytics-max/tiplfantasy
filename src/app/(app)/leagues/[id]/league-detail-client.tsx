@@ -147,8 +147,8 @@ export function LeagueDetailClient({ league, members, isCreator, leaderboard, aw
               <Users className="h-3 w-3" />
               {members.length}
             </Badge>
-            <button onClick={copyCode} className="flex items-center gap-1 text-[10px] text-muted-foreground hover:text-foreground transition-colors font-mono">
-              {copied ? <Check className="h-3 w-3" /> : <Copy className="h-3 w-3" />}
+            <button onClick={copyCode} className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-white/[0.04] border border-white/[0.08] text-xs text-muted-foreground hover:text-foreground hover:border-primary/30 transition-colors font-mono">
+              {copied ? <Check className="h-3 w-3 text-status-success" /> : <Copy className="h-3 w-3" />}
               {league.invite_code}
             </button>
           </div>
@@ -188,8 +188,8 @@ export function LeagueDetailClient({ league, members, isCreator, leaderboard, aw
       </div>
 
       {/* Season Leaderboard — always visible, above tabs */}
-      <div className="rounded-lg border border-border/30 bg-[hsl(var(--background))] overflow-hidden">
-        <div className="flex items-center justify-between px-4 py-2.5 border-b border-border/30 bg-secondary/20">
+      <div className="rounded-lg glass overflow-hidden">
+        <div className="flex items-center justify-between px-4 py-2.5 border-b border-white/[0.04] bg-white/[0.02]">
           <span className="text-xs font-semibold text-muted-foreground uppercase tracking-widest">Season Standings</span>
           <Link href={`/leagues/${league.id}/h2h`}>
             <Button variant="ghost" size="sm" className="gap-1 text-[10px] h-6 px-2">
@@ -253,7 +253,7 @@ export function LeagueDetailClient({ league, members, isCreator, leaderboard, aw
             <LiveRefresher interval={30000} />
 
             {/* Match score header */}
-            <div className="rounded-lg border border-border/40 bg-secondary/20 p-4">
+            <div className="rounded-lg border border-white/[0.06] bg-white/[0.02] p-4">
               <div className="flex items-center justify-center gap-4 mb-2">
                 <span className="text-sm font-bold font-display" style={{ color: liveMatchData.match.team_home.color }}>
                   {liveMatchData.match.team_home.short_name}
@@ -298,9 +298,9 @@ export function LeagueDetailClient({ league, members, isCreator, leaderboard, aw
                           onClick={() => setLiveExpandedId((prev) => prev === member.user_id ? null : member.user_id)}
                           className={cn(
                             "w-full flex items-center gap-2.5 px-3 py-2.5 rounded-lg transition-colors",
-                            "hover:bg-secondary/50 active:bg-secondary/70",
+                            "hover:bg-white/[0.03] active:bg-secondary/70",
                             isMe && "bg-primary/10 border border-primary/20",
-                            expanded && !isMe && "bg-secondary/30"
+                            expanded && !isMe && "bg-white/[0.03]"
                           )}
                         >
                           <span className={cn(
@@ -328,7 +328,7 @@ export function LeagueDetailClient({ league, members, isCreator, leaderboard, aw
                         </button>
 
                         {expanded && sel && (
-                          <div className="ml-8 mr-2 mb-2 border-t border-border/40 pt-2 space-y-0.5">
+                          <div className="ml-8 mr-2 mb-2 border-t border-white/[0.06] pt-2 space-y-0.5">
                             {sel.player_ids
                               .map((pid) => {
                                 const pts = liveMatchData.playerPoints[pid] ?? 0
@@ -366,7 +366,7 @@ export function LeagueDetailClient({ league, members, isCreator, leaderboard, aw
                   <span className="text-sm font-bold text-amber-400 uppercase tracking-wider">Live Commentary</span>
                   <span className="ml-auto text-[10px] text-muted-foreground">{liveMatchData.banter.length} moments</span>
                 </div>
-                <div className="divide-y divide-border/10 max-h-[28rem] overflow-y-auto">
+                <div className="divide-y divide-white/[0.04] max-h-[28rem] overflow-y-auto">
                   {liveMatchData.banter.map((b, i) => (
                     <div key={i} className="px-4 py-3 text-sm text-foreground leading-relaxed">
                       {b.message}
@@ -391,7 +391,7 @@ export function LeagueDetailClient({ league, members, isCreator, leaderboard, aw
             </div>
           ) : (
             lockedMatches.map((match) => (
-              <Card key={match.id} className="border border-border">
+              <Card key={match.id} className="glass">
                 <CardContent className="py-3 px-4">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-3 min-w-0">
@@ -463,7 +463,7 @@ function SeasonAwards({ awards }: { awards: LeagueMemberStats[] }) {
   ]
 
   return (
-    <Card className="border border-border">
+    <Card className="glass">
       <CardHeader className="pb-3">
         <CardTitle className="text-base flex items-center gap-2">
           <Zap className="h-4 w-4" />
@@ -473,7 +473,7 @@ function SeasonAwards({ awards }: { awards: LeagueMemberStats[] }) {
       <CardContent>
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
           {cards.map(({ Icon, label, winner, stat }) => (
-            <div key={label} className="flex flex-col gap-2 p-3 rounded-lg bg-secondary/50">
+            <div key={label} className="flex flex-col gap-2 p-3 rounded-lg glass-subtle">
               <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
                 <Icon className="h-3.5 w-3.5" />
                 <span>{label}</span>
@@ -618,7 +618,7 @@ export function PrizesTab({ awards, matchScores, leaderboard }: PrizesTabProps) 
     <div className="space-y-6">
       {/* Award Leaders */}
       {awardCards.length > 0 && (
-        <Card className="border border-border">
+        <Card className="glass">
           <CardHeader className="pb-3">
             <CardTitle className="text-base flex items-center gap-2">
               <Trophy className="h-4 w-4" />
@@ -629,7 +629,7 @@ export function PrizesTab({ awards, matchScores, leaderboard }: PrizesTabProps) 
           <CardContent>
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
               {awardCards.map(({ Icon, label, winner, stat }) => (
-                <div key={label} className="flex flex-col gap-2 p-3 rounded-lg bg-secondary/50">
+                <div key={label} className="flex flex-col gap-2 p-3 rounded-lg glass-subtle">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
                       <Icon className="h-3.5 w-3.5" />
@@ -654,7 +654,7 @@ export function PrizesTab({ awards, matchScores, leaderboard }: PrizesTabProps) 
 
       {/* Matchday History */}
       {matchHistory.length > 0 && (
-        <Card className="border border-border">
+        <Card className="glass">
           <CardHeader className="pb-3">
             <CardTitle className="text-base flex items-center gap-2">
               <Trophy className="h-4 w-4" />
@@ -662,7 +662,7 @@ export function PrizesTab({ awards, matchScores, leaderboard }: PrizesTabProps) 
             </CardTitle>
           </CardHeader>
           <CardContent className="p-0">
-            <div className="divide-y divide-border/50">
+            <div className="divide-y divide-white/[0.04]">
               {matchHistory.map((match) => {
                 const isTied = match.winnersCount > 1
                 const splitPrize = match.prize / match.winnersCount
@@ -702,7 +702,7 @@ export function PrizesTab({ awards, matchScores, leaderboard }: PrizesTabProps) 
 
       {/* Awards */}
       {earnings.length > 0 && (
-        <Card className="border border-border">
+        <Card className="glass">
           <CardHeader className="pb-3">
             <CardTitle className="text-base flex items-center gap-2">
               <Crown className="h-4 w-4" />
@@ -724,7 +724,7 @@ export function PrizesTab({ awards, matchScores, leaderboard }: PrizesTabProps) 
                 return (
                   <div
                     key={e.userId}
-                    className="grid grid-cols-[1fr_4rem_4rem] gap-2 items-center py-2.5 px-3 rounded-lg bg-secondary/50"
+                    className="grid grid-cols-[1fr_4rem_4rem] gap-2 items-center py-2.5 px-3 rounded-lg glass-subtle"
                   >
                     <div className="flex items-center gap-2 min-w-0">
                       <AvatarInitial name={e.name} size="sm" />

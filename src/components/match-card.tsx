@@ -51,7 +51,7 @@ export function MatchCard({ match, userPoints, userRank, hasSubmitted, compact =
     return (
       <Link href={href} className="snap-start">
         <Card
-          className={`border border-border min-w-[160px] w-[160px] hover:border-primary/30 transition-colors relative overflow-hidden ${isLive ? "live-glow" : ""}`}
+          className={`glass min-w-[160px] w-[160px] glass-hover transition-all relative overflow-hidden ${isLive ? "live-glow" : ""}`}
         >
           {/* Top color bar */}
           <div
@@ -94,7 +94,7 @@ export function MatchCard({ match, userPoints, userRank, hasSubmitted, compact =
   // Full card
   const startDate = new Date(match.start_time)
   return (
-    <Card className={`border border-border overflow-hidden relative ${isLive ? "live-glow" : ""}`}>
+    <Card className={`glass overflow-hidden relative ${isLive ? "live-glow" : ""}`}>
       {/* Team color gradient background */}
       <div
         className="absolute inset-0 pointer-events-none"
@@ -180,7 +180,7 @@ export function MatchCard({ match, userPoints, userRank, hasSubmitted, compact =
 
         {/* User points (completed) or CTA (upcoming) */}
         {isCompleted && userPoints != null ? (
-          <div className="flex items-center justify-between bg-secondary/50 rounded-xl px-4 py-2.5">
+          <div className="flex items-center justify-between bg-white/[0.03] rounded-xl px-4 py-2.5">
             <div>
               <p className="text-xs text-muted-foreground">Your points</p>
               <p className="text-2xl font-bold font-display">{userPoints}</p>
@@ -234,7 +234,7 @@ export function MatchCard({ match, userPoints, userRank, hasSubmitted, compact =
                 </div>
               </>
             ) : (
-              <Button size="sm" className="bg-gradient-to-r from-primary to-emerald-400 hover:from-primary/90 hover:to-emerald-400/90 text-black font-semibold" asChild>
+              <Button size="sm" className="bg-primary hover:bg-primary/90 text-white font-semibold glow-card" asChild>
                 <Link href={href}>Pick Your Team</Link>
               </Button>
             )}

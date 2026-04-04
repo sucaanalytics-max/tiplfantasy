@@ -76,7 +76,7 @@ function PlayerRow({
   points?: number
 }) {
   return (
-    <div className="flex items-center gap-3 py-2.5 px-3 rounded-lg bg-secondary/40 border border-border/30">
+    <div className="flex items-center gap-3 py-2.5 px-3 rounded-lg bg-white/[0.03] border border-white/[0.04]">
       <span className={cn("text-[10px] font-semibold px-1.5 py-0.5 rounded border shrink-0", ROLE_COLORS[player.role])}>
         {player.role}
       </span>
@@ -235,7 +235,7 @@ export function LeagueMatchClient({
       {/* Team sheet link */}
       <Link
         href={`/leagues/${leagueId}/match/${match.id}/sheet`}
-        className="flex items-center justify-center gap-2 py-2 px-4 rounded-lg border border-border/30 bg-secondary/20 text-xs text-muted-foreground hover:text-foreground hover:bg-secondary/40 transition-colors"
+        className="flex items-center justify-center gap-2 py-2 px-4 rounded-lg border border-white/[0.04] bg-white/[0.02] text-xs text-muted-foreground hover:text-foreground hover:bg-white/[0.03] transition-colors"
       >
         📋 View Team Sheet — All XIs + Differentials
       </Link>
@@ -289,9 +289,9 @@ export function LeagueMatchClient({
                       onClick={() => setExpandedUserId((prev) => prev === member.user_id ? null : member.user_id)}
                       className={cn(
                         "w-full flex items-center gap-2.5 px-3 py-2.5 rounded-lg transition-colors",
-                        "hover:bg-secondary/50 active:bg-secondary/70",
+                        "hover:bg-white/[0.03] active:bg-secondary/70",
                         isMe && "bg-primary/10 border border-primary/20",
-                        isExpanded && !isMe && "bg-secondary/30"
+                        isExpanded && !isMe && "bg-white/[0.03]"
                       )}
                     >
                       {/* League rank */}
@@ -339,7 +339,7 @@ export function LeagueMatchClient({
 
                     {/* Expanded: player breakdown */}
                     {isExpanded && sel && (
-                      <div className="ml-8 mr-2 mb-2 border-t border-border/40 pt-2 space-y-0.5">
+                      <div className="ml-8 mr-2 mb-2 border-t border-white/[0.06] pt-2 space-y-0.5">
                         {sel.player_ids
                           .map((pid) => {
                             const p = playerMap.get(pid)
@@ -397,7 +397,7 @@ export function LeagueMatchClient({
                         "h-auto flex items-center gap-2 px-3 py-1.5 rounded-full text-sm",
                         selectedOpponentId === opp.user_id
                           ? "border-primary bg-primary/10 text-primary hover:bg-primary/20 hover:text-primary"
-                          : "border-border text-muted-foreground hover:border-primary/40 hover:text-foreground hover:bg-transparent"
+                          : "border-white/[0.06] text-muted-foreground hover:border-primary/40 hover:text-foreground hover:bg-transparent"
                       )}
                     >
                       <span
