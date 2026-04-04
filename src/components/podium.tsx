@@ -3,6 +3,7 @@
 import { motion } from "framer-motion"
 import { RankBadge } from "@/components/rank-badge"
 import { getInitials, getAvatarColor } from "@/lib/avatar"
+import { cn } from "@/lib/utils"
 
 type PodiumEntry = {
   name: string
@@ -28,7 +29,7 @@ export function Podium({ entries }: { entries: PodiumEntry[] }) {
         return (
           <motion.div
             key={entry.rank}
-            className={`flex flex-col items-center gap-2 flex-1 max-w-[130px] ${glow}`}
+            className={cn("flex flex-col items-center gap-2 flex-1 max-w-[130px]", glow)}
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.4, delay: i * 0.15, ease: "easeOut" }}
@@ -57,7 +58,7 @@ export function Podium({ entries }: { entries: PodiumEntry[] }) {
 
             {/* Points — using text-score scale */}
             <p className="text-score">{entry.points}</p>
-            <span className="text-label -mt-1">pts</span>
+            <span className="text-label text-muted-foreground -mt-1">pts</span>
 
             {/* Podium bar — animates upward */}
             <motion.div

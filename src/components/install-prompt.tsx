@@ -1,7 +1,6 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { Button } from "@/components/ui/button"
 import { X } from "lucide-react"
 
 interface BeforeInstallPromptEvent extends Event {
@@ -84,7 +83,7 @@ export function InstallPrompt() {
           )}
           <button
             onClick={handleDismiss}
-            className="min-w-[28px] min-h-[28px] flex items-center justify-center text-muted-foreground hover:text-foreground"
+            className="min-w-[44px] min-h-[44px] -mr-2 flex items-center justify-center text-muted-foreground hover:text-foreground"
           >
             <X className="h-3.5 w-3.5" />
           </button>

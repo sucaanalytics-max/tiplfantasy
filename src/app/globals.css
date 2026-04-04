@@ -328,7 +328,6 @@
     text-transform: uppercase;
     letter-spacing: 0.1em;
     font-weight: 500;
-    color: var(--muted-foreground);
   }
 
   /* ── Text size: 10px (not in Tailwind defaults) ─── */
