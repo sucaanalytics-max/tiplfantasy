@@ -96,7 +96,7 @@ function LoginForm() {
         </div>
 
         {/* Login card */}
-        <div className="w-full bg-white/[0.04] backdrop-blur-2xl border border-white/[0.08] rounded-2xl p-6 space-y-4 shadow-[0_24px_64px_rgba(0,0,0,0.5)]">
+        <div className="w-full glass rounded-xl p-6 space-y-4">
           <div className="text-center space-y-0.5">
             <p className="text-sm font-semibold text-foreground">Welcome</p>
             <p className="text-xs text-muted-foreground">Sign in to pick your team</p>

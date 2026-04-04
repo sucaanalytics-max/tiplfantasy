@@ -107,11 +107,11 @@ export function TeamSubmitPreview({
       </div>
 
       {/* Sticky footer */}
-      <div className="fixed bottom-0 left-0 right-0 px-4 pb-[max(1.25rem,env(safe-area-inset-bottom))] pt-3 bg-background/90 backdrop-blur border-t border-border md:left-56">
+      <div className="fixed bottom-0 left-0 right-0 px-4 pb-[max(1.25rem,env(safe-area-inset-bottom))] pt-3 bg-background border-t border-white/[0.06] md:left-56">
         <div className="max-w-xl mx-auto">
           <Button
             onClick={onDone}
-            className="w-full bg-gradient-to-r from-primary to-emerald-400 text-black font-semibold"
+            className="w-full bg-primary hover:bg-primary/90 text-white font-semibold glow-card"
           >
             View Matches
           </Button>

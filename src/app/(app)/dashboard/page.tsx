@@ -369,7 +369,7 @@ export default async function DashboardPage() {
               const away = lastMatch.team_away as unknown as { short_name: string; color: string; logo_url: string | null }
               return (
                 <Link href={`/match/${lastMatch.id}/scores`}>
-                  <div className="glass glass-hover rounded-2xl p-4 flex items-center justify-between">
+                  <div className="glass glass-hover rounded-xl p-4 flex items-center justify-between">
                     <div className="flex items-center gap-3">
                       <div className="flex items-center gap-2">
                         <TeamLogo team={home} size="sm" />
@@ -408,7 +408,7 @@ export default async function DashboardPage() {
                 </Link>
               </div>
 
-              <div className="glass rounded-2xl overflow-hidden divide-y divide-white/[0.04]">
+              <div className="glass rounded-xl overflow-hidden divide-y divide-white/[0.04]">
                 {(top5 ?? []).map((entry) => {
                   const e = entry as unknown as { user_id: string; display_name: string; total_points: number; season_rank: number }
                   const isMe = e.user_id === user.id
@@ -473,14 +473,14 @@ export default async function DashboardPage() {
               </div>
 
               {myLeagues.length === 0 ? (
-                <div className="glass rounded-2xl flex flex-col items-center py-8 gap-2">
+                <div className="glass rounded-xl flex flex-col items-center py-8 gap-2">
                   <Users className="h-10 w-10 text-muted-foreground/30" />
                   <p className="text-sm text-muted-foreground text-center">
                     No leagues yet. Create or join one.
                   </p>
                 </div>
               ) : (
-                <div className="glass rounded-2xl overflow-hidden divide-y divide-white/[0.04]">
+                <div className="glass rounded-xl overflow-hidden divide-y divide-white/[0.04]">
                   {myLeagues.slice(0, 3).map((league) => (
                     <Link key={league.id} href={`/leagues/${league.id}`}>
                       <div className="flex items-center justify-between px-4 py-3 glass-hover transition-colors">

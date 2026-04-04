@@ -757,7 +757,7 @@ export function PickTeamClient({
             className={cn(
               "w-full",
               validation.valid && captainId && viceCaptainId && !isPending
-                ? "bg-gradient-to-r from-primary to-emerald-400 text-black font-semibold"
+                ? "bg-primary hover:bg-primary/90 text-white font-semibold glow-card"
                 : ""
             )}
           >
@@ -963,7 +963,7 @@ export function PickTeamClient({
                     </DrawerClose>
                     <DrawerClose asChild>
                       <Button
-                        className="flex-1 bg-gradient-to-r from-primary to-emerald-400 text-black font-semibold"
+                        className="flex-1 bg-primary hover:bg-primary/90 text-white font-semibold glow-card"
                         onClick={handleSubmit}
                         disabled={!validation.valid || isPending}
                       >
@@ -1049,7 +1049,7 @@ export function PickTeamClient({
             className={cn(
               "w-full",
               validation.valid && captainId && viceCaptainId && !isPending
-                ? "bg-gradient-to-r from-primary to-emerald-400 text-black font-semibold"
+                ? "bg-primary hover:bg-primary/90 text-white font-semibold glow-card"
                 : ""
             )}
           >
