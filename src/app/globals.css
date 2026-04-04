@@ -147,47 +147,47 @@
 }
 
 .dark {
-  /* Deep charcoal-black — Stake/Betway-inspired premium dark */
-  --background: oklch(0.07 0.015 250);
-  --foreground: oklch(0.97 0.005 255);
-  --card: oklch(0.11 0.015 250);
-  --card-foreground: oklch(0.97 0.005 255);
-  --popover: oklch(0.11 0.015 250);
-  --popover-foreground: oklch(0.97 0.005 255);
+  /* True black — #111111 inspired, zero color tint */
+  --background: oklch(0.08 0.005 0);
+  --foreground: oklch(0.97 0 0);
+  --card: oklch(0.12 0.005 0);
+  --card-foreground: oklch(0.97 0 0);
+  --popover: oklch(0.12 0.005 0);
+  --popover-foreground: oklch(0.97 0 0);
 
   /* TIPL orange — bold, solid, high-contrast */
-  --primary: oklch(0.70 0.22 35);
+  --primary: oklch(0.72 0.20 45);
   --primary-foreground: oklch(0.99 0 0);
 
-  /* Dark surfaces — subtle elevation */
-  --secondary: oklch(0.14 0.012 250);
-  --secondary-foreground: oklch(0.97 0.005 255);
-  --muted: oklch(0.14 0.012 250);
-  --muted-foreground: oklch(0.55 0.012 250);
+  /* Dark surfaces — clean neutral grays, no color tint */
+  --secondary: oklch(0.16 0.005 0);
+  --secondary-foreground: oklch(0.97 0 0);
+  --muted: oklch(0.16 0.005 0);
+  --muted-foreground: oklch(0.55 0.005 0);
 
   /* TIPL gold — crown, stars, prestige */
   --accent: oklch(0.78 0.17 86);
   --accent-foreground: oklch(0.12 0.01 86);
 
   --destructive: oklch(0.577 0.245 27.325);
-  --border: oklch(0.18 0.012 250);
-  --input: oklch(0.18 0.012 250);
-  --ring: oklch(0.70 0.22 35);
+  --border: oklch(0.20 0.005 0);
+  --input: oklch(0.20 0.005 0);
+  --ring: oklch(0.72 0.20 45);
 
-  --chart-1: oklch(0.68 0.22 35);
+  --chart-1: oklch(0.72 0.20 45);
   --chart-2: oklch(0.78 0.17 86);
-  --chart-3: oklch(0.769 0.188 70);
-  --chart-4: oklch(0.627 0.265 304);
-  --chart-5: oklch(0.50 0.18 265);
+  --chart-3: oklch(0.65 0.20 145);
+  --chart-4: oklch(0.65 0.20 304);
+  --chart-5: oklch(0.60 0.16 265);
 
-  --sidebar: oklch(0.07 0.015 250);
-  --sidebar-foreground: oklch(0.97 0.005 255);
-  --sidebar-primary: oklch(0.70 0.22 35);
+  --sidebar: oklch(0.08 0.005 0);
+  --sidebar-foreground: oklch(0.97 0 0);
+  --sidebar-primary: oklch(0.72 0.20 45);
   --sidebar-primary-foreground: oklch(0.99 0 0);
-  --sidebar-accent: oklch(0.14 0.012 250);
-  --sidebar-accent-foreground: oklch(0.97 0.005 255);
-  --sidebar-border: oklch(0.18 0.012 250);
-  --sidebar-ring: oklch(0.70 0.22 35);
+  --sidebar-accent: oklch(0.16 0.005 0);
+  --sidebar-accent-foreground: oklch(0.97 0 0);
+  --sidebar-border: oklch(0.20 0.005 0);
+  --sidebar-ring: oklch(0.72 0.20 45);
 
   /* Semantic status tokens (dark mode) */
   --status-live: oklch(0.65 0.24 25);
@@ -210,17 +210,17 @@
   --role-bowl: oklch(0.65 0.20 304);
 
   /* Surface — between background and card */
-  --surface: oklch(0.09 0.015 250);
+  --surface: oklch(0.10 0.005 0);
 
-  /* Glass effect tokens — more solid, less transparent */
-  --glass-bg: oklch(0.11 0.015 250 / 0.90);
-  --glass-bg-hover: oklch(0.14 0.015 250 / 0.92);
+  /* Glass — solid dark, minimal blur */
+  --glass-bg: oklch(0.12 0.005 0 / 0.95);
+  --glass-bg-hover: oklch(0.15 0.005 0 / 0.97);
   --glass-border: oklch(1 0 0 / 0.06);
   --glass-border-hover: oklch(1 0 0 / 0.10);
-  --glass-shadow: 0 2px 12px oklch(0 0 0 / 0.5);
-  --glass-shadow-lg: 0 4px 24px oklch(0 0 0 / 0.6);
-  --glow-primary: 0 0 20px oklch(0.70 0.22 35 / 0.25);
-  --glow-accent: 0 0 20px oklch(0.78 0.17 86 / 0.25);
+  --glass-shadow: 0 1px 3px oklch(0 0 0 / 0.4);
+  --glass-shadow-lg: 0 4px 16px oklch(0 0 0 / 0.5);
+  --glow-primary: 0 0 16px oklch(0.72 0.20 45 / 0.20);
+  --glow-accent: 0 0 16px oklch(0.78 0.17 86 / 0.20);
 }
 
 @layer base {
@@ -246,16 +246,12 @@
   /* Tier 1: Subtle — nav bars, filter rows, secondary surfaces */
   .glass-subtle {
     background: var(--glass-bg);
-    backdrop-filter: blur(8px);
-    -webkit-backdrop-filter: blur(8px);
     border: 1px solid var(--glass-border);
   }
 
   /* Tier 2: Default — cards, rows, primary surfaces */
   .glass {
     background: var(--glass-bg);
-    backdrop-filter: blur(12px);
-    -webkit-backdrop-filter: blur(12px);
     border: 1px solid var(--glass-border);
     box-shadow: var(--glass-shadow);
   }
@@ -263,19 +259,14 @@
   /* Tier 3: Elevated — modals, drawers, hero cards, overlays */
   .glass-elevated {
     background: var(--glass-bg-hover);
-    backdrop-filter: blur(20px);
-    -webkit-backdrop-filter: blur(20px);
     border: 1px solid var(--glass-border-hover);
     box-shadow: var(--glass-shadow-lg);
   }
 
-  /* Glass panel — buttons, pills, compact surfaces */
+  /* Glass panel — pills, compact surfaces */
   .glass-panel {
     background: var(--glass-bg);
-    backdrop-filter: blur(16px);
-    -webkit-backdrop-filter: blur(16px);
     border: 1px solid var(--glass-border);
-    box-shadow: 0 4px 30px oklch(0 0 0 / 0.1);
   }
 
   .glass-hover {
@@ -298,13 +289,13 @@
     box-shadow: 0 0 0 1px var(--primary), var(--glow-primary);
   }
   .glow-card {
-    box-shadow: 0 0 20px oklch(0.70 0.22 35 / 0.12);
+    box-shadow: 0 0 16px oklch(0.72 0.20 45 / 0.10);
   }
   .glow-card:hover {
-    box-shadow: 0 0 30px oklch(0.70 0.22 35 / 0.20);
+    box-shadow: 0 0 24px oklch(0.72 0.20 45 / 0.18);
   }
   .neon-border {
-    border-color: oklch(0.70 0.22 35 / 0.3);
+    border-color: oklch(0.72 0.20 45 / 0.3);
   }
 
   /* ── Display font ───────────────────────────────── */
