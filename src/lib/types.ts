@@ -307,6 +307,8 @@ export type LeagueMatchScore = {
   total_points: number
   league_rank: number
   match_winners_count: number
+  captain_points: number
+  vc_points: number
 }
 
 // Season Predictions

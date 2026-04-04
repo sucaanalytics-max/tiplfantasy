@@ -700,52 +700,249 @@ export function PrizesTab({ awards, matchScores, leaderboard }: PrizesTabProps) 
         </Card>
       )}
 
-      {/* Awards */}
-      {earnings.length > 0 && (
-        <Card className="glass">
-          <CardHeader className="pb-3">
-            <CardTitle className="text-base flex items-center gap-2">
-              <Crown className="h-4 w-4" />
-              Awards
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-1">
-              <div className="grid grid-cols-[1fr_4rem_4rem] gap-2 text-[10px] text-muted-foreground px-3 pb-1 uppercase tracking-wide">
-                <span>Member</span>
-                <span className="text-right">Wins</span>
-                <span className="text-right">Top 2</span>
-              </div>
-              {earnings.map((e) => {
-                // Look up stats from awards data
-                const memberAwards = awards.find((a) => a.user_id === e.userId)
-                const matchWins = memberAwards?.matchday_wins ?? 0
-                const top2 = memberAwards?.top2_finishes ?? 0
-                return (
-                  <div
-                    key={e.userId}
-                    className="grid grid-cols-[1fr_4rem_4rem] gap-2 items-center py-2.5 px-3 rounded-lg glass-subtle"
-                  >
-                    <div className="flex items-center gap-2 min-w-0">
-                      <AvatarInitial name={e.name} size="sm" />
-                      <span className="text-sm truncate">{e.name}</span>
-                      {e.awardLeads > 0 && (
-                        <span className="text-[10px] text-amber-400 shrink-0">+{e.awardLeads} award{e.awardLeads > 1 ? "s" : ""}</span>
-                      )}
-                    </div>
-                    <span className="text-sm font-semibold text-right text-emerald-400">
-                      {matchWins > 0 ? matchWins : "—"}
-                    </span>
-                    <span className="text-sm font-semibold text-right text-sky-400">
-                      {top2 > 0 ? top2 : "—"}
-                    </span>
-                  </div>
+      {/* Award Detail Tables */}
+      {matchScores.length > 0 && <AwardDetailTables awards={awards} matchScores={matchScores} />}
+    </div>
+  )
+}
+
+// ── Award Detail Tables ────────────────────────────────────────────────────
+function AwardDetailTables({ awards, matchScores }: { awards: LeagueMemberStats[]; matchScores: LeagueMatchScore[] }) {
+  const [expandedRows, setExpandedRows] = useState<Record<string, string | null>>({
+    captaincy: null, highScore: null, wins: null, consistency: null,
+  })
+
+  const toggle = (table: string, userId: string) =>
+    setExpandedRows((prev) => ({ ...prev, [table]: prev[table] === userId ? null : userId }))
+
+  // Build per-user match data
+  const userMap = new Map<string, { name: string; matches: Array<{ matchNumber: number; total: number; captain: number; vc: number; rank: number }> }>()
+  for (const row of matchScores) {
+    if (!userMap.has(row.user_id)) {
+      userMap.set(row.user_id, { name: row.display_name, matches: [] })
+    }
+    userMap.get(row.user_id)!.matches.push({
+      matchNumber: row.match_number,
+      total: row.total_points,
+      captain: row.captain_points ?? 0,
+      vc: row.vc_points ?? 0,
+      rank: row.league_rank,
+    })
+  }
+
+  // ── Captaincy ──
+  const captaincy = [...userMap.entries()]
+    .map(([uid, d]) => {
+      const cPts = d.matches.reduce((s, m) => s + m.captain, 0)
+      const vcPts = d.matches.reduce((s, m) => s + m.vc, 0)
+      return { userId: uid, name: d.name, cPts, vcPts, total: cPts + vcPts, matches: d.matches }
+    })
+    .sort((a, b) => b.cPts - a.cPts || b.total - a.total)
+
+  // ── Highest Score ──
+  const highScore = [...userMap.entries()]
+    .map(([uid, d]) => {
+      const best = d.matches.reduce((max, m) => (m.total > max.total ? m : max), d.matches[0])
+      return { userId: uid, name: d.name, best: best.total, matchNum: best.matchNumber, matches: [...d.matches].sort((a, b) => b.total - a.total) }
+    })
+    .sort((a, b) => b.best - a.best)
+
+  // ── Matchday Wins ──
+  const wins = [...userMap.entries()]
+    .map(([uid, d]) => {
+      const wonMatches = d.matches.filter((m) => m.rank === 1)
+      return { userId: uid, name: d.name, winCount: wonMatches.length, wonMatches, matches: d.matches }
+    })
+    .sort((a, b) => b.winCount - a.winCount)
+
+  // ── Consistency ──
+  const consistency = [...userMap.entries()]
+    .map(([uid, d]) => {
+      const top2 = d.matches.filter((m) => m.rank <= 2).length
+      const avg = d.matches.length > 0 ? Math.round(d.matches.reduce((s, m) => s + m.total, 0) / d.matches.length) : 0
+      return { userId: uid, name: d.name, top2, avg, matches: [...d.matches].sort((a, b) => a.matchNumber - b.matchNumber) }
+    })
+    .sort((a, b) => b.top2 - a.top2 || b.avg - a.avg)
+
+  const renderRow = (uid: string, name: string, cells: React.ReactNode[], table: string, expandContent: React.ReactNode) => {
+    const isOpen = expandedRows[table] === uid
+    return (
+      <div key={uid}>
+        <button
+          onClick={() => toggle(table, uid)}
+          className="w-full grid items-center py-2.5 px-3 rounded-lg glass-subtle hover:bg-white/[0.04] transition-colors"
+          style={{ gridTemplateColumns: "1fr " + "3.5rem ".repeat(cells.length) + "1.5rem" }}
+        >
+          <div className="flex items-center gap-2 min-w-0">
+            <AvatarInitial name={name} size="sm" />
+            <span className="text-sm truncate">{name}</span>
+          </div>
+          {cells}
+          <ChevronDown className={`h-3.5 w-3.5 text-muted-foreground transition-transform ${isOpen ? "rotate-180" : ""}`} />
+        </button>
+        {isOpen && (
+          <div className="px-3 pb-2 pt-1 ml-8 space-y-1">
+            {expandContent}
+          </div>
+        )}
+      </div>
+    )
+  }
+
+  const matchRow = (label: string, value: string, highlight?: boolean) => (
+    <div key={label} className="flex items-center justify-between text-xs py-1 border-b border-white/[0.04] last:border-0">
+      <span className="text-muted-foreground">{label}</span>
+      <span className={highlight ? "font-semibold text-emerald-400" : "font-medium"}>{value}</span>
+    </div>
+  )
+
+  return (
+    <div className="space-y-4">
+      {/* Captaincy Table */}
+      <Card className="glass">
+        <CardHeader className="pb-2">
+          <CardTitle className="text-sm flex items-center gap-2">
+            <Crown className="h-4 w-4 text-amber-400" />
+            Captaincy
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-1">
+          <div
+            className="grid text-[10px] text-muted-foreground px-3 pb-1 uppercase tracking-wide"
+            style={{ gridTemplateColumns: "1fr 3.5rem 3.5rem 3.5rem 1.5rem" }}
+          >
+            <span>Member</span>
+            <span className="text-right">C</span>
+            <span className="text-right">VC</span>
+            <span className="text-right">Total</span>
+            <span />
+          </div>
+          {captaincy.map((row) =>
+            renderRow(
+              row.userId,
+              row.name,
+              [
+                <span key="c" className="text-sm font-semibold text-right text-amber-400">{Math.round(row.cPts)}</span>,
+                <span key="vc" className="text-sm font-medium text-right text-violet-400">{Math.round(row.vcPts)}</span>,
+                <span key="t" className="text-sm font-medium text-right">{Math.round(row.total)}</span>,
+              ],
+              "captaincy",
+              row.matches
+                .sort((a, b) => b.matchNumber - a.matchNumber)
+                .map((m) =>
+                  matchRow(`M${m.matchNumber}`, `C: ${Math.round(m.captain)} · VC: ${Math.round(m.vc)}`, m.captain > 0)
                 )
-              })}
-            </div>
-          </CardContent>
-        </Card>
-      )}
+            )
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Highest Score Table */}
+      <Card className="glass">
+        <CardHeader className="pb-2">
+          <CardTitle className="text-sm flex items-center gap-2">
+            <Zap className="h-4 w-4 text-orange-400" />
+            Highest Score
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-1">
+          <div
+            className="grid text-[10px] text-muted-foreground px-3 pb-1 uppercase tracking-wide"
+            style={{ gridTemplateColumns: "1fr 3.5rem 3.5rem 1.5rem" }}
+          >
+            <span>Member</span>
+            <span className="text-right">Best</span>
+            <span className="text-right">M#</span>
+            <span />
+          </div>
+          {highScore.map((row) =>
+            renderRow(
+              row.userId,
+              row.name,
+              [
+                <span key="b" className="text-sm font-semibold text-right text-orange-400">{Math.round(row.best)}</span>,
+                <span key="m" className="text-sm font-medium text-right text-muted-foreground">{row.matchNum}</span>,
+              ],
+              "highScore",
+              row.matches.map((m) =>
+                matchRow(`M${m.matchNumber}`, `${Math.round(m.total)} pts`, m.total === row.best)
+              )
+            )
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Matchday Wins Table */}
+      <Card className="glass">
+        <CardHeader className="pb-2">
+          <CardTitle className="text-sm flex items-center gap-2">
+            <Trophy className="h-4 w-4 text-emerald-400" />
+            Matchday Wins
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-1">
+          <div
+            className="grid text-[10px] text-muted-foreground px-3 pb-1 uppercase tracking-wide"
+            style={{ gridTemplateColumns: "1fr 3.5rem 1.5rem" }}
+          >
+            <span>Member</span>
+            <span className="text-right">Wins</span>
+            <span />
+          </div>
+          {wins.map((row) =>
+            renderRow(
+              row.userId,
+              row.name,
+              [
+                <span key="w" className="text-sm font-semibold text-right text-emerald-400">{row.winCount}</span>,
+              ],
+              "wins",
+              row.wonMatches.length > 0
+                ? row.wonMatches
+                    .sort((a, b) => b.matchNumber - a.matchNumber)
+                    .map((m) => matchRow(`M${m.matchNumber}`, `${Math.round(m.total)} pts`, true))
+                : [<p key="none" className="text-xs text-muted-foreground py-1">No wins yet</p>]
+            )
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Consistency Table */}
+      <Card className="glass">
+        <CardHeader className="pb-2">
+          <CardTitle className="text-sm flex items-center gap-2">
+            <Target className="h-4 w-4 text-sky-400" />
+            Consistency
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-1">
+          <div
+            className="grid text-[10px] text-muted-foreground px-3 pb-1 uppercase tracking-wide"
+            style={{ gridTemplateColumns: "1fr 3.5rem 3.5rem 1.5rem" }}
+          >
+            <span>Member</span>
+            <span className="text-right">Top-2</span>
+            <span className="text-right">Avg</span>
+            <span />
+          </div>
+          {consistency.map((row) =>
+            renderRow(
+              row.userId,
+              row.name,
+              [
+                <span key="t2" className="text-sm font-semibold text-right text-sky-400">{row.top2}</span>,
+                <span key="avg" className="text-sm font-medium text-right text-muted-foreground">{row.avg}</span>,
+              ],
+              "consistency",
+              row.matches
+                .sort((a, b) => b.matchNumber - a.matchNumber)
+                .map((m) =>
+                  matchRow(`M${m.matchNumber}`, `${Math.round(m.total)} pts (#${m.rank})`, m.rank <= 2)
+                )
+            )
+          )}
+        </CardContent>
+      </Card>
     </div>
   )
 }
