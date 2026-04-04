@@ -347,12 +347,7 @@ export function PickTeamClient({
               className="h-10 w-10 rounded-full object-cover ring-1 ring-white/[0.08]"
             />
           ) : (
-            <div
-              className="h-10 w-10 rounded-full flex items-center justify-center text-xs font-bold text-white ring-1 ring-white/[0.08]"
-              style={{ backgroundColor: player.team.color }}
-            >
-              {player.name.split(" ").map(w => w[0]).slice(0, 2).join("").toUpperCase()}
-            </div>
+            <TeamLogo team={player.team} size="md" />
           )}
         </button>
 
