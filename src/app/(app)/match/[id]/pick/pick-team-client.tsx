@@ -96,7 +96,7 @@ export function PickTeamClient({
   const [error, setError] = useState<string | null>(null)
   const [showConfetti, setShowConfetti] = useState(false)
   const [showSubmitPreview, setShowSubmitPreview] = useState(false)
-  const [sortBy, setSortBy] = useState<"default" | "credits" | "points">("default")
+  const [sortBy, setSortBy] = useState<"default" | "credits" | "points">("points")
   const [cvDrawerOpen, setCvDrawerOpen] = useState(false)
   const prevSelectedCount = useRef(selectedIds.size)
   const [statsPlayerId, setStatsPlayerId] = useState<string | null>(null)
