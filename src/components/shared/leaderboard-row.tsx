@@ -78,6 +78,9 @@ export function LeaderboardRow({
           isExpandable && "hover:bg-white/[0.03] active:bg-secondary/70",
           isCurrentUser && "bg-primary/10 border border-primary/20",
           isExpanded && !isCurrentUser && "bg-white/[0.03]",
+          !isCurrentUser && entry.rank === 1 && "bg-amber-500/[0.06]",
+          !isCurrentUser && entry.rank === 2 && "bg-gray-400/[0.04]",
+          !isCurrentUser && entry.rank === 3 && "bg-amber-700/[0.04]",
         )}
       >
         {rankElement}

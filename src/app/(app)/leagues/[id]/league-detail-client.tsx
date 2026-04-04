@@ -147,8 +147,8 @@ export function LeagueDetailClient({ league, members, isCreator, leaderboard, aw
               <Users className="h-3 w-3" />
               {members.length}
             </Badge>
-            <button onClick={copyCode} className="flex items-center gap-1 text-[10px] text-muted-foreground hover:text-foreground transition-colors font-mono">
-              {copied ? <Check className="h-3 w-3" /> : <Copy className="h-3 w-3" />}
+            <button onClick={copyCode} className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-white/[0.04] border border-white/[0.08] text-xs text-muted-foreground hover:text-foreground hover:border-primary/30 transition-colors font-mono">
+              {copied ? <Check className="h-3 w-3 text-status-success" /> : <Copy className="h-3 w-3" />}
               {league.invite_code}
             </button>
           </div>
