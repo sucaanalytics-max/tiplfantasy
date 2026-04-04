@@ -28,7 +28,7 @@ export default async function DashboardPage() {
     upcomingRes,
     liveRes,
     lastMatchRes,
-    top5Res,
+    top6Res,
     myLeagues,
     completedRes,
   ] = await Promise.all([
@@ -53,7 +53,7 @@ export default async function DashboardPage() {
       .order("start_time", { ascending: false })
       .limit(1)
       .maybeSingle(),
-    supabase.from("season_leaderboard").select("*").order("season_rank", { ascending: true }).limit(5),
+    supabase.from("season_leaderboard").select("*").order("season_rank", { ascending: true }).limit(6),
     getMyLeagues(),
     supabase.from("matches").select("id").eq("status", "completed").order("start_time", { ascending: false }).limit(20),
   ])
@@ -63,7 +63,7 @@ export default async function DashboardPage() {
   const upcomingMatches = upcomingRes.data
   const liveMatches = liveRes.data ?? []
   const lastMatch = lastMatchRes.data
-  const top5 = top5Res.data
+  const top6 = top6Res.data
   const completedMatches = completedRes.data
 
   const nextMatch = upcomingMatches?.[0] ?? null
@@ -398,7 +398,7 @@ export default async function DashboardPage() {
               </div>
 
               <div className="glass rounded-xl overflow-hidden divide-y divide-white/[0.04] stagger-children">
-                {(top5 ?? []).map((entry) => {
+                {(top6 ?? []).map((entry) => {
                   const e = entry as unknown as { user_id: string; display_name: string; total_points: number; season_rank: number }
                   const isMe = e.user_id === user.id
                   const rank = e.season_rank
@@ -430,7 +430,7 @@ export default async function DashboardPage() {
                   )
                 })}
 
-                {myRank && myRank.season_rank > 5 && (
+                {myRank && myRank.season_rank > 6 && (
                   <>
                     <div className="text-center py-1.5 text-muted-foreground text-xs">&middot;&middot;&middot;</div>
                     <div className="flex items-center justify-between px-4 py-3 bg-primary/10 border-l-2 border-l-primary">
