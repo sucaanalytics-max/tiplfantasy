@@ -239,7 +239,7 @@ export function PlayersClient({ players: initialPlayers }: Props) {
 
       {/* CricAPI ID backfill proposals */}
       {backfillProposals !== null && (
-        <Card className="border border-border">
+        <Card className="border border-white/[0.06]">
           <CardContent className="pt-4 space-y-3">
             <div className="flex items-center justify-between">
               <p className="text-sm font-medium">
@@ -253,7 +253,7 @@ export function PlayersClient({ players: initialPlayers }: Props) {
             </div>
             {backfillProposals.length > 0 && (
               <>
-                <div className="max-h-64 overflow-y-auto space-y-1 text-xs font-mono border border-border rounded-md p-2">
+                <div className="max-h-64 overflow-y-auto space-y-1 text-xs font-mono border border-white/[0.06] rounded-md p-2">
                   {backfillProposals.map((p) => (
                     <div key={p.playerId} className="flex gap-3 py-0.5">
                       <span className="text-muted-foreground w-40 truncate shrink-0">{p.playerName}</span>

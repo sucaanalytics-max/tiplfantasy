@@ -180,7 +180,7 @@ export function MatchCard({ match, userPoints, userRank, hasSubmitted, compact =
 
         {/* User points (completed) or CTA (upcoming) */}
         {isCompleted && userPoints != null ? (
-          <div className="flex items-center justify-between bg-secondary/50 rounded-xl px-4 py-2.5">
+          <div className="flex items-center justify-between bg-white/[0.03] rounded-xl px-4 py-2.5">
             <div>
               <p className="text-xs text-muted-foreground">Your points</p>
               <p className="text-2xl font-bold font-display">{userPoints}</p>

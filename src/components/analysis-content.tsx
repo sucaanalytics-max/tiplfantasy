@@ -73,7 +73,7 @@ export function AnalysisContent({ analysis, whatsapp, copied, onCopy }: { analys
         <div className="overflow-x-auto -mx-4 px-4">
           <table className="w-full border-collapse text-[11px]">
             <thead>
-              <tr className="border-b border-border/50">
+              <tr className="border-b border-white/[0.06]">
                 <th className="text-left py-2 pr-2 font-semibold text-muted-foreground sticky left-0 bg-background z-10 min-w-[120px]">PLAYER</th>
                 {colNames.map((name, i) => (
                   <th key={i} className="text-center px-0.5 py-2 font-semibold text-muted-foreground" style={{ minWidth: 44 }}>
@@ -95,7 +95,7 @@ export function AnalysisContent({ analysis, whatsapp, copied, onCopy }: { analys
                     </td>
                   </tr>
                   {picks.map((p) => (
-                    <tr key={p.id} className="border-b border-border/20 hover:bg-secondary/20">
+                    <tr key={p.id} className="border-b border-white/[0.04] hover:bg-white/[0.02]">
                       <td className="py-1.5 pr-2 sticky left-0 bg-background z-10">
                         <div className="flex items-center gap-1.5">
                           <span className={cn("w-1.5 h-1.5 rounded-full shrink-0", TIER_DOT[p.status])} />
@@ -155,7 +155,7 @@ export function AnalysisContent({ analysis, whatsapp, copied, onCopy }: { analys
         <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">Threats Per User</h3>
         <div className="space-y-3">
           {analysis.users.map((u) => (
-            <div key={u.displayName} className="rounded-lg border border-border/30 bg-secondary/20 p-3 space-y-1.5">
+            <div key={u.displayName} className="rounded-lg border border-white/[0.04] bg-white/[0.02] p-3 space-y-1.5">
               <div className="flex items-center gap-2">
                 <div
                   className="w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold text-white shrink-0"

@@ -5,7 +5,7 @@ import { ThemeToggle } from "@/components/theme-toggle"
 
 export function ThemeCard() {
   return (
-    <Card className="border border-border">
+    <Card className="border border-white/[0.06]">
       <CardContent className="pt-6">
         <div className="flex items-center justify-between">
           <div>
@@ -14,7 +14,7 @@ export function ThemeCard() {
               Switch between light and dark theme
             </p>
           </div>
-          <ThemeToggle className="h-10 w-10 rounded-full border border-border flex items-center justify-center text-foreground hover:bg-secondary transition-colors" />
+          <ThemeToggle className="h-10 w-10 rounded-full border border-white/[0.06] flex items-center justify-center text-foreground hover:bg-secondary transition-colors" />
         </div>
       </CardContent>
     </Card>

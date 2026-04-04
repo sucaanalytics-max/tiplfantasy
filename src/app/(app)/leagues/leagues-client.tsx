@@ -155,7 +155,7 @@ export function LeaguesClient({ leagues }: LeaguesClientProps) {
 
       {/* League cards */}
       {leagues.length === 0 ? (
-        <Card className="border border-dashed border-border">
+        <Card className="border border-dashed border-white/[0.06]">
           <CardContent className="pt-6 pb-6 text-center">
             <Users className="h-10 w-10 text-muted-foreground mx-auto mb-3" />
             <p className="text-sm text-muted-foreground">

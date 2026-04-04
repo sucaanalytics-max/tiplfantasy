@@ -84,7 +84,7 @@ export function PushPrompt() {
 
   return (
     <div className="fixed bottom-20 left-4 right-4 md:left-auto md:right-6 md:bottom-6 md:w-80 z-40 animate-slide-up">
-      <div className="bg-secondary border border-border rounded-xl p-4 shadow-lg flex items-start gap-3">
+      <div className="bg-secondary border border-white/[0.06] rounded-xl p-4 shadow-lg flex items-start gap-3">
         <div className="rounded-full bg-primary/15 p-2 shrink-0">
           {needsInstall ? <Download className="h-4 w-4 text-primary" /> : <Bell className="h-4 w-4 text-primary" />}
         </div>

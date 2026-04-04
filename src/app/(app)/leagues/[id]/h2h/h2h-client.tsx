@@ -81,7 +81,7 @@ export function H2HClient({ leagueId, leagueName, members, scores, currentUserId
           <select
             value={playerA}
             onChange={(e) => setPlayerA(e.target.value)}
-            className="w-full text-sm bg-secondary border border-border rounded-md px-2 py-2 text-foreground"
+            className="w-full text-sm bg-secondary border border-white/[0.06] rounded-md px-2 py-2 text-foreground"
           >
             {members.map((m) => (
               <option key={m.user_id} value={m.user_id}>{m.display_name}</option>
@@ -93,7 +93,7 @@ export function H2HClient({ leagueId, leagueName, members, scores, currentUserId
           <select
             value={playerB}
             onChange={(e) => setPlayerB(e.target.value)}
-            className="w-full text-sm bg-secondary border border-border rounded-md px-2 py-2 text-foreground"
+            className="w-full text-sm bg-secondary border border-white/[0.06] rounded-md px-2 py-2 text-foreground"
           >
             {members.map((m) => (
               <option key={m.user_id} value={m.user_id}>{m.display_name}</option>
@@ -109,7 +109,7 @@ export function H2HClient({ leagueId, leagueName, members, scores, currentUserId
       {comparison && (
         <div className="lg:grid lg:grid-cols-2 lg:gap-6 space-y-6 lg:space-y-0">
           {/* Summary */}
-          <Card className="border border-border">
+          <Card className="border border-white/[0.06]">
             <CardContent className="pt-5">
               <div className="grid grid-cols-3 gap-4 text-center">
                 <div>
@@ -126,7 +126,7 @@ export function H2HClient({ leagueId, leagueName, members, scores, currentUserId
                 </div>
               </div>
 
-              <div className="mt-4 pt-4 border-t border-border grid grid-cols-2 gap-4 text-sm">
+              <div className="mt-4 pt-4 border-t border-white/[0.06] grid grid-cols-2 gap-4 text-sm">
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">Total Points</span>
                   <span className="font-semibold">{comparison.totalA}</span>
@@ -146,7 +146,7 @@ export function H2HClient({ leagueId, leagueName, members, scores, currentUserId
           </Card>
 
           {/* Match-by-match */}
-          <Card className="border border-border">
+          <Card className="border border-white/[0.06]">
             <CardHeader className="pb-3">
               <CardTitle className="text-base">Match by Match</CardTitle>
             </CardHeader>
@@ -164,7 +164,7 @@ export function H2HClient({ leagueId, leagueName, members, scores, currentUserId
                   {comparison.matches.map((m) => {
                     const winner = m.a > m.b ? "A" : m.b > m.a ? "B" : "tie"
                     return (
-                      <div key={m.matchNum} className="flex items-center py-2 px-2 rounded bg-secondary/50">
+                      <div key={m.matchNum} className="flex items-center py-2 px-2 rounded bg-white/[0.03]">
                         <span className="w-12 text-xs text-muted-foreground font-mono">#{m.matchNum}</span>
                         <span className={`flex-1 text-right text-sm pr-2 ${winner === "A" ? "font-bold text-primary" : ""}`}>
                           {m.a}

@@ -102,7 +102,7 @@ export function PredictionsClient({
 
       {/* Deadline countdown */}
       {deadline && !isLocked && (
-        <Card className="border border-border bg-gradient-to-br from-amber-500/10 via-transparent to-transparent">
+        <Card className="border border-white/[0.06] bg-gradient-to-br from-amber-500/10 via-transparent to-transparent">
           <CardContent className="pt-6">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
@@ -228,7 +228,7 @@ function PredictionCard({
   }, [votes, standings])
 
   return (
-    <Card className={`border border-border bg-gradient-to-br ${category.bgColor} via-transparent to-transparent`}>
+    <Card className={`border border-white/[0.06] bg-gradient-to-br ${category.bgColor} via-transparent to-transparent`}>
       <CardHeader className="pb-3">
         <div className="flex items-center justify-between">
           <CardTitle className="text-base flex items-center gap-2">
@@ -275,7 +275,7 @@ function PredictionCard({
                 className="pl-9"
               />
             </div>
-            <div className="max-h-48 overflow-y-auto space-y-1 rounded-lg border border-border p-1">
+            <div className="max-h-48 overflow-y-auto space-y-1 rounded-lg border border-white/[0.06] p-1">
               {filtered.map((player) => (
                 <button
                   key={player.id}

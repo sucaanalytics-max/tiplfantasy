@@ -186,7 +186,7 @@ export function MatchList({
                           </div>
                         )}
 
-                        <div className="mt-3 pt-3 border-t border-border flex items-center justify-between">
+                        <div className="mt-3 pt-3 border-t border-white/[0.06] flex items-center justify-between">
                           {match.status === "upcoming" && (
                             <>
                               {hasSubmitted ? (

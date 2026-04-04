@@ -97,7 +97,7 @@ export function PlayerRow({
 
   if (variant === "comparison") {
     return (
-      <div className={cn("flex items-center gap-3 py-2.5 px-3 rounded-lg bg-secondary/40 border border-border/30", className)}>
+      <div className={cn("flex items-center gap-3 py-2.5 px-3 rounded-lg bg-white/[0.03] border border-white/[0.04]", className)}>
         <Badge variant="outline" className={cn("text-[10px] font-semibold px-1.5 py-0.5 border shrink-0", roleColor)}>
           {player.role}
         </Badge>
@@ -131,7 +131,7 @@ export function PlayerRow({
   // detailed variant
   return (
     <div className={cn(
-      "flex items-center gap-3 py-2.5 px-3 border-b border-border/15 last:border-b-0",
+      "flex items-center gap-3 py-2.5 px-3 border-b border-white/[0.04] last:border-b-0",
       isHighlighted && "bg-primary/5",
       className,
     )}>

@@ -75,9 +75,9 @@ export function LeaderboardRow({
         {...(isExpandable ? { onClick: onToggle } : {})}
         className={cn(
           "w-full flex items-center gap-2.5 px-3 py-2.5 rounded-lg transition-colors",
-          isExpandable && "hover:bg-secondary/50 active:bg-secondary/70",
+          isExpandable && "hover:bg-white/[0.03] active:bg-secondary/70",
           isCurrentUser && "bg-primary/10 border border-primary/20",
-          isExpanded && !isCurrentUser && "bg-secondary/30",
+          isExpanded && !isCurrentUser && "bg-white/[0.03]",
         )}
       >
         {rankElement}
@@ -117,7 +117,7 @@ export function LeaderboardRow({
       </Tag>
 
       {isExpanded && expandedContent && (
-        <div className="ml-8 mr-2 mb-2 border-t border-border/40 pt-2 space-y-0.5">
+        <div className="ml-8 mr-2 mb-2 border-t border-white/[0.06] pt-2 space-y-0.5">
           {expandedContent}
         </div>
       )}

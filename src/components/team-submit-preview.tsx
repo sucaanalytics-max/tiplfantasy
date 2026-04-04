@@ -65,7 +65,7 @@ export function TeamSubmitPreview({
               return (
                 <div
                   key={player.id}
-                  className="flex items-center gap-3 py-2.5 px-3 rounded-lg bg-secondary/40 border border-border/40"
+                  className="flex items-center gap-3 py-2.5 px-3 rounded-lg bg-white/[0.03] border border-white/[0.06]"
                 >
                   {/* Role pill */}
                   <span
