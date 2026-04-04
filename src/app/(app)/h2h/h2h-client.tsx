@@ -110,17 +110,15 @@ export function H2HClient({
       </div>
 
       {/* Token balance */}
-      <Card className="border border-white/[0.06] bg-gradient-to-br from-amber-500/10 via-transparent to-transparent">
-        <CardContent className="pt-6">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="rounded-full bg-amber-500/15 p-2.5">
-                <Coins className="h-5 w-5 text-yellow-500" />
-              </div>
-              <div>
-                <p className="text-2xl font-bold font-display">{balance}</p>
-                <p className="text-xs text-muted-foreground">Tokens Available</p>
-              </div>
+      <Card className="border border-white/[0.06] bg-gradient-to-br from-amber-500/8 via-transparent to-transparent">
+        <CardContent className="pt-6 pb-5">
+          <div className="flex items-center gap-4">
+            <div className="rounded-full bg-amber-500/15 p-3">
+              <Coins className="h-8 w-8 text-yellow-500" />
+            </div>
+            <div>
+              <p className="text-3xl font-bold font-display tabular-nums">{balance}</p>
+              <p className="text-xs text-muted-foreground">Tokens Available</p>
             </div>
           </div>
         </CardContent>
@@ -241,7 +239,7 @@ export function H2HClient({
               <Button
                 onClick={handleCreate}
                 disabled={isPending || !selectedMatch || !wager || parseInt(wager) <= 0}
-                className="w-full bg-gradient-to-r from-primary to-blue-400 hover:from-primary/90 hover:to-blue-400/90 text-black font-semibold"
+                className="w-full bg-primary hover:bg-primary/90 text-white font-semibold glow-card"
               >
                 {isPending ? "Creating..." : `Challenge (${wager || 0} tokens)`}
               </Button>
