@@ -24,6 +24,7 @@ const mobileNavItems = [
   { href: "/matches", label: "Matches", icon: Swords },
   { href: "/leaderboard", label: "Board", icon: Trophy },
   { href: "/leagues", label: "Leagues", icon: Users },
+  { href: "/stats", label: "Stats", icon: BarChart3 },
   { href: "/profile", label: "Profile", icon: User },
 ]
 

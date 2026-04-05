@@ -2,6 +2,7 @@ import { type NextRequest } from "next/server"
 import { createAdminClient } from "@/lib/supabase/admin"
 import { fetchMatchPoints, parseScorecardToStats, fuzzyMatchName, fetchMatchInfo } from "@/lib/api/sportmonks"
 import { loadScoringRules, calculatePlayerPoints, calculateUserMatchScore } from "@/lib/scoring"
+import { recalculateUserMatchScores } from "@/actions/scoring"
 import { detectBanterEvents, detectRankBanter, generateBanter, type BanterEvent } from "@/lib/banter"
 import { sendPushToAll, sendPushToUsers } from "@/lib/push"
 import { generateText } from "@/lib/ai"
@@ -216,6 +217,32 @@ export async function GET(req: NextRequest) {
       if (upsertPlayerErr) {
         errors.push({ matchId: match.id, error: upsertPlayerErr.message })
         continue
+      }
+
+      // 6b. Fetch fixture info (reused for POTM + match-complete detection)
+      const fixtureInfo = await fetchMatchInfo(match.cricapi_match_id)
+
+      // 6c. Apply POTM bonus BEFORE building scoreMap so user totals include it
+      const potmPoints = rules.find((r) => r.name === "potm")?.points ?? 0
+      if (fixtureInfo?.status === "Finished" && fixtureInfo.man_of_match_id && potmPoints > 0) {
+        try {
+          const { data: potmPlayer } = await admin
+            .from("players").select("id").eq("cricapi_id", String(fixtureInfo.man_of_match_id)).single()
+          if (potmPlayer) {
+            const row = scoreRows.find((r) => r.player_id === potmPlayer.id)
+            if (row) {
+              const bd = row.breakdown as Record<string, number>
+              if (!bd.potm) {
+                bd.potm = potmPoints
+                row.fantasy_points = Object.values(bd).reduce((a, b) => a + b, 0)
+                row.breakdown = bd
+                await admin.from("match_player_scores")
+                  .update({ fantasy_points: row.fantasy_points, breakdown: bd })
+                  .eq("match_id", match.id).eq("player_id", potmPlayer.id)
+              }
+            }
+          }
+        } catch { /* POTM bonus is non-critical */ }
       }
 
       // 7. Build score map for user calculation
@@ -499,36 +526,13 @@ export async function GET(req: NextRequest) {
         }
       } catch { /* non-critical */ }
 
-      // 15. Auto-detect match finished — check fixture status directly
-      const fixtureInfo = await fetchMatchInfo(match.cricapi_match_id)
+      // 15. Auto-detect match finished (reuses fixtureInfo fetched at step 6b)
       if (fixtureInfo && fixtureInfo.status === "Finished" && fixtureInfo.winner_team_id) {
         const note = (fixtureInfo.note ?? "")
           .replace(/\s{2,}/g, " ")
           .trim()
 
-        // 15a. Apply POTM bonus (+25 pts) if Man of Match is announced
-        if (fixtureInfo.man_of_match_id) {
-          try {
-            const { data: potmPlayer } = await admin
-              .from("players").select("id").eq("cricapi_id", String(fixtureInfo.man_of_match_id)).single()
-            if (potmPlayer) {
-              const { data: mps } = await admin
-                .from("match_player_scores")
-                .select("fantasy_points, breakdown")
-                .eq("match_id", match.id).eq("player_id", potmPlayer.id).single()
-              if (mps) {
-                const bd = (mps.breakdown as Record<string, number>) ?? {}
-                if (!bd.potm) {
-                  bd.potm = 25
-                  const newTotal = Object.values(bd).reduce((a, b) => a + b, 0)
-                  await admin.from("match_player_scores")
-                    .update({ fantasy_points: newTotal, breakdown: bd })
-                    .eq("match_id", match.id).eq("player_id", potmPlayer.id)
-                }
-              }
-            }
-          } catch { /* POTM bonus is non-critical */ }
-        }
+        // POTM bonus already applied at step 6c (before user scores were calculated)
 
         await admin.from("matches").update({
           status: "completed",
@@ -558,6 +562,65 @@ export async function GET(req: NextRequest) {
       errors.push({ matchId: match.id, error: String(err) })
     }
   }
+
+  // ── POTM backfill: apply bonus to recently completed matches where POTM was delayed ──
+  try {
+    const backfillRules = updated.length > 0 ? rules : await loadScoringRules()
+    const potmPts = backfillRules.find((r) => r.name === "potm")?.points ?? 0
+
+    if (potmPts > 0) {
+      const thirtyMinAgo = new Date(Date.now() - 30 * 60 * 1000).toISOString()
+      const { data: recentCompleted } = await admin
+        .from("matches")
+        .select("id, cricapi_match_id")
+        .eq("status", "completed")
+        .not("cricapi_match_id", "is", null)
+        .gte("updated_at", thirtyMinAgo)
+
+      for (const cm of recentCompleted ?? []) {
+        // Skip if POTM already applied for this match
+        const { data: existingScores } = await admin
+          .from("match_player_scores")
+          .select("breakdown")
+          .eq("match_id", cm.id)
+          .limit(50)
+
+        const alreadyApplied = (existingScores ?? []).some((s) => {
+          const bd = s.breakdown as Record<string, number> | null
+          return bd && bd.potm != null
+        })
+        if (alreadyApplied) continue
+
+        const info = await fetchMatchInfo(cm.cricapi_match_id)
+        if (!info?.man_of_match_id) continue
+
+        // Apply POTM bonus
+        const { data: potmPlayer } = await admin
+          .from("players").select("id").eq("cricapi_id", String(info.man_of_match_id)).single()
+        if (!potmPlayer) continue
+
+        const { data: mps } = await admin
+          .from("match_player_scores")
+          .select("fantasy_points, breakdown")
+          .eq("match_id", cm.id).eq("player_id", potmPlayer.id).single()
+        if (!mps) continue
+
+        const bd = (mps.breakdown as Record<string, number>) ?? {}
+        if (bd.potm) continue
+
+        bd.potm = potmPts
+        const newTotal = Object.values(bd).reduce((a, b) => a + b, 0)
+        await admin.from("match_player_scores")
+          .update({ fantasy_points: newTotal, breakdown: bd })
+          .eq("match_id", cm.id).eq("player_id", potmPlayer.id)
+
+        // Recalculate user scores to reflect the POTM bonus
+        await recalculateUserMatchScores(cm.id)
+
+        updated.push(`potm-backfill:${cm.id}`)
+      }
+    }
+  } catch { /* POTM backfill is non-critical */ }
 
   return Response.json({ updated, errors })
 }

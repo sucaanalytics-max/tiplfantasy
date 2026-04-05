@@ -2,7 +2,7 @@
 
 import { createClient } from "@/lib/supabase/server"
 import { createAdminClient } from "@/lib/supabase/admin"
-import { fetchSquad, fetchScorecard, fetchMatchPoints, fetchSeriesInfo, parseScorecardToStats, fuzzyMatchName, testMatchPointsEndpoint, SPORTMONKS_TEAM_MAP } from "@/lib/api/sportmonks"
+import { fetchSquad, fetchScorecard, fetchMatchPoints, fetchMatchInfo, fetchSeriesInfo, parseScorecardToStats, fuzzyMatchName, testMatchPointsEndpoint, SPORTMONKS_TEAM_MAP } from "@/lib/api/sportmonks"
 import { generatePostMatchBanter, type MatchBanterContext } from "@/lib/banter-ai"
 import { savePlayerScores, calculateMatchPoints } from "@/actions/scoring"
 import type { PlayerStats } from "@/lib/scoring"
@@ -301,6 +301,37 @@ export async function autoScoreMatch(
 
   const saveResult = await savePlayerScores(matchId, scores)
   if (saveResult.error) return { error: `Failed to save scores: ${saveResult.error}` }
+
+  // Apply POTM bonus if Man of the Match is available
+  try {
+    const { loadScoringRules } = await import("@/lib/scoring")
+    const potmRules = await loadScoringRules()
+    const potmPts = potmRules.find((r) => r.name === "potm")?.points ?? 0
+
+    if (potmPts > 0) {
+      const fixtureInfo = await fetchMatchInfo(cricapiMatchId)
+      if (fixtureInfo?.man_of_match_id) {
+        const { data: potmPlayer } = await admin
+          .from("players").select("id").eq("cricapi_id", String(fixtureInfo.man_of_match_id)).single()
+        if (potmPlayer) {
+          const { data: mps } = await admin
+            .from("match_player_scores")
+            .select("fantasy_points, breakdown")
+            .eq("match_id", matchId).eq("player_id", potmPlayer.id).single()
+          if (mps) {
+            const bd = (mps.breakdown as Record<string, number>) ?? {}
+            if (!bd.potm) {
+              bd.potm = potmPts
+              const newTotal = Object.values(bd).reduce((a, b) => a + b, 0)
+              await admin.from("match_player_scores")
+                .update({ fantasy_points: newTotal, breakdown: bd })
+                .eq("match_id", matchId).eq("player_id", potmPlayer.id)
+            }
+          }
+        }
+      }
+    }
+  } catch { /* POTM is non-critical for admin flow */ }
 
   const calcResult = await calculateMatchPoints(matchId)
   if (calcResult.error) return { error: `Failed to calculate points: ${calcResult.error}` }

@@ -271,3 +271,88 @@ export async function calculateLiveMatchPoints(matchId: string) {
 
   return { success: true, count: userScores.length }
 }
+
+/**
+ * Recalculates user_match_scores from current match_player_scores.
+ * Used after POTM bonus is applied retroactively (e.g. backfill cron).
+ * No admin auth — called from server-side cron context.
+ */
+export async function recalculateUserMatchScores(matchId: string) {
+  const admin = createAdminClient()
+
+  const { data: playerScores } = await admin
+    .from("match_player_scores")
+    .select("player_id, fantasy_points")
+    .eq("match_id", matchId)
+
+  if (!playerScores || playerScores.length === 0) return
+
+  const scoreMap = new Map(playerScores.map((s) => [s.player_id, s.fantasy_points]))
+
+  const { data: selections } = await admin
+    .from("selections")
+    .select("id, user_id, captain_id, vice_captain_id, is_auto_pick")
+    .eq("match_id", matchId)
+    .limit(200)
+
+  if (!selections || selections.length === 0) return
+
+  const selectionIds = selections.map((s) => s.id)
+  const { data: selPlayers } = await admin
+    .from("selection_players")
+    .select("selection_id, player_id")
+    .in("selection_id", selectionIds)
+    .limit(2200)
+
+  if (!selPlayers) return
+
+  const playersBySelection = new Map<string, string[]>()
+  for (const sp of selPlayers) {
+    const arr = playersBySelection.get(sp.selection_id) ?? []
+    arr.push(sp.player_id)
+    playersBySelection.set(sp.selection_id, arr)
+  }
+
+  const userScores = selections.map((sel) => {
+    const result = calculateUserMatchScore(
+      {
+        userId: sel.user_id,
+        selectionId: sel.id,
+        captainId: sel.captain_id,
+        viceCaptainId: sel.vice_captain_id,
+        isAutoPick: sel.is_auto_pick,
+        playerIds: playersBySelection.get(sel.id) ?? [],
+      },
+      scoreMap
+    )
+    const breakdown: Record<string, number> = {}
+    for (const pid of playersBySelection.get(sel.id) ?? []) {
+      const pts = scoreMap.get(pid) ?? 0
+      if (pts > 0) breakdown[pid] = pts
+    }
+    return { userId: sel.user_id, total: result.total, captainPoints: result.captainPoints, vcPoints: result.vcPoints, rank: 0, breakdown }
+  })
+
+  userScores.sort((a, b) => b.total - a.total)
+  let currentRank = 1
+  for (let i = 0; i < userScores.length; i++) {
+    if (i > 0 && userScores[i].total < userScores[i - 1].total) currentRank = i + 1
+    userScores[i].rank = currentRank
+  }
+
+  const rows = userScores.map((s) => ({
+    user_id: s.userId,
+    match_id: matchId,
+    total_points: s.total,
+    rank: s.rank,
+    captain_points: s.captainPoints,
+    vc_points: s.vcPoints,
+    breakdown: s.breakdown,
+  }))
+
+  await admin
+    .from("user_match_scores")
+    .upsert(rows, { onConflict: "user_id,match_id" })
+
+  await admin.rpc("refresh_leaderboard")
+}

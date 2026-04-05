@@ -98,7 +98,6 @@ const TEMPLATES: TemplatePool = {
     "{m}'s team is the Evergrande of this league. Massively hyped, deeply in debt, completely collapsing.",
     "Congratulations {m}, your fantasy team has officially reached junk bond status.",
     "If {m}'s fantasy team was a startup, the VCs would have fired them as CEO by week two.",
-    "{m}'s team performance graph is just a straight line pointing to the earth's core.",
   ],
 
   century: [
