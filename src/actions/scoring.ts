@@ -53,6 +53,7 @@ export async function savePlayerScores(
       fantasy_points: total,
       breakdown,
       dismissal: stats.dismissal ?? null,
+      batting_position: stats.batting_position ?? null,
     }
   })
 

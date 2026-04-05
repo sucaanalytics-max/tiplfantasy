@@ -14,6 +14,7 @@ export type CricAPIScorecard = {
     "4s": number
     "6s": number
     dismissal?: string
+    batting_position?: number
     isOut?: boolean
   }>
   bowling: Array<{
@@ -95,8 +96,8 @@ type SMBatting = {
   wicket_id: number | null
   catch_stump_player_id: number | null
   runout_by_id: number | null
-  dismissal: string | null
-  bowler_id: number | null
+  bowling_player_id: number | null
+  sort: number
 }
 
 type SMBowling = {
@@ -323,34 +324,31 @@ export async function fetchMatchPoints(fixtureId: string): Promise<CricAPIMatchP
     }
 
     // Build dismissal strings from batting data
+    // SportMonks doesn't provide a dismissal type string — we infer from fielder/bowler IDs
     function buildDismissalString(b: SMBatting): string | undefined {
       if (b.wicket_id == null) return "not out"
-      const bowler = b.bowler_id ? playerNameMap.get(b.bowler_id) : null
+      const bowler = b.bowling_player_id ? playerNameMap.get(b.bowling_player_id) : null
       const fielder = b.catch_stump_player_id ? playerNameMap.get(b.catch_stump_player_id) : null
       const runoutFielder = b.runout_by_id ? playerNameMap.get(b.runout_by_id) : null
-      const d = b.dismissal?.toLowerCase()
 
-      // Use last name only for compact display
       const lastName = (name: string | null) => name?.split(" ").pop() ?? name
 
-      if (d === "caught") {
+      // Run out — runout_by_id is set
+      if (b.runout_by_id) {
+        return runoutFielder ? `run out (${lastName(runoutFielder)})` : "run out"
+      }
+      // Caught — catch_stump_player_id is set (could also be stumped, but caught is far more common)
+      if (b.catch_stump_player_id) {
         const parts = []
         if (fielder) parts.push(`c ${lastName(fielder)}`)
         if (bowler) parts.push(`b ${lastName(bowler)}`)
         return parts.join(" ") || "caught"
       }
-      if (d === "bowled") return bowler ? `b ${lastName(bowler)}` : "bowled"
-      if (d === "lbw") return bowler ? `lbw b ${lastName(bowler)}` : "lbw"
-      if (d === "stumped") {
-        const parts = []
-        if (fielder) parts.push(`st ${lastName(fielder)}`)
-        if (bowler) parts.push(`b ${lastName(bowler)}`)
-        return parts.join(" ") || "stumped"
+      // Bowled/LBW/hit wicket — only bowler, no fielder
+      if (bowler) {
+        return `b ${lastName(bowler)}`
       }
-      if (d === "run out") return runoutFielder ? `run out (${lastName(runoutFielder)})` : "run out"
-      if (d === "hit wicket") return bowler ? `hit wicket b ${lastName(bowler)}` : "hit wicket"
-      if (d === "retired hurt" || d === "retired out") return d
-      return d ?? "out"
+      return "out"
     }
 
     const innings: CricAPIScorecard[] = [...scoreboards].sort().map((sb) => {
@@ -369,6 +367,7 @@ export async function fetchMatchPoints(fixtureId: string): Promise<CricAPIMatchP
           "6s": b.six_x,
           isOut: b.wicket_id != null,
           dismissal: buildDismissalString(b),
+          batting_position: b.sort,
         })),
         bowling: inningBowling.map((b) => ({
           bowler: { name: playerNameMap.get(b.player_id) ?? String(b.player_id) },
@@ -607,6 +606,7 @@ export type ParsedStats = Map<
     run_outs: number
     isOut?: boolean
     dismissal?: string
+    batting_position?: number
   }
 >
 
@@ -642,6 +642,7 @@ export function parseScorecardToStats(innings: CricAPIScorecard[]): ParsedStats 
       s.sixes += b["6s"]
       if (b.isOut !== undefined) s.isOut = b.isOut
       if (b.dismissal) s.dismissal = b.dismissal
+      if (b.batting_position != null) s.batting_position = b.batting_position
     }
 
     for (const b of inning.bowling ?? []) {

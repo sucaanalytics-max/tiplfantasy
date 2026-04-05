@@ -43,6 +43,7 @@ export type PlayerScoreRow = {
   run_outs: number
   breakdown: Record<string, number> | null
   dismissal?: string | null
+  batting_position?: number | null
   player: { name: string; role: string; team_id: string; team: { short_name: string; color: string } }
 }
 
@@ -935,7 +936,7 @@ export function ScoresClient({
                             <span className="text-right">4s</span><span className="text-right">6s</span>
                             <span className="text-right">SR</span><span className="text-right font-bold">Pts</span>
                           </div>
-                          {batsmen.sort((a, b) => b.balls_faced - a.balls_faced || b.runs - a.runs).map((ps) => {
+                          {batsmen.sort((a, b) => (a.batting_position ?? 99) - (b.batting_position ?? 99) || b.balls_faced - a.balls_faced).map((ps) => {
                             const isMine = myPlayerSet.has(ps.player_id)
                             return (
                               <div key={ps.player_id} className={cn("grid grid-cols-[1fr_2rem_2rem_2rem_2rem_3rem_3.5rem] gap-1 px-3 py-1.5 border-b border-overlay-border", isMine && "bg-primary/5")}>
