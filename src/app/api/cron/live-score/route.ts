@@ -177,6 +177,7 @@ export async function GET(req: NextRequest) {
         run_outs: number
         fantasy_points: number
         breakdown: unknown
+        dismissal: string | null
       }> = []
 
       // Build id → role lookup for duck eligibility
@@ -202,6 +203,7 @@ export async function GET(req: NextRequest) {
           run_outs: stats.run_outs,
           fantasy_points: total,
           breakdown,
+          dismissal: stats.dismissal ?? null,
         })
       }
 

@@ -58,7 +58,7 @@ export function NavBar({ isAdmin = false }: { isAdmin?: boolean }) {
   return (
     <>
       {/* Mobile bottom nav */}
-      <nav aria-label="Main navigation" className="fixed bottom-0 left-0 right-0 z-50 bg-background/95 backdrop-blur-sm border-t border-overlay-border pb-[env(safe-area-inset-bottom)] md:hidden">
+      <nav aria-label="Main navigation" className="fixed bottom-0 left-0 right-0 z-50 bg-background border-t border-overlay-border pb-[env(safe-area-inset-bottom)] md:hidden">
         <div className="flex items-center justify-around h-14">
           {mobileItems.map((item) => {
             const Icon = item.icon
