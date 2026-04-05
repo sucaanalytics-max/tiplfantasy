@@ -72,7 +72,7 @@ export default async function AdminPage() {
             <CardTitle className="text-sm font-medium text-muted-foreground">Upcoming</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-blue-400">{stats.upcoming}</div>
+            <div className="text-2xl font-bold text-[var(--tw-blue-text)]">{stats.upcoming}</div>
           </CardContent>
         </Card>
         <Card>

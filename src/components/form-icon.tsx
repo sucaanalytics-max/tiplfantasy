@@ -16,7 +16,7 @@ export function FormIcon({ indicator }: { indicator: FormIndicator }) {
   if (indicator === "warm") {
     return (
       <span className="inline-flex items-center justify-center h-4 w-4 rounded-full bg-amber-500/15">
-        <TrendingUp className="h-2.5 w-2.5 text-amber-400" />
+        <TrendingUp className="h-2.5 w-2.5 text-[var(--tw-amber-text)]" />
       </span>
     )
   }
@@ -32,7 +32,7 @@ export function FormIcon({ indicator }: { indicator: FormIndicator }) {
   // cold (default fallback)
   return (
     <span className="inline-flex items-center justify-center h-4 w-4 rounded-full bg-blue-500/15">
-      <TrendingDown className="h-2.5 w-2.5 text-blue-400" />
+      <TrendingDown className="h-2.5 w-2.5 text-[var(--tw-blue-text)]" />
     </span>
   )
 }

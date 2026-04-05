@@ -24,7 +24,7 @@ export default async function AppLayout({
   return (
     <>
       <NavBar isAdmin={isAdmin} />
-      <main className="min-h-dvh pb-16 pt-[env(safe-area-inset-top)] pl-[env(safe-area-inset-left)] pr-[env(safe-area-inset-right)] md:pb-0 md:pl-56">
+      <main className="min-h-dvh pb-[calc(3.5rem+env(safe-area-inset-bottom)+0.5rem)] pt-[env(safe-area-inset-top)] pl-[env(safe-area-inset-left)] pr-[env(safe-area-inset-right)] md:pb-0 md:pl-56">
         {children}
       </main>
       <InstallPrompt />

@@ -360,7 +360,7 @@ export function PickTeamClient({
             >
               {player.name}
             </span>
-            {isCaptain && <span className="text-2xs font-bold text-amber-400 bg-amber-400/15 px-1 rounded shrink-0">C</span>}
+            {isCaptain && <span className="text-2xs font-bold text-[var(--tw-amber-text)] bg-amber-400/15 px-1 rounded shrink-0">C</span>}
             {isVC && <span className="text-2xs font-bold text-violet-400 bg-violet-400/15 px-1 rounded shrink-0">VC</span>}
             <FormIcon indicator={formIndicator} />
           </div>
@@ -477,7 +477,7 @@ export function PickTeamClient({
                             "h-7 w-7 rounded-full text-[9px] font-bold flex items-center justify-center border transition-all",
                             isCaptain
                               ? "bg-gradient-to-br from-amber-400 to-amber-600 text-black border-amber-400 shadow-sm shadow-amber-500/30"
-                              : "border-border text-muted-foreground hover:border-amber-400/50 hover:text-amber-400"
+                              : "border-border text-muted-foreground hover:border-amber-400/50 hover:text-[var(--tw-amber-text)]"
                           )}
                           onClick={() => {
                             if (viceCaptainId === player.id) setViceCaptainId(null)
@@ -895,7 +895,7 @@ export function PickTeamClient({
                                 variant={isCaptain ? "default" : "outline"}
                                 className={cn(
                                   "h-8 w-8 p-0 rounded-full",
-                                  isCaptain && "bg-amber-400 text-black hover:bg-amber-400/90"
+                                  isCaptain && "bg-[var(--tw-amber-text)] text-black hover:bg-amber-400/90"
                                 )}
                                 onClick={() => {
                                   if (viceCaptainId === player.id) setViceCaptainId(null)

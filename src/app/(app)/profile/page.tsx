@@ -141,7 +141,7 @@ export default async function ProfilePage() {
           value={bestMatch ? bestMatch.total_points : "\u2014"}
           label="Best Match"
           gradient="from-green-500/10"
-          iconColor="bg-green-500/15 text-green-500"
+          iconColor="bg-green-500/15 text-[var(--tw-green-text)]"
         />
         <StatCard
           icon={TrendingDown}
@@ -202,7 +202,7 @@ export default async function ProfilePage() {
         const stdDev = Math.sqrt(points.reduce((sum, p) => sum + (p - avg) ** 2, 0) / points.length)
         const cv = avg > 0 ? stdDev / avg : 0
         const consistencyLabel = cv < 0.15 ? "Very Consistent" : cv < 0.3 ? "Consistent" : cv < 0.5 ? "Variable" : "Unpredictable"
-        const consistencyColor = cv < 0.15 ? "text-green-500" : cv < 0.3 ? "text-blue-400" : cv < 0.5 ? "text-amber-400" : "text-red-400"
+        const consistencyColor = cv < 0.15 ? "text-[var(--tw-green-text)]" : cv < 0.3 ? "text-[var(--tw-blue-text)]" : cv < 0.5 ? "text-[var(--tw-amber-text)]" : "text-[var(--tw-red-text)]"
 
         // Streaks
         const ranks = [...matchScores].reverse().map((ms) => ms.rank ?? 999)

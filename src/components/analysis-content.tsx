@@ -114,11 +114,11 @@ export function AnalysisContent({ analysis, whatsapp, copied, onCopy }: { analys
                       })}
                       <td className={cn(
                         "text-right pl-2 py-1.5 font-bold tabular-nums",
-                        p.ownership === 100 ? "text-emerald-400" :
-                        p.ownership >= 80 ? "text-blue-400" :
+                        p.ownership === 100 ? "text-[var(--tw-emerald-text)]" :
+                        p.ownership >= 80 ? "text-[var(--tw-blue-text)]" :
                         p.ownership >= 60 ? "text-yellow-400" :
                         p.ownership >= 40 ? "text-orange-400" :
-                        "text-red-400"
+                        "text-[var(--tw-red-text)]"
                       )}>
                         {p.ownership}%
                       </td>
@@ -165,20 +165,20 @@ export function AnalysisContent({ analysis, whatsapp, copied, onCopy }: { analys
                 </div>
                 <span className="text-sm font-semibold">{u.displayName}</span>
                 {u.captainName ? (
-                  <span className="text-[10px] text-amber-400">C: {u.captainName}</span>
+                  <span className="text-[10px] text-[var(--tw-amber-text)]">C: {u.captainName}</span>
                 ) : (
-                  <span className="text-[10px] text-red-400">⚠️ No Captain</span>
+                  <span className="text-[10px] text-[var(--tw-red-text)]">⚠️ No Captain</span>
                 )}
               </div>
               {u.missing.length > 0 && (
                 <div className="text-[11px] text-muted-foreground">
-                  <span className="text-red-400 font-medium">Missing: </span>
+                  <span className="text-[var(--tw-red-text)] font-medium">Missing: </span>
                   {u.missing.map((m) => `${m.name} (${m.ownership}%)`).join(", ")}
                 </div>
               )}
               {u.unique.length > 0 && (
                 <div className="text-[11px]">
-                  <span className="text-purple-400 font-medium">Unique: </span>
+                  <span className="text-[var(--tw-purple-text)] font-medium">Unique: </span>
                   {u.unique.join(", ")} 🔥
                 </div>
               )}

@@ -86,7 +86,7 @@ export function CricketField({
                             "absolute -top-1 -right-1 rounded-full font-bold flex items-center justify-center",
                             isLg ? "w-5 h-5 text-[9px]" : "w-4 h-4 text-[8px]",
                             isCaptain
-                              ? "bg-amber-400 text-black"
+                              ? "bg-[var(--tw-amber-text)] text-black"
                               : "bg-violet-400 text-black"
                           )}
                         >

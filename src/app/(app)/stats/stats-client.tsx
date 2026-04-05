@@ -34,7 +34,7 @@ function StatRow({ rank, player, stat, sub, accent }: { rank: number; player: Pl
     <div className="flex items-center gap-3 py-2 px-3 rounded-lg bg-overlay-subtle">
       <span className={cn(
         "text-sm font-bold tabular-nums w-5 text-center",
-        rank === 1 ? (accent ?? "text-amber-400") : rank === 2 ? "text-zinc-400" : rank === 3 ? "text-amber-700" : "text-muted-foreground"
+        rank === 1 ? (accent ?? "text-[var(--tw-amber-text)]") : rank === 2 ? "text-zinc-400" : rank === 3 ? "text-amber-700" : "text-muted-foreground"
       )}>
         {rank}
       </span>
@@ -151,7 +151,7 @@ export function StatsClient({ players, matchCount }: { players: PlayerAgg[]; mat
         </SectionCard>
 
         {/* Purple Cap */}
-        <SectionCard title="Purple Cap" emoji="💜" accent="text-purple-400">
+        <SectionCard title="Purple Cap" emoji="💜" accent="text-[var(--tw-purple-text)]">
           {purpleCap.map((p, i) => {
             const econ = p.oversBowled > 0 ? (p.runsConceded / p.oversBowled).toFixed(1) : "—"
             return (
@@ -161,7 +161,7 @@ export function StatsClient({ players, matchCount }: { players: PlayerAgg[]; mat
                 player={p}
                 stat={`${p.wickets}`}
                 sub={`econ ${econ}`}
-                accent="text-purple-400"
+                accent="text-[var(--tw-purple-text)]"
               />
             )
           })}
@@ -169,7 +169,7 @@ export function StatsClient({ players, matchCount }: { players: PlayerAgg[]; mat
       </div>
 
       {/* Best Fielders */}
-      <SectionCard title="Best Fielders" emoji="🧤" accent="text-emerald-400">
+      <SectionCard title="Best Fielders" emoji="🧤" accent="text-[var(--tw-emerald-text)]">
         {bestFielders.map((p, i) => {
           const parts: string[] = []
           if (p.catches > 0) parts.push(`${p.catches}c`)
@@ -182,7 +182,7 @@ export function StatsClient({ players, matchCount }: { players: PlayerAgg[]; mat
               player={p}
               stat={`${p.catches + p.stumpings + p.runOuts}`}
               sub={parts.join(" · ")}
-              accent="text-emerald-400"
+              accent="text-[var(--tw-emerald-text)]"
             />
           )
         })}
@@ -194,7 +194,7 @@ export function StatsClient({ players, matchCount }: { players: PlayerAgg[]; mat
           <div key={p.id} className="flex items-center gap-3 py-2 px-3 rounded-lg bg-overlay-subtle">
             <span className={cn(
               "text-sm font-bold tabular-nums w-5 text-center",
-              i === 0 ? "text-amber-400" : i === 1 ? "text-zinc-400" : i === 2 ? "text-amber-700" : "text-muted-foreground"
+              i === 0 ? "text-[var(--tw-amber-text)]" : i === 1 ? "text-zinc-400" : i === 2 ? "text-amber-700" : "text-muted-foreground"
             )}>
               {i + 1}
             </span>
@@ -217,10 +217,10 @@ export function StatsClient({ players, matchCount }: { players: PlayerAgg[]; mat
                     key={j}
                     className={cn(
                       "text-[10px] font-bold tabular-nums px-1.5 py-0.5 rounded",
-                      s >= 80 ? "bg-emerald-500/20 text-emerald-400" :
-                      s >= 40 ? "bg-amber-500/15 text-amber-400" :
+                      s >= 80 ? "bg-emerald-500/20 text-[var(--tw-emerald-text)]" :
+                      s >= 40 ? "bg-amber-500/15 text-[var(--tw-amber-text)]" :
                       s >= 0 ? "bg-zinc-500/15 text-zinc-400" :
-                      "bg-red-500/15 text-red-400"
+                      "bg-red-500/15 text-[var(--tw-red-text)]"
                     )}
                   >
                     {Math.round(s)}
@@ -248,7 +248,7 @@ export function StatsClient({ players, matchCount }: { players: PlayerAgg[]; mat
 
       {/* Duck Club */}
       {duckClub.length > 0 && (
-        <SectionCard title="Duck Club" emoji="🦆" accent="text-red-400">
+        <SectionCard title="Duck Club" emoji="🦆" accent="text-[var(--tw-red-text)]">
           {duckClub.map((p, i) => (
             <StatRow
               key={p.id}
@@ -256,7 +256,7 @@ export function StatsClient({ players, matchCount }: { players: PlayerAgg[]; mat
               player={p}
               stat={`${p.ducks}`}
               sub={`${p.matches} mat`}
-              accent="text-red-400"
+              accent="text-[var(--tw-red-text)]"
             />
           ))}
         </SectionCard>

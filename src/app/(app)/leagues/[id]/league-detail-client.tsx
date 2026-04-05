@@ -231,7 +231,7 @@ export function LeagueDetailClient({ league, members, isCreator, leaderboard, aw
           {liveMatchData && (
             <TabsTrigger value="live" className="gap-1.5">
               <span className="relative flex h-3.5 w-3.5 items-center justify-center">
-                <Radio className="h-3.5 w-3.5 text-red-400" />
+                <Radio className="h-3.5 w-3.5 text-[var(--tw-red-text)]" />
                 <span className="absolute -top-0.5 -right-0.5 h-1.5 w-1.5 rounded-full bg-red-500 animate-pulse" />
               </span>
               Live
@@ -258,7 +258,7 @@ export function LeagueDetailClient({ league, members, isCreator, leaderboard, aw
                 <span className="text-sm font-bold font-display" style={{ color: liveMatchData.match.team_home.color }}>
                   {liveMatchData.match.team_home.short_name}
                 </span>
-                <div className="flex items-center gap-1.5 text-xs text-red-400">
+                <div className="flex items-center gap-1.5 text-xs text-[var(--tw-red-text)]">
                   <span className="h-1.5 w-1.5 rounded-full bg-red-500 animate-pulse" />
                   LIVE
                 </div>
@@ -305,7 +305,7 @@ export function LeagueDetailClient({ league, members, isCreator, leaderboard, aw
                         >
                           <span className={cn(
                             "w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold shrink-0",
-                            leagueRank === 1 && "bg-amber-400/20 text-amber-400",
+                            leagueRank === 1 && "bg-[var(--tw-amber-bg)] text-[var(--tw-amber-text)]",
                             leagueRank === 2 && "bg-gray-400/20 text-gray-400",
                             leagueRank === 3 && "bg-amber-600/20 text-amber-600",
                             leagueRank > 3 && "bg-secondary text-muted-foreground"
@@ -363,7 +363,7 @@ export function LeagueDetailClient({ league, members, isCreator, leaderboard, aw
               <div className="mt-4 rounded-xl border border-amber-400/20 bg-gradient-to-b from-amber-400/5 to-transparent overflow-hidden">
                 <div className="px-4 py-3 border-b border-amber-400/10 flex items-center gap-2">
                   <span className="text-base">🎭</span>
-                  <span className="text-sm font-bold text-amber-400 uppercase tracking-wider">Live Commentary</span>
+                  <span className="text-sm font-bold text-[var(--tw-amber-text)] uppercase tracking-wider">Live Commentary</span>
                   <span className="ml-auto text-[10px] text-muted-foreground">{liveMatchData.banter.length} moments</span>
                 </div>
                 <div className="divide-y divide-overlay-border max-h-[28rem] overflow-y-auto">
@@ -635,7 +635,7 @@ export function PrizesTab({ awards, matchScores, leaderboard }: PrizesTabProps) 
                       <Icon className="h-3.5 w-3.5" />
                       <span>{label}</span>
                     </div>
-                    <span className="text-[10px] font-semibold text-emerald-400 bg-emerald-400/10 border border-emerald-400/20 rounded px-1.5 py-0.5">
+                    <span className="text-[10px] font-semibold text-[var(--tw-emerald-text)] bg-[var(--tw-emerald-bg)] border border-emerald-400/20 rounded px-1.5 py-0.5">
                       2k
                     </span>
                   </div>
@@ -685,7 +685,7 @@ export function PrizesTab({ awards, matchScores, leaderboard }: PrizesTabProps) 
                       </div>
                     </div>
                     <div className="text-right shrink-0 ml-3">
-                      <span className="text-sm font-bold text-emerald-400">
+                      <span className="text-sm font-bold text-[var(--tw-emerald-text)]">
                         {isTied ? splitPrize : match.prize}
                       </span>
                       {isTied && (
@@ -792,7 +792,7 @@ function AwardDetailTables({ awards, matchScores }: { awards: LeagueMemberStats[
   const matchRow = (label: string, value: string, highlight?: boolean) => (
     <div key={label} className="flex items-center justify-between text-xs py-1 border-b border-overlay-border last:border-0">
       <span className="text-muted-foreground">{label}</span>
-      <span className={highlight ? "font-semibold text-emerald-400" : "font-medium"}>{value}</span>
+      <span className={highlight ? "font-semibold text-[var(--tw-emerald-text)]" : "font-medium"}>{value}</span>
     </div>
   )
 
@@ -802,7 +802,7 @@ function AwardDetailTables({ awards, matchScores }: { awards: LeagueMemberStats[
       <Card className="glass">
         <CardHeader className="pb-2">
           <CardTitle className="text-sm flex items-center gap-2">
-            <Crown className="h-4 w-4 text-amber-400" />
+            <Crown className="h-4 w-4 text-[var(--tw-amber-text)]" />
             Captaincy
           </CardTitle>
         </CardHeader>
@@ -822,7 +822,7 @@ function AwardDetailTables({ awards, matchScores }: { awards: LeagueMemberStats[
               row.userId,
               row.name,
               [
-                <span key="c" className="text-sm font-semibold text-right text-amber-400">{Math.round(row.cPts)}</span>,
+                <span key="c" className="text-sm font-semibold text-right text-[var(--tw-amber-text)]">{Math.round(row.cPts)}</span>,
                 <span key="vc" className="text-sm font-medium text-right text-violet-400">{Math.round(row.vcPts)}</span>,
                 <span key="t" className="text-sm font-medium text-right">{Math.round(row.total)}</span>,
               ],
@@ -876,7 +876,7 @@ function AwardDetailTables({ awards, matchScores }: { awards: LeagueMemberStats[
       <Card className="glass">
         <CardHeader className="pb-2">
           <CardTitle className="text-sm flex items-center gap-2">
-            <Trophy className="h-4 w-4 text-emerald-400" />
+            <Trophy className="h-4 w-4 text-[var(--tw-emerald-text)]" />
             Matchday Wins
           </CardTitle>
         </CardHeader>
@@ -894,7 +894,7 @@ function AwardDetailTables({ awards, matchScores }: { awards: LeagueMemberStats[
               row.userId,
               row.name,
               [
-                <span key="w" className="text-sm font-semibold text-right text-emerald-400">{row.winCount}</span>,
+                <span key="w" className="text-sm font-semibold text-right text-[var(--tw-emerald-text)]">{row.winCount}</span>,
               ],
               "wins",
               row.wonMatches.length > 0
@@ -911,7 +911,7 @@ function AwardDetailTables({ awards, matchScores }: { awards: LeagueMemberStats[
       <Card className="glass">
         <CardHeader className="pb-2">
           <CardTitle className="text-sm flex items-center gap-2">
-            <Target className="h-4 w-4 text-sky-400" />
+            <Target className="h-4 w-4 text-[var(--tw-sky-text)]" />
             Consistency
           </CardTitle>
         </CardHeader>
@@ -930,7 +930,7 @@ function AwardDetailTables({ awards, matchScores }: { awards: LeagueMemberStats[
               row.userId,
               row.name,
               [
-                <span key="t2" className="text-sm font-semibold text-right text-sky-400">{row.top2}</span>,
+                <span key="t2" className="text-sm font-semibold text-right text-[var(--tw-sky-text)]">{row.top2}</span>,
                 <span key="avg" className="text-sm font-medium text-right text-muted-foreground">{row.avg}</span>,
               ],
               "consistency",

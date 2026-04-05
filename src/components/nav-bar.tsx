@@ -126,7 +126,7 @@ export function NavBar({ isAdmin = false }: { isAdmin?: boolean }) {
           <ThemeToggle showLabel className="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm text-muted-foreground hover:bg-secondary hover:text-foreground transition-colors w-full" />
           <button
             onClick={handleSignOut}
-            className="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm text-muted-foreground hover:bg-destructive/10 hover:text-red-400 transition-colors w-full"
+            className="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm text-muted-foreground hover:bg-destructive/10 hover:text-[var(--tw-red-text)] transition-colors w-full"
           >
             <LogOut className="h-4 w-4" />
             Sign Out

@@ -55,7 +55,7 @@ export function LeaderboardRow({
       return (
         <span className={cn(
           "w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold shrink-0",
-          entry.rank === 1 && "bg-amber-400/20 text-amber-400",
+          entry.rank === 1 && "bg-[var(--tw-amber-bg)] text-[var(--tw-amber-text)]",
           entry.rank === 2 && "bg-gray-400/20 text-gray-400",
           entry.rank === 3 && "bg-amber-600/20 text-amber-600",
           entry.rank > 3 && "bg-secondary text-muted-foreground"

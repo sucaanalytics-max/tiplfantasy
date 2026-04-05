@@ -7,10 +7,10 @@ import type { PlayerWithTeam } from "@/lib/types"
 
 const ROLE_ORDER = ["WK", "BAT", "AR", "BOWL"]
 const ROLE_COLORS: Record<string, { text: string; bg: string }> = {
-  WK: { text: "text-amber-400", bg: "bg-amber-400/10" },
-  BAT: { text: "text-blue-400", bg: "bg-blue-400/10" },
-  AR: { text: "text-emerald-400", bg: "bg-emerald-400/10" },
-  BOWL: { text: "text-purple-400", bg: "bg-purple-400/10" },
+  WK: { text: "text-[var(--tw-amber-text)]", bg: "bg-[var(--tw-amber-bg)]" },
+  BAT: { text: "text-[var(--tw-blue-text)]", bg: "bg-[var(--tw-blue-bg)]" },
+  AR: { text: "text-[var(--tw-emerald-text)]", bg: "bg-[var(--tw-emerald-bg)]" },
+  BOWL: { text: "text-[var(--tw-purple-text)]", bg: "bg-[var(--tw-purple-bg)]" },
 }
 
 export default async function TeamSheetPage({
@@ -158,7 +158,7 @@ export default async function TeamSheetPage({
                     <div key={player.id} className="flex items-center gap-2 px-4 py-1.5">
                       {/* C/VC indicator */}
                       <span className="w-5 text-center shrink-0">
-                        {isCaptain && <span className="text-[10px] font-bold text-amber-400">👑</span>}
+                        {isCaptain && <span className="text-[10px] font-bold text-[var(--tw-amber-text)]">👑</span>}
                         {isVC && <span className="text-[10px] font-bold text-violet-400">🥈</span>}
                       </span>
 
@@ -183,7 +183,7 @@ export default async function TeamSheetPage({
                       {/* Pick frequency + differential */}
                       <span className="text-[9px] tabular-nums shrink-0 w-8 text-right">
                         {isDiff ? (
-                          <span className="text-amber-400 font-bold">{count}/{totalMembers}</span>
+                          <span className="text-[var(--tw-amber-text)] font-bold">{count}/{totalMembers}</span>
                         ) : isUniversal ? (
                           <span className="text-muted-foreground/40">{count}/{totalMembers}</span>
                         ) : (
@@ -193,10 +193,10 @@ export default async function TeamSheetPage({
 
                       {/* Badges */}
                       {isDiff && (
-                        <span className="text-[8px] font-bold text-amber-400 bg-amber-400/15 px-1 rounded shrink-0">DIFF</span>
+                        <span className="text-[8px] font-bold text-[var(--tw-amber-text)] bg-amber-400/15 px-1 rounded shrink-0">DIFF</span>
                       )}
                       {isUniqueCaptain && (
-                        <span className="text-[8px] font-bold text-emerald-400 bg-emerald-400/15 px-1 rounded shrink-0">UNIQUE C</span>
+                        <span className="text-[8px] font-bold text-[var(--tw-emerald-text)] bg-emerald-400/15 px-1 rounded shrink-0">UNIQUE C</span>
                       )}
                     </div>
                   )
@@ -212,14 +212,14 @@ export default async function TeamSheetPage({
         <div className="mt-6 rounded-lg border border-amber-400/20 bg-amber-400/5 overflow-hidden">
           <div className="px-4 py-2.5 border-b border-amber-400/10 flex items-center gap-2">
             <span className="text-sm">🔥</span>
-            <span className="text-xs font-bold text-amber-400 uppercase tracking-widest">Key Differentials</span>
+            <span className="text-xs font-bold text-[var(--tw-amber-text)] uppercase tracking-widest">Key Differentials</span>
           </div>
           <div className="divide-y divide-amber-400/10">
             {differentials.slice(0, 10).map(({ player, count, owners }) => (
               <div key={player!.id} className="px-4 py-2 flex items-center gap-2">
                 <span className="text-sm font-medium flex-1">{player!.name}</span>
                 <span className="text-[10px] text-muted-foreground">{owners.join(", ")}</span>
-                <span className="text-[10px] font-bold text-amber-400">{count}/{totalMembers}</span>
+                <span className="text-[10px] font-bold text-[var(--tw-amber-text)]">{count}/{totalMembers}</span>
               </div>
             ))}
           </div>

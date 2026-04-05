@@ -4,10 +4,10 @@ import { Badge } from "@/components/ui/badge"
 import { cn } from "@/lib/utils"
 
 const ROLE_COLORS: Record<string, string> = {
-  WK: "text-amber-400 border-amber-400/30 bg-amber-400/10",
-  BAT: "text-blue-400 border-blue-400/30 bg-blue-400/10",
-  AR: "text-emerald-400 border-emerald-400/30 bg-emerald-400/10",
-  BOWL: "text-purple-400 border-purple-400/30 bg-purple-400/10",
+  WK: "text-[var(--tw-amber-text)] border-amber-400/30 bg-[var(--tw-amber-bg)]",
+  BAT: "text-[var(--tw-blue-text)] border-blue-400/30 bg-[var(--tw-blue-bg)]",
+  AR: "text-[var(--tw-emerald-text)] border-emerald-400/30 bg-[var(--tw-emerald-bg)]",
+  BOWL: "text-[var(--tw-purple-text)] border-purple-400/30 bg-[var(--tw-purple-bg)]",
 }
 
 export type PlayerRowData = {
@@ -113,11 +113,11 @@ export function PlayerRow({
             <p className="text-muted-foreground">They: {theirMultiplier}</p>
           </div>
         ) : myMultiplier && myMultiplier !== "1×" ? (
-          <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded border border-amber-400/30 bg-amber-400/10 text-amber-400 shrink-0">
+          <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded border border-amber-400/30 bg-[var(--tw-amber-bg)] text-[var(--tw-amber-text)] shrink-0">
             {myMultiplier}
           </span>
         ) : theirMultiplier && theirMultiplier !== "1×" ? (
-          <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded border border-red-400/30 bg-red-400/10 text-red-400 shrink-0">
+          <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded border border-red-400/30 bg-[var(--tw-red-bg)] text-[var(--tw-red-text)] shrink-0">
             {theirMultiplier}
           </span>
         ) : null}
@@ -139,7 +139,7 @@ export function PlayerRow({
         {cvLabel && (
           <span className={cn(
             "text-[8px] font-bold",
-            isCaptain ? "text-amber-400" : "text-sky-400"
+            isCaptain ? "text-[var(--tw-amber-text)]" : "text-[var(--tw-sky-text)]"
           )}>
             {cvLabel}
           </span>

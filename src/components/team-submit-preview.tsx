@@ -36,7 +36,7 @@ export function TeamSubmitPreview({
       {/* Header */}
       <div className="px-4 pt-8 pb-4 text-center">
         <div className="flex items-center justify-center gap-2 mb-1">
-          <CheckCircle2 className="h-6 w-6 text-emerald-400" />
+          <CheckCircle2 className="h-6 w-6 text-[var(--tw-emerald-text)]" />
           <h1 className="text-xl font-bold tracking-tight font-display">
             {isUpdate ? "Team Updated!" : "Team Submitted!"}
           </h1>

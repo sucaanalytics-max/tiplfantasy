@@ -30,8 +30,8 @@ export function StatCard({
               {trend && (
                 <span className={`inline-flex items-center gap-0.5 text-[10px] font-semibold px-1.5 py-0.5 rounded-full ${
                   trend.positive
-                    ? "bg-emerald-500/15 text-emerald-400"
-                    : "bg-red-500/15 text-red-400"
+                    ? "bg-emerald-500/15 text-[var(--tw-emerald-text)]"
+                    : "bg-red-500/15 text-[var(--tw-red-text)]"
                 }`}>
                   {trend.positive ? <TrendingUp className="h-2.5 w-2.5" /> : <TrendingDown className="h-2.5 w-2.5" />}
                   {trend.value}

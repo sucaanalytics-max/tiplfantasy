@@ -213,7 +213,7 @@ export function PlayerStatsDrawer({
                 {formTrend && (
                   <span className="text-xs text-muted-foreground">
                     Form:{" "}
-                    <span className={formTrend === "rising" ? "text-emerald-400 font-semibold" : formTrend === "falling" ? "text-red-400 font-semibold" : "text-muted-foreground font-medium"}>
+                    <span className={formTrend === "rising" ? "text-[var(--tw-emerald-text)] font-semibold" : formTrend === "falling" ? "text-[var(--tw-red-text)] font-semibold" : "text-muted-foreground font-medium"}>
                       {formTrend === "rising" ? "↑ Rising" : formTrend === "falling" ? "↓ Falling" : "→ Steady"}
                     </span>
                   </span>
@@ -221,7 +221,7 @@ export function PlayerStatsDrawer({
                 {consistency !== null && (
                   <span className="text-xs text-muted-foreground">
                     Consistency:{" "}
-                    <span className={consistency >= 70 ? "text-emerald-400 font-semibold" : consistency >= 40 ? "text-amber-400 font-semibold" : "text-red-400 font-semibold"}>
+                    <span className={consistency >= 70 ? "text-[var(--tw-emerald-text)] font-semibold" : consistency >= 40 ? "text-[var(--tw-amber-text)] font-semibold" : "text-[var(--tw-red-text)] font-semibold"}>
                       {consistency}%
                     </span>
                   </span>

@@ -521,7 +521,7 @@ export function AdminMatchClient({
                 </h3>
                 <div className="space-y-0.5">
                   {homePlayers.map((p) => {
-                    const rc = p.role === "WK" ? "text-amber-400 border-amber-400/30 bg-amber-400/10" : p.role === "BAT" ? "text-blue-400 border-blue-400/30 bg-blue-400/10" : p.role === "AR" ? "text-emerald-400 border-emerald-400/30 bg-emerald-400/10" : "text-purple-400 border-purple-400/30 bg-purple-400/10"
+                    const rc = p.role === "WK" ? "text-[var(--tw-amber-text)] border-amber-400/30 bg-[var(--tw-amber-bg)]" : p.role === "BAT" ? "text-[var(--tw-blue-text)] border-blue-400/30 bg-[var(--tw-blue-bg)]" : p.role === "AR" ? "text-[var(--tw-emerald-text)] border-emerald-400/30 bg-[var(--tw-emerald-bg)]" : "text-[var(--tw-purple-text)] border-purple-400/30 bg-[var(--tw-purple-bg)]"
                     return (
                       <div key={p.id} className="text-sm flex items-center gap-2 py-1.5 px-2 rounded-md bg-overlay-subtle">
                         <Badge variant="outline" className={`text-[9px] w-10 justify-center border ${rc}`}>{p.role}</Badge>
@@ -540,7 +540,7 @@ export function AdminMatchClient({
                 </h3>
                 <div className="space-y-0.5">
                   {awayPlayers.map((p) => {
-                    const rc = p.role === "WK" ? "text-amber-400 border-amber-400/30 bg-amber-400/10" : p.role === "BAT" ? "text-blue-400 border-blue-400/30 bg-blue-400/10" : p.role === "AR" ? "text-emerald-400 border-emerald-400/30 bg-emerald-400/10" : "text-purple-400 border-purple-400/30 bg-purple-400/10"
+                    const rc = p.role === "WK" ? "text-[var(--tw-amber-text)] border-amber-400/30 bg-[var(--tw-amber-bg)]" : p.role === "BAT" ? "text-[var(--tw-blue-text)] border-blue-400/30 bg-[var(--tw-blue-bg)]" : p.role === "AR" ? "text-[var(--tw-emerald-text)] border-emerald-400/30 bg-[var(--tw-emerald-bg)]" : "text-[var(--tw-purple-text)] border-purple-400/30 bg-[var(--tw-purple-bg)]"
                     return (
                       <div key={p.id} className="text-sm flex items-center gap-2 py-1.5 px-2 rounded-md bg-overlay-subtle">
                         <Badge variant="outline" className={`text-[9px] w-10 justify-center border ${rc}`}>{p.role}</Badge>

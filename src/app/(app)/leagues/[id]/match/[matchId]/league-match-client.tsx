@@ -90,11 +90,11 @@ function PlayerRow({
           <p className="text-muted-foreground">They: {theirMultiplier}</p>
         </div>
       ) : myMultiplier && myMultiplier !== "1×" ? (
-        <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded border border-amber-400/30 bg-amber-400/10 text-amber-400 shrink-0">
+        <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded border border-amber-400/30 bg-[var(--tw-amber-bg)] text-[var(--tw-amber-text)] shrink-0">
           {myMultiplier}
         </span>
       ) : theirMultiplier && theirMultiplier !== "1×" ? (
-        <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded border border-red-400/30 bg-red-400/10 text-red-400 shrink-0">
+        <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded border border-red-400/30 bg-[var(--tw-red-bg)] text-[var(--tw-red-text)] shrink-0">
           {theirMultiplier}
         </span>
       ) : null}
@@ -297,7 +297,7 @@ export function LeagueMatchClient({
                       {/* League rank */}
                       <span className={cn(
                         "w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold shrink-0",
-                        leagueRank === 1 && "bg-amber-400/20 text-amber-400",
+                        leagueRank === 1 && "bg-[var(--tw-amber-bg)] text-[var(--tw-amber-text)]",
                         leagueRank === 2 && "bg-gray-400/20 text-gray-400",
                         leagueRank === 3 && "bg-amber-600/20 text-amber-600",
                         leagueRank > 3 && "bg-secondary text-muted-foreground"
@@ -422,7 +422,7 @@ export function LeagueMatchClient({
                   <div>
                     <div className="flex items-center gap-2 mb-2">
                       <span className="w-2 h-2 rounded-full bg-emerald-400 shrink-0" />
-                      <p className="text-xs font-semibold text-emerald-400 uppercase tracking-wide">
+                      <p className="text-xs font-semibold text-[var(--tw-emerald-text)] uppercase tracking-wide">
                         Your Edge
                         <Badge variant="secondary" className="ml-2 text-[10px] font-normal">{myEdge.length}</Badge>
                       </p>
@@ -447,7 +447,7 @@ export function LeagueMatchClient({
                   <div>
                     <div className="flex items-center gap-2 mb-2">
                       <span className="w-2 h-2 rounded-full bg-red-400 shrink-0" />
-                      <p className="text-xs font-semibold text-red-400 uppercase tracking-wide">
+                      <p className="text-xs font-semibold text-[var(--tw-red-text)] uppercase tracking-wide">
                         Their Edge
                         <Badge variant="secondary" className="ml-2 text-[10px] font-normal">{theirEdge.length}</Badge>
                       </p>

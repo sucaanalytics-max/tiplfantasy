@@ -18,10 +18,10 @@ type Props = {
 }
 
 const ROLE_COLORS: Record<string, string> = {
-  WK: "text-amber-400 border-amber-400/30 bg-amber-400/10",
-  BAT: "text-blue-400 border-blue-400/30 bg-blue-400/10",
-  AR: "text-emerald-400 border-emerald-400/30 bg-emerald-400/10",
-  BOWL: "text-purple-400 border-purple-400/30 bg-purple-400/10",
+  WK: "text-[var(--tw-amber-text)] border-amber-400/30 bg-[var(--tw-amber-bg)]",
+  BAT: "text-[var(--tw-blue-text)] border-blue-400/30 bg-[var(--tw-blue-bg)]",
+  AR: "text-[var(--tw-emerald-text)] border-emerald-400/30 bg-[var(--tw-emerald-bg)]",
+  BOWL: "text-[var(--tw-purple-text)] border-purple-400/30 bg-[var(--tw-purple-bg)]",
 }
 
 export function ThreatsSection({ threats }: Props) {
@@ -30,7 +30,7 @@ export function ThreatsSection({ threats }: Props) {
   return (
     <div className="space-y-2">
       <div className="flex items-center gap-2">
-        <AlertTriangle className="h-3.5 w-3.5 text-amber-400" />
+        <AlertTriangle className="h-3.5 w-3.5 text-[var(--tw-amber-text)]" />
         <span className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">Threats</span>
         <span className="text-[10px] text-muted-foreground/60">Players you missed</span>
       </div>
@@ -47,7 +47,7 @@ export function ThreatsSection({ threats }: Props) {
                 {t.ownerCount}/{t.totalUsers}
               </span>
             </div>
-            <span className="text-xs font-bold text-amber-400 tabular-nums shrink-0">+{t.fantasyPoints}</span>
+            <span className="text-xs font-bold text-[var(--tw-amber-text)] tabular-nums shrink-0">+{t.fantasyPoints}</span>
           </div>
         ))}
       </div>

@@ -16,11 +16,11 @@ const CATEGORY_LABELS: Record<ScoringCategory, string> = {
   penalty: "Penalty",
 }
 const CATEGORY_COLOR: Record<ScoringCategory, string> = {
-  batting: "text-blue-400",
-  bowling: "text-purple-400",
-  fielding: "text-emerald-400",
-  bonus: "text-amber-400",
-  penalty: "text-red-400",
+  batting: "text-[var(--tw-blue-text)]",
+  bowling: "text-[var(--tw-purple-text)]",
+  fielding: "text-[var(--tw-emerald-text)]",
+  bonus: "text-[var(--tw-amber-text)]",
+  penalty: "text-[var(--tw-red-text)]",
 }
 
 const gameRules = [
@@ -110,7 +110,7 @@ export default async function RulesPage() {
                   {catRules.map((rule) => (
                     <div key={rule.label} className="flex items-center justify-between py-2.5 first:pt-0 last:pb-0 text-sm">
                       <span className="text-foreground/90">{rule.label}</span>
-                      <span className={`font-semibold tabular-nums shrink-0 ml-4 ${rule.points >= 0 ? "text-green-400" : "text-red-400"}`}>
+                      <span className={`font-semibold tabular-nums shrink-0 ml-4 ${rule.points >= 0 ? "text-green-400" : "text-[var(--tw-red-text)]"}`}>
                         {rule.points > 0 ? "+" : ""}{rule.points}
                       </span>
                     </div>

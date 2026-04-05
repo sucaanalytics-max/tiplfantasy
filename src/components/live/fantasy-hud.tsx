@@ -24,8 +24,8 @@ export function FantasyHUD({ rank, totalPoints, captainName, captainPoints, lead
         <div className="flex items-center gap-3 min-w-0">
           <div className={cn(
             "flex items-center justify-center h-9 w-9 rounded-xl font-display font-bold text-sm shrink-0",
-            rank === 1 ? "bg-amber-500/20 text-amber-400" :
-            rank != null && rank <= 3 ? "bg-blue-500/20 text-blue-400" :
+            rank === 1 ? "bg-amber-500/20 text-[var(--tw-amber-text)]" :
+            rank != null && rank <= 3 ? "bg-blue-500/20 text-[var(--tw-blue-text)]" :
             "bg-overlay-muted text-muted-foreground"
           )}>
             {rank != null ? `#${rank}` : "—"}
@@ -46,7 +46,7 @@ export function FantasyHUD({ rank, totalPoints, captainName, captainPoints, lead
           <div className="text-right shrink-0">
             <p className="text-[10px] text-muted-foreground">Captain</p>
             <p className="text-sm font-semibold truncate max-w-[100px]">{captainName}</p>
-            <p className="text-xs text-amber-400 font-display tabular-nums">+{captainPoints} (2×)</p>
+            <p className="text-xs text-[var(--tw-amber-text)] font-display tabular-nums">+{captainPoints} (2×)</p>
           </div>
         )}
       </div>
@@ -69,8 +69,8 @@ export function FantasyHUD({ rank, totalPoints, captainName, captainPoints, lead
 
       {/* Leading indicator */}
       {isLeading && rank === 1 && (
-        <div className="mt-2 flex items-center gap-1.5 text-[10px] text-amber-400 font-semibold">
-          <span className="h-1.5 w-1.5 rounded-full bg-amber-400 animate-pulse" />
+        <div className="mt-2 flex items-center gap-1.5 text-[10px] text-[var(--tw-amber-text)] font-semibold">
+          <span className="h-1.5 w-1.5 rounded-full bg-[var(--tw-amber-text)] animate-pulse" />
           You&apos;re leading!
         </div>
       )}

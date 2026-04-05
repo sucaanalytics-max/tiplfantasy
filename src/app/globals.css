@@ -118,25 +118,25 @@
   --sidebar-border: oklch(0.90 0.008 75);
   --sidebar-ring: oklch(0.55 0.20 35);
 
-  /* Semantic status tokens (light mode) */
-  --status-live: oklch(0.55 0.24 25);
-  --status-live-bg: oklch(0.55 0.24 25 / 0.10);
-  --status-upcoming: oklch(0.50 0.18 265);
-  --status-upcoming-bg: oklch(0.50 0.18 265 / 0.10);
-  --status-completed: oklch(0.45 0.02 260);
-  --status-completed-bg: oklch(0.45 0.02 260 / 0.10);
-  --status-success: oklch(0.52 0.17 145);
-  --status-success-bg: oklch(0.52 0.17 145 / 0.10);
-  --status-warning: oklch(0.65 0.18 75);
-  --status-warning-bg: oklch(0.65 0.18 75 / 0.10);
-  --status-danger: oklch(0.55 0.24 25);
-  --status-danger-bg: oklch(0.55 0.24 25 / 0.10);
+  /* Semantic status tokens (light mode) — darker for readability */
+  --status-live: oklch(0.50 0.20 25);
+  --status-live-bg: oklch(0.50 0.20 25 / 0.08);
+  --status-upcoming: oklch(0.42 0.14 265);
+  --status-upcoming-bg: oklch(0.42 0.14 265 / 0.08);
+  --status-completed: oklch(0.40 0.02 260);
+  --status-completed-bg: oklch(0.40 0.02 260 / 0.08);
+  --status-success: oklch(0.42 0.12 155);
+  --status-success-bg: oklch(0.42 0.12 155 / 0.08);
+  --status-warning: oklch(0.52 0.14 75);
+  --status-warning-bg: oklch(0.52 0.14 75 / 0.08);
+  --status-danger: oklch(0.50 0.20 25);
+  --status-danger-bg: oklch(0.50 0.20 25 / 0.08);
 
-  /* Role colors */
-  --role-wk: oklch(0.65 0.18 75);
-  --role-bat: oklch(0.50 0.18 265);
-  --role-ar: oklch(0.52 0.17 145);
-  --role-bowl: oklch(0.55 0.20 304);
+  /* Role colors — darker/muted for light backgrounds */
+  --role-wk: oklch(0.55 0.12 75);
+  --role-bat: oklch(0.42 0.14 265);
+  --role-ar: oklch(0.42 0.12 155);
+  --role-bowl: oklch(0.45 0.14 304);
 
   /* Surface — between background and card */
   --surface: oklch(0.955 0.008 75);
@@ -542,4 +542,55 @@
     border-left: 4px solid oklch(0.65 0.20 304);
     background-color: oklch(0.65 0.20 304 / 0.05);
   }
+}
+
+/* ============================================================
+   Light Mode Readability Fixes
+   Neon Tailwind -400 colors are too bright on cream backgrounds.
+   In light mode, override them to darker -600/-700 equivalents.
+   Dark mode is unaffected.
+   ============================================================ */
+:root {
+  /* Green pills (breakdown positive, success indicators) */
+  --tw-emerald-text: oklch(0.40 0.12 160);
+  --tw-emerald-bg: oklch(0.40 0.12 160 / 0.10);
+  --tw-green-text: oklch(0.38 0.12 150);
+
+  /* Red pills (breakdown negative, danger indicators) */
+  --tw-red-text: oklch(0.45 0.18 25);
+  --tw-red-bg: oklch(0.45 0.18 25 / 0.10);
+
+  /* Amber/Yellow (captain, WK, warnings) */
+  --tw-amber-text: oklch(0.52 0.14 75);
+  --tw-amber-bg: oklch(0.52 0.14 75 / 0.12);
+
+  /* Blue (BAT role, info, primary alt) */
+  --tw-blue-text: oklch(0.42 0.14 260);
+  --tw-blue-bg: oklch(0.42 0.14 260 / 0.10);
+
+  /* Purple (BOWL role, VC) */
+  --tw-purple-text: oklch(0.42 0.14 300);
+  --tw-purple-bg: oklch(0.42 0.14 300 / 0.10);
+
+  /* Sky (VC badge) */
+  --tw-sky-text: oklch(0.42 0.12 240);
+
+  /* Teal/Cyan */
+  --tw-teal-text: oklch(0.42 0.10 180);
+}
+
+.dark {
+  --tw-emerald-text: oklch(0.70 0.17 160);
+  --tw-emerald-bg: oklch(0.70 0.17 160 / 0.12);
+  --tw-green-text: oklch(0.65 0.20 145);
+  --tw-red-text: oklch(0.65 0.22 25);
+  --tw-red-bg: oklch(0.65 0.22 25 / 0.12);
+  --tw-amber-text: oklch(0.78 0.15 85);
+  --tw-amber-bg: oklch(0.78 0.15 85 / 0.15);
+  --tw-blue-text: oklch(0.68 0.16 260);
+  --tw-blue-bg: oklch(0.68 0.16 260 / 0.12);
+  --tw-purple-text: oklch(0.68 0.18 300);
+  --tw-purple-bg: oklch(0.68 0.18 300 / 0.12);
+  --tw-sky-text: oklch(0.72 0.12 240);
+  --tw-teal-text: oklch(0.70 0.12 180);
 }

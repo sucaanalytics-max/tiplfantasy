@@ -105,10 +105,10 @@ const BREAKDOWN_LABELS: Record<string, string> = {
 }
 
 const ROLE_COLORS: Record<string, string> = {
-  WK: "text-amber-400 border-amber-400/30 bg-amber-400/10",
-  BAT: "text-blue-400 border-blue-400/30 bg-blue-400/10",
-  AR: "text-emerald-400 border-emerald-400/30 bg-emerald-400/10",
-  BOWL: "text-purple-400 border-purple-400/30 bg-purple-400/10",
+  WK: "text-[var(--tw-amber-text)] border-amber-400/30 bg-[var(--tw-amber-bg)]",
+  BAT: "text-[var(--tw-blue-text)] border-blue-400/30 bg-[var(--tw-blue-bg)]",
+  AR: "text-[var(--tw-emerald-text)] border-emerald-400/30 bg-[var(--tw-emerald-bg)]",
+  BOWL: "text-[var(--tw-purple-text)] border-purple-400/30 bg-[var(--tw-purple-bg)]",
 }
 
 function sr(runs: number, balls: number): string {
@@ -599,8 +599,8 @@ export function ScoresClient({
                         )}
                       >
                         <div className="flex items-center gap-0.5">
-                          {ps.isC && <span className="text-[8px] font-bold text-amber-400 mr-px">C</span>}
-                          {ps.isVC && <span className="text-[8px] font-bold text-sky-400 mr-px">VC</span>}
+                          {ps.isC && <span className="text-[8px] font-bold text-[var(--tw-amber-text)] mr-px">C</span>}
+                          {ps.isVC && <span className="text-[8px] font-bold text-[var(--tw-sky-text)] mr-px">VC</span>}
                           <Badge variant="outline" className={cn("text-[8px] px-1 py-0 h-[14px] border leading-none", ROLE_COLORS[role])}>{role}</Badge>
                         </div>
                         <span className="text-[13px] font-medium truncate text-foreground">{ps.player.name}</span>
@@ -621,7 +621,7 @@ export function ScoresClient({
                       {isPlayerExpanded && bd && Object.keys(bd).length > 0 && (
                         <div className={cn("flex flex-wrap gap-1.5 px-3 py-2 bg-secondary/10 min-w-[420px]", !isLast && "border-b border-overlay-border")}>
                           {Object.entries(bd).map(([key, pts]) => (
-                            <span key={key} className={cn("text-[10px] font-medium px-1.5 py-0.5 rounded", pts > 0 ? "text-emerald-400 bg-emerald-400/10" : "text-red-400 bg-red-400/10")}>
+                            <span key={key} className={cn("text-[10px] font-medium px-1.5 py-0.5 rounded", pts > 0 ? "text-[var(--tw-emerald-text)] bg-[var(--tw-emerald-bg)]" : "text-[var(--tw-red-text)] bg-[var(--tw-red-bg)]")}>
                               {BREAKDOWN_LABELS[key] ?? key} {pts > 0 ? "+" : ""}{pts}
                             </span>
                           ))}
@@ -683,7 +683,7 @@ export function ScoresClient({
                     <div>
                       <div className="flex items-center gap-2 mb-2">
                         <span className="w-2 h-2 rounded-full bg-emerald-400 shrink-0" />
-                        <p className="text-xs font-semibold text-emerald-400 uppercase tracking-wide">
+                        <p className="text-xs font-semibold text-[var(--tw-emerald-text)] uppercase tracking-wide">
                           Your Edge <Badge variant="secondary" className="ml-1 text-[10px]">{compareData.myEdge.length}</Badge>
                         </p>
                       </div>
@@ -708,7 +708,7 @@ export function ScoresClient({
                     <div>
                       <div className="flex items-center gap-2 mb-2">
                         <span className="w-2 h-2 rounded-full bg-red-400 shrink-0" />
-                        <p className="text-xs font-semibold text-red-400 uppercase tracking-wide">
+                        <p className="text-xs font-semibold text-[var(--tw-red-text)] uppercase tracking-wide">
                           Their Edge <Badge variant="secondary" className="ml-1 text-[10px]">{compareData.theirEdge.length}</Badge>
                         </p>
                       </div>
@@ -722,7 +722,7 @@ export function ScoresClient({
                                 {p!.isC ? "C" : p!.isVC ? "VC" : p!.player.role}
                               </Badge>
                               <span className="font-medium truncate">{p!.player.name}</span>
-                              <span className="ml-auto font-bold tabular-nums text-red-400 shrink-0">+{p!.effective}</span>
+                              <span className="ml-auto font-bold tabular-nums text-[var(--tw-red-text)] shrink-0">+{p!.effective}</span>
                             </div>
                           ))}
                         </div>
@@ -773,7 +773,7 @@ export function ScoresClient({
                           p.isMine ? "border-primary/30 bg-primary/10 text-primary" : "border-border text-muted-foreground"
                         )}>
                           {p.pct}% {p.name.split(" ").pop()}
-                          {!p.isMine && <span className="text-amber-400 ml-1">✗</span>}
+                          {!p.isMine && <span className="text-[var(--tw-amber-text)] ml-1">✗</span>}
                         </span>
                       ))}
                     </div>
@@ -831,7 +831,7 @@ export function ScoresClient({
                             {entries.length > 0 && (
                               <div className="flex flex-wrap gap-1 mt-1.5 ml-7">
                                 {entries.sort((a, b) => Math.abs(b[1]) - Math.abs(a[1])).map(([key, pts]) => (
-                                  <span key={key} className={cn("text-[9px] font-medium px-1.5 py-0.5 rounded", pts > 0 ? "text-emerald-400 bg-emerald-400/10" : "text-red-400 bg-red-400/10")}>
+                                  <span key={key} className={cn("text-[9px] font-medium px-1.5 py-0.5 rounded", pts > 0 ? "text-[var(--tw-emerald-text)] bg-[var(--tw-emerald-bg)]" : "text-[var(--tw-red-text)] bg-[var(--tw-red-bg)]")}>
                                     {BREAKDOWN_LABELS[key] ?? key} {pts > 0 ? "+" : ""}{pts}
                                   </span>
                                 ))}
@@ -899,7 +899,7 @@ export function ScoresClient({
                             {entries.length > 0 && (
                               <div className="flex flex-wrap gap-1 mt-1.5 ml-7">
                                 {entries.sort((a, b) => Math.abs(b[1]) - Math.abs(a[1])).map(([key, pts]) => (
-                                  <span key={key} className={cn("text-[9px] font-medium px-1.5 py-0.5 rounded", pts > 0 ? "text-emerald-400 bg-emerald-400/10" : "text-red-400 bg-red-400/10")}>
+                                  <span key={key} className={cn("text-[9px] font-medium px-1.5 py-0.5 rounded", pts > 0 ? "text-[var(--tw-emerald-text)] bg-[var(--tw-emerald-bg)]" : "text-[var(--tw-red-text)] bg-[var(--tw-red-bg)]")}>
                                     {BREAKDOWN_LABELS[key] ?? key} {pts > 0 ? "+" : ""}{pts}
                                   </span>
                                 ))}
