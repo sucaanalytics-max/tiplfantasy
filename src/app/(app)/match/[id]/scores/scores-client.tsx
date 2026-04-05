@@ -453,7 +453,7 @@ export function ScoresClient({
                                 className={cn(
                                   "w-full flex items-center gap-2.5 px-3 py-2.5 rounded-lg transition-colors",
                                   isMe && "bg-primary/10 border border-primary/20",
-                                  isExpanded && !isMe && "bg-white/[0.03]"
+                                  isExpanded && !isMe && "bg-overlay-subtle"
                                 )}
                               >
                                 <RankBadge rank={leagueFilter ? idx + 1 : (user.rank ?? 0)} size="sm" />
@@ -519,7 +519,7 @@ export function ScoresClient({
                         return (
                           <div key={ps.player_id} className={cn(
                             "flex items-center gap-2 py-1.5 px-2.5 rounded-lg",
-                            isMine ? "bg-primary/10 border border-primary/20" : "bg-white/[0.03]"
+                            isMine ? "bg-primary/10 border border-primary/20" : "bg-overlay-subtle"
                           )}>
                             <Badge variant="outline" className={cn("text-[8px] px-1 py-0 h-[14px] shrink-0", ROLE_COLORS[ps.player.role])}>{ps.player.role}</Badge>
                             <div className="flex-1 min-w-0">
@@ -549,14 +549,14 @@ export function ScoresClient({
 
                 {/* Banter */}
                 {banter.length > 0 && (
-                  <div className="rounded-xl border border-white/[0.06] overflow-hidden">
-                    <div className="px-3 py-2 border-b border-white/[0.04] bg-white/[0.03] flex items-center gap-2">
+                  <div className="rounded-xl border border-overlay-border overflow-hidden">
+                    <div className="px-3 py-2 border-b border-overlay-border bg-overlay-subtle flex items-center gap-2">
                       <span className="text-sm">🎭</span>
                       <span className="text-2xs font-semibold text-muted-foreground uppercase tracking-widest">
                         {match.status === "completed" ? "Match Story" : "Match Highlights"}
                       </span>
                     </div>
-                    <div className="divide-y divide-white/[0.04] max-h-36 overflow-y-auto">
+                    <div className="divide-y divide-overlay-border max-h-36 overflow-y-auto">
                       {banter.map((b, i) => (
                         <div key={i} className="px-3 py-2 text-xs text-foreground/90">{b.message}</div>
                       ))}
@@ -572,8 +572,8 @@ export function ScoresClient({
             {myXI.length === 0 ? (
               <p className="text-sm text-muted-foreground text-center py-8">You didn&apos;t pick a team for this match.</p>
             ) : (
-              <div className="rounded-xl border border-white/[0.06] overflow-x-auto">
-                <div className="grid grid-cols-[2.5rem_1fr_1.5rem_1.5rem_1.5rem_1.5rem_1px_1.5rem_1.8rem_1.8rem_1.5rem_3.2rem] gap-px px-3 py-2 text-[9px] text-muted-foreground/70 uppercase tracking-widest font-semibold border-b border-white/[0.06] bg-secondary/40 min-w-[420px]">
+              <div className="rounded-xl border border-overlay-border overflow-x-auto">
+                <div className="grid grid-cols-[2.5rem_1fr_1.5rem_1.5rem_1.5rem_1.5rem_1px_1.5rem_1.8rem_1.8rem_1.5rem_3.2rem] gap-px px-3 py-2 text-[9px] text-muted-foreground/70 uppercase tracking-widest font-semibold border-b border-overlay-border bg-secondary/40 min-w-[420px]">
                   <span></span><span>Player</span>
                   <span className="text-right">R</span><span className="text-right">B</span>
                   <span className="text-right">4s</span><span className="text-right">6s</span>
@@ -594,8 +594,8 @@ export function ScoresClient({
                         onClick={() => setExpandedPlayerId((prev) => prev === ps.player_id ? null : ps.player_id)}
                         className={cn(
                           "w-full grid grid-cols-[2.5rem_1fr_1.5rem_1.5rem_1.5rem_1.5rem_1px_1.5rem_1.8rem_1.8rem_1.5rem_3.2rem] gap-px items-center px-3 py-1.5 min-w-[420px] text-left",
-                          !isLast && !isPlayerExpanded && "border-b border-white/[0.04]",
-                          isPlayerExpanded && "bg-white/[0.03]"
+                          !isLast && !isPlayerExpanded && "border-b border-overlay-border",
+                          isPlayerExpanded && "bg-overlay-subtle"
                         )}
                       >
                         <div className="flex items-center gap-0.5">
@@ -619,7 +619,7 @@ export function ScoresClient({
                         </div>
                       </button>
                       {isPlayerExpanded && bd && Object.keys(bd).length > 0 && (
-                        <div className={cn("flex flex-wrap gap-1.5 px-3 py-2 bg-secondary/10 min-w-[420px]", !isLast && "border-b border-white/[0.04]")}>
+                        <div className={cn("flex flex-wrap gap-1.5 px-3 py-2 bg-secondary/10 min-w-[420px]", !isLast && "border-b border-overlay-border")}>
                           {Object.entries(bd).map(([key, pts]) => (
                             <span key={key} className={cn("text-[10px] font-medium px-1.5 py-0.5 rounded", pts > 0 ? "text-emerald-400 bg-emerald-400/10" : "text-red-400 bg-red-400/10")}>
                               {BREAKDOWN_LABELS[key] ?? key} {pts > 0 ? "+" : ""}{pts}
@@ -802,8 +802,8 @@ export function ScoresClient({
                 ].map(({ team, players: teamPlayers, label }) => {
                   const sorted = [...teamPlayers].sort((a, b) => Number(b.fantasy_points) - Number(a.fantasy_points))
                   return (
-                    <div key={team.short_name} className="rounded-xl border border-white/[0.06] overflow-hidden">
-                      <div className="flex items-center gap-2 px-3 py-2 border-b border-white/[0.04] bg-white/[0.03]">
+                    <div key={team.short_name} className="rounded-xl border border-overlay-border overflow-hidden">
+                      <div className="flex items-center gap-2 px-3 py-2 border-b border-overlay-border bg-overlay-subtle">
                         <div className="w-1 h-4 rounded-full" style={{ backgroundColor: team.color }} />
                         <TeamLogo team={team} size="sm" />
                         <span className="text-xs font-bold font-display uppercase tracking-wider" style={{ color: team.color }}>{label}</span>
@@ -814,7 +814,7 @@ export function ScoresClient({
                         const isMine = myPlayerSet.has(ps.player_id)
                         const isLast = idx === sorted.length - 1
                         return (
-                          <div key={ps.player_id} className={cn("px-3 py-2.5", !isLast && "border-b border-white/[0.04]", isMine && "bg-primary/5")}>
+                          <div key={ps.player_id} className={cn("px-3 py-2.5", !isLast && "border-b border-overlay-border", isMine && "bg-primary/5")}>
                             <div className="flex items-center gap-2">
                               <Badge variant="outline" className={cn("text-[8px] px-1 py-0 h-[14px] border leading-none shrink-0", ROLE_COLORS[ps.player.role])}>{ps.player.role}</Badge>
                               <span className="text-[13px] font-semibold truncate min-w-0 flex-1">
@@ -870,8 +870,8 @@ export function ScoresClient({
                 ].map(({ team, players: teamPlayers, label }) => {
                   const sorted = [...teamPlayers].sort((a, b) => Number(b.fantasy_points) - Number(a.fantasy_points))
                   return (
-                    <div key={team.short_name} className="rounded-xl border border-white/[0.06] overflow-hidden">
-                      <div className="flex items-center gap-2 px-3 py-2 border-b border-white/[0.04] bg-white/[0.03]">
+                    <div key={team.short_name} className="rounded-xl border border-overlay-border overflow-hidden">
+                      <div className="flex items-center gap-2 px-3 py-2 border-b border-overlay-border bg-overlay-subtle">
                         <div className="w-1 h-4 rounded-full" style={{ backgroundColor: team.color }} />
                         <TeamLogo team={team} size="sm" />
                         <span className="text-xs font-bold font-display uppercase tracking-wider" style={{ color: team.color }}>{label}</span>
@@ -882,7 +882,7 @@ export function ScoresClient({
                         const isMine = myPlayerSet.has(ps.player_id)
                         const isLast = idx === sorted.length - 1
                         return (
-                          <div key={ps.player_id} className={cn("px-3 py-2.5", !isLast && "border-b border-white/[0.04]", isMine && "bg-primary/5")}>
+                          <div key={ps.player_id} className={cn("px-3 py-2.5", !isLast && "border-b border-overlay-border", isMine && "bg-primary/5")}>
                             <div className="flex items-center gap-2">
                               <Badge variant="outline" className={cn("text-[8px] px-1 py-0 h-[14px] border leading-none shrink-0", ROLE_COLORS[ps.player.role])}>{ps.player.role}</Badge>
                               <span className="text-[13px] font-semibold truncate min-w-0 flex-1">
@@ -929,7 +929,7 @@ export function ScoresClient({
                       </div>
                       {batsmen.length > 0 && (
                         <div className="mb-3">
-                          <div className="grid grid-cols-[1fr_2rem_2rem_2rem_2rem_3rem_3.5rem] gap-1 px-3 py-1 text-[10px] text-muted-foreground uppercase tracking-wider border-b border-white/[0.06]">
+                          <div className="grid grid-cols-[1fr_2rem_2rem_2rem_2rem_3rem_3.5rem] gap-1 px-3 py-1 text-[10px] text-muted-foreground uppercase tracking-wider border-b border-overlay-border">
                             <span>Batter</span><span className="text-right">R</span><span className="text-right">B</span>
                             <span className="text-right">4s</span><span className="text-right">6s</span>
                             <span className="text-right">SR</span><span className="text-right font-bold">Pts</span>
@@ -937,7 +937,7 @@ export function ScoresClient({
                           {batsmen.sort((a, b) => b.runs - a.runs).map((ps) => {
                             const isMine = myPlayerSet.has(ps.player_id)
                             return (
-                              <div key={ps.player_id} className={cn("grid grid-cols-[1fr_2rem_2rem_2rem_2rem_3rem_3.5rem] gap-1 items-center px-3 py-1.5 border-b border-white/[0.04]", isMine && "bg-primary/5")}>
+                              <div key={ps.player_id} className={cn("grid grid-cols-[1fr_2rem_2rem_2rem_2rem_3rem_3.5rem] gap-1 items-center px-3 py-1.5 border-b border-overlay-border", isMine && "bg-primary/5")}>
                                 <div className="flex items-center gap-1 min-w-0">
                                   <span className="text-sm truncate">{ps.player.name}</span>
                                   {isMine && <span className="text-[8px] text-primary">●</span>}
@@ -955,7 +955,7 @@ export function ScoresClient({
                       )}
                       {bowlers.length > 0 && (
                         <div>
-                          <div className="grid grid-cols-[1fr_2.5rem_2rem_2.5rem_2rem_3rem_3.5rem] gap-1 px-3 py-1 text-[10px] text-muted-foreground uppercase tracking-wider border-b border-white/[0.06]">
+                          <div className="grid grid-cols-[1fr_2.5rem_2rem_2.5rem_2rem_3rem_3.5rem] gap-1 px-3 py-1 text-[10px] text-muted-foreground uppercase tracking-wider border-b border-overlay-border">
                             <span>Bowler</span><span className="text-right">O</span><span className="text-right">M</span>
                             <span className="text-right">R</span><span className="text-right">W</span>
                             <span className="text-right">Econ</span><span className="text-right font-bold">Pts</span>
@@ -963,7 +963,7 @@ export function ScoresClient({
                           {bowlers.sort((a, b) => b.wickets - a.wickets || Number(a.runs_conceded) - Number(b.runs_conceded)).map((ps) => {
                             const isMine = myPlayerSet.has(ps.player_id)
                             return (
-                              <div key={`bowl-${ps.player_id}`} className={cn("grid grid-cols-[1fr_2.5rem_2rem_2.5rem_2rem_3rem_3.5rem] gap-1 items-center px-3 py-1.5 border-b border-white/[0.04]", isMine && "bg-primary/5")}>
+                              <div key={`bowl-${ps.player_id}`} className={cn("grid grid-cols-[1fr_2.5rem_2rem_2.5rem_2rem_3rem_3.5rem] gap-1 items-center px-3 py-1.5 border-b border-overlay-border", isMine && "bg-primary/5")}>
                                 <div className="flex items-center gap-1 min-w-0">
                                   <span className="text-sm truncate">{ps.player.name}</span>
                                   {isMine && <span className="text-[8px] text-primary">●</span>}

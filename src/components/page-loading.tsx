@@ -45,7 +45,7 @@ export function DashboardLoading() {
 export function PickTeamLoading() {
   return (
     <div className="space-y-0">
-      <div className="p-4 space-y-3 border-b border-white/[0.06]">
+      <div className="p-4 space-y-3 border-b border-overlay-border">
         <Skeleton className="h-6 w-32" />
         <Skeleton className="h-4 w-48" />
         <Skeleton className="h-2 w-full rounded-full" />

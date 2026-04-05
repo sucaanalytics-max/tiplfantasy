@@ -147,7 +147,7 @@ export function LeagueDetailClient({ league, members, isCreator, leaderboard, aw
               <Users className="h-3 w-3" />
               {members.length}
             </Badge>
-            <button onClick={copyCode} className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-white/[0.04] border border-white/[0.08] text-xs text-muted-foreground hover:text-foreground hover:border-primary/30 transition-colors font-mono">
+            <button onClick={copyCode} className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-overlay-subtle border border-overlay-border-hover text-xs text-muted-foreground hover:text-foreground hover:border-primary/30 transition-colors font-mono">
               {copied ? <Check className="h-3 w-3 text-status-success" /> : <Copy className="h-3 w-3" />}
               {league.invite_code}
             </button>
@@ -189,7 +189,7 @@ export function LeagueDetailClient({ league, members, isCreator, leaderboard, aw
 
       {/* Season Leaderboard — always visible, above tabs */}
       <div className="rounded-lg glass overflow-hidden">
-        <div className="flex items-center justify-between px-4 py-2.5 border-b border-white/[0.04] bg-white/[0.02]">
+        <div className="flex items-center justify-between px-4 py-2.5 border-b border-overlay-border bg-overlay-subtle">
           <span className="text-xs font-semibold text-muted-foreground uppercase tracking-widest">Season Standings</span>
           <Link href={`/leagues/${league.id}/h2h`}>
             <Button variant="ghost" size="sm" className="gap-1 text-[10px] h-6 px-2">
@@ -253,7 +253,7 @@ export function LeagueDetailClient({ league, members, isCreator, leaderboard, aw
             <LiveRefresher interval={30000} />
 
             {/* Match score header */}
-            <div className="rounded-lg border border-white/[0.06] bg-white/[0.02] p-4">
+            <div className="rounded-lg border border-overlay-border bg-overlay-subtle p-4">
               <div className="flex items-center justify-center gap-4 mb-2">
                 <span className="text-sm font-bold font-display" style={{ color: liveMatchData.match.team_home.color }}>
                   {liveMatchData.match.team_home.short_name}
@@ -298,9 +298,9 @@ export function LeagueDetailClient({ league, members, isCreator, leaderboard, aw
                           onClick={() => setLiveExpandedId((prev) => prev === member.user_id ? null : member.user_id)}
                           className={cn(
                             "w-full flex items-center gap-2.5 px-3 py-2.5 rounded-lg transition-colors",
-                            "hover:bg-white/[0.03] active:bg-secondary/70",
+                            "hover:bg-overlay-subtle active:bg-secondary/70",
                             isMe && "bg-primary/10 border border-primary/20",
-                            expanded && !isMe && "bg-white/[0.03]"
+                            expanded && !isMe && "bg-overlay-subtle"
                           )}
                         >
                           <span className={cn(
@@ -328,7 +328,7 @@ export function LeagueDetailClient({ league, members, isCreator, leaderboard, aw
                         </button>
 
                         {expanded && sel && (
-                          <div className="ml-8 mr-2 mb-2 border-t border-white/[0.06] pt-2 space-y-0.5">
+                          <div className="ml-8 mr-2 mb-2 border-t border-overlay-border pt-2 space-y-0.5">
                             {sel.player_ids
                               .map((pid) => {
                                 const pts = liveMatchData.playerPoints[pid] ?? 0
@@ -366,7 +366,7 @@ export function LeagueDetailClient({ league, members, isCreator, leaderboard, aw
                   <span className="text-sm font-bold text-amber-400 uppercase tracking-wider">Live Commentary</span>
                   <span className="ml-auto text-[10px] text-muted-foreground">{liveMatchData.banter.length} moments</span>
                 </div>
-                <div className="divide-y divide-white/[0.04] max-h-[28rem] overflow-y-auto">
+                <div className="divide-y divide-overlay-border max-h-[28rem] overflow-y-auto">
                   {liveMatchData.banter.map((b, i) => (
                     <div key={i} className="px-4 py-3 text-sm text-foreground leading-relaxed">
                       {b.message}
@@ -662,7 +662,7 @@ export function PrizesTab({ awards, matchScores, leaderboard }: PrizesTabProps) 
             </CardTitle>
           </CardHeader>
           <CardContent className="p-0">
-            <div className="divide-y divide-white/[0.04]">
+            <div className="divide-y divide-overlay-border">
               {matchHistory.map((match) => {
                 const isTied = match.winnersCount > 1
                 const splitPrize = match.prize / match.winnersCount
@@ -770,7 +770,7 @@ function AwardDetailTables({ awards, matchScores }: { awards: LeagueMemberStats[
       <div key={uid}>
         <button
           onClick={() => toggle(table, uid)}
-          className="w-full grid items-center py-2.5 px-3 rounded-lg glass-subtle hover:bg-white/[0.04] transition-colors"
+          className="w-full grid items-center py-2.5 px-3 rounded-lg glass-subtle hover:bg-overlay-subtle transition-colors"
           style={{ gridTemplateColumns: "1fr " + "3.5rem ".repeat(cells.length) + "1.5rem" }}
         >
           <div className="flex items-center gap-2 min-w-0">
@@ -790,7 +790,7 @@ function AwardDetailTables({ awards, matchScores }: { awards: LeagueMemberStats[
   }
 
   const matchRow = (label: string, value: string, highlight?: boolean) => (
-    <div key={label} className="flex items-center justify-between text-xs py-1 border-b border-white/[0.04] last:border-0">
+    <div key={label} className="flex items-center justify-between text-xs py-1 border-b border-overlay-border last:border-0">
       <span className="text-muted-foreground">{label}</span>
       <span className={highlight ? "font-semibold text-emerald-400" : "font-medium"}>{value}</span>
     </div>

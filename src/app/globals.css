@@ -63,39 +63,45 @@
   --color-role-bat: var(--role-bat);
   --color-role-ar: var(--role-ar);
   --color-role-bowl: var(--role-bowl);
+
+  /* Theme-aware overlays (replaces hardcoded white/[0.0X] and black/[0.0X]) */
+  --color-overlay-subtle: var(--overlay-subtle);
+  --color-overlay-muted: var(--overlay-muted);
+  --color-overlay-border: var(--overlay-border);
+  --color-overlay-border-hover: var(--overlay-border-hover);
 }
 
 :root {
   --radius: 0.75rem;
 
-  /* Clean off-white, very faint navy tint */
-  --background: oklch(0.97 0.005 255);
-  --foreground: oklch(0.12 0.02 255);
+  /* Warm cream background — inspired by Oryx/Core dashboard */
+  --background: oklch(0.965 0.008 75);
+  --foreground: oklch(0.15 0.01 60);
 
-  /* White cards */
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.12 0.02 255);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.12 0.02 255);
+  /* Warm white cards with subtle warmth */
+  --card: oklch(0.995 0.003 75);
+  --card-foreground: oklch(0.15 0.01 60);
+  --popover: oklch(0.995 0.003 75);
+  --popover-foreground: oklch(0.15 0.01 60);
 
   /* TIPL orange — the action/energy color from brand */
-  --primary: oklch(0.52 0.22 35);
+  --primary: oklch(0.55 0.20 35);
   --primary-foreground: oklch(0.99 0 0);
 
-  /* Light navy-tinted surfaces */
-  --secondary: oklch(0.94 0.008 255);
-  --secondary-foreground: oklch(0.18 0.02 255);
-  --muted: oklch(0.94 0.008 255);
-  --muted-foreground: oklch(0.45 0.015 255);
+  /* Warm light surfaces */
+  --secondary: oklch(0.94 0.010 75);
+  --secondary-foreground: oklch(0.20 0.01 60);
+  --muted: oklch(0.93 0.010 75);
+  --muted-foreground: oklch(0.45 0.01 60);
 
   /* TIPL gold — prestige/achievement */
   --accent: oklch(0.68 0.17 86);
-  --accent-foreground: oklch(0.12 0.01 86);
+  --accent-foreground: oklch(0.15 0.01 86);
 
   --destructive: oklch(0.55 0.245 27.325);
-  --border: oklch(0.88 0.010 255);
-  --input: oklch(0.88 0.010 255);
-  --ring: oklch(0.52 0.22 35);
+  --border: oklch(0.90 0.008 75);
+  --input: oklch(0.90 0.008 75);
+  --ring: oklch(0.55 0.20 35);
 
   --chart-1: oklch(0.52 0.22 35);
   --chart-2: oklch(0.68 0.17 86);
@@ -103,14 +109,14 @@
   --chart-4: oklch(0.70 0.18 84);
   --chart-5: oklch(0.60 0.20 304);
 
-  --sidebar: oklch(0.96 0.005 255);
-  --sidebar-foreground: oklch(0.12 0.02 255);
-  --sidebar-primary: oklch(0.52 0.22 35);
+  --sidebar: oklch(0.96 0.008 75);
+  --sidebar-foreground: oklch(0.15 0.01 60);
+  --sidebar-primary: oklch(0.55 0.20 35);
   --sidebar-primary-foreground: oklch(0.99 0 0);
-  --sidebar-accent: oklch(0.93 0.01 255);
-  --sidebar-accent-foreground: oklch(0.18 0.02 255);
-  --sidebar-border: oklch(0.88 0.010 255);
-  --sidebar-ring: oklch(0.52 0.22 35);
+  --sidebar-accent: oklch(0.93 0.010 75);
+  --sidebar-accent-foreground: oklch(0.20 0.01 60);
+  --sidebar-border: oklch(0.90 0.008 75);
+  --sidebar-ring: oklch(0.55 0.20 35);
 
   /* Semantic status tokens (light mode) */
   --status-live: oklch(0.55 0.24 25);
@@ -133,17 +139,23 @@
   --role-bowl: oklch(0.55 0.20 304);
 
   /* Surface — between background and card */
-  --surface: oklch(0.955 0.006 255);
+  --surface: oklch(0.955 0.008 75);
 
-  /* Light mode glass/elevation */
-  --glass-bg: oklch(1 0 0 / 0.80);
-  --glass-bg-hover: oklch(1 0 0 / 0.90);
-  --glass-border: oklch(0.12 0.02 255 / 0.06);
-  --glass-border-hover: oklch(0.12 0.02 255 / 0.10);
-  --glass-shadow: 0 4px 16px oklch(0.12 0.02 255 / 0.08);
-  --glass-shadow-lg: 0 8px 32px oklch(0.12 0.02 255 / 0.12);
-  --glow-primary: 0 0 16px oklch(0.52 0.22 35 / 0.20);
-  --glow-accent: 0 0 16px oklch(0.68 0.17 86 / 0.20);
+  /* Light mode glass/elevation — warm soft shadows */
+  --glass-bg: oklch(0.995 0.003 75 / 0.90);
+  --glass-bg-hover: oklch(0.995 0.003 75 / 0.96);
+  --glass-border: oklch(0.15 0.01 60 / 0.08);
+  --glass-border-hover: oklch(0.15 0.01 60 / 0.12);
+  --glass-shadow: 0 1px 3px oklch(0.15 0.01 60 / 0.06), 0 4px 12px oklch(0.15 0.01 60 / 0.04);
+  --glass-shadow-lg: 0 2px 6px oklch(0.15 0.01 60 / 0.06), 0 8px 24px oklch(0.15 0.01 60 / 0.08);
+  --glow-primary: 0 0 12px oklch(0.55 0.20 35 / 0.15);
+  --glow-accent: 0 0 12px oklch(0.68 0.17 86 / 0.15);
+
+  /* Theme-aware overlay colors (used instead of hardcoded white/[0.0X]) */
+  --overlay-subtle: oklch(0.15 0.01 60 / 0.03);
+  --overlay-muted: oklch(0.15 0.01 60 / 0.05);
+  --overlay-border: oklch(0.15 0.01 60 / 0.06);
+  --overlay-border-hover: oklch(0.15 0.01 60 / 0.10);
 }
 
 .dark {
@@ -221,6 +233,12 @@
   --glass-shadow-lg: 0 4px 16px oklch(0 0 0 / 0.5);
   --glow-primary: 0 0 16px oklch(0.72 0.20 45 / 0.20);
   --glow-accent: 0 0 16px oklch(0.78 0.17 86 / 0.20);
+
+  /* Theme-aware overlay colors (dark: white-based, light: dark-based) */
+  --overlay-subtle: oklch(1 0 0 / 0.03);
+  --overlay-muted: oklch(1 0 0 / 0.05);
+  --overlay-border: oklch(1 0 0 / 0.06);
+  --overlay-border-hover: oklch(1 0 0 / 0.10);
 }
 
 @layer base {
@@ -343,11 +361,11 @@
   }
   .elevation-2 {
     background: var(--card);
-    box-shadow: 0 1px 3px oklch(0 0 0 / 0.3);
+    box-shadow: var(--glass-shadow);
   }
   .elevation-3 {
     background: var(--card);
-    box-shadow: 0 4px 16px oklch(0 0 0 / 0.4);
+    box-shadow: var(--glass-shadow-lg);
   }
 
   /* ── Scroll carousel ────────────────────────────── */

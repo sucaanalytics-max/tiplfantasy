@@ -68,7 +68,7 @@ export function SeriesImportClient() {
   const totalChanges = toUpdate.length + toCreate.length
 
   return (
-    <Card className="border border-white/[0.06]">
+    <Card className="border border-overlay-border">
       <CardHeader className="pb-3">
         <CardTitle className="text-base">Import Series Matches</CardTitle>
       </CardHeader>
@@ -109,7 +109,7 @@ export function SeriesImportClient() {
             </div>
 
             {toUpdate.length > 0 && (
-              <div className="max-h-32 overflow-y-auto border border-white/[0.06] rounded-md p-2 space-y-0.5 text-xs font-mono">
+              <div className="max-h-32 overflow-y-auto border border-overlay-border rounded-md p-2 space-y-0.5 text-xs font-mono">
                 <p className="text-muted-foreground mb-1">To update (cricapi_match_id):</p>
                 {toUpdate.map((p) => (
                   <div key={p.apiMatchId} className="flex gap-2">
@@ -121,7 +121,7 @@ export function SeriesImportClient() {
             )}
 
             {toCreate.length > 0 && (
-              <div className="max-h-48 overflow-y-auto border border-white/[0.06] rounded-md p-2 space-y-0.5 text-xs font-mono">
+              <div className="max-h-48 overflow-y-auto border border-overlay-border rounded-md p-2 space-y-0.5 text-xs font-mono">
                 <p className="text-muted-foreground mb-1">New matches to create:</p>
                 {toCreate.map((p) => (
                   <div key={p.apiMatchId} className="flex gap-2">
@@ -134,7 +134,7 @@ export function SeriesImportClient() {
             )}
 
             {unmapped.length > 0 && (
-              <div className="max-h-24 overflow-y-auto border border-white/[0.06] rounded-md p-2 space-y-0.5 text-xs font-mono">
+              <div className="max-h-24 overflow-y-auto border border-overlay-border rounded-md p-2 space-y-0.5 text-xs font-mono">
                 <p className="text-muted-foreground mb-1">Could not resolve teams:</p>
                 {unmapped.map((p) => (
                   <div key={p.apiMatchId} className="text-muted-foreground">{p.apiName}</div>

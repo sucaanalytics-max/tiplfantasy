@@ -18,7 +18,7 @@ export function FantasyHUD({ rank, totalPoints, captainName, captainPoints, lead
   const isLeading = rank === 1
 
   return (
-    <div className="px-4 py-2.5 bg-white/[0.03] border-b border-white/[0.06]">
+    <div className="px-4 py-2.5 bg-overlay-subtle border-b border-overlay-border">
       <div className="flex items-center justify-between gap-3">
         {/* Left: rank + points */}
         <div className="flex items-center gap-3 min-w-0">
@@ -26,7 +26,7 @@ export function FantasyHUD({ rank, totalPoints, captainName, captainPoints, lead
             "flex items-center justify-center h-9 w-9 rounded-xl font-display font-bold text-sm shrink-0",
             rank === 1 ? "bg-amber-500/20 text-amber-400" :
             rank != null && rank <= 3 ? "bg-blue-500/20 text-blue-400" :
-            "bg-white/[0.06] text-muted-foreground"
+            "bg-overlay-muted text-muted-foreground"
           )}>
             {rank != null ? `#${rank}` : "—"}
           </div>
@@ -58,7 +58,7 @@ export function FantasyHUD({ rank, totalPoints, captainName, captainPoints, lead
             <span>{gap} pts behind #1</span>
             <span className="tabular-nums">{pct.toFixed(0)}%</span>
           </div>
-          <div className="h-1.5 bg-white/[0.06] rounded-full overflow-hidden">
+          <div className="h-1.5 bg-overlay-muted rounded-full overflow-hidden">
             <div
               className="h-full bg-gradient-to-r from-primary/60 to-primary rounded-full transition-all duration-700"
               style={{ width: `${pct}%` }}

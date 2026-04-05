@@ -18,7 +18,7 @@ export function AutoPickToggle({ enabled }: { enabled: boolean }) {
   }
 
   return (
-    <Card className="border border-white/[0.06]">
+    <Card className="border border-overlay-border">
       <CardContent className="pt-5">
         <div className="flex items-start justify-between gap-4">
           <div className="space-y-1">

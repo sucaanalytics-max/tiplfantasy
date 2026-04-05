@@ -77,11 +77,11 @@ export default async function RulesPage() {
 
         {/* ── How to Play ── */}
         <TabsContent value="how-to-play" className="mt-4">
-          <Card className="border border-white/[0.06]">
+          <Card className="border border-overlay-border">
             <CardHeader className="pb-3">
               <CardTitle className="text-base">Game Rules</CardTitle>
             </CardHeader>
-            <CardContent className="divide-y divide-white/[0.04]">
+            <CardContent className="divide-y divide-overlay-border">
               {gameRules.map(({ label, value }) => (
                 <div key={label} className="flex items-start justify-between gap-4 py-3 first:pt-0 last:pb-0 text-sm">
                   <span className="text-muted-foreground shrink-0">{label}</span>
@@ -97,16 +97,16 @@ export default async function RulesPage() {
           {activeCategories.map((cat) => {
             const catRules = grouped.get(cat) ?? []
             return (
-              <Card key={cat} className="border border-white/[0.06]">
+              <Card key={cat} className="border border-overlay-border">
                 <CardHeader className="pb-3">
                   <CardTitle className={`text-base flex items-center gap-2 ${CATEGORY_COLOR[cat]}`}>
                     {CATEGORY_LABELS[cat]}
-                    <Badge variant="outline" className="text-[10px] font-normal text-muted-foreground border-white/[0.06]">
+                    <Badge variant="outline" className="text-[10px] font-normal text-muted-foreground border-overlay-border">
                       {catRules.length} rules
                     </Badge>
                   </CardTitle>
                 </CardHeader>
-                <CardContent className="divide-y divide-white/[0.04]">
+                <CardContent className="divide-y divide-overlay-border">
                   {catRules.map((rule) => (
                     <div key={rule.label} className="flex items-center justify-between py-2.5 first:pt-0 last:pb-0 text-sm">
                       <span className="text-foreground/90">{rule.label}</span>

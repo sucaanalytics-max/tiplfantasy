@@ -57,7 +57,7 @@ export function NavBar({ isAdmin = false }: { isAdmin?: boolean }) {
   return (
     <>
       {/* Mobile bottom nav */}
-      <nav aria-label="Main navigation" className="fixed bottom-0 left-0 right-0 z-50 bg-[oklch(0.08_0.005_0)] border-t border-white/[0.06] pb-[env(safe-area-inset-bottom)] md:hidden">
+      <nav aria-label="Main navigation" className="fixed bottom-0 left-0 right-0 z-50 bg-background/95 backdrop-blur-sm border-t border-overlay-border pb-[env(safe-area-inset-bottom)] md:hidden">
         <div className="flex items-center justify-around h-14">
           {mobileItems.map((item) => {
             const Icon = item.icon
@@ -87,7 +87,7 @@ export function NavBar({ isAdmin = false }: { isAdmin?: boolean }) {
       </nav>
 
       {/* Desktop sidebar */}
-      <aside aria-label="Sidebar navigation" className="hidden md:flex fixed left-0 top-0 bottom-0 z-40 w-56 flex-col glass-subtle border-r border-white/[0.06]">
+      <aside aria-label="Sidebar navigation" className="hidden md:flex fixed left-0 top-0 bottom-0 z-40 w-56 flex-col glass-subtle border-r border-overlay-border">
         <div className="p-4 pb-6 flex items-center gap-3">
           <Image
             src="/icons/icon-192.png"
@@ -122,7 +122,7 @@ export function NavBar({ isAdmin = false }: { isAdmin?: boolean }) {
             )
           })}
         </nav>
-        <div className="p-2 border-t border-white/[0.06] space-y-1">
+        <div className="p-2 border-t border-overlay-border space-y-1">
           <ThemeToggle showLabel className="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm text-muted-foreground hover:bg-secondary hover:text-foreground transition-colors w-full" />
           <button
             onClick={handleSignOut}

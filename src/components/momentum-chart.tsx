@@ -48,7 +48,7 @@ export function MomentumChart({ snapshots, userNames, currentUserId }: Props) {
   const xLabels = sorted.map((s) => `${s.over_number}`)
 
   return (
-    <div className="rounded-lg border border-white/[0.04] bg-[hsl(var(--background))] p-3">
+    <div className="rounded-lg border border-overlay-border bg-[hsl(var(--background))] p-3">
       <div className="flex items-center gap-2 mb-2">
         <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-widest">Fantasy Momentum</span>
       </div>

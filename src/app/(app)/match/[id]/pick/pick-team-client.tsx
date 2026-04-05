@@ -327,7 +327,7 @@ export function PickTeamClient({
       <div
         key={player.id}
         className={cn(
-          "flex items-center gap-3 px-4 py-2.5 border-b border-white/[0.04] transition-colors",
+          "flex items-center gap-3 px-4 py-2.5 border-b border-overlay-border transition-colors",
           ROLE_ACCENT[player.role],
           isSelected && "bg-primary/[0.06]",
           isDisabled && "opacity-35",
@@ -344,7 +344,7 @@ export function PickTeamClient({
             <img
               src={player.image_url}
               alt={player.name}
-              className="h-10 w-10 rounded-full object-cover ring-1 ring-white/[0.08]"
+              className="h-10 w-10 rounded-full object-cover ring-1 ring-overlay-border-hover"
             />
           ) : (
             <TeamLogo team={player.team} size="md" />
@@ -408,7 +408,7 @@ export function PickTeamClient({
               ? "bg-primary/15 border-primary/40 text-primary"
               : isDisabled
               ? "border-border/30 text-muted-foreground/30"
-              : "border-white/[0.12] text-muted-foreground hover:border-primary/40 hover:text-primary"
+              : "border-overlay-border-hover text-muted-foreground hover:border-primary/40 hover:text-primary"
           )}
         >
           {isSelected ? "−" : "+"}
@@ -537,7 +537,7 @@ export function PickTeamClient({
     <div className="min-h-dvh pb-[calc(10rem+env(safe-area-inset-bottom))] md:pb-28 lg:pb-0">
       {showConfetti && <Confetti />}
       {/* ── Sticky Header ─────────────────────────────── */}
-      <div className="sticky top-0 z-30 bg-background border-b border-white/[0.06]">
+      <div className="sticky top-0 z-30 bg-background border-b border-overlay-border">
 
         {/* Row 1: Back + Match banner + Credits */}
         <div className="px-4 pt-3 pb-2">
@@ -603,7 +603,7 @@ export function PickTeamClient({
         </div>
 
         {/* Row 2: Role tabs (underline style) */}
-        <div className="flex border-b border-white/[0.04]">
+        <div className="flex border-b border-overlay-border">
           <button
             onClick={() => setActiveFilter("ALL")}
             className={cn(
@@ -636,7 +636,7 @@ export function PickTeamClient({
 
         {/* Row 3: Team filter + search + sort */}
         <div className="px-4 py-2 flex gap-2">
-          <div className="flex rounded-lg overflow-hidden border border-white/[0.06] text-xs">
+          <div className="flex rounded-lg overflow-hidden border border-overlay-border text-xs">
             {(
               [
                 ["ALL", "All"],
@@ -664,7 +664,7 @@ export function PickTeamClient({
               placeholder="Search..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="h-8 pl-8 text-xs rounded-lg border-white/[0.06] bg-secondary/50"
+              className="h-8 pl-8 text-xs rounded-lg border-overlay-border bg-secondary/50"
               aria-label="Search players"
             />
             {search && (
@@ -677,7 +677,7 @@ export function PickTeamClient({
             onClick={() => setSortBy(sortBy === "default" ? "points" : sortBy === "points" ? "credits" : "default")}
             className={cn(
               "flex items-center gap-1 px-2.5 py-1.5 rounded-lg border text-xs transition-colors shrink-0",
-              sortBy !== "default" ? "border-primary/30 text-primary" : "border-white/[0.06] text-muted-foreground"
+              sortBy !== "default" ? "border-primary/30 text-primary" : "border-overlay-border text-muted-foreground"
             )}
           >
             <ArrowUpDown className="h-3 w-3" />
@@ -705,7 +705,7 @@ export function PickTeamClient({
       {/* Desktop split-panel layout */}
       <div className="lg:grid lg:grid-cols-12 lg:h-[calc(100dvh-180px)]">
         {/* Left panel — desktop only: field + C/VC + actions */}
-        <div className="hidden lg:flex lg:flex-col lg:col-span-5 lg:border-r lg:border-white/[0.06] lg:overflow-y-auto lg:p-6 lg:gap-6 bg-surface">
+        <div className="hidden lg:flex lg:flex-col lg:col-span-5 lg:border-r lg:border-overlay-border lg:overflow-y-auto lg:p-6 lg:gap-6 bg-surface">
           {renderDesktopSelectedPlayers()}
 
           {/* Budget & composition summary */}
@@ -787,7 +787,7 @@ export function PickTeamClient({
                 <div key={role}>
                   {/* Role header */}
                   {showHeaders && (
-                    <div className="sticky top-0 z-10 px-4 py-2 bg-secondary/80 border-b border-white/[0.04] flex items-center justify-between">
+                    <div className="sticky top-0 z-10 px-4 py-2 bg-secondary/80 border-b border-overlay-border flex items-center justify-between">
                       <span className="text-2xs font-semibold uppercase tracking-widest text-muted-foreground">
                         {ROLE_LABELS[role]}s
                       </span>
@@ -828,7 +828,7 @@ export function PickTeamClient({
       </div>{/* end split-panel grid */}
 
       {/* Bottom action bar — mobile only */}
-      <div className="fixed bottom-[calc(3.5rem+env(safe-area-inset-bottom))] left-0 right-0 md:bottom-0 z-40 border-t border-white/[0.06] bg-background lg:hidden">
+      <div className="fixed bottom-[calc(3.5rem+env(safe-area-inset-bottom))] left-0 right-0 md:bottom-0 z-40 border-t border-overlay-border bg-background lg:hidden">
         {error && (
           <div className="px-4 py-2 bg-destructive/10 border-b border-destructive/20 flex items-center gap-2">
             <AlertCircle className="h-3.5 w-3.5 text-destructive shrink-0" />

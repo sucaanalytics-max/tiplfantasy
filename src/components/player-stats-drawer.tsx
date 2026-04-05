@@ -175,15 +175,15 @@ export function PlayerStatsDrawer({
 
               {/* Summary: Avg / Last / High */}
               <div className="grid grid-cols-3 gap-3 mb-3">
-                <div className="text-center rounded-lg bg-white/[0.03] py-2">
+                <div className="text-center rounded-lg bg-overlay-subtle py-2">
                   <p className="text-lg font-bold text-foreground">{tiplAvg}</p>
                   <p className="text-[10px] uppercase tracking-wide text-muted-foreground">Avg</p>
                 </div>
-                <div className="text-center rounded-lg bg-white/[0.03] py-2">
+                <div className="text-center rounded-lg bg-overlay-subtle py-2">
                   <p className="text-lg font-bold text-foreground">{tiplLast}</p>
                   <p className="text-[10px] uppercase tracking-wide text-muted-foreground">Last</p>
                 </div>
-                <div className="text-center rounded-lg bg-white/[0.03] py-2">
+                <div className="text-center rounded-lg bg-overlay-subtle py-2">
                   <p className="text-lg font-bold text-foreground">{tiplHigh}</p>
                   <p className="text-[10px] uppercase tracking-wide text-muted-foreground">High</p>
                 </div>
@@ -236,7 +236,7 @@ export function PlayerStatsDrawer({
               <SectionHeader>Match Context</SectionHeader>
               <div className="grid grid-cols-2 gap-3">
                 {vsTeamStats && (
-                  <div className="rounded-lg border border-white/[0.06] p-2.5">
+                  <div className="rounded-lg border border-overlay-border p-2.5">
                     <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground mb-2">
                       vs {opponentTeamName}
                     </p>
@@ -267,7 +267,7 @@ export function PlayerStatsDrawer({
                   </div>
                 )}
                 {venueStats && (
-                  <div className="rounded-lg border border-white/[0.06] p-2.5">
+                  <div className="rounded-lg border border-overlay-border p-2.5">
                     <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground mb-2 truncate">
                       At {matchVenue.split(",")[0]}
                     </p>

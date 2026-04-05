@@ -455,7 +455,7 @@ export function AdminMatchClient({
 
       {/* Match Memo Output */}
       {memoText && (
-        <Card className="border border-white/[0.06]">
+        <Card className="border border-overlay-border">
           <CardHeader className="pb-2">
             <div className="flex items-center justify-between">
               <CardTitle className="text-base">Match Memo</CardTitle>
@@ -479,7 +479,7 @@ export function AdminMatchClient({
           <CardContent>
             <pre
               ref={memoRef}
-              className="whitespace-pre-wrap text-sm bg-white/[0.03] rounded-lg p-4 max-h-[60vh] overflow-y-auto select-all font-sans leading-relaxed"
+              className="whitespace-pre-wrap text-sm bg-overlay-subtle rounded-lg p-4 max-h-[60vh] overflow-y-auto select-all font-sans leading-relaxed"
             >
               {memoText}
             </pre>
@@ -523,7 +523,7 @@ export function AdminMatchClient({
                   {homePlayers.map((p) => {
                     const rc = p.role === "WK" ? "text-amber-400 border-amber-400/30 bg-amber-400/10" : p.role === "BAT" ? "text-blue-400 border-blue-400/30 bg-blue-400/10" : p.role === "AR" ? "text-emerald-400 border-emerald-400/30 bg-emerald-400/10" : "text-purple-400 border-purple-400/30 bg-purple-400/10"
                     return (
-                      <div key={p.id} className="text-sm flex items-center gap-2 py-1.5 px-2 rounded-md bg-white/[0.03]">
+                      <div key={p.id} className="text-sm flex items-center gap-2 py-1.5 px-2 rounded-md bg-overlay-subtle">
                         <Badge variant="outline" className={`text-[9px] w-10 justify-center border ${rc}`}>{p.role}</Badge>
                         <span className="font-medium">{p.name}</span>
                       </div>
@@ -542,7 +542,7 @@ export function AdminMatchClient({
                   {awayPlayers.map((p) => {
                     const rc = p.role === "WK" ? "text-amber-400 border-amber-400/30 bg-amber-400/10" : p.role === "BAT" ? "text-blue-400 border-blue-400/30 bg-blue-400/10" : p.role === "AR" ? "text-emerald-400 border-emerald-400/30 bg-emerald-400/10" : "text-purple-400 border-purple-400/30 bg-purple-400/10"
                     return (
-                      <div key={p.id} className="text-sm flex items-center gap-2 py-1.5 px-2 rounded-md bg-white/[0.03]">
+                      <div key={p.id} className="text-sm flex items-center gap-2 py-1.5 px-2 rounded-md bg-overlay-subtle">
                         <Badge variant="outline" className={`text-[9px] w-10 justify-center border ${rc}`}>{p.role}</Badge>
                         <span className="font-medium">{p.name}</span>
                       </div>
@@ -564,7 +564,7 @@ export function AdminMatchClient({
           <CardContent className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
-                <tr className="border-b border-white/[0.06]">
+                <tr className="border-b border-overlay-border">
                   <th className="text-left py-2 px-1 font-medium sticky left-0 bg-card min-w-[120px]">
                     Player
                   </th>
@@ -580,7 +580,7 @@ export function AdminMatchClient({
                   const s = scores[player.id]
                   if (!s) return null
                   return (
-                    <tr key={player.id} className="border-b border-white/[0.06]">
+                    <tr key={player.id} className="border-b border-overlay-border">
                       <td className="py-2 px-1 sticky left-0 bg-card">
                         <div className="flex items-center gap-1.5">
                           <div
@@ -665,7 +665,7 @@ export function AdminMatchClient({
       )}
       {/* Edit User Team — C/VC Editor */}
       {userSelections.length > 0 && (
-        <Card className="border border-white/[0.06]">
+        <Card className="border border-overlay-border">
           <CardHeader className="pb-3">
             <CardTitle className="text-base">Edit User Team</CardTitle>
           </CardHeader>
@@ -682,7 +682,7 @@ export function AdminMatchClient({
                   setEditCaptainId(sel?.captain_id ?? "")
                   setEditVcId(sel?.vice_captain_id ?? "")
                 }}
-                className="w-full rounded-md border border-white/[0.06] bg-secondary px-3 py-2 text-sm"
+                className="w-full rounded-md border border-overlay-border bg-secondary px-3 py-2 text-sm"
               >
                 <option value="">Choose user...</option>
                 {userSelections.map((s) => (
@@ -709,7 +709,7 @@ export function AdminMatchClient({
                     <select
                       value={editCaptainId}
                       onChange={(e) => setEditCaptainId(e.target.value)}
-                      className="w-full rounded-md border border-white/[0.06] bg-secondary px-3 py-2 text-sm"
+                      className="w-full rounded-md border border-overlay-border bg-secondary px-3 py-2 text-sm"
                     >
                       <option value="">None</option>
                       {selPlayers.map((p) => (
@@ -724,7 +724,7 @@ export function AdminMatchClient({
                     <select
                       value={editVcId}
                       onChange={(e) => setEditVcId(e.target.value)}
-                      className="w-full rounded-md border border-white/[0.06] bg-secondary px-3 py-2 text-sm"
+                      className="w-full rounded-md border border-overlay-border bg-secondary px-3 py-2 text-sm"
                     >
                       <option value="">None</option>
                       {selPlayers.filter((p) => p.id !== editCaptainId).map((p) => (

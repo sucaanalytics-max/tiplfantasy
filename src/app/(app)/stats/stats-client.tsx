@@ -31,7 +31,7 @@ type PlayerAgg = {
 
 function StatRow({ rank, player, stat, sub, accent }: { rank: number; player: PlayerAgg; stat: string; sub?: string; accent?: string }) {
   return (
-    <div className="flex items-center gap-3 py-2 px-3 rounded-lg bg-white/[0.03]">
+    <div className="flex items-center gap-3 py-2 px-3 rounded-lg bg-overlay-subtle">
       <span className={cn(
         "text-sm font-bold tabular-nums w-5 text-center",
         rank === 1 ? (accent ?? "text-amber-400") : rank === 2 ? "text-zinc-400" : rank === 3 ? "text-amber-700" : "text-muted-foreground"
@@ -191,7 +191,7 @@ export function StatsClient({ players, matchCount }: { players: PlayerAgg[]; mat
       {/* Form Table */}
       <SectionCard title="Form Table" emoji="📈" accent="text-foreground">
         {formTable.map((p, i) => (
-          <div key={p.id} className="flex items-center gap-3 py-2 px-3 rounded-lg bg-white/[0.03]">
+          <div key={p.id} className="flex items-center gap-3 py-2 px-3 rounded-lg bg-overlay-subtle">
             <span className={cn(
               "text-sm font-bold tabular-nums w-5 text-center",
               i === 0 ? "text-amber-400" : i === 1 ? "text-zinc-400" : i === 2 ? "text-amber-700" : "text-muted-foreground"

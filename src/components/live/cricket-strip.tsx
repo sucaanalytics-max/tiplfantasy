@@ -22,7 +22,7 @@ export function CricketStrip({ cricapiMatchId, startTime, lastBalls, isLive, res
   if (!isLive && !resultSummary) return null
 
   return (
-    <div className="border-b border-white/[0.06] bg-white/[0.02]">
+    <div className="border-b border-overlay-border bg-overlay-subtle">
       <button
         onClick={() => setExpanded((v) => !v)}
         className="w-full px-4 py-2 flex items-center justify-between gap-2"
@@ -50,7 +50,7 @@ export function CricketStrip({ cricapiMatchId, startTime, lastBalls, isLive, res
 
       {/* Expanded detail — placeholder for batsmen/bowler when data available */}
       {expanded && isLive && (
-        <div className="px-4 pb-3 text-xs text-muted-foreground border-t border-white/[0.04] pt-2">
+        <div className="px-4 pb-3 text-xs text-muted-foreground border-t border-overlay-border pt-2">
           <p className="text-[10px] uppercase tracking-wider text-muted-foreground/60">
             Live scores update every ~60s
           </p>

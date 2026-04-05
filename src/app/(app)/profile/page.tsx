@@ -119,12 +119,12 @@ export default async function ProfilePage() {
                 <span className="text-3xl font-bold font-display tabular-nums">#{rankEntry.season_rank}</span>
                 <span className="text-2xs text-muted-foreground ml-1">Rank</span>
               </div>
-              <div className="h-6 w-px bg-white/[0.08]" />
+              <div className="h-6 w-px bg-overlay-muted" />
               <div>
                 <span className="text-xl font-bold font-display tabular-nums">{rankEntry.total_points}</span>
                 <span className="text-2xs text-muted-foreground ml-1">Pts</span>
               </div>
-              <div className="h-6 w-px bg-white/[0.08]" />
+              <div className="h-6 w-px bg-overlay-muted" />
               <div>
                 <span className="text-xl font-bold font-display tabular-nums">{rankEntry.matches_played}</span>
                 <span className="text-2xs text-muted-foreground ml-1">MP</span>
@@ -403,7 +403,7 @@ export default async function ProfilePage() {
               return (
                 <div
                   key={ms.id}
-                  className="py-2.5 px-3 rounded-lg border-b border-white/[0.04] last:border-b-0"
+                  className="py-2.5 px-3 rounded-lg border-b border-overlay-border last:border-b-0"
                 >
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2.5">

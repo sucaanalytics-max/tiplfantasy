@@ -397,7 +397,7 @@ export default async function DashboardPage() {
                 </Link>
               </div>
 
-              <div className="glass rounded-xl overflow-hidden divide-y divide-white/[0.04] stagger-children">
+              <div className="glass rounded-xl overflow-hidden divide-y divide-overlay-border stagger-children">
                 {(top5 ?? []).map((entry) => {
                   const e = entry as unknown as { user_id: string; display_name: string; total_points: number; season_rank: number }
                   const isMe = e.user_id === user.id
@@ -469,7 +469,7 @@ export default async function DashboardPage() {
                   </p>
                 </div>
               ) : (
-                <div className="glass rounded-xl overflow-hidden divide-y divide-white/[0.04]">
+                <div className="glass rounded-xl overflow-hidden divide-y divide-overlay-border">
                   {myLeagues.slice(0, 3).map((league) => (
                     <Link key={league.id} href={`/leagues/${league.id}`}>
                       <div className="flex items-center justify-between px-4 py-3 glass-hover transition-colors">

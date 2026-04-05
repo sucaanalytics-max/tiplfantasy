@@ -126,7 +126,7 @@ export function MatchList({
                     if (isTomorrow(d)) return <><span className="text-status-warning">Tomorrow</span> · {format(d, "MMM d")}</>
                     return format(d, "EEEE, MMMM d")
                   })()}
-                  <div className="flex-1 h-px bg-white/[0.06]" />
+                  <div className="flex-1 h-px bg-overlay-muted" />
                 </h2>
                 <div className="lg:grid lg:grid-cols-2 lg:gap-4 space-y-3 lg:space-y-0">
                 {dayMatches.map((match) => {
@@ -191,7 +191,7 @@ export function MatchList({
                           </div>
                         )}
 
-                        <div className="mt-3 pt-3 border-t border-white/[0.06] flex items-center justify-between">
+                        <div className="mt-3 pt-3 border-t border-overlay-border flex items-center justify-between">
                           {match.status === "upcoming" && (
                             <>
                               {hasSubmitted ? (

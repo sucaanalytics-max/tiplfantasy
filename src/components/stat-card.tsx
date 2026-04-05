@@ -18,7 +18,7 @@ export function StatCard({
   trend?: { value: string; positive: boolean }
 }) {
   return (
-    <Card className={`border border-white/[0.06] overflow-hidden relative bg-gradient-to-br ${gradient} via-transparent to-transparent`}>
+    <Card className={`border border-overlay-border overflow-hidden relative bg-gradient-to-br ${gradient} via-transparent to-transparent`}>
       <CardContent className="pt-6">
         <div className="flex items-center gap-3">
           <div className={`rounded-full ${iconColor} p-2.5`}>

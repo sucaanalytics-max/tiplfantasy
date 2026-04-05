@@ -30,7 +30,7 @@ export function LeaderboardSelector({
       <select
         value={currentLeagueId ?? "overall"}
         onChange={handleChange}
-        className="text-sm bg-secondary border border-white/[0.06] rounded-md px-2 py-1.5 text-foreground"
+        className="text-sm bg-secondary border border-overlay-border rounded-md px-2 py-1.5 text-foreground"
         aria-label="Select leaderboard scope"
       >
         <option value="overall">Overall</option>

@@ -135,15 +135,15 @@ export default async function TeamSheetPage({
             .sort((a, b) => ROLE_ORDER.indexOf(a!.role) - ROLE_ORDER.indexOf(b!.role))
 
           return (
-            <div key={sel.userId} className="rounded-lg border border-white/[0.04] bg-white/[0.02] overflow-hidden">
+            <div key={sel.userId} className="rounded-lg border border-overlay-border bg-overlay-subtle overflow-hidden">
               {/* Member header */}
-              <div className="px-4 py-2.5 bg-white/[0.03] border-b border-white/[0.04] flex items-center justify-between">
+              <div className="px-4 py-2.5 bg-overlay-subtle border-b border-overlay-border flex items-center justify-between">
                 <span className="text-sm font-bold">{sel.name}</span>
                 <span className="text-[10px] text-muted-foreground">{sel.playerIds.length} players</span>
               </div>
 
               {/* Player list */}
-              <div className="divide-y divide-white/[0.04]">
+              <div className="divide-y divide-overlay-border">
                 {sortedPlayers.map((player) => {
                   if (!player) return null
                   const isCaptain = sel.captainId === player.id
