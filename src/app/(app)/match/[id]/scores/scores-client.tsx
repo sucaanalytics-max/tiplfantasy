@@ -42,6 +42,7 @@ export type PlayerScoreRow = {
   stumpings: number
   run_outs: number
   breakdown: Record<string, number> | null
+  dismissal?: string | null
   player: { name: string; role: string; team_id: string; team: { short_name: string; color: string } }
 }
 
@@ -937,17 +938,24 @@ export function ScoresClient({
                           {batsmen.sort((a, b) => b.runs - a.runs).map((ps) => {
                             const isMine = myPlayerSet.has(ps.player_id)
                             return (
-                              <div key={ps.player_id} className={cn("grid grid-cols-[1fr_2rem_2rem_2rem_2rem_3rem_3.5rem] gap-1 items-center px-3 py-1.5 border-b border-overlay-border", isMine && "bg-primary/5")}>
-                                <div className="flex items-center gap-1 min-w-0">
-                                  <span className="text-sm truncate">{ps.player.name}</span>
-                                  {isMine && <span className="text-[8px] text-primary">●</span>}
+                              <div key={ps.player_id} className={cn("grid grid-cols-[1fr_2rem_2rem_2rem_2rem_3rem_3.5rem] gap-1 px-3 py-1.5 border-b border-overlay-border", isMine && "bg-primary/5")}>
+                                <div className="min-w-0">
+                                  <div className="flex items-center gap-1">
+                                    <span className="text-sm truncate">{ps.player.name}</span>
+                                    {isMine && <span className="text-[8px] text-primary">●</span>}
+                                  </div>
+                                  {ps.dismissal && (
+                                    <span className={cn("text-[10px] leading-tight", ps.dismissal === "not out" ? "text-emerald-400/70 italic" : "text-muted-foreground/50")}>
+                                      {ps.dismissal}
+                                    </span>
+                                  )}
                                 </div>
-                                <span className="text-sm text-right font-medium tabular-nums">{ps.runs}</span>
-                                <span className="text-sm text-right tabular-nums text-muted-foreground">{ps.balls_faced}</span>
-                                <span className="text-sm text-right tabular-nums text-muted-foreground">{ps.fours}</span>
-                                <span className="text-sm text-right tabular-nums text-muted-foreground">{ps.sixes}</span>
-                                <span className="text-[11px] text-right tabular-nums text-muted-foreground">{sr(ps.runs, ps.balls_faced)}</span>
-                                <span className="text-sm text-right font-bold font-display tabular-nums">{Number(ps.fantasy_points)}</span>
+                                <span className="text-sm text-right font-medium tabular-nums self-start pt-0.5">{ps.runs}</span>
+                                <span className="text-sm text-right tabular-nums text-muted-foreground self-start pt-0.5">{ps.balls_faced}</span>
+                                <span className="text-sm text-right tabular-nums text-muted-foreground self-start pt-0.5">{ps.fours}</span>
+                                <span className="text-sm text-right tabular-nums text-muted-foreground self-start pt-0.5">{ps.sixes}</span>
+                                <span className="text-[11px] text-right tabular-nums text-muted-foreground self-start pt-0.5">{sr(ps.runs, ps.balls_faced)}</span>
+                                <span className="text-sm text-right font-bold font-display tabular-nums self-start pt-0.5">{Number(ps.fantasy_points)}</span>
                               </div>
                             )
                           })}

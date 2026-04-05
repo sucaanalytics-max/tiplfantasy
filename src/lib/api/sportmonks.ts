@@ -95,6 +95,8 @@ type SMBatting = {
   wicket_id: number | null
   catch_stump_player_id: number | null
   runout_by_id: number | null
+  dismissal: string | null
+  bowler_id: number | null
 }
 
 type SMBowling = {
@@ -320,6 +322,37 @@ export async function fetchMatchPoints(fixtureId: string): Promise<CricAPIMatchP
       }
     }
 
+    // Build dismissal strings from batting data
+    function buildDismissalString(b: SMBatting): string | undefined {
+      if (b.wicket_id == null) return "not out"
+      const bowler = b.bowler_id ? playerNameMap.get(b.bowler_id) : null
+      const fielder = b.catch_stump_player_id ? playerNameMap.get(b.catch_stump_player_id) : null
+      const runoutFielder = b.runout_by_id ? playerNameMap.get(b.runout_by_id) : null
+      const d = b.dismissal?.toLowerCase()
+
+      // Use last name only for compact display
+      const lastName = (name: string | null) => name?.split(" ").pop() ?? name
+
+      if (d === "caught") {
+        const parts = []
+        if (fielder) parts.push(`c ${lastName(fielder)}`)
+        if (bowler) parts.push(`b ${lastName(bowler)}`)
+        return parts.join(" ") || "caught"
+      }
+      if (d === "bowled") return bowler ? `b ${lastName(bowler)}` : "bowled"
+      if (d === "lbw") return bowler ? `lbw b ${lastName(bowler)}` : "lbw"
+      if (d === "stumped") {
+        const parts = []
+        if (fielder) parts.push(`st ${lastName(fielder)}`)
+        if (bowler) parts.push(`b ${lastName(bowler)}`)
+        return parts.join(" ") || "stumped"
+      }
+      if (d === "run out") return runoutFielder ? `run out (${lastName(runoutFielder)})` : "run out"
+      if (d === "hit wicket") return bowler ? `hit wicket b ${lastName(bowler)}` : "hit wicket"
+      if (d === "retired hurt" || d === "retired out") return d
+      return d ?? "out"
+    }
+
     const innings: CricAPIScorecard[] = [...scoreboards].sort().map((sb) => {
       const inningBatting = batting.filter((b) => b.scoreboard === sb)
       const inningBowling = bowling.filter((b) => b.scoreboard === sb)
@@ -335,6 +368,7 @@ export async function fetchMatchPoints(fixtureId: string): Promise<CricAPIMatchP
           "4s": b.four_x,
           "6s": b.six_x,
           isOut: b.wicket_id != null,
+          dismissal: buildDismissalString(b),
         })),
         bowling: inningBowling.map((b) => ({
           bowler: { name: playerNameMap.get(b.player_id) ?? String(b.player_id) },
@@ -572,6 +606,7 @@ export type ParsedStats = Map<
     stumpings: number
     run_outs: number
     isOut?: boolean
+    dismissal?: string
   }
 >
 
@@ -606,6 +641,7 @@ export function parseScorecardToStats(innings: CricAPIScorecard[]): ParsedStats 
       s.fours += b["4s"]
       s.sixes += b["6s"]
       if (b.isOut !== undefined) s.isOut = b.isOut
+      if (b.dismissal) s.dismissal = b.dismissal
     }
 
     for (const b of inning.bowling ?? []) {

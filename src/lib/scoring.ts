@@ -15,6 +15,7 @@ export type PlayerStats = {
   run_outs: number
   isOut?: boolean
   role?: string
+  dismissal?: string
 }
 
 export async function loadScoringRules(): Promise<ScoringRule[]> {
