@@ -86,6 +86,7 @@ type Props = {
   lastBalls?: Array<{ ball: number; runs: number; four: boolean; six: boolean; wicket: boolean }>
   snapshots?: Array<{ over_number: number; scores: Record<string, number> }>
   userNames?: Record<string, string>
+  allPlayers?: Array<{ id: string; name: string; role: string; team: { short_name: string; color: string } }>
 }
 
 // ─── Helpers ────────────────────────────────────────────────────────────
@@ -126,7 +127,7 @@ export function ScoresClient({
   match, home, away, playerScores, userScores, myScore,
   myPlayerIds, myCaptainId, myVcId, allSelections,
   captainPicks, currentUserId, banter = [], userLeagues = [],
-  lastBalls = [], snapshots = [], userNames = {},
+  lastBalls = [], snapshots = [], userNames = {}, allPlayers = [],
 }: Props) {
   const [activeTab, setActiveTab] = useState("board")
   const [expandedUserId, setExpandedUserId] = useState<string | null>(null)
@@ -147,6 +148,8 @@ export function ScoresClient({
   // Build lookup maps
   const psMap = new Map(playerScores.map((ps) => [ps.player_id, ps]))
   const selMap = new Map(allSelections.map((s) => [s.user_id, s]))
+  // Player info map: covers all players on both teams, even those without scores yet
+  const playerInfoMap = new Map(allPlayers.map((p) => [p.id, p]))
 
   // My XI sorted by effective points
   const myXI = useMemo(() =>
@@ -220,34 +223,43 @@ export function ScoresClient({
     const mySet = new Set(mySel.player_ids)
     const theirSet = new Set(theirSel.player_ids)
 
-    const myEdge = mySel.player_ids.filter((pid) => !theirSet.has(pid)).map((pid) => {
+    // Helper: get player data from scores (preferred) or fallback to allPlayers roster
+    function getPlayerData(pid: string) {
       const ps = psMap.get(pid)
-      if (!ps) return null
+      if (ps) return { player_id: ps.player_id, fantasy_points: ps.fantasy_points, player: ps.player }
+      const info = playerInfoMap.get(pid)
+      if (info) return { player_id: pid, fantasy_points: 0, player: { name: info.name, role: info.role, team_id: "", team: info.team } }
+      return null
+    }
+
+    const myEdge = mySel.player_ids.filter((pid) => !theirSet.has(pid)).map((pid) => {
+      const pd = getPlayerData(pid)
+      if (!pd) return null
       const isC = mySel.captain_id === pid
       const isVC = mySel.vice_captain_id === pid
       const mult = isC ? 2 : isVC ? 1.5 : 1
-      return { ...ps, isC, isVC, effective: Math.round(Number(ps.fantasy_points) * mult * 100) / 100 }
+      return { ...pd, isC, isVC, effective: Math.round(Number(pd.fantasy_points) * mult * 100) / 100 }
     }).filter(Boolean).sort((a, b) => b!.effective - a!.effective)
 
     const theirEdge = theirSel.player_ids.filter((pid) => !mySet.has(pid)).map((pid) => {
-      const ps = psMap.get(pid)
-      if (!ps) return null
+      const pd = getPlayerData(pid)
+      if (!pd) return null
       const isC = theirSel.captain_id === pid
       const isVC = theirSel.vice_captain_id === pid
       const mult = isC ? 2 : isVC ? 1.5 : 1
-      return { ...ps, isC, isVC, effective: Math.round(Number(ps.fantasy_points) * mult * 100) / 100 }
+      return { ...pd, isC, isVC, effective: Math.round(Number(pd.fantasy_points) * mult * 100) / 100 }
     }).filter(Boolean).sort((a, b) => b!.effective - a!.effective)
 
     const shared = mySel.player_ids.filter((pid) => theirSet.has(pid)).map((pid) => {
-      const ps = psMap.get(pid)
-      if (!ps) return null
+      const pd = getPlayerData(pid)
+      if (!pd) return null
       const myMult = mySel.captain_id === pid ? 2 : mySel.vice_captain_id === pid ? 1.5 : 1
       const theirMult = theirSel.captain_id === pid ? 2 : theirSel.vice_captain_id === pid ? 1.5 : 1
-      return { ...ps, myMult, theirMult, myEff: Math.round(Number(ps.fantasy_points) * myMult * 100) / 100, theirEff: Math.round(Number(ps.fantasy_points) * theirMult * 100) / 100 }
+      return { ...pd, myMult, theirMult, myEff: Math.round(Number(pd.fantasy_points) * myMult * 100) / 100, theirEff: Math.round(Number(pd.fantasy_points) * theirMult * 100) / 100 }
     }).filter(Boolean)
 
     return { opponentId: opId, myEdge, theirEdge, shared }
-  }, [compareUserId, compareOpponents, selMap, psMap, currentUserId])
+  }, [compareUserId, compareOpponents, selMap, psMap, playerInfoMap, currentUserId])
 
   // Global ownership stats
   const globalOwnership = useMemo(() => {

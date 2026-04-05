@@ -72,6 +72,13 @@ export default async function ScoresPage({
   const match = matchRes.data
   if (!match) redirect("/matches")
 
+  // Phase 2: fetch all players for both teams (needed for compare when players haven't scored yet)
+  const { data: allPlayersRaw } = await admin
+    .from("players")
+    .select("id, name, role, team_id, team:teams(short_name, color)")
+    .in("team_id", [match.team_home_id, match.team_away_id])
+    .limit(60)
+
   const home = match.team_home as unknown as TeamInfo
   const away = match.team_away as unknown as TeamInfo
   const playerScores = (playerScoresRes.data ?? []) as unknown as PlayerScoreRow[]
@@ -146,6 +153,12 @@ export default async function ScoresPage({
         lastBalls={(match.last_balls as Array<{ ball: number; runs: number; four: boolean; six: boolean; wicket: boolean }>) ?? []}
         snapshots={(snapshotsRes.data ?? []) as Array<{ over_number: number; scores: Record<string, number> }>}
         userNames={Object.fromEntries(userScores.map((s) => [s.user_id, (s.profile as unknown as { display_name: string })?.display_name ?? "?"]))}
+        allPlayers={(allPlayersRaw ?? []).map((p) => ({
+          id: p.id,
+          name: p.name,
+          role: p.role as string,
+          team: p.team as unknown as { short_name: string; color: string },
+        }))}
       />
     </PageTransition>
   )
