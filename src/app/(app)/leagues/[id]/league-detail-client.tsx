@@ -653,52 +653,7 @@ export function PrizesTab({ awards, matchScores, leaderboard }: PrizesTabProps) 
       )}
 
       {/* Matchday History */}
-      {matchHistory.length > 0 && (
-        <Card className="glass">
-          <CardHeader className="pb-3">
-            <CardTitle className="text-base flex items-center gap-2">
-              <Trophy className="h-4 w-4" />
-              Matchday History
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="p-0">
-            <div className="divide-y divide-overlay-border">
-              {matchHistory.map((match) => {
-                const isTied = match.winnersCount > 1
-                const splitPrize = match.prize / match.winnersCount
-                const matchKind = getMatchType(match.matchNumber)
-                return (
-                  <div key={match.matchId} className="flex items-center justify-between py-2.5 px-4">
-                    <div className="flex items-center gap-3 min-w-0">
-                      <div className="flex flex-col">
-                        <span className="text-xs font-medium">Match #{match.matchNumber}</span>
-                        <span className="text-[10px] text-muted-foreground capitalize">{matchKind}</span>
-                      </div>
-                      <div className="min-w-0">
-                        {match.winners.map((w) => (
-                          <div key={w.userId} className="flex items-center gap-1.5">
-                            <AvatarInitial name={w.name} size="sm" />
-                            <span className="text-sm truncate">{w.name}</span>
-                            <span className="text-xs text-muted-foreground">· {w.points} pts</span>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                    <div className="text-right shrink-0 ml-3">
-                      <span className="text-sm font-bold text-[var(--tw-emerald-text)]">
-                        {isTied ? splitPrize : match.prize}
-                      </span>
-                      {isTied && (
-                        <p className="text-[10px] text-muted-foreground">each (split)</p>
-                      )}
-                    </div>
-                  </div>
-                )
-              })}
-            </div>
-          </CardContent>
-        </Card>
-      )}
+      {matchHistory.length > 0 && <MatchdayHistorySection matchHistory={matchHistory} />}
 
       {/* Award Detail Tables */}
       {matchScores.length > 0 && <AwardDetailTables awards={awards} matchScores={matchScores} />}
@@ -706,11 +661,134 @@ export function PrizesTab({ awards, matchScores, leaderboard }: PrizesTabProps) 
   )
 }
 
+// ── Matchday History Section ────────────────────────────────────────────────
+type MatchHistoryItem = { matchNumber: number; matchId: string; startTime: string; prize: number; winners: { userId: string; name: string; points: number }[]; winnersCount: number }
+
+function MatchdayHistorySection({ matchHistory }: { matchHistory: MatchHistoryItem[] }) {
+  const [expandedUser, setExpandedUser] = useState<string | null>(null)
+
+  // Last 3 matchday results
+  const recent = matchHistory.slice(0, 3)
+
+  // Per-user: which matches they won + total earned
+  const userWins = new Map<string, { name: string; matches: MatchHistoryItem[]; totalEarned: number }>()
+  for (const match of matchHistory) {
+    const splitPrize = match.prize / match.winnersCount
+    for (const w of match.winners) {
+      if (!userWins.has(w.userId)) {
+        userWins.set(w.userId, { name: w.name, matches: [], totalEarned: 0 })
+      }
+      const entry = userWins.get(w.userId)!
+      entry.matches.push(match)
+      entry.totalEarned += splitPrize
+    }
+  }
+  const userWinsList = [...userWins.entries()]
+    .sort(([, a], [, b]) => b.totalEarned - a.totalEarned)
+
+  // Grand total matchday prize pool paid out
+  const grandTotal = userWinsList.reduce((s, [, u]) => s + u.totalEarned, 0)
+
+  return (
+    <Card className="glass">
+      <CardHeader className="pb-3">
+        <CardTitle className="text-base flex items-center gap-2">
+          <Trophy className="h-4 w-4" />
+          Matchday History
+          <span className="text-xs font-normal text-muted-foreground ml-auto">
+            Total: <span className="text-emerald-400 font-semibold">{Math.round(grandTotal).toLocaleString()}</span>
+          </span>
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        {/* Recent 3 matchdays */}
+        <div>
+          <p className="text-[10px] text-muted-foreground uppercase tracking-wide mb-2">Recent</p>
+          <div className="space-y-1">
+            {recent.map((match) => {
+              const isTied = match.winnersCount > 1
+              const splitPrize = match.prize / match.winnersCount
+              return (
+                <div key={match.matchId} className="flex items-center justify-between py-2 px-3 rounded-lg glass-subtle">
+                  <div className="flex items-center gap-3 min-w-0">
+                    <span className="text-xs font-medium shrink-0">M{match.matchNumber}</span>
+                    <div className="min-w-0">
+                      {match.winners.map((w) => (
+                        <div key={w.userId} className="flex items-center gap-1.5">
+                          <AvatarInitial name={w.name} size="sm" />
+                          <span className="text-sm truncate">{w.name}</span>
+                          <span className="text-xs text-muted-foreground">· {w.points} pts</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                  <div className="text-right shrink-0 ml-3">
+                    <span className="text-sm font-bold text-emerald-400">{isTied ? Math.round(splitPrize) : match.prize}</span>
+                    {isTied && <p className="text-[10px] text-muted-foreground">each</p>}
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        </div>
+
+        {/* Per-user breakdown */}
+        <div>
+          <p className="text-[10px] text-muted-foreground uppercase tracking-wide mb-2">By Member</p>
+          <div className="space-y-1">
+            {userWinsList.map(([uid, data]) => {
+              const isOpen = expandedUser === uid
+              return (
+                <div key={uid}>
+                  <button
+                    onClick={() => setExpandedUser(isOpen ? null : uid)}
+                    className="w-full flex items-center justify-between py-2.5 px-3 rounded-lg glass-subtle hover:bg-white/[0.04] transition-colors"
+                  >
+                    <div className="flex items-center gap-2 min-w-0">
+                      <AvatarInitial name={data.name} size="sm" />
+                      <span className="text-sm truncate">{data.name}</span>
+                      <span className="text-xs text-muted-foreground">{data.matches.length} win{data.matches.length !== 1 ? "s" : ""}</span>
+                    </div>
+                    <div className="flex items-center gap-2 shrink-0">
+                      <span className="text-sm font-bold text-emerald-400">{Math.round(data.totalEarned).toLocaleString()}</span>
+                      <ChevronDown className={`h-3.5 w-3.5 text-muted-foreground transition-transform ${isOpen ? "rotate-180" : ""}`} />
+                    </div>
+                  </button>
+                  {isOpen && (
+                    <div className="px-3 pb-2 pt-1 ml-8 space-y-1">
+                      {data.matches.map((m) => {
+                        const split = m.prize / m.winnersCount
+                        const winner = m.winners.find((w) => w.userId === uid)
+                        return (
+                          <div key={m.matchId} className="flex items-center justify-between text-xs py-1 border-b border-white/[0.04] last:border-0">
+                            <span className="text-muted-foreground">M{m.matchNumber}</span>
+                            <span>
+                              <span className="font-medium">{winner?.points} pts</span>
+                              <span className="text-emerald-400 ml-2 font-semibold">+{Math.round(split)}</span>
+                            </span>
+                          </div>
+                        )
+                      })}
+                    </div>
+                  )}
+                </div>
+              )
+            })}
+          </div>
+        </div>
+      </CardContent>
+    </Card>
+  )
+}
+
 // ── Award Detail Tables ────────────────────────────────────────────────────
+type CaptaincySortKey = "cPts" | "vcPts" | "total"
+
 function AwardDetailTables({ awards, matchScores }: { awards: LeagueMemberStats[]; matchScores: LeagueMatchScore[] }) {
   const [expandedRows, setExpandedRows] = useState<Record<string, string | null>>({
     captaincy: null, highScore: null, wins: null, consistency: null,
   })
+  const [captaincySort, setCaptaincySort] = useState<CaptaincySortKey>("cPts")
 
   const toggle = (table: string, userId: string) =>
     setExpandedRows((prev) => ({ ...prev, [table]: prev[table] === userId ? null : userId }))
@@ -731,13 +809,13 @@ function AwardDetailTables({ awards, matchScores }: { awards: LeagueMemberStats[
   }
 
   // ── Captaincy ──
-  const captaincy = [...userMap.entries()]
+  const captaincyUnsorted = [...userMap.entries()]
     .map(([uid, d]) => {
       const cPts = d.matches.reduce((s, m) => s + m.captain, 0)
       const vcPts = d.matches.reduce((s, m) => s + m.vc, 0)
       return { userId: uid, name: d.name, cPts, vcPts, total: cPts + vcPts, matches: d.matches }
     })
-    .sort((a, b) => b.cPts - a.cPts || b.total - a.total)
+  const captaincy = [...captaincyUnsorted].sort((a, b) => b[captaincySort] - a[captaincySort] || b.total - a.total)
 
   // ── Highest Score ──
   const highScore = [...userMap.entries()]
@@ -812,9 +890,18 @@ function AwardDetailTables({ awards, matchScores }: { awards: LeagueMemberStats[
             style={{ gridTemplateColumns: "1fr 3.5rem 3.5rem 3.5rem 1.5rem" }}
           >
             <span>Member</span>
-            <span className="text-right">C</span>
-            <span className="text-right">VC</span>
-            <span className="text-right">Total</span>
+            {(["cPts", "vcPts", "total"] as CaptaincySortKey[]).map((key) => {
+              const labels: Record<CaptaincySortKey, string> = { cPts: "C", vcPts: "VC", total: "Total" }
+              return (
+                <button
+                  key={key}
+                  onClick={() => setCaptaincySort(key)}
+                  className={`text-right cursor-pointer hover:text-foreground transition-colors ${captaincySort === key ? "text-foreground font-bold" : ""}`}
+                >
+                  {labels[key]}{captaincySort === key ? " ↓" : ""}
+                </button>
+              )
+            })}
             <span />
           </div>
           {captaincy.map((row) =>

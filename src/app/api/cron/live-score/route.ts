@@ -214,7 +214,14 @@ export async function GET(req: NextRequest) {
         continue
       }
 
-      // 6. Upsert player scores (atomic — no gap between delete and insert)
+      // 6. Delete stale player scores not in current scorecard, then upsert
+      const currentPlayerIds = scoreRows.map((r) => r.player_id)
+      await admin
+        .from("match_player_scores")
+        .delete()
+        .eq("match_id", match.id)
+        .not("player_id", "in", `(${currentPlayerIds.join(",")})`)
+
       const { error: upsertPlayerErr } = await admin
         .from("match_player_scores")
         .upsert(scoreRows, { onConflict: "match_id,player_id" })
