@@ -7,6 +7,7 @@ import { Trophy as TrophyIcon, Zap, Crown, Target, Swords } from "lucide-react"
 import { Trophy } from "@/components/icons/trophy"
 import { getMyLeagues, getLeagueLeaderboard, getLeagueAwards, getLeagueMatchScores } from "@/actions/leagues"
 import { LeaderboardSelector } from "./leaderboard-selector"
+import { MatchdayHistory, AwardTables } from "./leaderboard-sections"
 import { getInitials, getAvatarColor } from "@/lib/avatar"
 import { RankBadge } from "@/components/rank-badge"
 import { EmptyState } from "@/components/empty-state"
@@ -49,7 +50,7 @@ export default async function LeaderboardPage({
   ])
 
   // Build matchday history (winners per match)
-  type MatchWinner = { matchNumber: number; matchId: string; winners: { name: string; points: number }[]; winnersCount: number }
+  type MatchWinner = { matchNumber: number; matchId: string; winners: { userId?: string; name: string; points: number }[]; winnersCount: number }
   const matchesMap = new Map<number, MatchWinner>()
   for (const row of matchScores) {
     if (row.league_rank === 1) {
@@ -61,7 +62,7 @@ export default async function LeaderboardPage({
           winnersCount: row.match_winners_count,
         })
       }
-      matchesMap.get(row.match_number)!.winners.push({ name: row.display_name, points: row.total_points })
+      matchesMap.get(row.match_number)!.winners.push({ userId: row.user_id, name: row.display_name, points: row.total_points })
     }
   }
   const matchHistory = [...matchesMap.entries()].sort(([a], [b]) => b - a).map(([, data]) => data)
@@ -120,6 +121,9 @@ export default async function LeaderboardPage({
             {leaderboard.map((entry, i) => {
               const rank = i + 1
               const isMe = entry.user_id === user.id
+              // Gap to prize position: 2nd shows gap to 1st, 3rd+ shows gap to 2nd
+              const targetIdx = rank === 2 ? 0 : rank >= 3 ? 1 : -1
+              const gap = targetIdx >= 0 ? Number(leaderboard[targetIdx].total_points) - Number(entry.total_points) : 0
               return (
                 <div
                   key={entry.user_id}
@@ -136,7 +140,11 @@ export default async function LeaderboardPage({
                     {isMe && <span className="text-primary text-[10px] ml-1">(you)</span>}
                   </span>
                   <span className="text-sm font-bold font-display tabular-nums">{Number(entry.total_points)}</span>
-                  <span className="text-[10px] text-muted-foreground tabular-nums w-8 text-right">{entry.matches_played}M</span>
+                  {rank === 1 ? (
+                    <span className="text-[10px] tabular-nums w-12 text-right text-emerald-400 font-semibold">1st</span>
+                  ) : (
+                    <span className="text-[10px] tabular-nums w-12 text-right text-red-400">-{gap}</span>
+                  )}
                   <span className="text-[10px] text-muted-foreground tabular-nums w-12 text-right">{entry.avg_points.toFixed(0)} avg</span>
                 </div>
               )
@@ -212,27 +220,10 @@ export default async function LeaderboardPage({
       )}
 
       {/* ═══ MATCHDAY HISTORY ═══ */}
-      {matchHistory.length > 0 && (
-        <div>
-          <p className="text-xs font-semibold text-muted-foreground uppercase tracking-widest mb-3">Matchday History</p>
-          <div className="rounded-lg glass overflow-hidden divide-y divide-overlay-border">
-            {matchHistory.map((match) => (
-              <div key={match.matchNumber} className="flex items-center justify-between px-4 py-3">
-                <div>
-                  <span className="text-xs text-muted-foreground">Match #{match.matchNumber}</span>
-                  <div className="flex items-center gap-1.5 mt-0.5">
-                    <span className="text-sm">🏆</span>
-                    <span className="text-sm font-medium">
-                      {match.winners.map((w) => w.name).join(" & ")}
-                    </span>
-                  </div>
-                </div>
-                <span className="text-sm font-bold font-display tabular-nums">{match.winners[0]?.points} pts</span>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
+      {matchHistory.length > 0 && <MatchdayHistory matchHistory={matchHistory} />}
+
+      {/* ═══ AWARD TABLES ═══ */}
+      {matchScores.length > 0 && <AwardTables awards={awards} matchScores={matchScores} />}
     </div>
     </PageTransition>
   )

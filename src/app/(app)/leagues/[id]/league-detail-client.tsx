@@ -241,10 +241,10 @@ export function LeagueDetailClient({ league, members, isCreator, leaderboard, aw
             <GitCompareArrows className="h-3.5 w-3.5" />
             Match Teams
           </TabsTrigger>
-          <TabsTrigger value="prizes" className="gap-1.5">
+          <Link href="/leaderboard" className="inline-flex items-center justify-center gap-1.5 whitespace-nowrap rounded-md px-3 py-1 text-sm font-medium ring-offset-background transition-all text-muted-foreground hover:text-foreground">
             <Trophy className="h-3.5 w-3.5" />
-            Prizes
-          </TabsTrigger>
+            Prizes →
+          </Link>
         </TabsList>
 
         {/* ── Live Tab ─────────────────────────────── */}
@@ -423,9 +423,7 @@ export function LeagueDetailClient({ league, members, isCreator, leaderboard, aw
           )}
         </TabsContent>
 
-        <TabsContent value="prizes" className="space-y-6">
-          <PrizesTab awards={awards} matchScores={matchScores} leaderboard={leaderboard} />
-        </TabsContent>
+        {/* Prizes moved to /leaderboard */}
       </Tabs>
       </div>{/* end tabs wrapper */}
     </div>
