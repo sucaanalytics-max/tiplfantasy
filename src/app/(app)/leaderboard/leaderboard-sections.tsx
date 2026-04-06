@@ -151,10 +151,20 @@ export function AwardTables({ awards, matchScores }: { awards: LeagueMemberStats
     return { userId: uid, name: d.name, best: best.total, matchNum: best.matchNumber, matches: [...d.matches].sort((a, b) => b.total - a.total) }
   }).sort((a, b) => b.best - a.best)
 
-  // Matchday Wins
+  // Matchday Wins — with prize calculation
+  const MATCHDAY_PRIZE = 150
+  // Count co-winners per match for prize splitting
+  const matchWinnerCounts = new Map<number, number>()
+  for (const [, d] of userMap) {
+    for (const m of d.matches) {
+      if (m.rank === 1) matchWinnerCounts.set(m.matchNumber, (matchWinnerCounts.get(m.matchNumber) ?? 0) + 1)
+    }
+  }
+
   const wins = [...userMap.entries()].map(([uid, d]) => {
     const wonMatches = d.matches.filter((m) => m.rank === 1)
-    return { userId: uid, name: d.name, winCount: wonMatches.length, wonMatches, matches: d.matches }
+    const totalWon = wonMatches.reduce((s, m) => s + MATCHDAY_PRIZE / (matchWinnerCounts.get(m.matchNumber) ?? 1), 0)
+    return { userId: uid, name: d.name, winCount: wonMatches.length, totalWon, wonMatches, matches: d.matches }
   }).sort((a, b) => b.winCount - a.winCount)
 
   // Consistency
@@ -261,12 +271,13 @@ export function AwardTables({ awards, matchScores }: { awards: LeagueMemberStats
             <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">Matchday Wins</span>
           </div>
           <div className="p-2 space-y-0.5">
-            <div className="grid text-[10px] text-muted-foreground px-3 pb-1 uppercase tracking-wide" style={{ gridTemplateColumns: "1fr 3.5rem 1.5rem" }}>
-              <span>Member</span><span className="text-right">Wins</span><span />
+            <div className="grid text-[10px] text-muted-foreground px-3 pb-1 uppercase tracking-wide" style={{ gridTemplateColumns: "1fr 3.5rem 3.5rem 1.5rem" }}>
+              <span>Member</span><span className="text-right">Wins</span><span className="text-right">Won</span><span />
             </div>
             {wins.map((row) =>
               renderRow(row.userId, row.name, [
                 <span key="w" className="text-sm font-semibold text-right text-emerald-400">{row.winCount}</span>,
+                <span key="won" className="text-sm font-medium text-right text-amber-400">{Math.round(row.totalWon)}</span>,
               ], "wins",
                 row.wonMatches.length > 0
                   ? row.wonMatches.sort((a, b) => b.matchNumber - a.matchNumber).map((m) => matchRow(`M${m.matchNumber}`, `${Math.round(m.total)} pts`, true))
