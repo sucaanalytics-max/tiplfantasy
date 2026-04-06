@@ -21,56 +21,45 @@ export default async function DashboardPage() {
   const [user, supabase] = await Promise.all([getAuthUser(), createClient()])
   if (!user) redirect("/login")
 
-  // Phase 1: all independent queries in parallel
+  // Phase 1: all independent queries in parallel (5 queries, was 8)
   const [
     profileRes,
     myRankRes,
-    upcomingRes,
-    liveRes,
-    lastMatchRes,
+    allMatchesRes,
     top6Res,
     myLeagues,
-    completedRes,
   ] = await Promise.all([
     supabase.from("profiles").select("display_name, avatar_url").eq("id", user.id).single(),
     supabase.from("season_leaderboard").select("*").eq("user_id", user.id).maybeSingle(),
     supabase
       .from("matches")
       .select("*, team_home:teams!matches_team_home_id_fkey(short_name, color, logo_url), team_away:teams!matches_team_away_id_fkey(short_name, color, logo_url)")
-      .eq("status", "upcoming")
-      .order("start_time", { ascending: true })
-      .limit(5),
-    supabase
-      .from("matches")
-      .select("*, team_home:teams!matches_team_home_id_fkey(short_name, color, logo_url), team_away:teams!matches_team_away_id_fkey(short_name, color, logo_url)")
-      .eq("status", "live")
-      .order("start_time", { ascending: true })
-      .limit(2),
-    supabase
-      .from("matches")
-      .select("*, team_home:teams!matches_team_home_id_fkey(short_name, color, logo_url), team_away:teams!matches_team_away_id_fkey(short_name, color, logo_url)")
-      .eq("status", "completed")
       .order("start_time", { ascending: false })
-      .limit(1)
-      .maybeSingle(),
+      .limit(20),
     supabase.from("season_leaderboard").select("*").order("season_rank", { ascending: true }).limit(6),
     getMyLeagues(),
-    supabase.from("matches").select("id").eq("status", "completed").order("start_time", { ascending: false }).limit(20),
   ])
 
   const profile = profileRes.data
   const myRank = myRankRes.data
-  const upcomingMatches = upcomingRes.data
-  const liveMatches = liveRes.data ?? []
-  const lastMatch = lastMatchRes.data
   const top6 = top6Res.data
-  const completedMatches = completedRes.data
 
-  const nextMatch = upcomingMatches?.[0] ?? null
-  const moreMatches = upcomingMatches?.slice(1) ?? []
+  // Split single query result by status (was 3 separate queries + 1 IDs query)
+  const allMatches = allMatchesRes.data ?? []
+  const liveMatches = allMatches.filter((m) => m.status === "live")
+  const upcomingMatches = allMatches
+    .filter((m) => m.status === "upcoming")
+    .sort((a, b) => new Date(a.start_time).getTime() - new Date(b.start_time).getTime())
+    .slice(0, 5)
+  const lastMatch = allMatches.find((m) => m.status === "completed" || m.status === "no_result") ?? null
+  const completedMatches = allMatches.filter((m) => m.status === "completed" || m.status === "no_result")
 
-  // Phase 2: queries that depend on Phase 1 results, in parallel
-  const allRelevantMatchIds = [...(upcomingMatches ?? []), ...liveMatches].map((m) => m.id)
+  const nextMatch = upcomingMatches[0] ?? null
+  const moreMatches = upcomingMatches.slice(1)
+
+  // Phase 2: queries that depend on Phase 1 results (4 queries, was 5)
+  const allRelevantMatchIds = [...upcomingMatches, ...liveMatches].map((m) => m.id)
+  const completedMatchIds = completedMatches.map((m) => m.id)
   const [subsRes, lastScoreRes, streakRes, lastSelectionRes, liveScoresRes] = await Promise.all([
     allRelevantMatchIds.length > 0
       ? supabase.from("selections").select("match_id").eq("user_id", user.id).in("match_id", allRelevantMatchIds).limit(10)
@@ -78,8 +67,8 @@ export default async function DashboardPage() {
     lastMatch
       ? supabase.from("user_match_scores").select("total_points, rank").eq("user_id", user.id).eq("match_id", lastMatch.id).single()
       : Promise.resolve({ data: null as { total_points: number; rank: number | null } | null }),
-    completedMatches && completedMatches.length > 0
-      ? supabase.from("selections").select("match_id").eq("user_id", user.id).in("match_id", completedMatches.map((m) => m.id)).limit(25)
+    completedMatchIds.length > 0
+      ? supabase.from("selections").select("match_id").eq("user_id", user.id).in("match_id", completedMatchIds).limit(25)
       : Promise.resolve({ data: [] as { match_id: string }[] }),
     lastMatch
       ? supabase

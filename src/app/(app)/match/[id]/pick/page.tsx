@@ -97,7 +97,8 @@ export default async function PickTeamPage({
     supabase
       .from("selection_players")
       .select("player_id, selection:selections!inner(match_id)")
-      .eq("selection.match_id", matchId),
+      .eq("selection.match_id", matchId)
+      .limit(200),
 
     // Last 10 completed matches to scope form scores (replaces limit(2000) fetch)
     supabase

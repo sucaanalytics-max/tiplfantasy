@@ -33,7 +33,8 @@ export default async function LeagueDetailPage({
       .from("matches")
       .select("id, match_number, start_time, status, team_home:teams!team_home_id(short_name, color), team_away:teams!team_away_id(short_name, color)")
       .in("status", ["live", "completed", "no_result"])
-      .order("start_time", { ascending: false }),
+      .order("start_time", { ascending: false })
+      .limit(20),
     admin
       .from("matches")
       .select("id, match_number, status, cricapi_match_id, start_time, team_home:teams!team_home_id(short_name, color, logo_url), team_away:teams!team_away_id(short_name, color, logo_url)")
@@ -72,14 +73,17 @@ export default async function LeagueDetailPage({
         .select("user_id, total_points, captain_points, vc_points")
         .eq("match_id", matchId)
         .in("user_id", memberIds)
-        .order("total_points", { ascending: false }),
+        .order("total_points", { ascending: false })
+        .limit(50),
       admin.from("selections")
         .select("user_id, captain_id, vice_captain_id, selection_players(player_id)")
         .eq("match_id", matchId)
-        .in("user_id", memberIds),
+        .in("user_id", memberIds)
+        .limit(50),
       admin.from("match_player_scores")
         .select("player_id, fantasy_points, player:players(name, role)")
-        .eq("match_id", matchId),
+        .eq("match_id", matchId)
+        .limit(50),
       admin.from("match_banter")
         .select("message, event_type, created_at")
         .eq("match_id", matchId)
