@@ -37,7 +37,7 @@ export default async function DashboardPage() {
       .from("matches")
       .select("*, team_home:teams!matches_team_home_id_fkey(short_name, color, logo_url), team_away:teams!matches_team_away_id_fkey(short_name, color, logo_url)")
       .order("start_time", { ascending: false })
-      .limit(20),
+      .limit(80),
     supabase.from("season_leaderboard").select("*").order("season_rank", { ascending: true }).limit(6),
     getMyLeagues(),
   ])
