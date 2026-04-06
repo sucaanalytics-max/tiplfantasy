@@ -320,8 +320,9 @@ export function PickTeamClient({
     const matchupChip = getMatchupChip(player)
 
     const scores = tiplScores[player.id] ?? []
-    const avgPts = scores.length > 0 ? Math.round(scores.reduce((a, b) => a + b.total, 0) / scores.length) : null
-    const lastPts = scores.length > 0 ? scores[scores.length - 1].total : null
+    const totalPts = scores.length > 0 ? scores.reduce((a, b) => a + b.total, 0) : null
+    const avgPts = scores.length > 0 ? Math.round(totalPts! / scores.length) : null
+    const lastPts = scores.length > 0 ? scores[0].total : null
 
     return (
       <div
@@ -383,18 +384,19 @@ export function PickTeamClient({
           )}
         </div>
 
-        {/* Points column */}
-        <div className="text-right shrink-0 w-10">
-          <span className={cn("text-sm font-bold tabular-nums font-display", avgPts != null ? "text-foreground" : "text-muted-foreground/30")}>
-            {avgPts ?? "—"}
-          </span>
-          {lastPts != null && (
-            <p className="text-2xs text-muted-foreground tabular-nums">{lastPts}</p>
-          )}
-        </div>
+        {/* Tot / Avg / Last columns */}
+        <span className={cn("text-xs font-bold tabular-nums font-display w-9 text-right shrink-0", totalPts != null ? "text-foreground" : "text-muted-foreground/30")}>
+          {totalPts ?? "—"}
+        </span>
+        <span className={cn("text-xs tabular-nums w-9 text-right shrink-0", avgPts != null ? "text-muted-foreground" : "text-muted-foreground/30")}>
+          {avgPts ?? "—"}
+        </span>
+        <span className={cn("text-xs tabular-nums w-9 text-right shrink-0", lastPts != null ? "text-muted-foreground" : "text-muted-foreground/30")}>
+          {lastPts ?? "—"}
+        </span>
 
         {/* Credits */}
-        <span className="text-sm font-bold tabular-nums font-display text-muted-foreground w-10 text-center shrink-0">
+        <span className="text-xs font-bold tabular-nums font-display text-muted-foreground w-8 text-center shrink-0">
           {player.credit_cost}
         </span>
 
@@ -688,8 +690,10 @@ export function PickTeamClient({
         {/* Column headers */}
         <div className="px-4 pb-1.5 flex items-center">
           <span className="text-2xs font-semibold text-muted-foreground uppercase flex-1">Player</span>
-          <span className="text-2xs font-semibold text-muted-foreground uppercase w-10 text-right">Pts</span>
-          <span className="text-2xs font-semibold text-muted-foreground uppercase w-10 text-center">Credit</span>
+          <span className="text-2xs font-semibold text-muted-foreground uppercase w-9 text-right">Tot</span>
+          <span className="text-2xs font-semibold text-muted-foreground uppercase w-9 text-right">Avg</span>
+          <span className="text-2xs font-semibold text-muted-foreground uppercase w-9 text-right">Last</span>
+          <span className="text-2xs font-semibold text-muted-foreground uppercase w-8 text-center">Cr</span>
           <span className="w-8" />
         </div>
 
