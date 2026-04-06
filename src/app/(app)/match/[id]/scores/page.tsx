@@ -37,7 +37,7 @@ export default async function ScoresPage({
       .select("*, profile:profiles(display_name)")
       .eq("match_id", id)
       .order("rank", { ascending: true })
-      .limit(50),
+      .limit(200),
     supabase
       .from("selections")
       .select("captain_id, vice_captain_id, selection_players(player_id)")
@@ -48,13 +48,13 @@ export default async function ScoresPage({
       .from("selections")
       .select("user_id, captain_id, vice_captain_id, selection_players(player_id)")
       .eq("match_id", id)
-      .limit(50),
+      .limit(200),
     admin
       .from("selections")
       .select("user_id, captain_id, captain:players!selections_captain_id_fkey(name)")
       .eq("match_id", id)
       .not("captain_id", "is", null)
-      .limit(50),
+      .limit(200),
     admin
       .from("match_banter")
       .select("message, event_type")

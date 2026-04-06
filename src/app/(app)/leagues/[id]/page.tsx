@@ -36,7 +36,7 @@ export default async function LeagueDetailPage({
       .select("id, match_number, start_time, status, team_home:teams!team_home_id(short_name, color), team_away:teams!team_away_id(short_name, color)")
       .in("status", ["live", "completed", "no_result"])
       .order("start_time", { ascending: false })
-      .limit(20),
+      .limit(80),
     admin
       .from("matches")
       .select("id, match_number, status, cricapi_match_id, start_time, team_home:teams!team_home_id(short_name, color, logo_url), team_away:teams!team_away_id(short_name, color, logo_url)")

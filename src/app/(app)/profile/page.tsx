@@ -52,7 +52,7 @@ export default async function ProfilePage() {
       .from("selection_players")
       .select("player:players(role)")
       .in("selection_id", selectionIds)
-      .limit(600)
+      .limit(900)
     for (const sp of selPlayers ?? []) {
       const role = (sp.player as unknown as { role: string })?.role
       if (role && role in roleCounts) roleCounts[role as keyof typeof roleCounts]++
