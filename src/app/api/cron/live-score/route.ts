@@ -46,22 +46,6 @@ export async function GET(req: NextRequest) {
           tag: `lock-reminder-${sm.id}`,
         })
       }
-
-      // Pre-match hype push to ALL users (tag dedup = once per match)
-      let banterLine = `${home} vs ${away} in 30 min. Fantasy teams locked at toss! 🏏`
-      try {
-        const aiLine = await generateText(
-          `You are Baba T, the banter master of an office fantasy cricket league called TIPL.\n${home} vs ${away} starts in 30 minutes.\nLeague members (use ONLY these names): JVB, Anup, Kanodia, Biyani, Shreevar, Saket.\nWrite ONE short, punchy pre-match hype/trash-talk message (max 15 words) for a push notification.\nYou may mention 1-2 member names for banter. Do NOT invent or use any other names.\nMix cricket excitement with office humor. No hashtags, no emojis at start. Just the message, nothing else.`
-        )
-        if (aiLine) banterLine = aiLine.trim().split("\n")[0].replace(/^["']|["']$/g, "")
-      } catch { /* use default */ }
-
-      await sendPushToAll({
-        title: `🏏 ${home} vs ${away} — 30 min!`,
-        body: banterLine,
-        url: `/match/${sm.id}/pick`,
-        tag: `prematch-hype-${sm.id}`,
-      })
     }
   } catch { /* lock reminder is non-critical */ }
 
