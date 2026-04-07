@@ -69,6 +69,8 @@ export async function GET(req: NextRequest) {
       // ── Push: Match started (first live detection) ──
       const isFirstLiveTick = !match.live_scores_at
       if (isFirstLiveTick) {
+        // Stamp immediately so the next cron tick won't re-send
+        await admin.from("matches").update({ live_scores_at: new Date().toISOString() }).eq("id", match.id)
         try {
           const home = (match.team_home as unknown as { short_name: string })?.short_name ?? "?"
           const away = (match.team_away as unknown as { short_name: string })?.short_name ?? "?"
