@@ -34,7 +34,7 @@ const gameRules = [
   { label: "Vice-Captain", value: "1.5× points multiplier" },
   { label: "Auto-pick", value: "Copies previous match team — no C/VC bonus" },
   { label: "Lock time", value: "Selections lock at match start" },
-  { label: "No Result", value: "All users receive a flat 15 points" },
+  { label: "Abandoned", value: "No points awarded — match doesn't count" },
 ]
 
 export default async function RulesPage() {
