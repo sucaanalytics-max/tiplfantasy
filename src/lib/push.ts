@@ -21,6 +21,7 @@ type PushPayload = {
  * Non-critical — errors are silently ignored.
  */
 export async function sendPushToAll(payload: PushPayload): Promise<number> {
+  return 0 // Push notifications disabled
   if (!VAPID_PUBLIC || !VAPID_PRIVATE) return 0
 
   const admin = createAdminClient()
@@ -61,6 +62,7 @@ export async function sendPushToAll(payload: PushPayload): Promise<number> {
  * Send push to specific user IDs only.
  */
 export async function sendPushToUsers(userIds: string[], payload: PushPayload): Promise<number> {
+  return 0 // Push notifications disabled
   if (!VAPID_PUBLIC || !VAPID_PRIVATE) return 0
 
   const admin = createAdminClient()
