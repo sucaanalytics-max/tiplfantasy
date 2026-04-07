@@ -39,7 +39,7 @@ export async function GET(req: NextRequest) {
       const away = (sm.team_away as unknown as { short_name: string })?.short_name ?? "?"
 
       if (missingIds.length > 0) {
-        // DISABLED: await sendPushToUsers(missingIds, {
+        await sendPushToUsers(missingIds, {
           title: "⏰ Team Not Submitted!",
           body: `${home} vs ${away} starts in ~30 min — pick your XI!`,
           url: `/match/${sm.id}/pick`,
@@ -72,7 +72,7 @@ export async function GET(req: NextRequest) {
         try {
           const home = (match.team_home as unknown as { short_name: string })?.short_name ?? "?"
           const away = (match.team_away as unknown as { short_name: string })?.short_name ?? "?"
-          // DISABLED: await sendPushToAll({
+          await sendPushToAll({
             title: "🏏 Match Started!",
             body: `${home} vs ${away} is LIVE — fantasy points updating`,
             url: `/match/${match.id}/scores`,
@@ -333,7 +333,7 @@ export async function GET(req: NextRequest) {
                 const minsSinceLeadPush = (Date.now() - lastLeadPush) / 60_000
                 if (minsSinceLeadPush >= 20) {
                   const name = profileNameMap.get(us.userId) ?? "Unknown"
-                  // DISABLED: await sendPushToAll({
+                  await sendPushToAll({
                     title: "🚀 New Leader!",
                     body: `${name} takes the lead with ${us.total} pts`,
                     url: `/match/${match.id}/scores`,
@@ -398,7 +398,7 @@ export async function GET(req: NextRequest) {
           const halfNameMap = new Map((halfProfiles ?? []).map((p) => [p.id, p.display_name ?? "Unknown"]))
 
           const leaderText = top3.map((u, i) => `${i + 1}. ${halfNameMap.get(u.userId) ?? "Unknown"} (${u.total})`).join(" · ")
-          // DISABLED: await sendPushToAll({
+          await sendPushToAll({
             title: "📊 Halfway Leaderboard",
             body: leaderText,
             url: `/match/${match.id}/scores`,
@@ -506,7 +506,7 @@ export async function GET(req: NextRequest) {
             const best = pool.length > 0 ? pool[Math.floor(Math.random() * pool.length)] : null
             if (best?.message) {
               const pushCount = Math.floor(Date.now() / 1000)
-              // DISABLED: await sendPushToAll({
+              await sendPushToAll({
                 title: "Baba T 🧘🏽",
                 body: best.message,
                 url: `/match/${match.id}/scores`,
@@ -543,7 +543,7 @@ export async function GET(req: NextRequest) {
           return `${name} (${u.total})`
         })
         try {
-          // DISABLED: await sendPushToAll({
+          await sendPushToAll({
             title: `🏆 Match Complete`,
             body: `${top2.join(" · ")}${note ? ` · ${note}` : ""}`,
             url: `/match/${match.id}/scores`,
