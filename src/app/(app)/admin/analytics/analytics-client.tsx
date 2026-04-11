@@ -2,7 +2,7 @@
 
 import { useState, useMemo } from "react"
 import Link from "next/link"
-import { ArrowLeft, ArrowUpDown, TrendingUp, Shield, Eye, MapPin, ChevronDown, ChevronUp, Sparkles, Users, BarChart3, Target } from "lucide-react"
+import { ArrowLeft, ArrowUpDown, TrendingUp, Shield, Eye, MapPin, ChevronDown, ChevronUp, Sparkles, Users, BarChart3, Target, Swords } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
@@ -222,8 +222,9 @@ export function AnalyticsClient({
         <MinMatchesFilter value={minMatches} onChange={setMinMatches} />
       </div>
 
-      <Tabs defaultValue="players" className="w-full">
+      <Tabs defaultValue="nextmatch" className="w-full">
         <TabsList className="w-full justify-start overflow-x-auto flex-nowrap">
+          <TabsTrigger value="nextmatch" className="gap-1.5"><Swords className="h-3.5 w-3.5" />Next Match</TabsTrigger>
           <TabsTrigger value="players" className="gap-1.5"><BarChart3 className="h-3.5 w-3.5" />Players</TabsTrigger>
           <TabsTrigger value="ratings" className="gap-1.5"><Sparkles className="h-3.5 w-3.5" />Ratings</TabsTrigger>
           <TabsTrigger value="preview" className="gap-1.5"><Eye className="h-3.5 w-3.5" />Preview</TabsTrigger>
@@ -231,6 +232,14 @@ export function AnalyticsClient({
           <TabsTrigger value="venues" className="gap-1.5"><MapPin className="h-3.5 w-3.5" />Venues</TabsTrigger>
         </TabsList>
 
+        <TabsContent value="nextmatch">
+          <NextMatchTab
+            playerStats={filteredPlayerStats}
+            powerRatings={filteredPowerRatings}
+            matchPreview={matchPreview}
+            roleFilter={roleFilter}
+          />
+        </TabsContent>
         <TabsContent value="players">
           <PlayersTab stats={filteredPlayerStats} benchmarks={roleBenchmarks} formCurves={formCurves} matchCount={matchCount} />
         </TabsContent>
@@ -253,6 +262,265 @@ export function AnalyticsClient({
           <VenuesTab venues={venueData} matchRows={matchScoringRows} />
         </TabsContent>
       </Tabs>
+    </div>
+  )
+}
+
+// ============================================================
+// Tab 0: Next Match
+// ============================================================
+
+type NextMatchPlayerRow = PlayerAnalytics & {
+  xfp: number | null
+  venueAvg: number | null
+  vsOpponentAvg: number | null
+  ownershipPct: number
+  isDifferential: boolean
+  powerRating: number | null
+  volatility: "low" | "medium" | "high" | null
+}
+
+function NextMatchTab({
+  playerStats,
+  powerRatings,
+  matchPreview,
+  roleFilter,
+}: {
+  playerStats: PlayerAnalytics[]
+  powerRatings: PowerRating[]
+  matchPreview: Props["matchPreview"]
+  roleFilter: Set<PlayerRole>
+}) {
+  const [teamFilter, setTeamFilter] = useState<string | null>(null)
+
+  if (!matchPreview) {
+    return (
+      <div className="py-20 text-center text-muted-foreground text-sm">
+        No upcoming match found. Check back when the next match is scheduled.
+      </div>
+    )
+  }
+
+  const { predictions, suggestedTeam, matchInfo } = matchPreview
+  const predictionMap = new Map(predictions.map((p) => [p.id, p]))
+  const ratingMap = new Map(powerRatings.map((p) => [p.id, p]))
+
+  // Filter player stats to only players from the two match teams
+  const matchTeams = new Set([matchInfo.homeTeam, matchInfo.awayTeam])
+  const matchPlayers: NextMatchPlayerRow[] = playerStats
+    .filter((p) => matchTeams.has(p.team) && roleFilter.has(p.role))
+    .map((p) => {
+      const pred = predictionMap.get(p.id)
+      const rating = ratingMap.get(p.id)
+      return {
+        ...p,
+        xfp: pred?.xfp ?? null,
+        venueAvg: pred?.venueAvg ?? null,
+        vsOpponentAvg: pred?.vsOpponentAvg ?? null,
+        ownershipPct: pred?.ownershipPct ?? 0,
+        isDifferential: pred?.isDifferential ?? false,
+        powerRating: rating?.powerRating ?? null,
+        volatility: rating?.volatility ?? null,
+      }
+    })
+
+  // Also include players in predictions who don't have season stats yet (new to playing XI)
+  const existingIds = new Set(matchPlayers.map((p) => p.id))
+  for (const pred of predictions) {
+    if (!existingIds.has(pred.id) && roleFilter.has(pred.role)) {
+      matchPlayers.push({
+        id: pred.id,
+        name: pred.name,
+        role: pred.role,
+        team: pred.team,
+        color: pred.color,
+        matches: 0,
+        totalFP: 0, avgFP: 0, medianFP: 0,
+        floor: 0, ceiling: 0, stddev: 0, cv: 0,
+        formLast3: pred.formLast3, formDelta: 0,
+        battingFP: 0, bowlingFP: 0, fieldingFP: 0, penaltyFP: 0,
+        scores: [], rollingAvg: [],
+        xfp: pred.xfp,
+        venueAvg: pred.venueAvg,
+        vsOpponentAvg: pred.vsOpponentAvg,
+        ownershipPct: pred.ownershipPct,
+        isDifferential: pred.isDifferential,
+        powerRating: null,
+        volatility: null,
+      })
+    }
+  }
+
+  const filtered = teamFilter
+    ? matchPlayers.filter((p) => p.team === teamFilter)
+    : matchPlayers
+
+  const { sorted, sortKey, sortDir, toggleSort } = useSortableTable(filtered, "xfp" as keyof NextMatchPlayerRow)
+
+  return (
+    <div className="space-y-6 mt-4">
+      {/* Match Header */}
+      <Card className="bg-gradient-to-br from-primary/5 via-transparent to-transparent">
+        <CardContent className="pt-6">
+          <div className="flex items-center justify-between flex-wrap gap-3">
+            <div>
+              <p className="text-xs text-muted-foreground">Match {matchInfo.matchNumber} — Next Up</p>
+              <p className="text-lg font-bold">{matchInfo.homeTeam} vs {matchInfo.awayTeam}</p>
+              <p className="text-xs text-muted-foreground">{matchInfo.venue}</p>
+            </div>
+            <div className="flex gap-1.5">
+              <button
+                onClick={() => setTeamFilter(null)}
+                className={cn("px-2.5 py-1 rounded-md text-xs font-semibold transition-colors",
+                  !teamFilter ? "bg-primary/15 text-primary" : "bg-muted/50 text-muted-foreground")}
+              >Both</button>
+              <button
+                onClick={() => setTeamFilter(matchInfo.homeTeam)}
+                className={cn("px-2.5 py-1 rounded-md text-xs font-semibold transition-colors",
+                  teamFilter === matchInfo.homeTeam ? "bg-primary/15 text-primary" : "bg-muted/50 text-muted-foreground")}
+              >{matchInfo.homeTeam}</button>
+              <button
+                onClick={() => setTeamFilter(matchInfo.awayTeam)}
+                className={cn("px-2.5 py-1 rounded-md text-xs font-semibold transition-colors",
+                  teamFilter === matchInfo.awayTeam ? "bg-primary/15 text-primary" : "bg-muted/50 text-muted-foreground")}
+              >{matchInfo.awayTeam}</button>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Suggested Team */}
+      {suggestedTeam && (
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm flex items-center gap-2">
+              <Sparkles className="h-4 w-4 text-amber-500" />
+              Suggested XI — Projected {suggestedTeam.totalProjected} pts
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="flex flex-wrap gap-2">
+              {suggestedTeam.players
+                .sort((a, b) => {
+                  const roleOrder: Record<string, number> = { WK: 0, BAT: 1, AR: 2, BOWL: 3 }
+                  return (roleOrder[a.role] ?? 4) - (roleOrder[b.role] ?? 4)
+                })
+                .map((p) => {
+                  const isCaptain = p.id === suggestedTeam.captainId
+                  const isVC = p.id === suggestedTeam.vcId
+                  return (
+                    <div
+                      key={p.id}
+                      className={cn(
+                        "px-3 py-1.5 rounded-lg text-xs flex items-center gap-1.5 border",
+                        isCaptain ? "border-amber-500/50 bg-amber-500/10"
+                        : isVC ? "border-blue-500/50 bg-blue-500/10"
+                        : "border-overlay-border bg-overlay-subtle"
+                      )}
+                    >
+                      <Badge variant="outline" className={cn("text-[9px] px-1 py-0 h-4", ROLE_COLORS[p.role])}>{p.role}</Badge>
+                      <span className="font-medium">{p.name.split(" ").pop()}</span>
+                      <span className="tabular-nums text-muted-foreground">{p.xfp}</span>
+                      {isCaptain && <Badge className="text-[8px] px-1 py-0 h-3.5 bg-amber-500 text-white">C</Badge>}
+                      {isVC && <Badge className="text-[8px] px-1 py-0 h-3.5 bg-blue-500 text-white">VC</Badge>}
+                    </div>
+                  )
+                })}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Full Stats Table for Match Players */}
+      <Card>
+        <CardHeader className="pb-2">
+          <CardTitle className="text-sm">Match Players — Full Season Stats + Predictions ({sorted.length})</CardTitle>
+        </CardHeader>
+        <CardContent className="p-0">
+          <div className="overflow-x-auto">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead className="sticky left-0 bg-background z-10 min-w-[140px]">Player</TableHead>
+                  <SortHeader label="xFP" sortKey={"xfp" as keyof NextMatchPlayerRow} currentKey={sortKey} currentDir={sortDir} onSort={toggleSort} />
+                  <SortHeader label="Rating" sortKey={"powerRating" as keyof NextMatchPlayerRow} currentKey={sortKey} currentDir={sortDir} onSort={toggleSort} />
+                  <SortHeader label="M" sortKey={"matches" as keyof NextMatchPlayerRow} currentKey={sortKey} currentDir={sortDir} onSort={toggleSort} />
+                  <SortHeader label="Avg" sortKey={"avgFP" as keyof NextMatchPlayerRow} currentKey={sortKey} currentDir={sortDir} onSort={toggleSort} />
+                  <SortHeader label="Form" sortKey={"formLast3" as keyof NextMatchPlayerRow} currentKey={sortKey} currentDir={sortDir} onSort={toggleSort} />
+                  <SortHeader label="Δ" sortKey={"formDelta" as keyof NextMatchPlayerRow} currentKey={sortKey} currentDir={sortDir} onSort={toggleSort} />
+                  <SortHeader label="Floor" sortKey={"floor" as keyof NextMatchPlayerRow} currentKey={sortKey} currentDir={sortDir} onSort={toggleSort} />
+                  <SortHeader label="Ceil" sortKey={"ceiling" as keyof NextMatchPlayerRow} currentKey={sortKey} currentDir={sortDir} onSort={toggleSort} />
+                  <SortHeader label="CV" sortKey={"cv" as keyof NextMatchPlayerRow} currentKey={sortKey} currentDir={sortDir} onSort={toggleSort} />
+                  <SortHeader label="Venue" sortKey={"venueAvg" as keyof NextMatchPlayerRow} currentKey={sortKey} currentDir={sortDir} onSort={toggleSort} />
+                  <SortHeader label="vs Opp" sortKey={"vsOpponentAvg" as keyof NextMatchPlayerRow} currentKey={sortKey} currentDir={sortDir} onSort={toggleSort} />
+                  <SortHeader label="Own %" sortKey={"ownershipPct" as keyof NextMatchPlayerRow} currentKey={sortKey} currentDir={sortDir} onSort={toggleSort} />
+                  <TableHead>Vol.</TableHead>
+                  <TableHead>Flag</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {sorted.map((p) => (
+                  <TableRow key={p.id} className={p.isDifferential ? "bg-amber-500/5" : ""}>
+                    <TableCell className="sticky left-0 bg-background z-10">
+                      <div className="flex items-center gap-2">
+                        <div className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: p.color }} />
+                        <div className="min-w-0">
+                          <p className="text-xs font-medium truncate max-w-[120px]">{p.name}</p>
+                          <div className="flex items-center gap-1">
+                            <Badge variant="outline" className={cn("text-[9px] px-1 py-0 h-4", ROLE_COLORS[p.role])}>{p.role}</Badge>
+                            <span className="text-[9px] text-muted-foreground">{p.team}</span>
+                          </div>
+                        </div>
+                      </div>
+                    </TableCell>
+                    <TableCell className="tabular-nums text-xs font-bold text-primary">{p.xfp ?? "—"}</TableCell>
+                    <TableCell>
+                      {p.powerRating !== null ? (
+                        <div className="flex items-center gap-1.5">
+                          <div className="w-10 h-1.5 bg-muted rounded-full overflow-hidden">
+                            <div className="h-full rounded-full bg-gradient-to-r from-amber-500 to-orange-500" style={{ width: `${p.powerRating}%` }} />
+                          </div>
+                          <span className="tabular-nums text-[10px] font-bold">{p.powerRating}</span>
+                        </div>
+                      ) : <span className="text-xs text-muted-foreground">—</span>}
+                    </TableCell>
+                    <TableCell className="tabular-nums text-xs">{p.matches || "—"}</TableCell>
+                    <TableCell className="tabular-nums text-xs font-medium">{p.matches > 0 ? p.avgFP : "—"}</TableCell>
+                    <TableCell className="tabular-nums text-xs font-medium">{p.formLast3 || "—"}</TableCell>
+                    <TableCell className={cn("tabular-nums text-xs", p.matches > 0 ? deltaClass(p.formDelta) : "text-muted-foreground")}>
+                      {p.matches > 0 ? formatDelta(p.formDelta) : "—"}
+                    </TableCell>
+                    <TableCell className="tabular-nums text-xs">{p.matches > 0 ? p.floor : "—"}</TableCell>
+                    <TableCell className="tabular-nums text-xs">{p.matches > 0 ? p.ceiling : "—"}</TableCell>
+                    <TableCell>
+                      {p.matches > 0 ? (
+                        <Badge variant="outline" className={cn("text-[9px] px-1.5 py-0 h-4 tabular-nums",
+                          p.cv < 30 ? "bg-emerald-500/15 text-emerald-700 dark:text-emerald-300"
+                          : p.cv < 60 ? "bg-amber-500/15 text-amber-700 dark:text-amber-300"
+                          : "bg-red-500/15 text-red-700 dark:text-red-300"
+                        )}>{p.cv}</Badge>
+                      ) : <span className="text-xs text-muted-foreground">—</span>}
+                    </TableCell>
+                    <TableCell className="tabular-nums text-xs">{p.venueAvg ?? "—"}</TableCell>
+                    <TableCell className="tabular-nums text-xs">{p.vsOpponentAvg ?? "—"}</TableCell>
+                    <TableCell className="tabular-nums text-xs">{p.ownershipPct}%</TableCell>
+                    <TableCell>
+                      {p.volatility ? (
+                        <Badge variant="outline" className={cn("text-[9px] px-1.5 py-0 h-4", volatilityColor(p.volatility))}>{p.volatility}</Badge>
+                      ) : <span className="text-xs text-muted-foreground">—</span>}
+                    </TableCell>
+                    <TableCell>
+                      {p.isDifferential && (
+                        <Badge className="text-[9px] px-1.5 py-0 h-4 bg-amber-500/20 text-amber-700 dark:text-amber-300 border-amber-500/30">DIFF</Badge>
+                      )}
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+        </CardContent>
+      </Card>
     </div>
   )
 }
