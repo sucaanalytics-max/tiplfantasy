@@ -216,6 +216,52 @@ export type PlayerVsTeamStats = {
   runs_conceded: number
 }
 
+// TIPL season — per-match entry for match log
+export type TiplMatchEntry = {
+  matchNumber: number
+  opponent: string
+  runs: number
+  ballsFaced: number
+  fours: number
+  sixes: number
+  wickets: number
+  oversBowled: number
+  runsConceded: number
+  maidens: number
+  catches: number
+  stumpings: number
+  runOuts: number
+  fantasyPoints: number
+  breakdown: Record<string, number>
+}
+
+// TIPL season — aggregated totals + ranks
+export type TiplSeasonAggregates = {
+  matches: number
+  innings: number
+  runs: number
+  ballsFaced: number
+  fours: number
+  sixes: number
+  highestScore: number
+  notOuts: number
+  wickets: number
+  oversBowled: number
+  runsConceded: number
+  maidens: number
+  bestWickets: number
+  bestRunsConceded: number
+  catches: number
+  stumpings: number
+  runOuts: number
+  totalFantasyPoints: number
+  avgFantasyPoints: number
+  runsRank: number | null
+  wicketsRank: number | null
+  fantasyRank: number | null
+  totalPlayers: number
+}
+
 // ============================================================
 // View types
 // ============================================================

@@ -9,22 +9,12 @@ import {
 } from "@/components/ui/drawer"
 import { Badge } from "@/components/ui/badge"
 import { ROLE_COLORS, ROLE_LABELS } from "@/lib/badges"
-import type { PlayerWithTeam, PlayerVenueStats, PlayerVsTeamStats, PlayerSeasonStats } from "@/lib/types"
-import { StackedBar } from "@/components/charts/stacked-bar"
+import type { PlayerWithTeam, PlayerVenueStats, PlayerVsTeamStats, TiplMatchEntry, TiplSeasonAggregates } from "@/lib/types"
 
-const BAT_KEYS = new Set(["run", "four_bonus", "six_bonus", "thirty", "half_century", "century", "duck", "sr_above_170", "sr_150_170", "sr_70_80", "sr_below_70"])
-const BOWL_KEYS = new Set(["wicket", "maiden", "three_wicket_haul", "four_wicket_haul", "five_wicket_haul", "econ_below_5", "econ_5_6", "econ_10_11", "econ_above_11"])
-const FIELD_KEYS = new Set(["catch", "stumping", "run_out", "three_catch_bonus"])
-
-function categorize(breakdown: Record<string, number>): { bat: number; bowl: number; field: number; bonus: number } {
-  let bat = 0, bowl = 0, field = 0, bonus = 0
-  for (const [k, v] of Object.entries(breakdown)) {
-    if (BAT_KEYS.has(k)) bat += v
-    else if (BOWL_KEYS.has(k)) bowl += v
-    else if (FIELD_KEYS.has(k)) field += v
-    else bonus += v
-  }
-  return { bat, bowl, field, bonus }
+function ordinal(n: number): string {
+  const s = ["th", "st", "nd", "rd"]
+  const v = n % 100
+  return n + (s[(v - 20) % 10] || s[v] || s[0])
 }
 
 function StatCell({ label, value }: { label: string; value: string | number | null }) {
@@ -69,22 +59,63 @@ function SectionHeader({ children }: { children: React.ReactNode }) {
   )
 }
 
+function RankBadges({ stats, role }: { stats: TiplSeasonAggregates; role: string }) {
+  const badges: React.ReactNode[] = []
+
+  if ((role === "BAT" || role === "WK" || role === "AR") && stats.runsRank !== null && stats.runsRank <= 10) {
+    badges.push(
+      <span key="runs" className="text-[10px] text-muted-foreground">
+        <span className="font-semibold text-primary">{ordinal(stats.runsRank)}</span> highest run-scorer
+      </span>
+    )
+  }
+
+  if ((role === "BOWL" || role === "AR") && stats.wicketsRank !== null && stats.wicketsRank <= 10) {
+    badges.push(
+      <span key="wkts" className="text-[10px] text-muted-foreground">
+        <span className="font-semibold text-primary">{ordinal(stats.wicketsRank)}</span> highest wicket-taker
+      </span>
+    )
+  }
+
+  if (stats.fantasyRank !== null && stats.fantasyRank <= 10) {
+    badges.push(
+      <span key="pts" className="text-[10px] text-muted-foreground">
+        <span className="font-semibold text-primary">{ordinal(stats.fantasyRank)}</span> in fantasy points
+      </span>
+    )
+  }
+
+  if (badges.length === 0) return null
+
+  return (
+    <div className="flex flex-wrap items-center justify-center gap-x-3 gap-y-1 mt-2 mb-1">
+      {badges.map((b, i) => (
+        <span key={i} className="flex items-center gap-1">
+          {i > 0 && <span className="text-muted-foreground/40">&middot;</span>}
+          {b}
+        </span>
+      ))}
+    </div>
+  )
+}
+
 export function PlayerStatsDrawer({
   player,
-  tiplScores,
+  tiplMatchLog,
+  tiplSeasonStats,
   venueStats,
   vsTeamStats,
-  seasonStats,
   matchVenue,
   opponentTeamName,
   open,
   onClose,
 }: {
   player: PlayerWithTeam | null
-  tiplScores: Array<{ total: number; breakdown: Record<string, number> }>
+  tiplMatchLog: TiplMatchEntry[]
+  tiplSeasonStats: TiplSeasonAggregates | null
   venueStats: PlayerVenueStats | null
   vsTeamStats: PlayerVsTeamStats | null
-  seasonStats: PlayerSeasonStats[]
   matchVenue: string
   opponentTeamName: string
   open: boolean
@@ -95,45 +126,10 @@ export function PlayerStatsDrawer({
   const hasStats = player.ipl_matches !== null
   const hasBowling = (player.ipl_wickets ?? 0) > 0
   const hasRecentForm = player.ipl_recent_scores && player.ipl_recent_scores.length > 0
-  const hasTiplScores = tiplScores.length > 0
-  const tiplTotals = tiplScores.map((s) => s.total)
-  const tiplAvg = hasTiplScores
-    ? Math.round(tiplTotals.reduce((a, b) => a + b, 0) / tiplTotals.length)
-    : null
-  const tiplHigh = hasTiplScores ? Math.max(...tiplTotals) : null
-  const tiplLast = hasTiplScores ? tiplTotals[tiplTotals.length - 1] : null
-
-  // Category averages across all matches
-  const avgCategories = hasTiplScores ? (() => {
-    let bat = 0, bowl = 0, field = 0
-    for (const s of tiplScores) {
-      const c = categorize(s.breakdown)
-      bat += c.bat; bowl += c.bowl; field += c.field
-    }
-    const n = tiplScores.length
-    return { bat: Math.round(bat / n), bowl: Math.round(bowl / n), field: Math.round(field / n) }
-  })() : null
-
-  // Form trend: compare avg of last 2 vs first 2
-  const formTrend = tiplTotals.length >= 3 ? (() => {
-    const recent = tiplTotals.slice(-2).reduce((a, b) => a + b, 0) / 2
-    const early = tiplTotals.slice(0, 2).reduce((a, b) => a + b, 0) / 2
-    const diff = recent - early
-    if (diff > 10) return "rising" as const
-    if (diff < -10) return "falling" as const
-    return "steady" as const
-  })() : null
-
-  // Consistency: 100 - (CV * 100), capped 0-100
-  const consistency = tiplTotals.length >= 2 ? (() => {
-    const mean = tiplTotals.reduce((a, b) => a + b, 0) / tiplTotals.length
-    if (mean === 0) return 0
-    const variance = tiplTotals.reduce((a, b) => a + (b - mean) ** 2, 0) / tiplTotals.length
-    const cv = Math.sqrt(variance) / Math.abs(mean)
-    return Math.max(0, Math.min(100, Math.round(100 - cv * 100)))
-  })() : null
+  const hasMatchLog = tiplMatchLog.length > 0
+  const hasSeasonStats = tiplSeasonStats !== null && tiplSeasonStats.matches > 0
   const hasMatchContext = venueStats || vsTeamStats
-  const hasSeasonStats = seasonStats.length > 0
+  const role = player.role
 
   return (
     <Drawer open={open} onOpenChange={(o) => !o && onClose()}>
@@ -161,71 +157,89 @@ export function PlayerStatsDrawer({
           </div>
         </DrawerHeader>
 
-        <div className="px-4 pb-6 overflow-y-auto">
-          {!hasStats && !hasTiplScores && !hasMatchContext && !hasSeasonStats && (
+        <div className="px-4 pb-6 overflow-y-auto" data-vaul-no-drag>
+          {!hasStats && !hasMatchLog && !hasSeasonStats && !hasMatchContext && (
             <div className="text-center py-8 text-muted-foreground text-sm">
               No stats available
             </div>
           )}
 
-          {/* TIPL Form — prominent at top */}
-          {hasTiplScores && (
+          {/* TIPL Match Log — per-match table */}
+          {hasMatchLog && (
             <>
-              <SectionHeader>TIPL Form ({tiplScores.length} match{tiplScores.length > 1 ? "es" : ""})</SectionHeader>
-
-              {/* Summary: Avg / Last / High */}
-              <div className="grid grid-cols-3 gap-3 mb-3">
-                <div className="text-center rounded-lg bg-overlay-subtle py-2">
-                  <p className="text-lg font-bold text-foreground">{tiplAvg}</p>
-                  <p className="text-[10px] uppercase tracking-wide text-muted-foreground">Avg</p>
-                </div>
-                <div className="text-center rounded-lg bg-overlay-subtle py-2">
-                  <p className="text-lg font-bold text-foreground">{tiplLast}</p>
-                  <p className="text-[10px] uppercase tracking-wide text-muted-foreground">Last</p>
-                </div>
-                <div className="text-center rounded-lg bg-overlay-subtle py-2">
-                  <p className="text-lg font-bold text-foreground">{tiplHigh}</p>
-                  <p className="text-[10px] uppercase tracking-wide text-muted-foreground">High</p>
-                </div>
-              </div>
-
-              {/* Category split bar */}
-              {avgCategories && (avgCategories.bat > 0 || avgCategories.bowl > 0 || avgCategories.field > 0) && (
-                <div className="mb-3">
-                  <StackedBar
-                    segments={[
-                      { label: "BAT", value: avgCategories.bat, color: "#4ade80" },
-                      { label: "BOWL", value: avgCategories.bowl, color: "#60a5fa" },
-                      { label: "FLD", value: avgCategories.field, color: "#fb923c" },
-                    ]}
-                    height={20}
-                    showLabels
-                    showLegend
-                  />
-                </div>
-              )}
-
-              {/* Per-match bar chart */}
-              <MiniBarChart scores={tiplTotals} color="oklch(0.68 0.16 265)" />
-
-              {/* Form trend + Consistency */}
-              <div className="flex items-center justify-center gap-4 mt-2">
-                {formTrend && (
-                  <span className="text-xs text-muted-foreground">
-                    Form:{" "}
-                    <span className={formTrend === "rising" ? "text-[var(--tw-emerald-text)] font-semibold" : formTrend === "falling" ? "text-[var(--tw-red-text)] font-semibold" : "text-muted-foreground font-medium"}>
-                      {formTrend === "rising" ? "↑ Rising" : formTrend === "falling" ? "↓ Falling" : "→ Steady"}
-                    </span>
-                  </span>
-                )}
-                {consistency !== null && (
-                  <span className="text-xs text-muted-foreground">
-                    Consistency:{" "}
-                    <span className={consistency >= 70 ? "text-[var(--tw-emerald-text)] font-semibold" : consistency >= 40 ? "text-[var(--tw-amber-text)] font-semibold" : "text-[var(--tw-red-text)] font-semibold"}>
-                      {consistency}%
-                    </span>
-                  </span>
-                )}
+              <SectionHeader>TIPL Match Log</SectionHeader>
+              <div className="overflow-x-auto">
+                <table className="w-full text-xs">
+                  <thead>
+                    <tr className="text-[10px] uppercase tracking-wide text-muted-foreground">
+                      <th className="text-left py-1 font-semibold w-8">#</th>
+                      <th className="text-left py-1 font-semibold">vs</th>
+                      {(role === "WK" || role === "BAT") && (
+                        <>
+                          <th className="text-center py-1 font-semibold">Runs</th>
+                          <th className="text-center py-1 font-semibold">SR</th>
+                          <th className="text-center py-1 font-semibold">Ct</th>
+                        </>
+                      )}
+                      {role === "BOWL" && (
+                        <>
+                          <th className="text-center py-1 font-semibold">Wkts</th>
+                          <th className="text-center py-1 font-semibold">Econ</th>
+                          <th className="text-center py-1 font-semibold">Runs</th>
+                        </>
+                      )}
+                      {role === "AR" && (
+                        <>
+                          <th className="text-center py-1 font-semibold">Runs</th>
+                          <th className="text-center py-1 font-semibold">Wkts</th>
+                          <th className="text-center py-1 font-semibold">Econ</th>
+                        </>
+                      )}
+                      <th className="text-right py-1 font-semibold">Pts</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {tiplMatchLog.map((entry, i) => {
+                      const sr = entry.ballsFaced > 0
+                        ? ((entry.runs / entry.ballsFaced) * 100).toFixed(1)
+                        : "-"
+                      const econ = entry.oversBowled > 0
+                        ? (entry.runsConceded / entry.oversBowled).toFixed(1)
+                        : "-"
+                      return (
+                        <tr
+                          key={entry.matchNumber}
+                          className={i % 2 === 0 ? "bg-muted/30" : ""}
+                        >
+                          <td className="py-1.5 pl-1 text-muted-foreground">M{entry.matchNumber}</td>
+                          <td className="py-1.5 font-medium text-foreground">{entry.opponent}</td>
+                          {(role === "WK" || role === "BAT") && (
+                            <>
+                              <td className="text-center py-1.5 font-semibold">{entry.runs}</td>
+                              <td className="text-center py-1.5">{sr}</td>
+                              <td className="text-center py-1.5">{entry.catches || "-"}</td>
+                            </>
+                          )}
+                          {role === "BOWL" && (
+                            <>
+                              <td className="text-center py-1.5 font-semibold">{entry.wickets}</td>
+                              <td className="text-center py-1.5">{econ}</td>
+                              <td className="text-center py-1.5">{entry.runsConceded}</td>
+                            </>
+                          )}
+                          {role === "AR" && (
+                            <>
+                              <td className="text-center py-1.5">{entry.runs}</td>
+                              <td className="text-center py-1.5">{entry.wickets}</td>
+                              <td className="text-center py-1.5">{econ}</td>
+                            </>
+                          )}
+                          <td className="text-right py-1.5 pr-1 font-bold tabular-nums">{entry.fantasyPoints}</td>
+                        </tr>
+                      )
+                    })}
+                  </tbody>
+                </table>
               </div>
             </>
           )}
@@ -301,51 +315,114 @@ export function PlayerStatsDrawer({
             </>
           )}
 
-          {/* Season Breakdown */}
-          {hasSeasonStats && (
+          {/* TIPL 2026 Season — aggregated stats */}
+          {hasSeasonStats && tiplSeasonStats && (
             <>
-              <SectionHeader>Season Breakdown</SectionHeader>
-              <div className="overflow-x-auto">
-                <table className="w-full text-xs">
-                  <thead>
-                    <tr className="text-[10px] uppercase tracking-wide text-muted-foreground">
-                      <th className="text-left py-1 font-semibold">Year</th>
-                      <th className="text-center py-1 font-semibold">Mat</th>
-                      <th className="text-center py-1 font-semibold">Runs</th>
-                      <th className="text-center py-1 font-semibold">Avg</th>
-                      <th className="text-center py-1 font-semibold">SR</th>
-                      <th className="text-center py-1 font-semibold">Wkts</th>
-                      <th className="text-center py-1 font-semibold">Econ</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {seasonStats.map((ss, i) => {
-                      const battingAvg = ss.innings > 0
-                        ? (ss.runs / Math.max(ss.innings - ss.not_outs, 1)).toFixed(1)
-                        : "-"
-                      const sr = ss.balls_faced > 0
-                        ? ((ss.runs / ss.balls_faced) * 100).toFixed(1)
-                        : "-"
-                      const econ = Number(ss.overs_bowled) > 0
-                        ? (ss.runs_conceded / Number(ss.overs_bowled)).toFixed(1)
-                        : "-"
-                      return (
-                        <tr
-                          key={ss.season}
-                          className={i % 2 === 0 ? "bg-muted/30" : ""}
-                        >
-                          <td className="py-1.5 pl-1 font-medium text-foreground">{ss.season}</td>
-                          <td className="text-center py-1.5">{ss.matches}</td>
-                          <td className="text-center py-1.5">{ss.runs}</td>
-                          <td className="text-center py-1.5">{battingAvg}</td>
-                          <td className="text-center py-1.5">{sr}</td>
-                          <td className="text-center py-1.5">{ss.wickets || "-"}</td>
-                          <td className="text-center py-1.5">{econ}</td>
-                        </tr>
-                      )
-                    })}
-                  </tbody>
-                </table>
+              <SectionHeader>TIPL 2026 Season ({tiplSeasonStats.matches} match{tiplSeasonStats.matches > 1 ? "es" : ""})</SectionHeader>
+
+              {/* Batting table — for WK, BAT, AR */}
+              {(role === "WK" || role === "BAT" || role === "AR") && (
+                <div className="overflow-x-auto mb-2">
+                  <table className="w-full text-xs">
+                    <thead>
+                      <tr className="text-[10px] uppercase tracking-wide text-muted-foreground">
+                        {(role === "WK" || role === "BAT") && <th className="text-center py-1 font-semibold">Mat</th>}
+                        {(role === "WK" || role === "BAT") && <th className="text-center py-1 font-semibold">Inn</th>}
+                        <th className="text-center py-1 font-semibold">Runs</th>
+                        <th className="text-center py-1 font-semibold">Avg</th>
+                        <th className="text-center py-1 font-semibold">SR</th>
+                        <th className="text-center py-1 font-semibold">HS</th>
+                        {(role === "WK" || role === "BAT") && (
+                          <>
+                            <th className="text-center py-1 font-semibold">4s</th>
+                            <th className="text-center py-1 font-semibold">6s</th>
+                            <th className="text-center py-1 font-semibold">Ct</th>
+                          </>
+                        )}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr className="bg-muted/30">
+                        {(role === "WK" || role === "BAT") && <td className="text-center py-1.5">{tiplSeasonStats.matches}</td>}
+                        {(role === "WK" || role === "BAT") && <td className="text-center py-1.5">{tiplSeasonStats.innings}</td>}
+                        <td className="text-center py-1.5 font-semibold">{tiplSeasonStats.runs}</td>
+                        <td className="text-center py-1.5">
+                          {tiplSeasonStats.innings > 0
+                            ? (tiplSeasonStats.runs / Math.max(tiplSeasonStats.innings - tiplSeasonStats.notOuts, 1)).toFixed(1)
+                            : "-"}
+                        </td>
+                        <td className="text-center py-1.5">
+                          {tiplSeasonStats.ballsFaced > 0
+                            ? ((tiplSeasonStats.runs / tiplSeasonStats.ballsFaced) * 100).toFixed(1)
+                            : "-"}
+                        </td>
+                        <td className="text-center py-1.5">{tiplSeasonStats.highestScore}</td>
+                        {(role === "WK" || role === "BAT") && (
+                          <>
+                            <td className="text-center py-1.5">{tiplSeasonStats.fours}</td>
+                            <td className="text-center py-1.5">{tiplSeasonStats.sixes}</td>
+                            <td className="text-center py-1.5">{tiplSeasonStats.catches}</td>
+                          </>
+                        )}
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              )}
+
+              {/* Bowling table — for BOWL, AR */}
+              {(role === "BOWL" || role === "AR") && (
+                <div className="overflow-x-auto mb-2">
+                  <table className="w-full text-xs">
+                    <thead>
+                      <tr className="text-[10px] uppercase tracking-wide text-muted-foreground">
+                        {role === "BOWL" && <th className="text-center py-1 font-semibold">Mat</th>}
+                        <th className="text-center py-1 font-semibold">Wkts</th>
+                        <th className="text-center py-1 font-semibold">Avg</th>
+                        <th className="text-center py-1 font-semibold">Econ</th>
+                        <th className="text-center py-1 font-semibold">Best</th>
+                        <th className="text-center py-1 font-semibold">Mdns</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr className="bg-muted/30">
+                        {role === "BOWL" && <td className="text-center py-1.5">{tiplSeasonStats.matches}</td>}
+                        <td className="text-center py-1.5 font-semibold">{tiplSeasonStats.wickets}</td>
+                        <td className="text-center py-1.5">
+                          {tiplSeasonStats.wickets > 0
+                            ? (tiplSeasonStats.runsConceded / tiplSeasonStats.wickets).toFixed(1)
+                            : "-"}
+                        </td>
+                        <td className="text-center py-1.5">
+                          {tiplSeasonStats.oversBowled > 0
+                            ? (tiplSeasonStats.runsConceded / tiplSeasonStats.oversBowled).toFixed(1)
+                            : "-"}
+                        </td>
+                        <td className="text-center py-1.5">
+                          {tiplSeasonStats.bestWickets > 0
+                            ? `${tiplSeasonStats.bestWickets}/${tiplSeasonStats.bestRunsConceded}`
+                            : "-"}
+                        </td>
+                        <td className="text-center py-1.5">{tiplSeasonStats.maidens || "-"}</td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              )}
+
+              {/* Rank badges */}
+              <RankBadges stats={tiplSeasonStats} role={role} />
+
+              {/* Fantasy points summary */}
+              <div className="grid grid-cols-2 gap-3 mt-2">
+                <div className="text-center rounded-lg bg-overlay-subtle py-2">
+                  <p className="text-lg font-bold text-foreground">{tiplSeasonStats.totalFantasyPoints}</p>
+                  <p className="text-[10px] uppercase tracking-wide text-muted-foreground">Total Pts</p>
+                </div>
+                <div className="text-center rounded-lg bg-overlay-subtle py-2">
+                  <p className="text-lg font-bold text-foreground">{tiplSeasonStats.avgFantasyPoints}</p>
+                  <p className="text-[10px] uppercase tracking-wide text-muted-foreground">Avg Pts</p>
+                </div>
               </div>
             </>
           )}
@@ -398,8 +475,6 @@ export function PlayerStatsDrawer({
               />
             </>
           )}
-
-          {/* (TIPL Form section moved to top of drawer) */}
         </div>
       </DrawerContent>
     </Drawer>

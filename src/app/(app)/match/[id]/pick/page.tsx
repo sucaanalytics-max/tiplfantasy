@@ -3,7 +3,7 @@ export const dynamic = "force-dynamic"
 import { redirect } from "next/navigation"
 import { createClient } from "@/lib/supabase/server"
 import { createAdminClient } from "@/lib/supabase/admin"
-import type { PlayerWithTeam, MatchWithTeams, PlayerVenueStats, PlayerVsTeamStats, PlayerSeasonStats } from "@/lib/types"
+import type { PlayerWithTeam, MatchWithTeams, PlayerVenueStats, PlayerVsTeamStats, TiplMatchEntry, TiplSeasonAggregates } from "@/lib/types"
 import { PickTeamClient } from "./pick-team-client"
 
 export default async function PickTeamPage({
@@ -102,13 +102,12 @@ export default async function PickTeamPage({
       .eq("selection.match_id", matchId)
       .limit(200),
 
-    // Last 10 completed matches to scope form scores (replaces limit(2000) fetch)
+    // All completed matches (for season stats + match log)
     supabase
       .from("matches")
-      .select("id")
+      .select("id, match_number, team_home_id, team_away_id, team_home:teams!matches_team_home_id_fkey(short_name), team_away:teams!matches_team_away_id_fkey(short_name)")
       .eq("status", "completed")
-      .order("start_time", { ascending: false })
-      .limit(10),
+      .order("match_number", { ascending: true }),
   ])
 
   const playingXIIds = new Set((playingXI ?? []).map((p) => p.player_id))
@@ -135,24 +134,42 @@ export default async function PickTeamPage({
   }
 
   const playerIds = (players ?? []).map((p: { id: string }) => p.id)
-  const recentMatchIds = (recentMatches ?? []).map((m) => m.id)
+  const allCompletedMatches = recentMatches ?? []
+  const allCompletedMatchIds = allCompletedMatches.map((m) => m.id)
   const homeShort = typedMatch.team_home.short_name
   const awayShort = typedMatch.team_away.short_name
+
+  // Build match info map for match log opponent resolution
+  type MatchInfo = { matchNumber: number; homeTeamId: string; homeShort: string; awayShort: string }
+  const matchInfoMap = new Map<string, MatchInfo>()
+  for (const m of allCompletedMatches) {
+    matchInfoMap.set(m.id, {
+      matchNumber: m.match_number,
+      homeTeamId: m.team_home_id,
+      homeShort: (m.team_home as unknown as { short_name: string })?.short_name ?? "?",
+      awayShort: (m.team_away as unknown as { short_name: string })?.short_name ?? "?",
+    })
+  }
+
+  // Player team lookup for opponent resolution in match log
+  const playerTeamMap = new Map<string, string>()
+  for (const p of (players ?? []) as unknown as PlayerWithTeam[]) {
+    playerTeamMap.set(p.id, p.team_id)
+  }
 
   // Phase 2: All stats queries in parallel (depend on playerIds from Phase 1)
   const [
     { data: tiplScoresRaw },
     { data: venueStatsRaw },
     { data: vsTeamStatsRaw },
-    { data: seasonStatsRaw },
   ] = await Promise.all([
-    // Last 5 TIPL fantasy scores per player with breakdown, scoped to recent matches
-    supabase
-      .from("match_player_scores")
-      .select("player_id, fantasy_points, breakdown")
-      .in("player_id", playerIds)
-      .in("match_id", recentMatchIds)
-      .order("created_at", { ascending: false }),
+    // Full TIPL season scores — ALL players for rank computation
+    allCompletedMatchIds.length > 0
+      ? supabase
+          .from("match_player_scores")
+          .select("player_id, match_id, runs, balls_faced, fours, sixes, wickets, overs_bowled, runs_conceded, maidens, catches, stumpings, run_outs, fantasy_points, breakdown, dismissal")
+          .in("match_id", allCompletedMatchIds)
+      : Promise.resolve({ data: [] as never[] }),
 
     // Venue stats for this match's venue
     supabase
@@ -167,26 +184,7 @@ export default async function PickTeamPage({
       .select("*")
       .in("opponent_team", [homeShort, awayShort])
       .in("player_id", playerIds),
-
-    // Last 3 seasons of stats
-    supabase
-      .from("player_season_stats")
-      .select("*")
-      .in("player_id", playerIds)
-      .gte("season", new Date().getFullYear() - 2)
-      .order("season", { ascending: false }),
   ])
-
-  const tiplScoreMap: Record<string, Array<{ total: number; breakdown: Record<string, number> }>> = {}
-  for (const s of tiplScoresRaw ?? []) {
-    if (!tiplScoreMap[s.player_id]) tiplScoreMap[s.player_id] = []
-    if (tiplScoreMap[s.player_id].length < 5) {
-      tiplScoreMap[s.player_id].push({
-        total: Number(s.fantasy_points),
-        breakdown: (s.breakdown as Record<string, number>) ?? {},
-      })
-    }
-  }
 
   const venueStatsMap: Record<string, PlayerVenueStats> = {}
   for (const vs of venueStatsRaw ?? []) {
@@ -198,10 +196,141 @@ export default async function PickTeamPage({
     vsTeamStatsMap[vt.player_id] = vt as PlayerVsTeamStats
   }
 
-  const seasonStatsMap: Record<string, PlayerSeasonStats[]> = {}
-  for (const ss of seasonStatsRaw ?? []) {
-    if (!seasonStatsMap[ss.player_id]) seasonStatsMap[ss.player_id] = []
-    seasonStatsMap[ss.player_id].push(ss as PlayerSeasonStats)
+  // --- Aggregate TIPL season stats + build match log ---
+  type Accumulator = {
+    matches: number; innings: number; runs: number; ballsFaced: number
+    fours: number; sixes: number; highestScore: number; notOuts: number
+    wickets: number; oversBowled: number; runsConceded: number; maidens: number
+    bestWickets: number; bestRunsConceded: number
+    catches: number; stumpings: number; runOuts: number
+    totalFantasyPoints: number
+  }
+
+  const aggMap = new Map<string, Accumulator>()
+  const matchLogMap = new Map<string, TiplMatchEntry[]>()
+  const playerIdSet = new Set(playerIds)
+
+  for (const s of tiplScoresRaw ?? []) {
+    // Aggregate for ALL players (for ranks)
+    let agg = aggMap.get(s.player_id)
+    if (!agg) {
+      agg = {
+        matches: 0, innings: 0, runs: 0, ballsFaced: 0,
+        fours: 0, sixes: 0, highestScore: 0, notOuts: 0,
+        wickets: 0, oversBowled: 0, runsConceded: 0, maidens: 0,
+        bestWickets: 0, bestRunsConceded: 0,
+        catches: 0, stumpings: 0, runOuts: 0,
+        totalFantasyPoints: 0,
+      }
+      aggMap.set(s.player_id, agg)
+    }
+
+    agg.matches++
+    agg.runs += s.runs
+    agg.ballsFaced += s.balls_faced
+    agg.fours += s.fours
+    agg.sixes += s.sixes
+    agg.wickets += s.wickets
+    agg.oversBowled += Number(s.overs_bowled)
+    agg.runsConceded += s.runs_conceded
+    agg.maidens += s.maidens
+    agg.catches += s.catches
+    agg.stumpings += s.stumpings
+    agg.runOuts += s.run_outs
+    agg.totalFantasyPoints += Number(s.fantasy_points)
+    if (s.balls_faced > 0) agg.innings++
+    if (s.dismissal === "not out") agg.notOuts++
+    if (s.runs > agg.highestScore) agg.highestScore = s.runs
+    if (s.wickets > agg.bestWickets || (s.wickets === agg.bestWickets && s.runs_conceded < agg.bestRunsConceded)) {
+      agg.bestWickets = s.wickets
+      agg.bestRunsConceded = s.runs_conceded
+    }
+
+    // Build match log only for current match squad players
+    if (playerIdSet.has(s.player_id)) {
+      const mInfo = matchInfoMap.get(s.match_id)
+      if (mInfo) {
+        const teamId = playerTeamMap.get(s.player_id)
+        const opponent = teamId === mInfo.homeTeamId ? mInfo.awayShort : mInfo.homeShort
+
+        if (!matchLogMap.has(s.player_id)) matchLogMap.set(s.player_id, [])
+        matchLogMap.get(s.player_id)!.push({
+          matchNumber: mInfo.matchNumber,
+          opponent,
+          runs: s.runs,
+          ballsFaced: s.balls_faced,
+          fours: s.fours,
+          sixes: s.sixes,
+          wickets: s.wickets,
+          oversBowled: Number(s.overs_bowled),
+          runsConceded: s.runs_conceded,
+          maidens: s.maidens,
+          catches: s.catches,
+          stumpings: s.stumpings,
+          runOuts: s.run_outs,
+          fantasyPoints: Number(s.fantasy_points),
+          breakdown: (s.breakdown as Record<string, number>) ?? {},
+        })
+      }
+    }
+  }
+
+  // Sort match logs by match number ascending
+  for (const entries of matchLogMap.values()) {
+    entries.sort((a, b) => a.matchNumber - b.matchNumber)
+  }
+
+  // Compute ranks (dense ranking)
+  const allAggs = [...aggMap.entries()]
+  const totalPlayers = allAggs.length
+
+  const runsRankMap = new Map<string, number>()
+  const wicketsRankMap = new Map<string, number>()
+  const fantasyRankMap = new Map<string, number>()
+
+  // Runs rank
+  const byRuns = allAggs.filter(([, a]) => a.runs > 0).sort(([, a], [, b]) => b.runs - a.runs)
+  let rank = 0, prevVal = -1
+  for (const [pid, a] of byRuns) {
+    if (a.runs !== prevVal) { rank++; prevVal = a.runs }
+    runsRankMap.set(pid, rank)
+  }
+
+  // Wickets rank
+  const byWickets = allAggs.filter(([, a]) => a.wickets > 0).sort(([, a], [, b]) => b.wickets - a.wickets)
+  rank = 0; prevVal = -1
+  for (const [pid, a] of byWickets) {
+    if (a.wickets !== prevVal) { rank++; prevVal = a.wickets }
+    wicketsRankMap.set(pid, rank)
+  }
+
+  // Fantasy rank
+  const byFantasy = [...allAggs].sort(([, a], [, b]) => b.totalFantasyPoints - a.totalFantasyPoints)
+  rank = 0; prevVal = -1
+  for (const [pid, a] of byFantasy) {
+    if (a.totalFantasyPoints !== prevVal) { rank++; prevVal = a.totalFantasyPoints }
+    fantasyRankMap.set(pid, rank)
+  }
+
+  // Build final maps for current match squad players only
+  const tiplMatchLogMap: Record<string, TiplMatchEntry[]> = {}
+  const tiplSeasonStatsMap: Record<string, TiplSeasonAggregates> = {}
+
+  for (const pid of playerIds) {
+    const entries = matchLogMap.get(pid)
+    if (entries) tiplMatchLogMap[pid] = entries
+
+    const agg = aggMap.get(pid)
+    if (agg) {
+      tiplSeasonStatsMap[pid] = {
+        ...agg,
+        avgFantasyPoints: agg.matches > 0 ? Math.round(agg.totalFantasyPoints / agg.matches) : 0,
+        runsRank: runsRankMap.get(pid) ?? null,
+        wicketsRank: wicketsRankMap.get(pid) ?? null,
+        fantasyRank: fantasyRankMap.get(pid) ?? null,
+        totalPlayers,
+      }
+    }
   }
 
   return (
@@ -212,10 +341,10 @@ export default async function PickTeamPage({
       initialSelectedIds={selectedPlayerIds}
       initialCaptainId={selectionWithPlayers?.captain_id ?? null}
       initialViceCaptainId={selectionWithPlayers?.vice_captain_id ?? null}
-      tiplScores={tiplScoreMap}
+      tiplMatchLog={tiplMatchLogMap}
+      tiplSeasonStats={tiplSeasonStatsMap}
       venueStats={venueStatsMap}
       vsTeamStats={vsTeamStatsMap}
-      seasonStats={seasonStatsMap}
       selectionPcts={selectionPcts}
       adminUserId={isAdminMode ? targetUserId : undefined}
     />

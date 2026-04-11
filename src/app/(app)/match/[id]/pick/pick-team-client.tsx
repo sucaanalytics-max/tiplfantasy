@@ -31,7 +31,7 @@ import { Drawer, DrawerClose, DrawerContent, DrawerTrigger, DrawerTitle } from "
 import { PlayerStatsDrawer } from "@/components/player-stats-drawer"
 import { Confetti } from "@/components/confetti"
 import { TeamSubmitPreview } from "@/components/team-submit-preview"
-import type { PlayerWithTeam, MatchWithTeams, PlayerRole, PlayerVenueStats, PlayerVsTeamStats, PlayerSeasonStats } from "@/lib/types"
+import type { PlayerWithTeam, MatchWithTeams, PlayerRole, PlayerVenueStats, PlayerVsTeamStats, TiplMatchEntry, TiplSeasonAggregates } from "@/lib/types"
 import { CAPTAIN_BADGE, VICE_CAPTAIN_BADGE } from "@/lib/badges"
 
 type Props = {
@@ -41,10 +41,10 @@ type Props = {
   initialSelectedIds: string[]
   initialCaptainId: string | null
   initialViceCaptainId: string | null
-  tiplScores: Record<string, Array<{ total: number; breakdown: Record<string, number> }>>
+  tiplMatchLog: Record<string, TiplMatchEntry[]>
+  tiplSeasonStats: Record<string, TiplSeasonAggregates>
   venueStats: Record<string, PlayerVenueStats>
   vsTeamStats: Record<string, PlayerVsTeamStats>
-  seasonStats: Record<string, PlayerSeasonStats[]>
   selectionPcts: Record<string, number>
   adminUserId?: string
 }
@@ -72,10 +72,10 @@ export function PickTeamClient({
   initialSelectedIds,
   initialCaptainId,
   initialViceCaptainId,
-  tiplScores,
+  tiplMatchLog,
+  tiplSeasonStats,
   venueStats,
   vsTeamStats,
-  seasonStats,
   selectionPcts,
   adminUserId,
 }: Props) {
@@ -185,15 +185,15 @@ export function PickTeamClient({
       list = [...list].sort((a, b) => b.credit_cost - a.credit_cost)
     } else if (sortBy === "points") {
       list = [...list].sort((a, b) => {
-        const aScores = tiplScores[a.id] ?? []
-        const bScores = tiplScores[b.id] ?? []
-        const aAvg = aScores.length > 0 ? aScores.reduce((x, y) => x + y.total, 0) / aScores.length : -1
-        const bAvg = bScores.length > 0 ? bScores.reduce((x, y) => x + y.total, 0) / bScores.length : -1
+        const aEntries = tiplMatchLog[a.id] ?? []
+        const bEntries = tiplMatchLog[b.id] ?? []
+        const aAvg = aEntries.length > 0 ? aEntries.reduce((x, y) => x + y.fantasyPoints, 0) / aEntries.length : -1
+        const bAvg = bEntries.length > 0 ? bEntries.reduce((x, y) => x + y.fantasyPoints, 0) / bEntries.length : -1
         return bAvg - aAvg
       })
     }
     return list
-  }, [players, activeFilter, teamFilter, deferredSearch, match, hasPlayingXI, playingXIIds, sortBy, tiplScores])
+  }, [players, activeFilter, teamFilter, deferredSearch, match, hasPlayingXI, playingXIIds, sortBy, tiplMatchLog])
 
   const getDisabledReason = useCallback(
     (player: PlayerWithTeam): string | null => {
@@ -319,10 +319,10 @@ export function PickTeamClient({
     const formIndicator = player.form_indicator
     const matchupChip = getMatchupChip(player)
 
-    const scores = tiplScores[player.id] ?? []
-    const totalPts = scores.length > 0 ? scores.reduce((a, b) => a + b.total, 0) : null
-    const avgPts = scores.length > 0 ? Math.round(totalPts! / scores.length) : null
-    const lastPts = scores.length > 0 ? scores[0].total : null
+    const entries = tiplMatchLog[player.id] ?? []
+    const totalPts = entries.length > 0 ? entries.reduce((a, e) => a + e.fantasyPoints, 0) : null
+    const avgPts = entries.length > 0 ? Math.round(totalPts! / entries.length) : null
+    const lastPts = entries.length > 0 ? entries[entries.length - 1].fantasyPoints : null
 
     return (
       <div
@@ -1044,10 +1044,10 @@ export function PickTeamClient({
       {/* Player Stats Drawer */}
       <PlayerStatsDrawer
         player={statsPlayer}
-        tiplScores={statsPlayerId ? tiplScores[statsPlayerId] ?? [] : []}
+        tiplMatchLog={statsPlayerId ? tiplMatchLog[statsPlayerId] ?? [] : []}
+        tiplSeasonStats={statsPlayerId ? tiplSeasonStats[statsPlayerId] ?? null : null}
         venueStats={statsPlayerId ? venueStats[statsPlayerId] ?? null : null}
         vsTeamStats={statsPlayerId ? vsTeamStats[statsPlayerId] ?? null : null}
-        seasonStats={statsPlayerId ? seasonStats[statsPlayerId] ?? [] : []}
         matchVenue={match.venue}
         opponentTeamName={
           statsPlayer
