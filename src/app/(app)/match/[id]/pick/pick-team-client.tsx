@@ -356,10 +356,15 @@ export function PickTeamClient({
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-1.5">
             <span
-              className="text-sm font-semibold truncate cursor-pointer"
+              className="text-sm font-semibold leading-tight cursor-pointer"
               onClick={(e) => { e.stopPropagation(); setStatsPlayerId(player.id) }}
             >
-              {player.name}
+              {player.name.split(" ")[0]}
+              {player.name.split(" ").length > 1 && (
+                <span className="block text-xs font-medium text-muted-foreground">
+                  {player.name.split(" ").slice(1).join(" ")}
+                </span>
+              )}
             </span>
             {isCaptain && <span className="text-2xs font-bold text-[var(--tw-amber-text)] bg-amber-400/15 px-1 rounded shrink-0">C</span>}
             {isVC && <span className="text-2xs font-bold text-violet-400 bg-violet-400/15 px-1 rounded shrink-0">VC</span>}
