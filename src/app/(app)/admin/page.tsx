@@ -114,6 +114,17 @@ export default async function AdminPage() {
             </CardContent>
           </Card>
         </Link>
+        <Link href="/admin/analytics">
+          <Card className="hover:bg-accent/50 transition-colors cursor-pointer">
+            <CardContent className="flex items-center gap-3 py-4 px-4">
+              <span className="text-2xl">&#128202;</span>
+              <div>
+                <p className="font-medium">Analytics</p>
+                <p className="text-xs text-muted-foreground">Stats, ratings, predictions</p>
+              </div>
+            </CardContent>
+          </Card>
+        </Link>
       </div>
 
       {/* Series import */}
