@@ -729,24 +729,21 @@ export function ScoresClient({
                       ) : (
                         <div className="space-y-1 border-l-2 border-emerald-400/40 pl-3">
                           {compareData.myEdge.map((p) => (
-                            <div key={p!.player_id} className="flex items-center gap-2 py-1.5 px-2 rounded-lg bg-secondary/40 text-xs">
-                              {p!.isMultEdge ? (
-                                <span className="flex items-center gap-0.5 shrink-0">
-                                  <Badge variant="outline" className="text-[8px] px-1 py-0 h-[14px] bg-amber-500/20 text-amber-700 dark:text-amber-300 border-amber-500/30">
-                                    {p!.isC ? "C" : "VC"}
-                                  </Badge>
-                                  <span className="text-[8px] text-muted-foreground">vs</span>
-                                  <Badge variant="outline" className="text-[8px] px-1 py-0 h-[14px] text-muted-foreground">
-                                    {p!.theirIsC ? "C" : p!.theirIsVC ? "VC" : "—"}
-                                  </Badge>
-                                </span>
-                              ) : (
-                                <Badge variant="outline" className={cn("text-[8px] px-1 py-0 h-[14px] shrink-0", ROLE_COLORS[p!.player.role])}>
-                                  {p!.isC ? "C" : p!.isVC ? "VC" : p!.player.role}
+                            <div key={p.player_id} className="flex items-center gap-2 py-1.5 px-2 rounded-lg bg-secondary/40 text-xs">
+                              <Badge variant="outline" className={cn("text-[8px] px-1 py-0 h-[14px] shrink-0", ROLE_COLORS[p.player.role])}>
+                                {p.player.role}
+                              </Badge>
+                              <span className="font-medium truncate">{p.player.name}</span>
+                              {p.isMultEdge ? (
+                                <Badge variant="outline" className="text-[8px] px-1.5 py-0 h-[14px] shrink-0 bg-amber-500/15 text-amber-700 dark:text-amber-300 border-amber-500/30">
+                                  {p.isC ? "2x" : "1.5x"} vs {p.theirIsC ? "2x" : p.theirIsVC ? "1.5x" : "1x"}
                                 </Badge>
-                              )}
-                              <span className="font-medium truncate">{p!.player.name}</span>
-                              <span className="ml-auto font-bold tabular-nums shrink-0">+{p!.effective}</span>
+                              ) : (p.isC || p.isVC) ? (
+                                <Badge variant="outline" className="text-[8px] px-1 py-0 h-[14px] shrink-0 bg-amber-500/15 text-amber-700 dark:text-amber-300 border-amber-500/30">
+                                  {p.isC ? "C" : "VC"}
+                                </Badge>
+                              ) : null}
+                              <span className="ml-auto font-bold tabular-nums shrink-0">+{p.effective}</span>
                             </div>
                           ))}
                         </div>
@@ -766,24 +763,21 @@ export function ScoresClient({
                       ) : (
                         <div className="space-y-1 border-l-2 border-red-400/40 pl-3">
                           {compareData.theirEdge.map((p) => (
-                            <div key={p!.player_id} className="flex items-center gap-2 py-1.5 px-2 rounded-lg bg-secondary/40 text-xs">
-                              {p!.isMultEdge ? (
-                                <span className="flex items-center gap-0.5 shrink-0">
-                                  <Badge variant="outline" className="text-[8px] px-1 py-0 h-[14px] bg-red-500/20 text-red-700 dark:text-red-300 border-red-500/30">
-                                    {p!.isC ? "C" : "VC"}
-                                  </Badge>
-                                  <span className="text-[8px] text-muted-foreground">vs</span>
-                                  <Badge variant="outline" className="text-[8px] px-1 py-0 h-[14px] text-muted-foreground">
-                                    {p!.myIsC ? "C" : p!.myIsVC ? "VC" : "—"}
-                                  </Badge>
-                                </span>
-                              ) : (
-                                <Badge variant="outline" className={cn("text-[8px] px-1 py-0 h-[14px] shrink-0", ROLE_COLORS[p!.player.role])}>
-                                  {p!.isC ? "C" : p!.isVC ? "VC" : p!.player.role}
+                            <div key={p.player_id} className="flex items-center gap-2 py-1.5 px-2 rounded-lg bg-secondary/40 text-xs">
+                              <Badge variant="outline" className={cn("text-[8px] px-1 py-0 h-[14px] shrink-0", ROLE_COLORS[p.player.role])}>
+                                {p.player.role}
+                              </Badge>
+                              <span className="font-medium truncate">{p.player.name}</span>
+                              {p.isMultEdge ? (
+                                <Badge variant="outline" className="text-[8px] px-1.5 py-0 h-[14px] shrink-0 bg-red-500/15 text-red-700 dark:text-red-300 border-red-500/30">
+                                  {p.isC ? "2x" : "1.5x"} vs {p.myIsC ? "2x" : p.myIsVC ? "1.5x" : "1x"}
                                 </Badge>
-                              )}
-                              <span className="font-medium truncate">{p!.player.name}</span>
-                              <span className="ml-auto font-bold tabular-nums text-[var(--tw-red-text)] shrink-0">+{p!.effective}</span>
+                              ) : (p.isC || p.isVC) ? (
+                                <Badge variant="outline" className="text-[8px] px-1 py-0 h-[14px] shrink-0 bg-red-500/15 text-red-700 dark:text-red-300 border-red-500/30">
+                                  {p.isC ? "C" : "VC"}
+                                </Badge>
+                              ) : null}
+                              <span className="ml-auto font-bold tabular-nums text-[var(--tw-red-text)] shrink-0">+{p.effective}</span>
                             </div>
                           ))}
                         </div>
@@ -800,13 +794,22 @@ export function ScoresClient({
                           </p>
                         </div>
                         <div className="space-y-1 border-l-2 border-muted-foreground/30 pl-3">
-                          {compareData.shared.map((p) => (
-                            <div key={p!.player_id} className="flex items-center gap-2 py-1.5 px-2 rounded-lg bg-secondary/40 text-xs">
-                              <Badge variant="outline" className={cn("text-[8px] px-1 py-0 h-[14px] shrink-0", ROLE_COLORS[p!.player.role])}>{p!.player.role}</Badge>
-                              <span className="font-medium truncate">{p!.player.name}</span>
-                              <span className="ml-auto text-muted-foreground tabular-nums shrink-0">{p!.myEff}</span>
-                            </div>
-                          ))}
+                          {compareData.shared.map((p) => {
+                            const bothC = p.myMult === 2 && p.theirMult === 2
+                            const bothVC = p.myMult === 1.5 && p.theirMult === 1.5
+                            return (
+                              <div key={p.player_id} className="flex items-center gap-2 py-1.5 px-2 rounded-lg bg-secondary/40 text-xs">
+                                <Badge variant="outline" className={cn("text-[8px] px-1 py-0 h-[14px] shrink-0", ROLE_COLORS[p.player.role])}>{p.player.role}</Badge>
+                                <span className="font-medium truncate">{p.player.name}</span>
+                                {(bothC || bothVC) && (
+                                  <Badge variant="outline" className="text-[8px] px-1 py-0 h-[14px] shrink-0 text-muted-foreground">
+                                    {bothC ? "C\u00b7C" : "VC\u00b7VC"}
+                                  </Badge>
+                                )}
+                                <span className="ml-auto text-muted-foreground tabular-nums shrink-0">{p.myEff}</span>
+                              </div>
+                            )
+                          })}
                         </div>
                       </div>
                     )}
