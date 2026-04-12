@@ -234,31 +234,66 @@ export function ScoresClient({
       return null
     }
 
-    const myEdge = mySel.player_ids.filter((pid) => !theirSet.has(pid)).map((pid) => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    type EdgeEntry = { player_id: string; fantasy_points: any; player: any; isC: boolean; isVC: boolean; effective: number; isMultEdge?: boolean; theirIsC?: boolean; theirIsVC?: boolean; myIsC?: boolean; myIsVC?: boolean }
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    type SharedEntry = { player_id: string; fantasy_points: any; player: any; myMult: number; theirMult: number; myEff: number; theirEff: number }
+
+    // Unique picks — only in my team
+    const myEdge: EdgeEntry[] = []
+    for (const pid of mySel.player_ids) {
+      if (theirSet.has(pid)) continue
       const pd = getPlayerData(pid)
-      if (!pd) return null
+      if (!pd) continue
       const isC = mySel.captain_id === pid
       const isVC = mySel.vice_captain_id === pid
       const mult = isC ? 2 : isVC ? 1.5 : 1
-      return { ...pd, isC, isVC, effective: Math.round(Number(pd.fantasy_points) * mult * 100) / 100 }
-    }).filter(Boolean).sort((a, b) => b!.effective - a!.effective)
+      myEdge.push({ ...pd, isC, isVC, effective: Math.round(Number(pd.fantasy_points) * mult * 100) / 100 })
+    }
 
-    const theirEdge = theirSel.player_ids.filter((pid) => !mySet.has(pid)).map((pid) => {
+    // Unique picks — only in their team
+    const theirEdge: EdgeEntry[] = []
+    for (const pid of theirSel.player_ids) {
+      if (mySet.has(pid)) continue
       const pd = getPlayerData(pid)
-      if (!pd) return null
+      if (!pd) continue
       const isC = theirSel.captain_id === pid
       const isVC = theirSel.vice_captain_id === pid
       const mult = isC ? 2 : isVC ? 1.5 : 1
-      return { ...pd, isC, isVC, effective: Math.round(Number(pd.fantasy_points) * mult * 100) / 100 }
-    }).filter(Boolean).sort((a, b) => b!.effective - a!.effective)
+      theirEdge.push({ ...pd, isC, isVC, effective: Math.round(Number(pd.fantasy_points) * mult * 100) / 100 })
+    }
 
-    const shared = mySel.player_ids.filter((pid) => theirSet.has(pid)).map((pid) => {
+    // Shared picks — split by captaincy edge
+    const shared: SharedEntry[] = []
+
+    for (const pid of mySel.player_ids.filter((pid) => theirSet.has(pid))) {
       const pd = getPlayerData(pid)
-      if (!pd) return null
+      if (!pd) continue
       const myMult = mySel.captain_id === pid ? 2 : mySel.vice_captain_id === pid ? 1.5 : 1
       const theirMult = theirSel.captain_id === pid ? 2 : theirSel.vice_captain_id === pid ? 1.5 : 1
-      return { ...pd, myMult, theirMult, myEff: Math.round(Number(pd.fantasy_points) * myMult * 100) / 100, theirEff: Math.round(Number(pd.fantasy_points) * theirMult * 100) / 100 }
-    }).filter(Boolean)
+      const baseFP = Number(pd.fantasy_points)
+      const myEff = Math.round(baseFP * myMult * 100) / 100
+      const theirEff = Math.round(baseFP * theirMult * 100) / 100
+
+      if (myMult !== theirMult) {
+        // Captaincy difference creates a real points edge — promote to edge section
+        const delta = Math.round(Math.abs(myEff - theirEff) * 100) / 100
+        const myIsC = mySel.captain_id === pid
+        const myIsVC = mySel.vice_captain_id === pid
+        const theirIsC = theirSel.captain_id === pid
+        const theirIsVC = theirSel.vice_captain_id === pid
+        if (myMult > theirMult) {
+          myEdge.push({ ...pd, isC: myIsC, isVC: myIsVC, theirIsC, theirIsVC, effective: delta, isMultEdge: true })
+        } else {
+          theirEdge.push({ ...pd, isC: theirIsC, isVC: theirIsVC, myIsC, myIsVC, effective: delta, isMultEdge: true })
+        }
+      } else {
+        shared.push({ ...pd, myMult, theirMult, myEff, theirEff })
+      }
+    }
+
+    myEdge.sort((a, b) => b.effective - a.effective)
+    theirEdge.sort((a, b) => b.effective - a.effective)
 
     return { opponentId: opId, myEdge, theirEdge, shared }
   }, [compareUserId, compareOpponents, selMap, psMap, playerInfoMap, currentUserId])
@@ -695,9 +730,21 @@ export function ScoresClient({
                         <div className="space-y-1 border-l-2 border-emerald-400/40 pl-3">
                           {compareData.myEdge.map((p) => (
                             <div key={p!.player_id} className="flex items-center gap-2 py-1.5 px-2 rounded-lg bg-secondary/40 text-xs">
-                              <Badge variant="outline" className={cn("text-[8px] px-1 py-0 h-[14px] shrink-0", ROLE_COLORS[p!.player.role])}>
-                                {p!.isC ? "C" : p!.isVC ? "VC" : p!.player.role}
-                              </Badge>
+                              {p!.isMultEdge ? (
+                                <span className="flex items-center gap-0.5 shrink-0">
+                                  <Badge variant="outline" className="text-[8px] px-1 py-0 h-[14px] bg-amber-500/20 text-amber-700 dark:text-amber-300 border-amber-500/30">
+                                    {p!.isC ? "C" : "VC"}
+                                  </Badge>
+                                  <span className="text-[8px] text-muted-foreground">vs</span>
+                                  <Badge variant="outline" className="text-[8px] px-1 py-0 h-[14px] text-muted-foreground">
+                                    {p!.theirIsC ? "C" : p!.theirIsVC ? "VC" : "—"}
+                                  </Badge>
+                                </span>
+                              ) : (
+                                <Badge variant="outline" className={cn("text-[8px] px-1 py-0 h-[14px] shrink-0", ROLE_COLORS[p!.player.role])}>
+                                  {p!.isC ? "C" : p!.isVC ? "VC" : p!.player.role}
+                                </Badge>
+                              )}
                               <span className="font-medium truncate">{p!.player.name}</span>
                               <span className="ml-auto font-bold tabular-nums shrink-0">+{p!.effective}</span>
                             </div>
@@ -720,9 +767,21 @@ export function ScoresClient({
                         <div className="space-y-1 border-l-2 border-red-400/40 pl-3">
                           {compareData.theirEdge.map((p) => (
                             <div key={p!.player_id} className="flex items-center gap-2 py-1.5 px-2 rounded-lg bg-secondary/40 text-xs">
-                              <Badge variant="outline" className={cn("text-[8px] px-1 py-0 h-[14px] shrink-0", ROLE_COLORS[p!.player.role])}>
-                                {p!.isC ? "C" : p!.isVC ? "VC" : p!.player.role}
-                              </Badge>
+                              {p!.isMultEdge ? (
+                                <span className="flex items-center gap-0.5 shrink-0">
+                                  <Badge variant="outline" className="text-[8px] px-1 py-0 h-[14px] bg-red-500/20 text-red-700 dark:text-red-300 border-red-500/30">
+                                    {p!.isC ? "C" : "VC"}
+                                  </Badge>
+                                  <span className="text-[8px] text-muted-foreground">vs</span>
+                                  <Badge variant="outline" className="text-[8px] px-1 py-0 h-[14px] text-muted-foreground">
+                                    {p!.myIsC ? "C" : p!.myIsVC ? "VC" : "—"}
+                                  </Badge>
+                                </span>
+                              ) : (
+                                <Badge variant="outline" className={cn("text-[8px] px-1 py-0 h-[14px] shrink-0", ROLE_COLORS[p!.player.role])}>
+                                  {p!.isC ? "C" : p!.isVC ? "VC" : p!.player.role}
+                                </Badge>
+                              )}
                               <span className="font-medium truncate">{p!.player.name}</span>
                               <span className="ml-auto font-bold tabular-nums text-[var(--tw-red-text)] shrink-0">+{p!.effective}</span>
                             </div>
@@ -741,23 +800,13 @@ export function ScoresClient({
                           </p>
                         </div>
                         <div className="space-y-1 border-l-2 border-muted-foreground/30 pl-3">
-                          {compareData.shared.map((p) => {
-                            const hasDiff = p!.myMult !== p!.theirMult
-                            return (
-                              <div key={p!.player_id} className="flex items-center gap-2 py-1.5 px-2 rounded-lg bg-secondary/40 text-xs">
-                                <Badge variant="outline" className={cn("text-[8px] px-1 py-0 h-[14px] shrink-0", ROLE_COLORS[p!.player.role])}>{p!.player.role}</Badge>
-                                <span className="font-medium truncate">{p!.player.name}</span>
-                                {hasDiff && (
-                                  <span className="text-[10px] text-muted-foreground ml-auto shrink-0">
-                                    {p!.myEff} vs {p!.theirEff}
-                                  </span>
-                                )}
-                                {!hasDiff && (
-                                  <span className="ml-auto text-muted-foreground tabular-nums shrink-0">{p!.myEff}</span>
-                                )}
-                              </div>
-                            )
-                          })}
+                          {compareData.shared.map((p) => (
+                            <div key={p!.player_id} className="flex items-center gap-2 py-1.5 px-2 rounded-lg bg-secondary/40 text-xs">
+                              <Badge variant="outline" className={cn("text-[8px] px-1 py-0 h-[14px] shrink-0", ROLE_COLORS[p!.player.role])}>{p!.player.role}</Badge>
+                              <span className="font-medium truncate">{p!.player.name}</span>
+                              <span className="ml-auto text-muted-foreground tabular-nums shrink-0">{p!.myEff}</span>
+                            </div>
+                          ))}
                         </div>
                       </div>
                     )}
