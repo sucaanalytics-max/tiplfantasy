@@ -18,6 +18,9 @@ export type BanterEventType =
   | "ugly_dismissal"
   | "great_economy"
   | "captain_haul"
+  | "general_roast"
+  | "auto_pick_shame"
+  | "comeback"
 
 export type BanterEvent = {
   type: BanterEventType
@@ -40,6 +43,8 @@ const TEMPLATES: TemplatePool = {
     "{m}, keeping {p} in your XI is pure charity. You're a good person with a truly terrible fantasy team.",
     "A golden duck! {m}'s star player {p}'s chart is looking like a 90% market correction.",
     "{m}'s {p} just gave a worse ROI than an NFT. Zero runs, infinite disappointment.",
+    "Ye toh shuru hote hi khatam ho gaya. {m}'s star pick {p} — gone before the crowd even sat down.",
+    "{m}, aapse better umeed thi. {p} scored {d}. Looking at your expensive marquee player like...",
   ],
 
   low_sr: [
@@ -77,6 +82,8 @@ const TEMPLATES: TemplatePool = {
     "Making {p} captain was a highly speculative asset class, and {m} just got liquidated.",
     "{m}'s captain {p}'s stock just got delisted from the IPL. {d}.",
     "{m} double-downed on {p} as Captain? That's not a diversified portfolio, that's degenerate gambling.",
+    "Ye dukh kaahe khatam nahi hota be! {m}'s captain {p} scored {d}. 2x of pain.",
+    "Manager se zyada umeed toh {m} ko apne Captain {p} se thi, dono ne dhoka de diya.",
   ],
 
   vc_fail: [
@@ -85,6 +92,8 @@ const TEMPLATES: TemplatePool = {
     "Hey {m}, your Vice-Captain {p} is giving you vice... as in suffering. {d} and counting down.",
     "{m}'s Vice-Captain {p} is currently yielding negative interest. {d}. Impressive.",
     "I'd ask who {m}'s financial advisor is, but clearly VC {p} embezzled all the capital.",
+    "Mera Vice-Captain negative mein kyu hai bhai? {m}'s VC {p}: {d}.",
+    "Bhai kya kar raha hai tu, {m}? VC {p} at {d}. Bizarre vice-captaincy choice.",
   ],
 
   bottom_rank: [
@@ -98,6 +107,27 @@ const TEMPLATES: TemplatePool = {
     "{m}'s team is the Evergrande of this league. Massively hyped, deeply in debt, completely collapsing.",
     "Congratulations {m}, your fantasy team has officially reached junk bond status.",
     "If {m}'s fantasy team was a startup, the VCs would have fired them as CEO by week two.",
+    "{m}, beta tumse na ho payega.",
+    "Tareekh pe tareekh, par jeet nahi aayi! {m} promises to bounce back every week but fails.",
+    "Is performance par toh {m} ko appraisal definitely nahi milega.",
+    "{m} ka fantasy score uske CTC se bhi slow badh raha hai.",
+    "{m}'s fantasy strategy desperately needs a PIP (Performance Improvement Plan).",
+    "Let's take this offline, {m}. Your rank is too embarrassing for the main group chat.",
+    "Team aisi banao ki HR bhi notice period de de, {m}.",
+    "\"As per my last email,\" {m}'s team is still trash.",
+    "Circle back to me when {m} crosses the 50-point mark for the day.",
+    "Fantasy points aur promotion, dono sirf sapno mein hi milte hain. Right, {m}?",
+    "{m} ka ROI (Return on Investment) minus mein chal raha hai.",
+    "At the end of the day, it is what it is — zero points for {m}.",
+    "Please put {m}'s fantasy skills on mute.",
+    "{m}, did you get this team approved by the client, or did you just make it blindfolded?",
+    "Need an ETA on when {m}'s players will actually start performing.",
+    "Fantasy league chhod, {m} tu canteen mein Ludo khel le.",
+    "{m} ka rank dekh ke toh bottom table walo ko bhi confidence aa gaya.",
+    "Points table mein {m} aisi jagah hai ki wahan tak scroll karne mein ungli dard karti hai.",
+    "{m} tu match dekhne aata hai ya sirf leaderboard pe rone?",
+    "{m} bhai tu dream team bana raha hai ya nightmare?",
+    "{m} ki team ke players ground pe nahi, hospital mein hone chahiye.",
   ],
 
   century: [
@@ -123,6 +153,11 @@ const TEMPLATES: TemplatePool = {
     "Crown alert! {m} leads the pack. Remember this moment — they'll remind you about it for weeks.",
     "{m} is on top! The rest of you, take notes. Or don't. They'll gladly teach you... for a fee.",
     "{m}'s current league rank is providing great liquidity for the rest of us. Thanks for the free points! Oh wait, they're WINNING.",
+    "Rishte mein toh hum tumhare baap lagte hain, naam hai... Table Topper. — {m}",
+    "Hum jahan khade hote hain, leaderboard wahi se shuru hoti hai. — {m}",
+    "Jalwa hai hamara yahan. — {m} asserting dominance.",
+    "Ghamand kis baat ka hai bhai? Oh wait, {m} is actually #1. Carry on.",
+    "Control Uday, control! {m} is getting overexcited after one good match.",
   ],
 
   ugly_dismissal: [
@@ -142,6 +177,34 @@ const TEMPLATES: TemplatePool = {
     "{m}'s CAPTAIN {p} just went berserk — {d}! That's 2x multiplier heaven!",
     "CAPTAIN'S KNOCK! {p} ({d}) is single-handedly carrying {m}'s fantasy team to glory.",
     "{m} made {p} captain and it PAID OFF. {d} at 2x. The rest of you can only watch and weep.",
+  ],
+
+  general_roast: [
+    "Utha le re baba, mereko nahi... {m} ke points ko!",
+    "Parampara, Pratishtha, Anushasan... {m} ki team mein teeno nahi hain.",
+    "Tauba tauba, {m} ne saara mood kharab kar diya. Checking rank first thing in the morning.",
+    "Tukka lag gaya {m} ka, aur kuch nahi.",
+    "Pitch report padh liya kar {m}, family group ke WhatsApp forward nahi.",
+    "{m} ne team nahi, NGO banaya hai, sabko aage badhne ke points daan de raha hai.",
+    "Chhoti bacchi ho kya, {m}? Stop blaming the pitch.",
+    "Ye toss ke baad edit karna bhool gaya tha kya, {m}?",
+    "Apna time aayega, {m}... shayad agle season mein.",
+    "Please send a calendar invite before {m}'s team decides to score some points.",
+    "{m}, jisko maine drop kiya, usne aaj pakka century maarni hai.",
+    "Captain banaya tha Kohli ko, perform kar raha hai {m} ka luck.",
+  ],
+
+  auto_pick_shame: [
+    "Dekh raha hai Binod, kaise {m} auto-pick karke point loote jaa rahe hain.",
+    "Auto-pick wali team se haar gaya main? {m} ki zindagi barbad hai.",
+    "{m} didn't even pick a team and still scored more than you. Let that sink in.",
+  ],
+
+  comeback: [
+    "Haar kar jeetne wale ko baazigar kehte hain. {m} with the epic comeback!",
+    "Abhi hum zinda hain! {m} crawling out of the bottom half.",
+    "Ye Baburao ka style hai. {m}'s risky, out-of-the-box pick actually worked out.",
+    "Jigar maa badi aag hai! An unknown tailender single-handedly saved {m}'s fantasy team.",
   ],
 }
 
@@ -245,12 +308,36 @@ export function detectRankBanter(
   memberName: string,
   leagueRank: number,
   leagueSize: number,
+  prevRank?: number | null,
 ): BanterEvent | null {
   if (leagueRank === 1) {
     return { type: "top_rank", memberName, playerName: "", detail: "" }
   }
   if (leagueRank === leagueSize && leagueSize >= 3) {
     return { type: "bottom_rank", memberName, playerName: "", detail: "" }
+  }
+  // Comeback: jumped up 3+ spots
+  if (prevRank && prevRank - leagueRank >= 3) {
+    return { type: "comeback", memberName, playerName: "", detail: `${prevRank} → ${leagueRank}` }
+  }
+  // General roast: randomly trigger for mid-table users (~30% chance)
+  if (leagueRank > 1 && leagueRank < leagueSize && Math.random() < 0.3) {
+    return { type: "general_roast", memberName, playerName: "", detail: "" }
+  }
+  return null
+}
+
+/**
+ * Detect auto-pick banter when a user who auto-picked beats manual pickers.
+ */
+export function detectAutoPickBanter(
+  memberName: string,
+  isAutoPick: boolean,
+  leagueRank: number,
+  leagueSize: number,
+): BanterEvent | null {
+  if (isAutoPick && leagueRank <= Math.ceil(leagueSize / 2)) {
+    return { type: "auto_pick_shame", memberName, playerName: "", detail: "" }
   }
   return null
 }
