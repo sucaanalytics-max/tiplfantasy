@@ -88,6 +88,17 @@ export type MatchInfo = {
 // Output types
 // ============================================================
 
+export type PlayerMatchDetail = {
+  matchNumber: number
+  opponent: string
+  venue: string
+  fp: number
+  batting: number
+  bowling: number
+  fielding: number
+  penalty: number
+}
+
 export type PlayerAnalytics = {
   id: string
   name: string
@@ -110,6 +121,7 @@ export type PlayerAnalytics = {
   penaltyFP: number
   scores: number[] // chronological
   rollingAvg: number[] // rolling 3-match
+  matchHistory: PlayerMatchDetail[] // per-match detail with opponent/venue/breakdown
 }
 
 export type PowerRating = {
@@ -329,6 +341,8 @@ export const computePlayerStats = (
   scores: RawPlayerScore[],
   playerMap: Map<string, PlayerInfo>,
   matchOrder: string[], // match IDs in chronological order
+  matchInfos?: MatchInfo[],
+  teamMap?: Map<string, string>,
 ): PlayerAnalytics[] => {
   // Group scores by player
   const byPlayer = new Map<string, RawPlayerScore[]>()
@@ -340,6 +354,14 @@ export const computePlayerStats = (
 
   // Build match index for chronological ordering
   const matchIndex = new Map(matchOrder.map((id, i) => [id, i]))
+
+  // Build match detail lookup (opponent, venue, matchNumber)
+  const matchDetailMap = new Map<string, { matchNumber: number; venue: string; homeId: string; awayId: string }>()
+  if (matchInfos) {
+    for (const m of matchInfos) {
+      matchDetailMap.set(m.id, { matchNumber: m.matchNumber, venue: m.venue, homeId: m.teamHomeId, awayId: m.teamAwayId })
+    }
+  }
 
   const results: PlayerAnalytics[] = []
 
@@ -360,14 +382,30 @@ export const computePlayerStats = (
     const sd = stddev(fps)
     const cv = avg > 0 ? round1((sd / avg) * 100) : 999
 
-    // Category breakdowns (cumulative)
+    // Category breakdowns (cumulative) + per-match history
     let battingFP = 0, bowlingFP = 0, fieldingFP = 0, penaltyFP = 0
+    const matchHistory: PlayerMatchDetail[] = []
     for (const s of sorted) {
       const cat = categorizeBreakdown(s.breakdown)
       battingFP += cat.batting
       bowlingFP += cat.bowling
       fieldingFP += cat.fielding
       penaltyFP += cat.penalty
+
+      const mDetail = matchDetailMap.get(s.match_id)
+      if (mDetail && teamMap) {
+        const opponentId = info.teamId === mDetail.homeId ? mDetail.awayId : mDetail.homeId
+        matchHistory.push({
+          matchNumber: mDetail.matchNumber,
+          opponent: teamMap.get(opponentId) ?? "?",
+          venue: mDetail.venue,
+          fp: Number(s.fantasy_points),
+          batting: cat.batting,
+          bowling: cat.bowling,
+          fielding: cat.fielding,
+          penalty: cat.penalty,
+        })
+      }
     }
 
     const last3 = fps.slice(-3)
@@ -395,6 +433,7 @@ export const computePlayerStats = (
       penaltyFP: round1(penaltyFP),
       scores: fps,
       rollingAvg: rollingAverage(fps),
+      matchHistory,
     })
   }
 

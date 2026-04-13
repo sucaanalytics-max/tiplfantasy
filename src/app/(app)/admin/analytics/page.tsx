@@ -220,7 +220,7 @@ export default async function AdminAnalyticsPage() {
   // ============================================================
 
   // Tab 1: Player Performance
-  const playerStats = computePlayerStats(rawScores, playerMap, matchOrder)
+  const playerStats = computePlayerStats(rawScores, playerMap, matchOrder, matchInfos, teamIdToName)
   const roleBenchmarks = computeRoleBenchmarks(playerStats)
 
   // Tab 4: Ownership (needed for Tab 2 power ratings)

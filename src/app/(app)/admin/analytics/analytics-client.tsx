@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useMemo } from "react"
+import React, { useState, useMemo } from "react"
 import Link from "next/link"
 import { ArrowLeft, ArrowUpDown, TrendingUp, Shield, Eye, MapPin, ChevronDown, ChevronUp, Sparkles, Users, BarChart3, Target, Swords, GitCompareArrows, X } from "lucide-react"
 import { Button } from "@/components/ui/button"
@@ -14,6 +14,7 @@ import { StatCard } from "@/components/stat-card"
 import { LineChart } from "@/components/charts/line-chart"
 import { RadarChart } from "@/components/charts/radar-chart"
 import { GroupedBar } from "@/components/charts/grouped-bar"
+import { StripChart } from "@/components/charts/strip-chart"
 import { cn } from "@/lib/utils"
 import type { PlayerRole } from "@/lib/types"
 import type {
@@ -302,7 +303,6 @@ export function AnalyticsClient({
         <TabsContent value="nextmatch">
           <NextMatchTab
             playerStats={filteredPlayerStats}
-            powerRatings={filteredPowerRatings}
             matchPreview={matchPreview}
             roleFilter={roleFilter}
           />
@@ -344,23 +344,20 @@ export function AnalyticsClient({
 // ============================================================
 
 type NextMatchPlayerRow = PlayerAnalytics & {
-  xfp: number | null
-  venueAvg: number | null
-  vsOpponentAvg: number | null
-  ownershipPct: number
-  isDifferential: boolean
-  powerRating: number | null
-  volatility: "low" | "medium" | "high" | null
+  vsOppAvg: number | null
+  vsOppMatches: number
+  atVenueAvg: number | null
+  atVenueMatches: number
+  batPct: number
+  bowlPct: number
 }
 
 function NextMatchTab({
   playerStats,
-  powerRatings,
   matchPreview,
   roleFilter,
 }: {
   playerStats: PlayerAnalytics[]
-  powerRatings: PowerRating[]
   matchPreview: Props["matchPreview"]
   roleFilter: Set<PlayerRole>
 }) {
@@ -374,61 +371,35 @@ function NextMatchTab({
     )
   }
 
-  const { predictions, suggestedTeam, matchInfo } = matchPreview
-  const predictionMap = new Map(predictions.map((p) => [p.id, p]))
-  const ratingMap = new Map(powerRatings.map((p) => [p.id, p]))
+  const { matchInfo } = matchPreview
 
-  // Filter player stats to only players from the two match teams
+  // Filter to players from the two match teams + compute matchup stats from matchHistory
   const matchTeams = new Set([matchInfo.homeTeam, matchInfo.awayTeam])
+  const opponent = (team: string) => team === matchInfo.homeTeam ? matchInfo.awayTeam : matchInfo.homeTeam
+
   const matchPlayers: NextMatchPlayerRow[] = playerStats
     .filter((p) => matchTeams.has(p.team) && roleFilter.has(p.role))
     .map((p) => {
-      const pred = predictionMap.get(p.id)
-      const rating = ratingMap.get(p.id)
+      const opp = opponent(p.team)
+      const vsOpp = p.matchHistory.filter((m) => m.opponent === opp)
+      const atVenue = p.matchHistory.filter((m) => m.venue === matchInfo.venue)
+      const totalFP = p.totalFP || 1
       return {
         ...p,
-        xfp: pred?.xfp ?? null,
-        venueAvg: pred?.venueAvg ?? null,
-        vsOpponentAvg: pred?.vsOpponentAvg ?? null,
-        ownershipPct: pred?.ownershipPct ?? 0,
-        isDifferential: pred?.isDifferential ?? false,
-        powerRating: rating?.powerRating ?? null,
-        volatility: rating?.volatility ?? null,
+        vsOppAvg: vsOpp.length > 0 ? Math.round(vsOpp.reduce((s, m) => s + m.fp, 0) / vsOpp.length * 10) / 10 : null,
+        vsOppMatches: vsOpp.length,
+        atVenueAvg: atVenue.length > 0 ? Math.round(atVenue.reduce((s, m) => s + m.fp, 0) / atVenue.length * 10) / 10 : null,
+        atVenueMatches: atVenue.length,
+        batPct: Math.round((p.battingFP / totalFP) * 100),
+        bowlPct: Math.round((p.bowlingFP / totalFP) * 100),
       }
     })
-
-  // Also include players in predictions who don't have season stats yet (new to playing XI)
-  const existingIds = new Set(matchPlayers.map((p) => p.id))
-  for (const pred of predictions) {
-    if (!existingIds.has(pred.id) && roleFilter.has(pred.role)) {
-      matchPlayers.push({
-        id: pred.id,
-        name: pred.name,
-        role: pred.role,
-        team: pred.team,
-        color: pred.color,
-        matches: 0,
-        totalFP: 0, avgFP: 0, medianFP: 0,
-        floor: 0, ceiling: 0, stddev: 0, cv: 0,
-        formLast3: pred.formLast3, formDelta: 0,
-        battingFP: 0, bowlingFP: 0, fieldingFP: 0, penaltyFP: 0,
-        scores: [], rollingAvg: [],
-        xfp: pred.xfp,
-        venueAvg: pred.venueAvg,
-        vsOpponentAvg: pred.vsOpponentAvg,
-        ownershipPct: pred.ownershipPct,
-        isDifferential: pred.isDifferential,
-        powerRating: null,
-        volatility: null,
-      })
-    }
-  }
 
   const filtered = teamFilter
     ? matchPlayers.filter((p) => p.team === teamFilter)
     : matchPlayers
 
-  const { sorted, sortKey, sortDir, toggleSort } = useSortableTable(filtered, "xfp" as keyof NextMatchPlayerRow)
+  const { sorted, sortKey, sortDir, toggleSort } = useSortableTable(filtered, "avgFP" as keyof NextMatchPlayerRow)
 
   return (
     <div className="space-y-6 mt-4">
@@ -442,72 +413,23 @@ function NextMatchTab({
               <p className="text-xs text-muted-foreground">{matchInfo.venue}</p>
             </div>
             <div className="flex gap-1.5">
-              <button
-                onClick={() => setTeamFilter(null)}
-                className={cn("px-2.5 py-1 rounded-md text-xs font-semibold transition-colors",
-                  !teamFilter ? "bg-primary/15 text-primary" : "bg-muted/50 text-muted-foreground")}
-              >Both</button>
-              <button
-                onClick={() => setTeamFilter(matchInfo.homeTeam)}
-                className={cn("px-2.5 py-1 rounded-md text-xs font-semibold transition-colors",
-                  teamFilter === matchInfo.homeTeam ? "bg-primary/15 text-primary" : "bg-muted/50 text-muted-foreground")}
-              >{matchInfo.homeTeam}</button>
-              <button
-                onClick={() => setTeamFilter(matchInfo.awayTeam)}
-                className={cn("px-2.5 py-1 rounded-md text-xs font-semibold transition-colors",
-                  teamFilter === matchInfo.awayTeam ? "bg-primary/15 text-primary" : "bg-muted/50 text-muted-foreground")}
-              >{matchInfo.awayTeam}</button>
+              {[null, matchInfo.homeTeam, matchInfo.awayTeam].map((t) => (
+                <button
+                  key={t ?? "all"}
+                  onClick={() => setTeamFilter(t)}
+                  className={cn("px-2.5 py-1 rounded-md text-xs font-semibold transition-colors",
+                    teamFilter === t ? "bg-primary/15 text-primary" : "bg-muted/50 text-muted-foreground")}
+                >{t ?? "Both"}</button>
+              ))}
             </div>
           </div>
         </CardContent>
       </Card>
 
-      {/* Suggested Team */}
-      {suggestedTeam && (
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm flex items-center gap-2">
-              <Sparkles className="h-4 w-4 text-amber-500" />
-              Suggested XI — Projected {suggestedTeam.totalProjected} pts
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="flex flex-wrap gap-2">
-              {suggestedTeam.players
-                .sort((a, b) => {
-                  const roleOrder: Record<string, number> = { WK: 0, BAT: 1, AR: 2, BOWL: 3 }
-                  return (roleOrder[a.role] ?? 4) - (roleOrder[b.role] ?? 4)
-                })
-                .map((p) => {
-                  const isCaptain = p.id === suggestedTeam.captainId
-                  const isVC = p.id === suggestedTeam.vcId
-                  return (
-                    <div
-                      key={p.id}
-                      className={cn(
-                        "px-3 py-1.5 rounded-lg text-xs flex items-center gap-1.5 border",
-                        isCaptain ? "border-amber-500/50 bg-amber-500/10"
-                        : isVC ? "border-blue-500/50 bg-blue-500/10"
-                        : "border-overlay-border bg-overlay-subtle"
-                      )}
-                    >
-                      <Badge variant="outline" className={cn("text-[9px] px-1 py-0 h-4", ROLE_COLORS[p.role])}>{p.role}</Badge>
-                      <span className="font-medium">{p.name.split(" ").pop()}</span>
-                      <span className="tabular-nums text-muted-foreground">{p.xfp}</span>
-                      {isCaptain && <Badge className="text-[8px] px-1 py-0 h-3.5 bg-amber-500 text-white">C</Badge>}
-                      {isVC && <Badge className="text-[8px] px-1 py-0 h-3.5 bg-blue-500 text-white">VC</Badge>}
-                    </div>
-                  )
-                })}
-            </div>
-          </CardContent>
-        </Card>
-      )}
-
-      {/* Full Stats Table for Match Players */}
+      {/* Historical Fact Sheet Table */}
       <Card>
         <CardHeader className="pb-2">
-          <CardTitle className="text-sm">Match Players — Full Season Stats + Predictions ({sorted.length})</CardTitle>
+          <CardTitle className="text-sm">Player Historical Data ({sorted.length})</CardTitle>
         </CardHeader>
         <CardContent className="p-0">
           <div className="overflow-x-auto">
@@ -515,25 +437,23 @@ function NextMatchTab({
               <TableHeader>
                 <TableRow>
                   <TableHead className="sticky left-0 bg-background z-10 min-w-[140px]">Player</TableHead>
-                  <SortHeader label="xFP" sortKey={"xfp" as keyof NextMatchPlayerRow} currentKey={sortKey} currentDir={sortDir} onSort={toggleSort} />
-                  <SortHeader label="Rating" sortKey={"powerRating" as keyof NextMatchPlayerRow} currentKey={sortKey} currentDir={sortDir} onSort={toggleSort} />
                   <SortHeader label="M" sortKey={"matches" as keyof NextMatchPlayerRow} currentKey={sortKey} currentDir={sortDir} onSort={toggleSort} />
                   <SortHeader label="Avg" sortKey={"avgFP" as keyof NextMatchPlayerRow} currentKey={sortKey} currentDir={sortDir} onSort={toggleSort} />
+                  <SortHeader label="Med" sortKey={"medianFP" as keyof NextMatchPlayerRow} currentKey={sortKey} currentDir={sortDir} onSort={toggleSort} />
                   <SortHeader label="Form" sortKey={"formLast3" as keyof NextMatchPlayerRow} currentKey={sortKey} currentDir={sortDir} onSort={toggleSort} />
                   <SortHeader label="Δ" sortKey={"formDelta" as keyof NextMatchPlayerRow} currentKey={sortKey} currentDir={sortDir} onSort={toggleSort} />
                   <SortHeader label="Floor" sortKey={"floor" as keyof NextMatchPlayerRow} currentKey={sortKey} currentDir={sortDir} onSort={toggleSort} />
                   <SortHeader label="Ceil" sortKey={"ceiling" as keyof NextMatchPlayerRow} currentKey={sortKey} currentDir={sortDir} onSort={toggleSort} />
-                  <SortHeader label="CV" sortKey={"cv" as keyof NextMatchPlayerRow} currentKey={sortKey} currentDir={sortDir} onSort={toggleSort} />
-                  <SortHeader label="Venue" sortKey={"venueAvg" as keyof NextMatchPlayerRow} currentKey={sortKey} currentDir={sortDir} onSort={toggleSort} />
-                  <SortHeader label="vs Opp" sortKey={"vsOpponentAvg" as keyof NextMatchPlayerRow} currentKey={sortKey} currentDir={sortDir} onSort={toggleSort} />
-                  <SortHeader label="Own %" sortKey={"ownershipPct" as keyof NextMatchPlayerRow} currentKey={sortKey} currentDir={sortDir} onSort={toggleSort} />
-                  <TableHead>Vol.</TableHead>
-                  <TableHead>Flag</TableHead>
+                  <SortHeader label={`vs ${matchInfo.awayTeam.length > 4 ? "Opp" : (teamFilter === matchInfo.awayTeam ? matchInfo.homeTeam : matchInfo.awayTeam)}`} sortKey={"vsOppAvg" as keyof NextMatchPlayerRow} currentKey={sortKey} currentDir={sortDir} onSort={toggleSort} />
+                  <SortHeader label="Venue" sortKey={"atVenueAvg" as keyof NextMatchPlayerRow} currentKey={sortKey} currentDir={sortDir} onSort={toggleSort} />
+                  <SortHeader label="Bat%" sortKey={"batPct" as keyof NextMatchPlayerRow} currentKey={sortKey} currentDir={sortDir} onSort={toggleSort} />
+                  <SortHeader label="Bowl%" sortKey={"bowlPct" as keyof NextMatchPlayerRow} currentKey={sortKey} currentDir={sortDir} onSort={toggleSort} />
+                  <TableHead className="min-w-[200px]">FP Distribution</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {sorted.map((p) => (
-                  <TableRow key={p.id} className={p.isDifferential ? "bg-amber-500/5" : ""}>
+                  <TableRow key={p.id}>
                     <TableCell className="sticky left-0 bg-background z-10">
                       <div className="flex items-center gap-2">
                         <div className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: p.color }} />
@@ -546,46 +466,39 @@ function NextMatchTab({
                         </div>
                       </div>
                     </TableCell>
-                    <TableCell className="tabular-nums text-xs font-bold text-primary">{p.xfp ?? "—"}</TableCell>
-                    <TableCell>
-                      {p.powerRating !== null ? (
-                        <div className="flex items-center gap-1.5">
-                          <div className="w-10 h-1.5 bg-muted rounded-full overflow-hidden">
-                            <div className="h-full rounded-full bg-gradient-to-r from-amber-500 to-orange-500" style={{ width: `${p.powerRating}%` }} />
-                          </div>
-                          <span className="tabular-nums text-[10px] font-bold">{p.powerRating}</span>
-                        </div>
-                      ) : <span className="text-xs text-muted-foreground">—</span>}
-                    </TableCell>
                     <TableCell className="tabular-nums text-xs">{p.matches || "—"}</TableCell>
                     <TableCell className="tabular-nums text-xs font-medium">{p.matches > 0 ? p.avgFP : "—"}</TableCell>
+                    <TableCell className="tabular-nums text-xs">{p.matches > 0 ? p.medianFP : "—"}</TableCell>
                     <TableCell className="tabular-nums text-xs font-medium">{p.formLast3 || "—"}</TableCell>
                     <TableCell className={cn("tabular-nums text-xs", p.matches > 0 ? deltaClass(p.formDelta) : "text-muted-foreground")}>
                       {p.matches > 0 ? formatDelta(p.formDelta) : "—"}
                     </TableCell>
                     <TableCell className="tabular-nums text-xs">{p.matches > 0 ? p.floor : "—"}</TableCell>
                     <TableCell className="tabular-nums text-xs">{p.matches > 0 ? p.ceiling : "—"}</TableCell>
-                    <TableCell>
-                      {p.matches > 0 ? (
-                        <Badge variant="outline" className={cn("text-[9px] px-1.5 py-0 h-4 tabular-nums",
-                          p.cv < 30 ? "bg-emerald-500/15 text-emerald-700 dark:text-emerald-300"
-                          : p.cv < 60 ? "bg-amber-500/15 text-amber-700 dark:text-amber-300"
-                          : "bg-red-500/15 text-red-700 dark:text-red-300"
-                        )}>{p.cv}</Badge>
-                      ) : <span className="text-xs text-muted-foreground">—</span>}
+                    <TableCell className="tabular-nums text-xs">
+                      {p.vsOppAvg !== null ? (
+                        <span className="font-medium">{p.vsOppAvg} <span className="text-muted-foreground text-[9px]">({p.vsOppMatches}m)</span></span>
+                      ) : "—"}
                     </TableCell>
-                    <TableCell className="tabular-nums text-xs">{p.venueAvg ?? "—"}</TableCell>
-                    <TableCell className="tabular-nums text-xs">{p.vsOpponentAvg ?? "—"}</TableCell>
-                    <TableCell className="tabular-nums text-xs">{p.ownershipPct}%</TableCell>
-                    <TableCell>
-                      {p.volatility ? (
-                        <Badge variant="outline" className={cn("text-[9px] px-1.5 py-0 h-4", volatilityColor(p.volatility))}>{p.volatility}</Badge>
-                      ) : <span className="text-xs text-muted-foreground">—</span>}
+                    <TableCell className="tabular-nums text-xs">
+                      {p.atVenueAvg !== null ? (
+                        <span className="font-medium">{p.atVenueAvg} <span className="text-muted-foreground text-[9px]">({p.atVenueMatches}m)</span></span>
+                      ) : "—"}
                     </TableCell>
+                    <TableCell className="tabular-nums text-xs">{p.matches > 0 ? `${p.batPct}` : "—"}</TableCell>
+                    <TableCell className="tabular-nums text-xs">{p.matches > 0 ? `${p.bowlPct}` : "—"}</TableCell>
                     <TableCell>
-                      {p.isDifferential && (
-                        <Badge className="text-[9px] px-1.5 py-0 h-4 bg-amber-500/20 text-amber-700 dark:text-amber-300 border-amber-500/30">DIFF</Badge>
-                      )}
+                      {p.scores.length > 0 ? (
+                        <StripChart
+                          scores={p.scores}
+                          mean={p.avgFP}
+                          median={p.medianFP}
+                          color={p.color}
+                          width={200}
+                          height={28}
+                          labels={p.matchHistory.map((m) => `M${m.matchNumber} vs ${m.opponent}`)}
+                        />
+                      ) : <span className="text-xs text-muted-foreground">No data</span>}
                     </TableCell>
                   </TableRow>
                 ))}
@@ -608,6 +521,7 @@ function PlayersTab({
   stats: PlayerAnalytics[]; benchmarks: RoleBenchmark[]; formCurves: Props["formCurves"]; matchCount: number
 }) {
   const { sorted, sortKey, sortDir, toggleSort } = useSortableTable(stats, "avgFP")
+  const [expandedId, setExpandedId] = useState<string | null>(null)
 
   // KPI cards
   const mostConsistent = [...stats].filter((p) => p.matches >= 5).sort((a, b) => a.cv - b.cv)[0]
@@ -661,7 +575,8 @@ function PlayersTab({
               </TableHeader>
               <TableBody>
                 {sorted.map((p) => (
-                  <TableRow key={p.id}>
+                  <React.Fragment key={p.id}>
+                  <TableRow className="cursor-pointer hover:bg-muted/30" onClick={() => setExpandedId(expandedId === p.id ? null : p.id)}>
                     <TableCell className="sticky left-0 bg-background z-10">
                       <div className="flex items-center gap-2">
                         <div className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: p.color }} />
@@ -696,6 +611,64 @@ function PlayersTab({
                     <TableCell className="tabular-nums text-xs">{p.bowlingFP}</TableCell>
                     <TableCell className="tabular-nums text-xs">{p.fieldingFP}</TableCell>
                   </TableRow>
+                  {expandedId === p.id && p.matchHistory.length > 0 && (
+                    <TableRow>
+                      <TableCell colSpan={14} className="bg-muted/20 p-3">
+                        <div className="space-y-3">
+                          <div className="flex items-center gap-3 flex-wrap">
+                            <span className="text-xs font-semibold">FP Distribution</span>
+                            <StripChart
+                              scores={p.scores}
+                              mean={p.avgFP}
+                              median={p.medianFP}
+                              color={p.color}
+                              width={280}
+                              height={32}
+                              labels={p.matchHistory.map((m) => `M${m.matchNumber} vs ${m.opponent}`)}
+                            />
+                          </div>
+                          <div className="overflow-x-auto">
+                            <table className="text-xs w-full">
+                              <thead>
+                                <tr className="text-muted-foreground">
+                                  <th className="text-left py-1 pr-3 font-medium">Match</th>
+                                  <th className="text-left py-1 pr-3 font-medium">vs</th>
+                                  <th className="text-right py-1 pr-3 font-medium">FP</th>
+                                  <th className="text-right py-1 pr-3 font-medium">Bat</th>
+                                  <th className="text-right py-1 pr-3 font-medium">Bowl</th>
+                                  <th className="text-right py-1 pr-3 font-medium">Field</th>
+                                  <th className="py-1 pl-2 font-medium">Breakdown</th>
+                                </tr>
+                              </thead>
+                              <tbody>
+                                {p.matchHistory.map((m) => {
+                                  const total = Math.max(m.batting + m.bowling + m.fielding, 1)
+                                  return (
+                                    <tr key={m.matchNumber} className="border-t border-border/30">
+                                      <td className="py-1 pr-3 tabular-nums">M{m.matchNumber}</td>
+                                      <td className="py-1 pr-3">{m.opponent}</td>
+                                      <td className={cn("py-1 pr-3 text-right tabular-nums font-semibold", m.fp >= p.avgFP ? "text-emerald-600 dark:text-emerald-400" : "text-muted-foreground")}>{m.fp}</td>
+                                      <td className="py-1 pr-3 text-right tabular-nums text-blue-600 dark:text-blue-400">{m.batting > 0 ? m.batting : "—"}</td>
+                                      <td className="py-1 pr-3 text-right tabular-nums text-red-600 dark:text-red-400">{m.bowling > 0 ? m.bowling : "—"}</td>
+                                      <td className="py-1 pr-3 text-right tabular-nums text-amber-600 dark:text-amber-400">{m.fielding > 0 ? m.fielding : "—"}</td>
+                                      <td className="py-1 pl-2">
+                                        <div className="flex h-3 w-32 rounded-sm overflow-hidden">
+                                          {m.batting > 0 && <div className="bg-blue-500/70" style={{ width: `${(m.batting / total) * 100}%` }} />}
+                                          {m.bowling > 0 && <div className="bg-red-500/70" style={{ width: `${(m.bowling / total) * 100}%` }} />}
+                                          {m.fielding > 0 && <div className="bg-amber-500/70" style={{ width: `${(m.fielding / total) * 100}%` }} />}
+                                        </div>
+                                      </td>
+                                    </tr>
+                                  )
+                                })}
+                              </tbody>
+                            </table>
+                          </div>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  )}
+                  </React.Fragment>
                 ))}
               </TableBody>
             </Table>
@@ -1122,8 +1095,8 @@ function UsersTab({
       {/* Captain ROI */}
       <Card>
         <CardHeader className="pb-2">
-          <CardTitle className="text-sm">Captain ROI</CardTitle>
-          <p className="text-xs text-muted-foreground">Average base FP when captained (2x bonus = this value)</p>
+          <CardTitle className="text-sm">Captain ROI — Actual 2x Returns</CardTitle>
+          <p className="text-xs text-muted-foreground">Base FP when captained · 2x Score shows actual captain return · Sorted by avg 2x</p>
         </CardHeader>
         <CardContent className="p-0">
           <div className="overflow-x-auto">
@@ -1131,10 +1104,12 @@ function UsersTab({
               <TableHeader>
                 <TableRow>
                   <TableHead className="min-w-[140px]">Player</TableHead>
-                  <SortHeader label="Times" sortKey="timesCaptained" currentKey={cKey} currentDir={cDir} onSort={cToggle} />
-                  <SortHeader label="Avg Bonus" sortKey="avgCaptainBonus" currentKey={cKey} currentDir={cDir} onSort={cToggle} />
-                  <SortHeader label="Best" sortKey="bestCaptainGame" currentKey={cKey} currentDir={cDir} onSort={cToggle} />
-                  <SortHeader label="Worst" sortKey="worstCaptainGame" currentKey={cKey} currentDir={cDir} onSort={cToggle} />
+                  <SortHeader label="Times C" sortKey="timesCaptained" currentKey={cKey} currentDir={cDir} onSort={cToggle} />
+                  <SortHeader label="Avg Base" sortKey="avgCaptainBonus" currentKey={cKey} currentDir={cDir} onSort={cToggle} />
+                  <SortHeader label="Avg 2x" sortKey="avgCaptainBonus" currentKey={cKey} currentDir={cDir} onSort={cToggle} />
+                  <SortHeader label="Best 2x" sortKey="bestCaptainGame" currentKey={cKey} currentDir={cDir} onSort={cToggle} />
+                  <SortHeader label="Worst 2x" sortKey="worstCaptainGame" currentKey={cKey} currentDir={cDir} onSort={cToggle} />
+                  <TableHead>Range</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -1147,9 +1122,24 @@ function UsersTab({
                       </div>
                     </TableCell>
                     <TableCell className="tabular-nums text-xs">{p.timesCaptained}</TableCell>
-                    <TableCell className="tabular-nums text-xs font-bold">{p.avgCaptainBonus}</TableCell>
-                    <TableCell className="tabular-nums text-xs text-emerald-600 dark:text-emerald-400">{p.bestCaptainGame}</TableCell>
-                    <TableCell className="tabular-nums text-xs text-red-500">{p.worstCaptainGame}</TableCell>
+                    <TableCell className="tabular-nums text-xs">{p.avgCaptainBonus}</TableCell>
+                    <TableCell className="tabular-nums text-xs font-bold text-primary">{Math.round(p.avgCaptainBonus * 2)}</TableCell>
+                    <TableCell className="tabular-nums text-xs text-emerald-600 dark:text-emerald-400 font-medium">{Math.round(p.bestCaptainGame * 2)}</TableCell>
+                    <TableCell className="tabular-nums text-xs text-red-500 font-medium">{Math.round(p.worstCaptainGame * 2)}</TableCell>
+                    <TableCell>
+                      {p.timesCaptained >= 2 ? (
+                        <div className="flex items-center gap-1 text-[9px] text-muted-foreground tabular-nums">
+                          <span>{Math.round(p.worstCaptainGame * 2)}</span>
+                          <div className="w-12 h-1.5 bg-muted rounded-full overflow-hidden relative">
+                            <div
+                              className="h-full rounded-full bg-gradient-to-r from-red-500 via-amber-500 to-emerald-500"
+                              style={{ width: `${Math.min(100, (p.avgCaptainBonus / Math.max(p.bestCaptainGame, 1)) * 100)}%` }}
+                            />
+                          </div>
+                          <span>{Math.round(p.bestCaptainGame * 2)}</span>
+                        </div>
+                      ) : <span className="text-[9px] text-muted-foreground">1 game</span>}
+                    </TableCell>
                   </TableRow>
                 ))}
               </TableBody>
