@@ -6,6 +6,7 @@ import { ArrowLeft, ArrowUpDown, TrendingUp, Shield, Eye, MapPin, ChevronDown, C
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
+import { Separator } from "@/components/ui/separator"
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs"
 import {
   Table, TableHeader, TableBody, TableHead, TableRow, TableCell,
@@ -114,6 +115,84 @@ const useSortableTable = <T,>(data: T[], defaultKey: keyof T, defaultDir: SortDi
   return { sorted, sortKey, sortDir, toggleSort }
 }
 
+// Column header tooltip descriptions
+const COLUMN_TIPS: Record<string, string> = {
+  "M": "Matches played this season",
+  "Avg": "Average Fantasy Points per match",
+  "Med": "Median FP — middle value, less skewed by outliers than average",
+  "Form": "Average FP over last 3 matches — recent momentum",
+  "Δ": "Form trend — Form minus season Avg. Green = improving, Red = declining",
+  "Floor": "Lowest FP scored in any single match this season",
+  "Ceil": "Highest FP scored in any single match this season",
+  "CV": "Consistency — lower = more reliable. <30 very consistent, >60 volatile",
+  "StdDev": "Standard deviation — how much FP varies from match to match",
+  "Total": "Total Fantasy Points accumulated across all matches",
+  "Bat": "Total FP from batting (runs, boundaries, milestones, strike rate)",
+  "Bat%": "% of total FP from batting categories",
+  "Bowl": "Total FP from bowling (wickets, economy, hauls, maidens)",
+  "Bowl%": "% of total FP from bowling categories",
+  "Field": "Total FP from fielding (catches, stumpings, run-outs)",
+  "Own %": "% of users who picked this player in their team",
+  "Cap %": "% of users who made this player captain (2x multiplier)",
+  "DQS": "Decision Quality Score — % of the theoretical best possible score achieved",
+  "Econ": "Economy rate — runs conceded per over bowled. Lower = better",
+  "Pace Econ": "Economy rate for pace bowlers at this venue",
+  "Spin Econ": "Economy rate for spin bowlers at this venue",
+  "vs Opp": "Average FP in matches against this specific opponent",
+  "Venue": "Average FP at this specific ground",
+  "Pace W": "Total wickets taken by pace bowlers",
+  "Spin W": "Total wickets taken by spin bowlers",
+  "vs Pace W": "Wickets this team lost to pace bowlers",
+  "vs Spin W": "Wickets this team lost to spin bowlers",
+  "Rating": "Power Rating 0-100 — weighted: 40% form, 25% consistency, 20% ceiling, 15% role performance",
+  "Form Score": "Normalized form score (0-100) used in power rating calculation",
+  "Consist.": "Normalized consistency score (0-100) — higher = less volatile",
+  "Role Δ": "Performance above/below the average for this role (WK/BAT/AR/BOWL)",
+  "Value": "Value rating — FP relative to ownership. Higher = underowned performer",
+  "Vol.": "Volatility — low (consistent), medium, or high (unpredictable)",
+  "Avg 2x": "Average captain return — actual 2x score when this player is captained",
+  "Best 2x": "Best single-match captain return (base FP × 2)",
+  "Worst 2x": "Worst single-match captain return (base FP × 2)",
+  "Times C": "Number of times this player was selected as captain across all users",
+  "Avg Base": "Average base FP when captained (before 2x multiplier)",
+  "Pace Avg FP": "Average FP per appearance for pace bowlers at this venue",
+  "Spin Avg FP": "Average FP per appearance for spin bowlers at this venue",
+  "xFP": "Expected FP — weighted blend of form, venue, and opponent history",
+  "Season Avg": "Average FP across all matches this season",
+  "Form (L3)": "Average FP over last 3 matches",
+  "Bat FP": "Average batting FP at this venue",
+  "Bowl FP": "Average bowling FP at this venue",
+  "Bat %": "% of total FP from batting at this venue",
+  "Avg FP": "Average Fantasy Points per match",
+  "Total FP": "Total Fantasy Points scored at this venue",
+  "Avg User": "Average user score for this match",
+  "Top User": "Highest user score for this match",
+  "Best Player": "Highest individual player FP in this match",
+  "Picked": "Number of times this player was selected across all matches",
+  "VC": "Number of times selected as Vice-Captain (1.5x multiplier)",
+  "Avg DQS": "Average Decision Quality Score across all matches",
+  "Best": "Best single-match DQS %",
+  "Worst": "Worst single-match DQS %",
+  "FP Distribution": "Each dot = one match score. Solid line = average, dashed = median",
+  "Breakdown": "Stacked bar: Blue=batting, Red=bowling, Amber=fielding",
+  "Type": "Venue/bowler dominance classification based on wicket share",
+  "Weakness": "Which bowling type this team loses most wickets to",
+  "Range": "Visual spread from worst to best captain return",
+}
+
+function Tip({ label }: { label: string }) {
+  const tip = COLUMN_TIPS[label]
+  if (!tip) return <>{label}</>
+  return (
+    <span className="group/tip relative cursor-help">
+      {label}
+      <span className="pointer-events-none absolute left-1/2 -translate-x-1/2 top-full mt-1.5 z-50 w-48 rounded-md bg-popover px-2.5 py-1.5 text-[10px] font-normal leading-tight text-popover-foreground shadow-md border opacity-0 group-hover/tip:opacity-100 transition-opacity whitespace-normal">
+        {tip}
+      </span>
+    </span>
+  )
+}
+
 function SortHeader<T>({
   label, sortKey: key, currentKey, currentDir, onSort, className,
 }: {
@@ -126,7 +205,7 @@ function SortHeader<T>({
       onClick={() => onSort(key)}
     >
       <span className="inline-flex items-center gap-1">
-        {label}
+        <Tip label={label} />
         {active ? (
           currentDir === "desc" ? <ChevronDown className="h-3 w-3" /> : <ChevronUp className="h-3 w-3" />
         ) : (
@@ -292,11 +371,8 @@ export function AnalyticsClient({
         <TabsList className="w-full justify-start overflow-x-auto flex-nowrap">
           <TabsTrigger value="nextmatch" className="gap-1.5"><Swords className="h-3.5 w-3.5" />Next Match</TabsTrigger>
           <TabsTrigger value="players" className="gap-1.5"><BarChart3 className="h-3.5 w-3.5" />Players</TabsTrigger>
-          <TabsTrigger value="ratings" className="gap-1.5"><Sparkles className="h-3.5 w-3.5" />Ratings</TabsTrigger>
-          <TabsTrigger value="preview" className="gap-1.5"><Eye className="h-3.5 w-3.5" />Preview</TabsTrigger>
+          <TabsTrigger value="matchups" className="gap-1.5"><MapPin className="h-3.5 w-3.5" />Matchups</TabsTrigger>
           <TabsTrigger value="users" className="gap-1.5"><Users className="h-3.5 w-3.5" />Users</TabsTrigger>
-          <TabsTrigger value="venues" className="gap-1.5"><MapPin className="h-3.5 w-3.5" />Venues</TabsTrigger>
-          <TabsTrigger value="pacespin" className="gap-1.5"><Target className="h-3.5 w-3.5" />Pace/Spin</TabsTrigger>
           <TabsTrigger value="compare" className="gap-1.5"><GitCompareArrows className="h-3.5 w-3.5" />Compare</TabsTrigger>
         </TabsList>
 
@@ -308,13 +384,10 @@ export function AnalyticsClient({
           />
         </TabsContent>
         <TabsContent value="players">
-          <PlayersTab stats={filteredPlayerStats} benchmarks={roleBenchmarks} formCurves={formCurves} matchCount={matchCount} />
+          <PlayersTab stats={filteredPlayerStats} ratings={filteredPowerRatings} benchmarks={roleBenchmarks} formCurves={formCurves} matchCount={matchCount} />
         </TabsContent>
-        <TabsContent value="ratings">
-          <RatingsTab ratings={filteredPowerRatings} />
-        </TabsContent>
-        <TabsContent value="preview">
-          <PreviewTab data={matchPreview} />
+        <TabsContent value="matchups">
+          <MatchupsTab venues={venueData} matchRows={matchScoringRows} paceSpinVenues={paceSpinVenues} paceSpinTeams={paceSpinTeams} />
         </TabsContent>
         <TabsContent value="users">
           <UsersTab
@@ -324,12 +397,6 @@ export function AnalyticsClient({
             dqs={dqsData}
             matchCount={matchCount}
           />
-        </TabsContent>
-        <TabsContent value="venues">
-          <VenuesTab venues={venueData} matchRows={matchScoringRows} />
-        </TabsContent>
-        <TabsContent value="pacespin">
-          <PaceSpinTab venues={paceSpinVenues} teams={paceSpinTeams} />
         </TabsContent>
         <TabsContent value="compare">
           <CompareTab allPlayers={playerStats} />
@@ -448,7 +515,7 @@ function NextMatchTab({
                   <SortHeader label="Venue" sortKey={"atVenueAvg" as keyof NextMatchPlayerRow} currentKey={sortKey} currentDir={sortDir} onSort={toggleSort} />
                   <SortHeader label="Bat%" sortKey={"batPct" as keyof NextMatchPlayerRow} currentKey={sortKey} currentDir={sortDir} onSort={toggleSort} />
                   <SortHeader label="Bowl%" sortKey={"bowlPct" as keyof NextMatchPlayerRow} currentKey={sortKey} currentDir={sortDir} onSort={toggleSort} />
-                  <TableHead className="min-w-[200px]">FP Distribution</TableHead>
+                  <TableHead className="min-w-[200px]"><Tip label="FP Distribution" /></TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -475,12 +542,12 @@ function NextMatchTab({
                     </TableCell>
                     <TableCell className="tabular-nums text-xs">{p.matches > 0 ? p.floor : "—"}</TableCell>
                     <TableCell className="tabular-nums text-xs">{p.matches > 0 ? p.ceiling : "—"}</TableCell>
-                    <TableCell className="tabular-nums text-xs">
+                    <TableCell className={cn("tabular-nums text-xs", p.vsOppAvg !== null && p.avgFP > 0 && (p.vsOppAvg > p.avgFP * 1.15 ? "text-emerald-600 dark:text-emerald-400" : p.vsOppAvg < p.avgFP * 0.85 ? "text-red-500 dark:text-red-400" : ""))}>
                       {p.vsOppAvg !== null ? (
                         <span className="font-medium">{p.vsOppAvg} <span className="text-muted-foreground text-[9px]">({p.vsOppMatches}m)</span></span>
                       ) : "—"}
                     </TableCell>
-                    <TableCell className="tabular-nums text-xs">
+                    <TableCell className={cn("tabular-nums text-xs", p.atVenueAvg !== null && p.avgFP > 0 && (p.atVenueAvg > p.avgFP * 1.15 ? "text-emerald-600 dark:text-emerald-400" : p.atVenueAvg < p.avgFP * 0.85 ? "text-red-500 dark:text-red-400" : ""))}>
                       {p.atVenueAvg !== null ? (
                         <span className="font-medium">{p.atVenueAvg} <span className="text-muted-foreground text-[9px]">({p.atVenueMatches}m)</span></span>
                       ) : "—"}
@@ -516,10 +583,11 @@ function NextMatchTab({
 // ============================================================
 
 function PlayersTab({
-  stats, benchmarks, formCurves, matchCount,
+  stats, ratings, benchmarks, formCurves, matchCount,
 }: {
-  stats: PlayerAnalytics[]; benchmarks: RoleBenchmark[]; formCurves: Props["formCurves"]; matchCount: number
+  stats: PlayerAnalytics[]; ratings: PowerRating[]; benchmarks: RoleBenchmark[]; formCurves: Props["formCurves"]; matchCount: number
 }) {
+  const ratingMap = useMemo(() => new Map(ratings.map((r) => [r.id, r])), [ratings])
   const { sorted, sortKey, sortDir, toggleSort } = useSortableTable(stats, "avgFP")
   const [expandedId, setExpandedId] = useState<string | null>(null)
 
@@ -558,16 +626,15 @@ function PlayersTab({
               <TableHeader>
                 <TableRow>
                   <TableHead className="sticky left-0 bg-background z-10 min-w-[140px]">Player</TableHead>
+                  <TableHead><Tip label="Rating" /></TableHead>
                   <SortHeader label="M" sortKey="matches" currentKey={sortKey} currentDir={sortDir} onSort={toggleSort} />
-                  <SortHeader label="Total" sortKey="totalFP" currentKey={sortKey} currentDir={sortDir} onSort={toggleSort} />
                   <SortHeader label="Avg" sortKey="avgFP" currentKey={sortKey} currentDir={sortDir} onSort={toggleSort} />
                   <SortHeader label="Med" sortKey="medianFP" currentKey={sortKey} currentDir={sortDir} onSort={toggleSort} />
-                  <SortHeader label="Floor" sortKey="floor" currentKey={sortKey} currentDir={sortDir} onSort={toggleSort} />
-                  <SortHeader label="Ceil" sortKey="ceiling" currentKey={sortKey} currentDir={sortDir} onSort={toggleSort} />
-                  <SortHeader label="StdDev" sortKey="stddev" currentKey={sortKey} currentDir={sortDir} onSort={toggleSort} />
-                  <SortHeader label="CV" sortKey="cv" currentKey={sortKey} currentDir={sortDir} onSort={toggleSort} />
                   <SortHeader label="Form" sortKey="formLast3" currentKey={sortKey} currentDir={sortDir} onSort={toggleSort} />
                   <SortHeader label="Δ" sortKey="formDelta" currentKey={sortKey} currentDir={sortDir} onSort={toggleSort} />
+                  <SortHeader label="Floor" sortKey="floor" currentKey={sortKey} currentDir={sortDir} onSort={toggleSort} />
+                  <SortHeader label="Ceil" sortKey="ceiling" currentKey={sortKey} currentDir={sortDir} onSort={toggleSort} />
+                  <SortHeader label="CV" sortKey="cv" currentKey={sortKey} currentDir={sortDir} onSort={toggleSort} />
                   <SortHeader label="Bat" sortKey="battingFP" currentKey={sortKey} currentDir={sortDir} onSort={toggleSort} />
                   <SortHeader label="Bowl" sortKey="bowlingFP" currentKey={sortKey} currentDir={sortDir} onSort={toggleSort} />
                   <SortHeader label="Field" sortKey="fieldingFP" currentKey={sortKey} currentDir={sortDir} onSort={toggleSort} />
@@ -589,13 +656,28 @@ function PlayersTab({
                         </div>
                       </div>
                     </TableCell>
+                    <TableCell>
+                      {(() => {
+                        const r = ratingMap.get(p.id)
+                        return r ? (
+                          <div className="flex items-center gap-1.5">
+                            <div className="w-8 h-1.5 bg-muted rounded-full overflow-hidden">
+                              <div className="h-full rounded-full bg-gradient-to-r from-amber-500 to-orange-500" style={{ width: `${r.powerRating}%` }} />
+                            </div>
+                            <span className="tabular-nums text-[10px] font-bold">{r.powerRating}</span>
+                          </div>
+                        ) : <span className="text-xs text-muted-foreground">—</span>
+                      })()}
+                    </TableCell>
                     <TableCell className="tabular-nums text-xs">{p.matches}</TableCell>
-                    <TableCell className="tabular-nums text-xs font-medium">{p.totalFP}</TableCell>
                     <TableCell className="tabular-nums text-xs font-bold">{p.avgFP}</TableCell>
                     <TableCell className="tabular-nums text-xs">{p.medianFP}</TableCell>
+                    <TableCell className="tabular-nums text-xs font-medium">{p.formLast3}</TableCell>
+                    <TableCell className={cn("tabular-nums text-xs font-medium", deltaClass(p.formDelta))}>
+                      {formatDelta(p.formDelta)}
+                    </TableCell>
                     <TableCell className="tabular-nums text-xs">{p.floor}</TableCell>
-                    <TableCell className="tabular-nums text-xs font-medium">{p.ceiling}</TableCell>
-                    <TableCell className="tabular-nums text-xs">{p.stddev}</TableCell>
+                    <TableCell className="tabular-nums text-xs">{p.ceiling}</TableCell>
                     <TableCell>
                       <Badge variant="outline" className={cn("text-[9px] px-1.5 py-0 h-4 tabular-nums",
                         p.cv < 30 ? "bg-emerald-500/15 text-emerald-700 dark:text-emerald-300"
@@ -603,17 +685,13 @@ function PlayersTab({
                         : "bg-red-500/15 text-red-700 dark:text-red-300"
                       )}>{p.cv}</Badge>
                     </TableCell>
-                    <TableCell className="tabular-nums text-xs font-medium">{p.formLast3}</TableCell>
-                    <TableCell className={cn("tabular-nums text-xs font-medium", deltaClass(p.formDelta))}>
-                      {formatDelta(p.formDelta)}
-                    </TableCell>
                     <TableCell className="tabular-nums text-xs">{p.battingFP}</TableCell>
                     <TableCell className="tabular-nums text-xs">{p.bowlingFP}</TableCell>
                     <TableCell className="tabular-nums text-xs">{p.fieldingFP}</TableCell>
                   </TableRow>
                   {expandedId === p.id && p.matchHistory.length > 0 && (
                     <TableRow>
-                      <TableCell colSpan={14} className="bg-muted/20 p-3">
+                      <TableCell colSpan={13} className="bg-muted/20 p-3">
                         <div className="space-y-3">
                           <div className="flex items-center gap-3 flex-wrap">
                             <span className="text-xs font-semibold">FP Distribution</span>
@@ -789,7 +867,7 @@ function RatingsTab({ ratings }: { ratings: PowerRating[] }) {
                   <SortHeader label="Consist." sortKey="consistencyScore" currentKey={sortKey} currentDir={sortDir} onSort={toggleSort} />
                   <SortHeader label="Ceiling" sortKey="ceilingScore" currentKey={sortKey} currentDir={sortDir} onSort={toggleSort} />
                   <SortHeader label="Role Δ" sortKey="roleDeltaScore" currentKey={sortKey} currentDir={sortDir} onSort={toggleSort} />
-                  <TableHead>Volatility</TableHead>
+                  <TableHead><Tip label="Vol." /></TableHead>
                   <SortHeader label="Own %" sortKey="ownershipPct" currentKey={sortKey} currentDir={sortDir} onSort={toggleSort} />
                   <SortHeader label="Value" sortKey="valueRating" currentKey={sortKey} currentDir={sortDir} onSort={toggleSort} />
                   <SortHeader label="Avg FP" sortKey="avgFP" currentKey={sortKey} currentDir={sortDir} onSort={toggleSort} />
@@ -1192,10 +1270,28 @@ function UsersTab({
 }
 
 // ============================================================
-// Tab 5: Venues
+// Tab: Matchups (Venues + Pace/Spin merged)
 // ============================================================
 
-function VenuesTab({ venues, matchRows }: { venues: VenueAnalytics[]; matchRows: MatchScoringRow[] }) {
+function MatchupsTab({ venues, matchRows, paceSpinVenues, paceSpinTeams }: {
+  venues: VenueAnalytics[]; matchRows: MatchScoringRow[];
+  paceSpinVenues: PaceSpinVenueRow[]; paceSpinTeams: PaceSpinTeamRow[]
+}) {
+  return (
+    <div className="space-y-6 mt-4">
+      <VenuesSection venues={venues} matchRows={matchRows} />
+      <Separator />
+      <h3 className="text-sm font-semibold pt-2">Pace vs Spin Analysis</h3>
+      <PaceSpinSection venues={paceSpinVenues} teams={paceSpinTeams} />
+    </div>
+  )
+}
+
+// ============================================================
+// Matchups: Venues Section
+// ============================================================
+
+function VenuesSection({ venues, matchRows }: { venues: VenueAnalytics[]; matchRows: MatchScoringRow[] }) {
   const { sorted: sortedVenues, sortKey: vKey, sortDir: vDir, toggleSort: vToggle } = useSortableTable(venues, "avgTotalFP")
   const { sorted: sortedMatches, sortKey: mKey, sortDir: mDir, toggleSort: mToggle } = useSortableTable(matchRows, "matchNumber", "asc")
 
@@ -1361,7 +1457,7 @@ const dominanceColor = (d: "pace" | "spin" | "balanced") =>
     : d === "spin" ? "bg-amber-500/15 text-amber-700 dark:text-amber-300"
     : "bg-zinc-500/15 text-zinc-600 dark:text-zinc-400"
 
-function PaceSpinTab({ venues, teams }: { venues: PaceSpinVenueRow[]; teams: PaceSpinTeamRow[] }) {
+function PaceSpinSection({ venues, teams }: { venues: PaceSpinVenueRow[]; teams: PaceSpinTeamRow[] }) {
   const venueSorter = useSortableTable(venues, "paceWickets" as keyof PaceSpinVenueRow, "desc")
   const teamSorter = useSortableTable(teams, "paceWicketsAgainst" as keyof PaceSpinTeamRow, "desc")
 
@@ -1485,7 +1581,7 @@ function PaceSpinTab({ venues, teams }: { venues: PaceSpinVenueRow[]; teams: Pac
                   <SortHeader label="M" sortKey={"totalMatchesBatted" as keyof PaceSpinTeamRow} currentKey={teamSorter.sortKey} currentDir={teamSorter.sortDir} onSort={teamSorter.toggleSort} />
                   <SortHeader label="vs Pace W" sortKey={"paceWicketsAgainst" as keyof PaceSpinTeamRow} currentKey={teamSorter.sortKey} currentDir={teamSorter.sortDir} onSort={teamSorter.toggleSort} />
                   <SortHeader label="vs Spin W" sortKey={"spinWicketsAgainst" as keyof PaceSpinTeamRow} currentKey={teamSorter.sortKey} currentDir={teamSorter.sortDir} onSort={teamSorter.toggleSort} />
-                  <TableHead>Weakness</TableHead>
+                  <TableHead><Tip label="Weakness" /></TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
