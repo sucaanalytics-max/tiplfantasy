@@ -90,7 +90,7 @@ export default async function AdminAnalyticsPage() {
       .in("match_id", matchIds),
     admin
       .from("players")
-      .select("id, name, role, team_id, bowling_style, team:teams(id, short_name, color)")
+      .select("id, name, role, team_id, team:teams(id, short_name, color)")
       .eq("is_active", true),
     admin
       .from("selections")
@@ -117,6 +117,15 @@ export default async function AdminAnalyticsPage() {
     teamIdToName.set(t.id, t.short_name)
   }
 
+  // Fetch bowling_style separately — non-critical, won't break dashboard if column is missing
+  const bowlingStyleMap = new Map<string, string>()
+  try {
+    const { data: bsData } = await admin.from("players").select("id, bowling_style").not("bowling_style", "eq", "unknown")
+    for (const row of bsData ?? []) {
+      if (row.bowling_style) bowlingStyleMap.set(row.id, row.bowling_style)
+    }
+  } catch { /* bowling_style column may not exist yet */ }
+
   const playerMap = new Map<string, PlayerInfo>()
   for (const p of playersRes.data ?? []) {
     const team = p.team as unknown as { id: string; short_name: string; color: string } | null
@@ -127,7 +136,7 @@ export default async function AdminAnalyticsPage() {
       team: team?.short_name ?? "?",
       teamId: p.team_id,
       color: team?.color ?? "#888",
-      bowlingStyle: p.bowling_style as "pace" | "spin" | "unknown" | null,
+      bowlingStyle: (bowlingStyleMap.get(p.id) as "pace" | "spin") ?? null,
     })
   }
 
