@@ -3,6 +3,7 @@
 import { createClient } from "@/lib/supabase/server"
 import { createAdminClient } from "@/lib/supabase/admin"
 import { loadScoringRules, calculatePlayerPoints, calculateUserMatchScore } from "@/lib/scoring"
+import { fetchMatchInfo } from "@/lib/api/sportmonks"
 import type { PlayerStats } from "@/lib/scoring"
 
 async function requireAdmin() {
@@ -66,7 +67,44 @@ export async function calculateMatchPoints(matchId: string) {
   await requireAdmin()
   const admin = createAdminClient()
 
-  // Get player scores for this match
+  // Apply POTM bonus before calculating user scores
+  try {
+    const { data: matchRow } = await admin
+      .from("matches")
+      .select("cricapi_match_id")
+      .eq("id", matchId)
+      .single()
+
+    if (matchRow?.cricapi_match_id) {
+      const rules = await loadScoringRules()
+      const potmPts = rules.find((r) => r.name === "potm")?.points ?? 0
+      if (potmPts > 0) {
+        const fixtureInfo = await fetchMatchInfo(matchRow.cricapi_match_id)
+        if (fixtureInfo?.man_of_match_id) {
+          const { data: potmPlayer } = await admin
+            .from("players").select("id").eq("cricapi_id", String(fixtureInfo.man_of_match_id)).single()
+          if (potmPlayer) {
+            const { data: mps } = await admin
+              .from("match_player_scores")
+              .select("fantasy_points, breakdown")
+              .eq("match_id", matchId).eq("player_id", potmPlayer.id).single()
+            if (mps) {
+              const bd = (mps.breakdown as Record<string, number>) ?? {}
+              if (!bd.potm) {
+                bd.potm = potmPts
+                const newTotal = Object.values(bd).reduce((a, b) => a + b, 0)
+                await admin.from("match_player_scores")
+                  .update({ fantasy_points: newTotal, breakdown: bd })
+                  .eq("match_id", matchId).eq("player_id", potmPlayer.id)
+              }
+            }
+          }
+        }
+      }
+    }
+  } catch { /* POTM is non-critical — don't fail scoring */ }
+
+  // Get player scores for this match (after POTM applied)
   const { data: playerScores } = await admin
     .from("match_player_scores")
     .select("player_id, fantasy_points")
@@ -356,4 +394,91 @@ export async function recalculateUserMatchScores(matchId: string) {
     .upsert(rows, { onConflict: "user_id,match_id" })
 
   await admin.rpc("refresh_leaderboard")
+}
+
+/**
+ * Applies POTM bonus to a completed match by fetching man_of_match from SportMonks.
+ * Idempotent — skips if POTM already applied. Recalculates user scores after.
+ */
+export async function applyPotmBonus(matchId: string) {
+  await requireAdmin()
+  const admin = createAdminClient()
+
+  // Get the match's cricapi_match_id
+  const { data: match } = await admin
+    .from("matches")
+    .select("cricapi_match_id, match_number")
+    .eq("id", matchId)
+    .single()
+
+  if (!match?.cricapi_match_id) {
+    return { error: "Match has no cricapi_match_id" }
+  }
+
+  // Check if POTM already applied
+  const { data: existingPotm } = await admin
+    .from("match_player_scores")
+    .select("player_id, breakdown")
+    .eq("match_id", matchId)
+
+  const alreadyApplied = (existingPotm ?? []).some((s) => {
+    const bd = s.breakdown as Record<string, number> | null
+    return bd && bd.potm != null
+  })
+
+  if (alreadyApplied) {
+    return { error: "POTM bonus already applied to this match" }
+  }
+
+  // Load POTM points from scoring rules
+  const rules = await loadScoringRules()
+  const potmPts = rules.find((r) => r.name === "potm")?.points ?? 0
+  if (potmPts <= 0) {
+    return { error: "POTM scoring rule not found or has 0 points" }
+  }
+
+  // Fetch fixture info from SportMonks
+  const fixtureInfo = await fetchMatchInfo(match.cricapi_match_id)
+  if (!fixtureInfo?.man_of_match_id) {
+    return { error: "No Man of the Match data available from API" }
+  }
+
+  // Find the POTM player in our DB
+  const { data: potmPlayer } = await admin
+    .from("players")
+    .select("id, name")
+    .eq("cricapi_id", String(fixtureInfo.man_of_match_id))
+    .single()
+
+  if (!potmPlayer) {
+    return { error: `POTM player not found in DB (cricapi_id: ${fixtureInfo.man_of_match_id})` }
+  }
+
+  // Get their current score row
+  const { data: mps } = await admin
+    .from("match_player_scores")
+    .select("fantasy_points, breakdown")
+    .eq("match_id", matchId)
+    .eq("player_id", potmPlayer.id)
+    .single()
+
+  if (!mps) {
+    return { error: `No score row found for POTM player ${potmPlayer.name}` }
+  }
+
+  // Apply bonus
+  const bd = (mps.breakdown as Record<string, number>) ?? {}
+  bd.potm = potmPts
+  const newTotal = Object.values(bd).reduce((a, b) => a + b, 0)
+
+  await admin
+    .from("match_player_scores")
+    .update({ fantasy_points: newTotal, breakdown: bd })
+    .eq("match_id", matchId)
+    .eq("player_id", potmPlayer.id)
+
+  // Recalculate user scores with updated POTM
+  await recalculateUserMatchScores(matchId)
+
+  return { success: true, playerName: potmPlayer.name, bonus: potmPts }
 }

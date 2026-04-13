@@ -153,6 +153,52 @@ function RoleFilter({ active, onChange }: { active: Set<PlayerRole>; onChange: (
   )
 }
 
+const TEAM_COLORS: Record<string, string> = {
+  CSK: "bg-yellow-500/15 text-yellow-700 dark:text-yellow-300",
+  MI: "bg-blue-500/15 text-blue-700 dark:text-blue-300",
+  RCB: "bg-red-500/15 text-red-700 dark:text-red-300",
+  KKR: "bg-violet-500/15 text-violet-700 dark:text-violet-300",
+  SRH: "bg-orange-500/15 text-orange-700 dark:text-orange-300",
+  DC: "bg-blue-600/15 text-blue-800 dark:text-blue-200",
+  RR: "bg-pink-500/15 text-pink-700 dark:text-pink-300",
+  GT: "bg-cyan-500/15 text-cyan-700 dark:text-cyan-300",
+  PBKS: "bg-red-600/15 text-red-800 dark:text-red-200",
+  LSG: "bg-sky-500/15 text-sky-700 dark:text-sky-300",
+}
+
+function TeamFilter({ teams, active, onChange }: { teams: string[]; active: Set<string>; onChange: (s: Set<string>) => void }) {
+  const allSelected = active.size === teams.length
+  return (
+    <div className="flex gap-1.5 flex-wrap items-center">
+      <button
+        onClick={() => onChange(new Set(allSelected ? [] : teams))}
+        className={cn(
+          "px-2 py-1 rounded-md text-xs font-semibold transition-colors",
+          allSelected ? "bg-foreground/10 text-foreground" : "bg-muted/50 text-muted-foreground opacity-50"
+        )}
+      >
+        All
+      </button>
+      {teams.map((t) => (
+        <button
+          key={t}
+          onClick={() => {
+            const next = new Set(active)
+            if (next.has(t)) next.delete(t); else next.add(t)
+            onChange(next)
+          }}
+          className={cn(
+            "px-2 py-1 rounded-md text-xs font-semibold transition-colors",
+            active.has(t) ? (TEAM_COLORS[t] ?? "bg-muted text-foreground") : "bg-muted/50 text-muted-foreground opacity-50"
+          )}
+        >
+          {t}
+        </button>
+      ))}
+    </div>
+  )
+}
+
 function MinMatchesFilter({ value, onChange }: { value: number; onChange: (v: number) => void }) {
   return (
     <div className="flex items-center gap-2 text-xs text-muted-foreground">
@@ -193,14 +239,22 @@ export function AnalyticsClient({
   const [roleFilter, setRoleFilter] = useState<Set<PlayerRole>>(new Set(ROLES))
   const [minMatches, setMinMatches] = useState(2)
 
+  const allTeams = useMemo(() => {
+    const teams = new Set(playerStats.map((p) => p.team))
+    return Array.from(teams).sort()
+  }, [playerStats])
+  const [teamFilter, setTeamFilter] = useState<Set<string>>(() => new Set(allTeams))
+  // Sync teamFilter when allTeams changes (first render)
+  const teamFilterActive = teamFilter.size === 0 ? new Set(allTeams) : teamFilter
+
   const filteredPlayerStats = useMemo(() =>
-    playerStats.filter((p) => roleFilter.has(p.role) && p.matches >= minMatches),
-    [playerStats, roleFilter, minMatches]
+    playerStats.filter((p) => roleFilter.has(p.role) && teamFilterActive.has(p.team) && p.matches >= minMatches),
+    [playerStats, roleFilter, teamFilterActive, minMatches]
   )
 
   const filteredPowerRatings = useMemo(() =>
-    powerRatings.filter((p) => roleFilter.has(p.role) && p.matches >= minMatches),
-    [powerRatings, roleFilter, minMatches]
+    powerRatings.filter((p) => roleFilter.has(p.role) && teamFilterActive.has(p.team) && p.matches >= minMatches),
+    [powerRatings, roleFilter, teamFilterActive, minMatches]
   )
 
   return (
@@ -217,9 +271,12 @@ export function AnalyticsClient({
       </div>
 
       {/* Filters */}
-      <div className="flex items-center gap-4 flex-wrap">
-        <RoleFilter active={roleFilter} onChange={setRoleFilter} />
-        <MinMatchesFilter value={minMatches} onChange={setMinMatches} />
+      <div className="flex flex-col gap-2">
+        <div className="flex items-center gap-4 flex-wrap">
+          <RoleFilter active={roleFilter} onChange={setRoleFilter} />
+          <MinMatchesFilter value={minMatches} onChange={setMinMatches} />
+        </div>
+        <TeamFilter teams={allTeams} active={teamFilterActive} onChange={setTeamFilter} />
       </div>
 
       <Tabs defaultValue="nextmatch" className="w-full">

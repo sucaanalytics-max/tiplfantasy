@@ -11,7 +11,7 @@ import { formatIST } from "@/lib/utils"
 import type { MatchWithTeams, PlayerWithTeam, MatchPlayerScore } from "@/lib/types"
 import type { PlayerStats } from "@/lib/scoring"
 import { lockMatch, markNoResult, fetchPlayingXI, fetchMatchScorecard, autoScoreMatch, testMatchPoints, getMatchMemo, generateMatchBanter, getPreMatchAnalysis } from "@/actions/matches"
-import { savePlayerScores, calculateMatchPoints, calculateLiveMatchPoints } from "@/actions/scoring"
+import { savePlayerScores, calculateMatchPoints, calculateLiveMatchPoints, applyPotmBonus } from "@/actions/scoring"
 import { adminUpdateCaptainVc } from "@/actions/selections"
 import { formatMatchMessage } from "@/lib/whatsapp"
 
@@ -231,6 +231,17 @@ export function AdminMatchClient({
     })
   }
 
+  function handleApplyPotm() {
+    startTransition(async () => {
+      const res = await applyPotmBonus(match.id)
+      if (res.error) showMsg("error", res.error)
+      else {
+        showMsg("success", `POTM: ${res.playerName} (+${res.bonus} pts)`)
+        router.refresh()
+      }
+    })
+  }
+
   function handleLivePoints() {
     startTransition(async () => {
       const res = await calculateLiveMatchPoints(match.id)
@@ -400,6 +411,16 @@ export function AdminMatchClient({
           >
             Calculate Points
           </Button>
+          {match.status === "completed" && existingScores.length > 0 && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleApplyPotm}
+              disabled={isPending || !match.cricapi_match_id}
+            >
+              🏅 Apply POTM
+            </Button>
+          )}
           {match.status === "live" && existingScores.length > 0 && (
             <Button
               variant="outline"
