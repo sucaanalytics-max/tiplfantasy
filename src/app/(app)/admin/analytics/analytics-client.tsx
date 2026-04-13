@@ -1628,20 +1628,20 @@ function CompareTab({ allPlayers }: { allPlayers: PlayerAnalytics[] }) {
     return { axes, series }
   }, [active, allPlayers])
 
-  const COMPARE_STATS = [
-    { label: "Matches", fn: (p: PlayerAnalytics) => p.matches.toString() },
-    { label: "Total FP", fn: (p: PlayerAnalytics) => p.totalFP.toFixed(0) },
-    { label: "Avg FP", fn: (p: PlayerAnalytics) => p.avgFP.toFixed(1) },
-    { label: "Median FP", fn: (p: PlayerAnalytics) => p.medianFP.toFixed(1) },
-    { label: "Floor", fn: (p: PlayerAnalytics) => p.floor.toFixed(0) },
-    { label: "Ceiling", fn: (p: PlayerAnalytics) => p.ceiling.toFixed(0) },
-    { label: "Std Dev", fn: (p: PlayerAnalytics) => p.stddev.toFixed(1) },
-    { label: "CV", fn: (p: PlayerAnalytics) => p.cv.toFixed(0) + "%" },
-    { label: "Form L3", fn: (p: PlayerAnalytics) => p.formLast3.toFixed(1) },
-    { label: "Form Δ", fn: (p: PlayerAnalytics) => (p.formDelta > 0 ? "+" : "") + p.formDelta.toFixed(1) },
-    { label: "Batting FP", fn: (p: PlayerAnalytics) => p.battingFP.toFixed(0) },
-    { label: "Bowling FP", fn: (p: PlayerAnalytics) => p.bowlingFP.toFixed(0) },
-    { label: "Fielding FP", fn: (p: PlayerAnalytics) => p.fieldingFP.toFixed(0) },
+  const COMPARE_STATS: { label: string; fn: (p: PlayerAnalytics) => string; lowerIsBetter?: boolean }[] = [
+    { label: "Matches", fn: (p) => p.matches.toString() },
+    { label: "Total FP", fn: (p) => p.totalFP.toFixed(0) },
+    { label: "Avg FP", fn: (p) => p.avgFP.toFixed(1) },
+    { label: "Median FP", fn: (p) => p.medianFP.toFixed(1) },
+    { label: "Floor", fn: (p) => p.floor.toFixed(0) },
+    { label: "Ceiling", fn: (p) => p.ceiling.toFixed(0) },
+    { label: "Std Dev", fn: (p) => p.stddev.toFixed(1), lowerIsBetter: true },
+    { label: "CV", fn: (p) => p.cv.toFixed(0) + "%", lowerIsBetter: true },
+    { label: "Form L3", fn: (p) => p.formLast3.toFixed(1) },
+    { label: "Form Δ", fn: (p) => (p.formDelta > 0 ? "+" : "") + p.formDelta.toFixed(1) },
+    { label: "Batting FP", fn: (p) => p.battingFP.toFixed(0) },
+    { label: "Bowling FP", fn: (p) => p.bowlingFP.toFixed(0) },
+    { label: "Fielding FP", fn: (p) => p.fieldingFP.toFixed(0) },
   ]
 
   return (
@@ -1706,7 +1706,7 @@ function CompareTab({ allPlayers }: { allPlayers: PlayerAnalytics[] }) {
                   <TableBody>
                     {COMPARE_STATS.map((stat) => {
                       const values = active.map((p) => parseFloat(stat.fn(p)))
-                      const best = Math.max(...values)
+                      const best = stat.lowerIsBetter ? Math.min(...values) : Math.max(...values)
                       return (
                         <TableRow key={stat.label}>
                           <TableCell className="text-xs text-muted-foreground font-medium">{stat.label}</TableCell>

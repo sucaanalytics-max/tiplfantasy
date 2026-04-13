@@ -1128,6 +1128,9 @@ export function computePaceSpinAnalysis(
     matchTeams.set(m.id, { homeId: m.teamHomeId, awayId: m.teamAwayId })
   }
 
+  // Convert cricket notation overs (3.5 = 3 overs 5 balls) to actual overs (3.833)
+  const toActualOvers = (o: number) => Math.floor(o) + (o % 1) * 10 / 6
+
   // Filter to bowlers only (overs > 0, known style)
   const bowlerScores = scores.filter((s) => {
     const p = playerMap.get(s.player_id)
@@ -1147,16 +1150,17 @@ export function computePaceSpinAnalysis(
     if (!v) { v = { matches: new Set(), pW: 0, sW: 0, pO: 0, sO: 0, pRC: 0, sRC: 0, pFP: 0, sFP: 0, pCount: 0, sCount: 0 }; venueAcc.set(venue, v) }
     v.matches.add(s.match_id)
 
+    const actualOvers = toActualOvers(s.overs_bowled)
     if (style === "pace") {
-      v.pW += s.wickets; v.pO += s.overs_bowled; v.pRC += s.runs_conceded; v.pFP += s.fantasy_points; v.pCount++
+      v.pW += s.wickets; v.pO += actualOvers; v.pRC += s.runs_conceded; v.pFP += s.fantasy_points; v.pCount++
     } else {
-      v.sW += s.wickets; v.sO += s.overs_bowled; v.sRC += s.runs_conceded; v.sFP += s.fantasy_points; v.sCount++
+      v.sW += s.wickets; v.sO += actualOvers; v.sRC += s.runs_conceded; v.sFP += s.fantasy_points; v.sCount++
     }
   }
 
   const venues: PaceSpinVenueRow[] = Array.from(venueAcc.entries()).map(([venue, v]) => {
-    const pEcon = v.pO > 0 ? round1((v.pRC / v.pO) * 6) : 0
-    const sEcon = v.sO > 0 ? round1((v.sRC / v.sO) * 6) : 0
+    const pEcon = v.pO > 0 ? round1(v.pRC / v.pO) : 0
+    const sEcon = v.sO > 0 ? round1(v.sRC / v.sO) : 0
     const totalW = v.pW + v.sW
     const spinPct = totalW > 0 ? v.sW / totalW : 0.5
     const dominance: "pace" | "spin" | "balanced" = spinPct > 0.6 ? "spin" : spinPct < 0.4 ? "pace" : "balanced"
