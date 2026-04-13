@@ -50,6 +50,7 @@ export type PlayerInfo = {
   team: string
   teamId: string
   color: string
+  bowlingStyle?: "pace" | "spin" | "unknown" | null
 }
 
 export type RawVenueStat = {
@@ -221,6 +222,28 @@ export type MatchScoringRow = {
   topUserName: string
   highestPlayerFP: number
   highestPlayerName: string
+}
+
+export type PaceSpinVenueRow = {
+  venue: string
+  matches: number
+  paceWickets: number
+  spinWickets: number
+  paceOvers: number
+  spinOvers: number
+  paceEconomy: number
+  spinEconomy: number
+  paceAvgFP: number
+  spinAvgFP: number
+  dominance: "pace" | "spin" | "balanced"
+}
+
+export type PaceSpinTeamRow = {
+  team: string
+  paceWicketsAgainst: number
+  spinWicketsAgainst: number
+  totalMatchesBatted: number
+  vulnerability: "pace" | "spin" | "balanced"
 }
 
 // ============================================================
@@ -1084,4 +1107,109 @@ export const computeMatchScoringRows = (
   }
 
   return rows.sort((a, b) => a.matchNumber - b.matchNumber)
+}
+
+// ============================================================
+// Pace vs Spin Analysis
+// ============================================================
+
+export function computePaceSpinAnalysis(
+  scores: RawPlayerScore[],
+  playerMap: Map<string, PlayerInfo>,
+  matchInfos: MatchInfo[],
+  teamMap: Map<string, string>,
+): { venues: PaceSpinVenueRow[]; teams: PaceSpinTeamRow[] } {
+  // Build match → venue + teams lookup
+  const matchVenue = new Map<string, string>()
+  const matchTeams = new Map<string, { homeId: string; awayId: string }>()
+  for (const m of matchInfos) {
+    if (m.status !== "completed") continue
+    matchVenue.set(m.id, m.venue)
+    matchTeams.set(m.id, { homeId: m.teamHomeId, awayId: m.teamAwayId })
+  }
+
+  // Filter to bowlers only (overs > 0, known style)
+  const bowlerScores = scores.filter((s) => {
+    const p = playerMap.get(s.player_id)
+    return p && (p.bowlingStyle === "pace" || p.bowlingStyle === "spin") && s.overs_bowled > 0
+  })
+
+  // --- Venue analysis ---
+  type VenueAcc = { matches: Set<string>; pW: number; sW: number; pO: number; sO: number; pRC: number; sRC: number; pFP: number; sFP: number; pCount: number; sCount: number }
+  const venueAcc = new Map<string, VenueAcc>()
+
+  for (const s of bowlerScores) {
+    const venue = matchVenue.get(s.match_id)
+    if (!venue) continue
+    const style = playerMap.get(s.player_id)!.bowlingStyle as "pace" | "spin"
+
+    let v = venueAcc.get(venue)
+    if (!v) { v = { matches: new Set(), pW: 0, sW: 0, pO: 0, sO: 0, pRC: 0, sRC: 0, pFP: 0, sFP: 0, pCount: 0, sCount: 0 }; venueAcc.set(venue, v) }
+    v.matches.add(s.match_id)
+
+    if (style === "pace") {
+      v.pW += s.wickets; v.pO += s.overs_bowled; v.pRC += s.runs_conceded; v.pFP += s.fantasy_points; v.pCount++
+    } else {
+      v.sW += s.wickets; v.sO += s.overs_bowled; v.sRC += s.runs_conceded; v.sFP += s.fantasy_points; v.sCount++
+    }
+  }
+
+  const venues: PaceSpinVenueRow[] = Array.from(venueAcc.entries()).map(([venue, v]) => {
+    const pEcon = v.pO > 0 ? round1((v.pRC / v.pO) * 6) : 0
+    const sEcon = v.sO > 0 ? round1((v.sRC / v.sO) * 6) : 0
+    const totalW = v.pW + v.sW
+    const spinPct = totalW > 0 ? v.sW / totalW : 0.5
+    const dominance: "pace" | "spin" | "balanced" = spinPct > 0.6 ? "spin" : spinPct < 0.4 ? "pace" : "balanced"
+    return {
+      venue,
+      matches: v.matches.size,
+      paceWickets: v.pW,
+      spinWickets: v.sW,
+      paceOvers: round1(v.pO),
+      spinOvers: round1(v.sO),
+      paceEconomy: pEcon,
+      spinEconomy: sEcon,
+      paceAvgFP: v.pCount > 0 ? round1(v.pFP / v.pCount) : 0,
+      spinAvgFP: v.sCount > 0 ? round1(v.sFP / v.sCount) : 0,
+      dominance,
+    }
+  }).sort((a, b) => b.matches - a.matches)
+
+  // --- Team vulnerability analysis ---
+  // For each match, find which team was batting against each bowler
+  type TeamAcc = { pW: number; sW: number; matchesBatted: Set<string> }
+  const teamAcc = new Map<string, TeamAcc>()
+
+  for (const s of bowlerScores) {
+    const teams = matchTeams.get(s.match_id)
+    if (!teams) continue
+    const bowlerInfo = playerMap.get(s.player_id)!
+    const style = bowlerInfo.bowlingStyle as "pace" | "spin"
+
+    // The batting team is the one that ISN'T the bowler's team
+    const battingTeamId = bowlerInfo.teamId === teams.homeId ? teams.awayId : teams.homeId
+    const battingTeam = teamMap.get(battingTeamId) ?? "?"
+
+    let t = teamAcc.get(battingTeam)
+    if (!t) { t = { pW: 0, sW: 0, matchesBatted: new Set() }; teamAcc.set(battingTeam, t) }
+    t.matchesBatted.add(s.match_id)
+
+    if (style === "pace") t.pW += s.wickets
+    else t.sW += s.wickets
+  }
+
+  const teamRows: PaceSpinTeamRow[] = Array.from(teamAcc.entries()).map(([team, t]) => {
+    const totalW = t.pW + t.sW
+    const spinPct = totalW > 0 ? t.sW / totalW : 0.5
+    const vulnerability: "pace" | "spin" | "balanced" = spinPct > 0.6 ? "spin" : spinPct < 0.4 ? "pace" : "balanced"
+    return {
+      team,
+      paceWicketsAgainst: t.pW,
+      spinWicketsAgainst: t.sW,
+      totalMatchesBatted: t.matchesBatted.size,
+      vulnerability,
+    }
+  }).sort((a, b) => (b.paceWicketsAgainst + b.spinWicketsAgainst) - (a.paceWicketsAgainst + a.spinWicketsAgainst))
+
+  return { venues, teams: teamRows }
 }

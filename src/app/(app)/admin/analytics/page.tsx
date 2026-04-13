@@ -15,6 +15,7 @@ import {
   computeDecisionQuality,
   computeVenueAnalytics,
   computeMatchScoringRows,
+  computePaceSpinAnalysis,
   type RawPlayerScore,
   type RawSelection,
   type RawUserMatchScore,
@@ -89,7 +90,7 @@ export default async function AdminAnalyticsPage() {
       .in("match_id", matchIds),
     admin
       .from("players")
-      .select("id, name, role, team_id, team:teams(id, short_name, color)")
+      .select("id, name, role, team_id, bowling_style, team:teams(id, short_name, color)")
       .eq("is_active", true),
     admin
       .from("selections")
@@ -126,6 +127,7 @@ export default async function AdminAnalyticsPage() {
       team: team?.short_name ?? "?",
       teamId: p.team_id,
       color: team?.color ?? "#888",
+      bowlingStyle: p.bowling_style as "pace" | "spin" | "unknown" | null,
     })
   }
 
@@ -229,6 +231,9 @@ export default async function AdminAnalyticsPage() {
   // Tab 4: Decision Quality
   const dqsData = computeDecisionQuality(rawUserScores, optimalTeams, profileMap)
 
+  // Pace vs Spin Analysis
+  const paceSpinData = computePaceSpinAnalysis(rawScores, playerMap, matchInfos, teamIdToName)
+
   // Tab 5: Venue Analytics
   const { venues: venueData } = computeVenueAnalytics(rawScores, matchInfos, playerMap, teamIdToName)
   const matchScoringRows = computeMatchScoringRows(
@@ -302,6 +307,8 @@ export default async function AdminAnalyticsPage() {
         matchCount={matchIds.length}
         userCount={totalUsers}
         formCurves={top10Form}
+        paceSpinVenues={paceSpinData.venues}
+        paceSpinTeams={paceSpinData.teams}
       />
     </PageTransition>
   )

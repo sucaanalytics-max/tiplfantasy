@@ -2,7 +2,7 @@
 
 import { useState, useMemo } from "react"
 import Link from "next/link"
-import { ArrowLeft, ArrowUpDown, TrendingUp, Shield, Eye, MapPin, ChevronDown, ChevronUp, Sparkles, Users, BarChart3, Target, Swords } from "lucide-react"
+import { ArrowLeft, ArrowUpDown, TrendingUp, Shield, Eye, MapPin, ChevronDown, ChevronUp, Sparkles, Users, BarChart3, Target, Swords, GitCompareArrows, X } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
@@ -12,6 +12,8 @@ import {
 } from "@/components/ui/table"
 import { StatCard } from "@/components/stat-card"
 import { LineChart } from "@/components/charts/line-chart"
+import { RadarChart } from "@/components/charts/radar-chart"
+import { GroupedBar } from "@/components/charts/grouped-bar"
 import { cn } from "@/lib/utils"
 import type { PlayerRole } from "@/lib/types"
 import type {
@@ -26,6 +28,8 @@ import type {
   UserDQS,
   VenueAnalytics,
   MatchScoringRow,
+  PaceSpinVenueRow,
+  PaceSpinTeamRow,
 } from "@/lib/analytics"
 
 // ============================================================
@@ -50,6 +54,8 @@ type Props = {
   matchCount: number
   userCount: number
   formCurves: { id: string; name: string; color: string; rollingAvg: number[] }[]
+  paceSpinVenues: PaceSpinVenueRow[]
+  paceSpinTeams: PaceSpinTeamRow[]
 }
 
 // ============================================================
@@ -234,6 +240,8 @@ export function AnalyticsClient({
   matchCount,
   userCount,
   formCurves,
+  paceSpinVenues,
+  paceSpinTeams,
 }: Props) {
   // Shared filter state
   const [roleFilter, setRoleFilter] = useState<Set<PlayerRole>>(new Set(ROLES))
@@ -287,6 +295,8 @@ export function AnalyticsClient({
           <TabsTrigger value="preview" className="gap-1.5"><Eye className="h-3.5 w-3.5" />Preview</TabsTrigger>
           <TabsTrigger value="users" className="gap-1.5"><Users className="h-3.5 w-3.5" />Users</TabsTrigger>
           <TabsTrigger value="venues" className="gap-1.5"><MapPin className="h-3.5 w-3.5" />Venues</TabsTrigger>
+          <TabsTrigger value="pacespin" className="gap-1.5"><Target className="h-3.5 w-3.5" />Pace/Spin</TabsTrigger>
+          <TabsTrigger value="compare" className="gap-1.5"><GitCompareArrows className="h-3.5 w-3.5" />Compare</TabsTrigger>
         </TabsList>
 
         <TabsContent value="nextmatch">
@@ -317,6 +327,12 @@ export function AnalyticsClient({
         </TabsContent>
         <TabsContent value="venues">
           <VenuesTab venues={venueData} matchRows={matchScoringRows} />
+        </TabsContent>
+        <TabsContent value="pacespin">
+          <PaceSpinTab venues={paceSpinVenues} teams={paceSpinTeams} />
+        </TabsContent>
+        <TabsContent value="compare">
+          <CompareTab allPlayers={playerStats} />
         </TabsContent>
       </Tabs>
     </div>
@@ -1339,6 +1355,382 @@ function VenuesTab({ venues, matchRows }: { venues: VenueAnalytics[]; matchRows:
           </div>
         </CardContent>
       </Card>
+    </div>
+  )
+}
+
+// ============================================================
+// Tab: Pace vs Spin
+// ============================================================
+
+const PACE_COLOR = "#3b82f6"
+const SPIN_COLOR = "#f59e0b"
+
+const dominanceColor = (d: "pace" | "spin" | "balanced") =>
+  d === "pace" ? "bg-blue-500/15 text-blue-700 dark:text-blue-300"
+    : d === "spin" ? "bg-amber-500/15 text-amber-700 dark:text-amber-300"
+    : "bg-zinc-500/15 text-zinc-600 dark:text-zinc-400"
+
+function PaceSpinTab({ venues, teams }: { venues: PaceSpinVenueRow[]; teams: PaceSpinTeamRow[] }) {
+  const venueSorter = useSortableTable(venues, "paceWickets" as keyof PaceSpinVenueRow, "desc")
+  const teamSorter = useSortableTable(teams, "paceWicketsAgainst" as keyof PaceSpinTeamRow, "desc")
+
+  // KPIs
+  const mostPaceVenue = venues.reduce((best, v) => (v.paceWickets > (best?.paceWickets ?? 0) ? v : best), venues[0])
+  const mostSpinVenue = venues.reduce((best, v) => (v.spinWickets > (best?.spinWickets ?? 0) ? v : best), venues[0])
+  const mostVulnTeam = teams.reduce((best, t) => {
+    const total = t.paceWicketsAgainst + t.spinWicketsAgainst
+    const bestTotal = (best?.paceWicketsAgainst ?? 0) + (best?.spinWicketsAgainst ?? 0)
+    return total > bestTotal ? t : best
+  }, teams[0])
+
+  // Chart data
+  const venueBarGroups = venues.filter((v) => v.matches >= 1).slice(0, 10).map((v) => ({
+    label: v.venue.split(",")[0].replace(/Stadium|Ground|International/gi, "").trim().slice(0, 12),
+    bars: [
+      { label: "Pace", value: v.paceWickets, color: PACE_COLOR },
+      { label: "Spin", value: v.spinWickets, color: SPIN_COLOR },
+    ],
+  }))
+
+  const teamBarGroups = teams.map((t) => ({
+    label: t.team,
+    bars: [
+      { label: "vs Pace", value: t.paceWicketsAgainst, color: PACE_COLOR },
+      { label: "vs Spin", value: t.spinWicketsAgainst, color: SPIN_COLOR },
+    ],
+  }))
+
+  return (
+    <div className="space-y-4 mt-4">
+      {/* KPIs */}
+      <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+        {mostPaceVenue && (
+          <StatCard icon={Target} value={mostPaceVenue.venue.split(",")[0].trim()} label={`Top Pace Venue · ${mostPaceVenue.paceWickets} wkts`} gradient="from-blue-500/10" iconColor="bg-blue-500/15 text-blue-600" />
+        )}
+        {mostSpinVenue && (
+          <StatCard icon={Sparkles} value={mostSpinVenue.venue.split(",")[0].trim()} label={`Top Spin Venue · ${mostSpinVenue.spinWickets} wkts`} gradient="from-amber-500/10" iconColor="bg-amber-500/15 text-amber-600" />
+        )}
+        {mostVulnTeam && (
+          <StatCard icon={Shield} value={mostVulnTeam.team} label={`Most Wickets Lost · ${mostVulnTeam.paceWicketsAgainst + mostVulnTeam.spinWicketsAgainst} total`} gradient="from-red-500/10" iconColor="bg-red-500/15 text-red-600" />
+        )}
+      </div>
+
+      {/* Venue wickets chart */}
+      {venueBarGroups.length > 0 && (
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-semibold">Wickets by Venue: Pace vs Spin</CardTitle>
+          </CardHeader>
+          <CardContent className="overflow-x-auto">
+            <GroupedBar groups={venueBarGroups} height={220} barWidth={18} />
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Venue table */}
+      <Card>
+        <CardHeader className="pb-2">
+          <CardTitle className="text-sm font-semibold">Venue Pace/Spin Breakdown</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="overflow-x-auto -mx-6 px-6">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead className="sticky left-0 bg-background z-10 min-w-[120px]">Venue</TableHead>
+                  <SortHeader label="M" sortKey={"matches" as keyof PaceSpinVenueRow} currentKey={venueSorter.sortKey} currentDir={venueSorter.sortDir} onSort={venueSorter.toggleSort} />
+                  <SortHeader label="Pace W" sortKey={"paceWickets" as keyof PaceSpinVenueRow} currentKey={venueSorter.sortKey} currentDir={venueSorter.sortDir} onSort={venueSorter.toggleSort} />
+                  <SortHeader label="Spin W" sortKey={"spinWickets" as keyof PaceSpinVenueRow} currentKey={venueSorter.sortKey} currentDir={venueSorter.sortDir} onSort={venueSorter.toggleSort} />
+                  <SortHeader label="Pace Econ" sortKey={"paceEconomy" as keyof PaceSpinVenueRow} currentKey={venueSorter.sortKey} currentDir={venueSorter.sortDir} onSort={venueSorter.toggleSort} />
+                  <SortHeader label="Spin Econ" sortKey={"spinEconomy" as keyof PaceSpinVenueRow} currentKey={venueSorter.sortKey} currentDir={venueSorter.sortDir} onSort={venueSorter.toggleSort} />
+                  <SortHeader label="Pace Avg FP" sortKey={"paceAvgFP" as keyof PaceSpinVenueRow} currentKey={venueSorter.sortKey} currentDir={venueSorter.sortDir} onSort={venueSorter.toggleSort} />
+                  <SortHeader label="Spin Avg FP" sortKey={"spinAvgFP" as keyof PaceSpinVenueRow} currentKey={venueSorter.sortKey} currentDir={venueSorter.sortDir} onSort={venueSorter.toggleSort} />
+                  <TableHead>Type</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {venueSorter.sorted.map((v) => (
+                  <TableRow key={v.venue}>
+                    <TableCell className="sticky left-0 bg-background z-10 text-xs font-medium truncate max-w-[150px]">{v.venue.split(",")[0].trim()}</TableCell>
+                    <TableCell className="tabular-nums text-xs">{v.matches}</TableCell>
+                    <TableCell className="tabular-nums text-xs font-medium text-blue-600 dark:text-blue-400">{v.paceWickets}</TableCell>
+                    <TableCell className="tabular-nums text-xs font-medium text-amber-600 dark:text-amber-400">{v.spinWickets}</TableCell>
+                    <TableCell className="tabular-nums text-xs">{v.paceEconomy}</TableCell>
+                    <TableCell className="tabular-nums text-xs">{v.spinEconomy}</TableCell>
+                    <TableCell className="tabular-nums text-xs">{v.paceAvgFP}</TableCell>
+                    <TableCell className="tabular-nums text-xs">{v.spinAvgFP}</TableCell>
+                    <TableCell><Badge className={cn("text-[10px]", dominanceColor(v.dominance))}>{v.dominance}</Badge></TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Team vulnerability chart */}
+      {teamBarGroups.length > 0 && (
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-semibold">Team Vulnerability: Wickets Lost to Pace vs Spin</CardTitle>
+          </CardHeader>
+          <CardContent className="overflow-x-auto">
+            <GroupedBar groups={teamBarGroups} height={220} barWidth={18} />
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Team table */}
+      <Card>
+        <CardHeader className="pb-2">
+          <CardTitle className="text-sm font-semibold">Team Pace/Spin Vulnerability</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="overflow-x-auto -mx-6 px-6">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Team</TableHead>
+                  <SortHeader label="M" sortKey={"totalMatchesBatted" as keyof PaceSpinTeamRow} currentKey={teamSorter.sortKey} currentDir={teamSorter.sortDir} onSort={teamSorter.toggleSort} />
+                  <SortHeader label="vs Pace W" sortKey={"paceWicketsAgainst" as keyof PaceSpinTeamRow} currentKey={teamSorter.sortKey} currentDir={teamSorter.sortDir} onSort={teamSorter.toggleSort} />
+                  <SortHeader label="vs Spin W" sortKey={"spinWicketsAgainst" as keyof PaceSpinTeamRow} currentKey={teamSorter.sortKey} currentDir={teamSorter.sortDir} onSort={teamSorter.toggleSort} />
+                  <TableHead>Weakness</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {teamSorter.sorted.map((t) => (
+                  <TableRow key={t.team}>
+                    <TableCell className="text-xs font-medium">{t.team}</TableCell>
+                    <TableCell className="tabular-nums text-xs">{t.totalMatchesBatted}</TableCell>
+                    <TableCell className="tabular-nums text-xs font-medium text-blue-600 dark:text-blue-400">{t.paceWicketsAgainst}</TableCell>
+                    <TableCell className="tabular-nums text-xs font-medium text-amber-600 dark:text-amber-400">{t.spinWicketsAgainst}</TableCell>
+                    <TableCell><Badge className={cn("text-[10px]", dominanceColor(t.vulnerability))}>{t.vulnerability}</Badge></TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+        </CardContent>
+      </Card>
+    </div>
+  )
+}
+
+// ============================================================
+// Tab: Compare Players
+// ============================================================
+
+function PlayerSearch({
+  label,
+  allPlayers,
+  selectedId,
+  excludeIds,
+  onSelect,
+  onClear,
+}: {
+  label: string
+  allPlayers: PlayerAnalytics[]
+  selectedId: string | null
+  excludeIds: Set<string>
+  onSelect: (id: string) => void
+  onClear: () => void
+}) {
+  const [query, setQuery] = useState("")
+  const [open, setOpen] = useState(false)
+
+  const selected = selectedId ? allPlayers.find((p) => p.id === selectedId) : null
+
+  const filtered = useMemo(() => {
+    if (!query.trim()) return []
+    const q = query.toLowerCase()
+    return allPlayers
+      .filter((p) => !excludeIds.has(p.id) && p.name.toLowerCase().includes(q))
+      .slice(0, 8)
+  }, [allPlayers, query, excludeIds])
+
+  if (selected) {
+    return (
+      <div className="flex items-center gap-2 rounded-md border px-3 py-2 text-sm">
+        <Badge className={cn("text-[10px] shrink-0", ROLE_COLORS[selected.role])}>{selected.role}</Badge>
+        <span className="font-medium truncate">{selected.name}</span>
+        <span className="text-muted-foreground text-xs">({selected.team})</span>
+        <button onClick={onClear} className="ml-auto shrink-0 text-muted-foreground hover:text-foreground">
+          <X className="h-3.5 w-3.5" />
+        </button>
+      </div>
+    )
+  }
+
+  return (
+    <div className="relative">
+      <input
+        type="text"
+        placeholder={label}
+        value={query}
+        onChange={(e) => { setQuery(e.target.value); setOpen(true) }}
+        onFocus={() => setOpen(true)}
+        onBlur={() => setTimeout(() => setOpen(false), 200)}
+        className="w-full rounded-md border bg-background px-3 py-2 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring"
+      />
+      {open && filtered.length > 0 && (
+        <div className="absolute z-50 mt-1 w-full rounded-md border bg-popover shadow-md max-h-52 overflow-y-auto">
+          {filtered.map((p) => (
+            <button
+              key={p.id}
+              onMouseDown={(e) => e.preventDefault()}
+              onClick={() => { onSelect(p.id); setQuery(""); setOpen(false) }}
+              className="flex items-center gap-2 w-full px-3 py-2 text-sm hover:bg-muted/50 text-left"
+            >
+              <Badge className={cn("text-[10px] shrink-0", ROLE_COLORS[p.role])}>{p.role}</Badge>
+              <span className="truncate">{p.name}</span>
+              <span className="text-muted-foreground text-xs ml-auto shrink-0">{p.team} · {p.avgFP.toFixed(0)} avg</span>
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
+const RADAR_AXES = [
+  { key: "avgFP" as const, label: "Avg FP", maxFn: (ps: PlayerAnalytics[]) => Math.max(...ps.map((p) => p.avgFP), 100) },
+  { key: "consistency" as const, label: "Consistency", maxFn: () => 100 },
+  { key: "ceiling" as const, label: "Ceiling", maxFn: (ps: PlayerAnalytics[]) => Math.max(...ps.map((p) => p.ceiling), 150) },
+  { key: "formLast3" as const, label: "Form L3", maxFn: (ps: PlayerAnalytics[]) => Math.max(...ps.map((p) => p.formLast3), 100) },
+  { key: "battingPct" as const, label: "Batting %", maxFn: () => 100 },
+  { key: "bowlingPct" as const, label: "Bowling %", maxFn: () => 100 },
+]
+
+function CompareTab({ allPlayers }: { allPlayers: PlayerAnalytics[] }) {
+  const [ids, setIds] = useState<(string | null)[]>([null, null, null])
+
+  const selectedPlayers = useMemo(() =>
+    ids.map((id) => id ? allPlayers.find((p) => p.id === id) ?? null : null),
+    [ids, allPlayers]
+  )
+  const active = selectedPlayers.filter(Boolean) as PlayerAnalytics[]
+  const excludeIds = useMemo(() => new Set(ids.filter(Boolean) as string[]), [ids])
+
+  const radarData = useMemo(() => {
+    if (active.length < 2) return null
+    const axes = RADAR_AXES.map((a) => ({ label: a.label, max: a.maxFn(allPlayers) }))
+    const series = active.map((p) => ({
+      label: `${p.name} (${p.team})`,
+      color: p.color,
+      values: RADAR_AXES.map((a) => {
+        if (a.key === "consistency") return Math.max(0, 100 - p.cv)
+        if (a.key === "battingPct") return p.totalFP > 0 ? (p.battingFP / p.totalFP) * 100 : 0
+        if (a.key === "bowlingPct") return p.totalFP > 0 ? (p.bowlingFP / p.totalFP) * 100 : 0
+        return p[a.key]
+      }),
+    }))
+    return { axes, series }
+  }, [active, allPlayers])
+
+  const COMPARE_STATS = [
+    { label: "Matches", fn: (p: PlayerAnalytics) => p.matches.toString() },
+    { label: "Total FP", fn: (p: PlayerAnalytics) => p.totalFP.toFixed(0) },
+    { label: "Avg FP", fn: (p: PlayerAnalytics) => p.avgFP.toFixed(1) },
+    { label: "Median FP", fn: (p: PlayerAnalytics) => p.medianFP.toFixed(1) },
+    { label: "Floor", fn: (p: PlayerAnalytics) => p.floor.toFixed(0) },
+    { label: "Ceiling", fn: (p: PlayerAnalytics) => p.ceiling.toFixed(0) },
+    { label: "Std Dev", fn: (p: PlayerAnalytics) => p.stddev.toFixed(1) },
+    { label: "CV", fn: (p: PlayerAnalytics) => p.cv.toFixed(0) + "%" },
+    { label: "Form L3", fn: (p: PlayerAnalytics) => p.formLast3.toFixed(1) },
+    { label: "Form Δ", fn: (p: PlayerAnalytics) => (p.formDelta > 0 ? "+" : "") + p.formDelta.toFixed(1) },
+    { label: "Batting FP", fn: (p: PlayerAnalytics) => p.battingFP.toFixed(0) },
+    { label: "Bowling FP", fn: (p: PlayerAnalytics) => p.bowlingFP.toFixed(0) },
+    { label: "Fielding FP", fn: (p: PlayerAnalytics) => p.fieldingFP.toFixed(0) },
+  ]
+
+  return (
+    <div className="space-y-4 mt-4">
+      {/* Player selectors */}
+      <Card>
+        <CardHeader className="pb-3">
+          <CardTitle className="text-sm font-semibold">Select Players to Compare</CardTitle>
+        </CardHeader>
+        <CardContent className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          {ids.map((id, i) => (
+            <PlayerSearch
+              key={i}
+              label={`Player ${i + 1}...`}
+              allPlayers={allPlayers}
+              selectedId={id}
+              excludeIds={excludeIds}
+              onSelect={(pid) => setIds((prev) => { const next = [...prev]; next[i] = pid; return next })}
+              onClear={() => setIds((prev) => { const next = [...prev]; next[i] = null; return next })}
+            />
+          ))}
+        </CardContent>
+      </Card>
+
+      {active.length < 2 && (
+        <p className="text-sm text-muted-foreground text-center py-8">Select at least 2 players to compare</p>
+      )}
+
+      {radarData && (
+        <>
+          {/* Radar chart */}
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm font-semibold">Performance Radar</CardTitle>
+            </CardHeader>
+            <CardContent className="flex justify-center">
+              <RadarChart axes={radarData.axes} series={radarData.series} size={300} />
+            </CardContent>
+          </Card>
+
+          {/* Stat comparison table */}
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm font-semibold">Detailed Comparison</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="overflow-x-auto -mx-6 px-6">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead className="w-24">Stat</TableHead>
+                      {active.map((p) => (
+                        <TableHead key={p.id} className="text-center">
+                          <div className="flex flex-col items-center gap-0.5">
+                            <span className="font-semibold text-xs">{p.name}</span>
+                            <Badge className={cn("text-[9px]", ROLE_COLORS[p.role])}>{p.role} · {p.team}</Badge>
+                          </div>
+                        </TableHead>
+                      ))}
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {COMPARE_STATS.map((stat) => {
+                      const values = active.map((p) => parseFloat(stat.fn(p)))
+                      const best = Math.max(...values)
+                      return (
+                        <TableRow key={stat.label}>
+                          <TableCell className="text-xs text-muted-foreground font-medium">{stat.label}</TableCell>
+                          {active.map((p, i) => (
+                            <TableCell
+                              key={p.id}
+                              className={cn(
+                                "text-center tabular-nums text-xs",
+                                values[i] === best && active.length > 1 && "font-bold text-emerald-600 dark:text-emerald-400"
+                              )}
+                            >
+                              {stat.fn(p)}
+                            </TableCell>
+                          ))}
+                        </TableRow>
+                      )
+                    })}
+                  </TableBody>
+                </Table>
+              </div>
+            </CardContent>
+          </Card>
+        </>
+      )}
     </div>
   )
 }
