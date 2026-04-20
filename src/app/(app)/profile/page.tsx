@@ -323,16 +323,16 @@ export default async function ProfilePage() {
             <CardContent className="space-y-4">
               {/* Sparkline — compact trend line, no labels */}
               <div className="overflow-x-auto">
-                <svg width={sparkW} height={sparkH} viewBox={`0 0 ${sparkW} ${sparkH}`} className="block w-full h-auto">
+                <svg width={sparkW} height={sparkH} viewBox={`0 0 ${sparkW} ${sparkH}`} className="block w-full h-auto text-primary">
                   <defs>
                     <linearGradient id="sparkFill" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="0%" stopColor="hsl(var(--primary))" stopOpacity={0.25} />
-                      <stop offset="100%" stopColor="hsl(var(--primary))" stopOpacity={0} />
+                      <stop offset="0%" stopColor="currentColor" stopOpacity={0.3} />
+                      <stop offset="100%" stopColor="currentColor" stopOpacity={0} />
                     </linearGradient>
                   </defs>
                   <polygon points={sparkArea} fill="url(#sparkFill)" />
-                  <polyline points={sparkPoints} fill="none" stroke="hsl(var(--primary))" strokeWidth={1.75} strokeLinejoin="round" strokeLinecap="round" />
-                  <circle cx={lastX} cy={lastY} r={4} fill="hsl(var(--primary))" stroke="hsl(var(--background))" strokeWidth={2} />
+                  <polyline points={sparkPoints} fill="none" stroke="currentColor" strokeWidth={1.75} strokeLinejoin="round" strokeLinecap="round" />
+                  <circle cx={lastX} cy={lastY} r={4} fill="currentColor" />
                 </svg>
                 <div className="flex justify-between text-[10px] text-muted-foreground px-1 mt-1 font-mono">
                   <span>M{(sorted[0].match as unknown as { match_number: number })?.match_number ?? 1}</span>
