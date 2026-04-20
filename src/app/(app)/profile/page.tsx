@@ -269,111 +269,115 @@ export default async function ProfilePage() {
         const ranks = sorted.map((ms) => ms.rank!)
         if (ranks.length < 2) return null
         const maxRank = Math.max(...ranks)
-        const displayMax = Math.max(maxRank + 1, 5)
-        const width = 320
-        const height = 140
-        const padX = 28
-        const padY = 16
-        const padBottom = 24
-        const chartW = width - padX * 2
-        const chartH = height - padY - padBottom
-        const points = ranks.map((r, i) => {
-          const x = padX + (i / (ranks.length - 1)) * chartW
-          const y = padY + ((r - 1) / (displayMax - 1)) * chartH
+        const displayMax = Math.max(maxRank, 5)
+
+        // Sparkline geometry — no labels, no dots, just the trend
+        const sparkW = 320
+        const sparkH = 48
+        const sparkPadX = 4
+        const sparkPadY = 4
+        const sparkChartW = sparkW - sparkPadX * 2
+        const sparkChartH = sparkH - sparkPadY * 2
+        const sparkPoints = ranks.map((r, i) => {
+          const x = sparkPadX + (ranks.length === 1 ? sparkChartW / 2 : (i / (ranks.length - 1)) * sparkChartW)
+          const y = sparkPadY + ((r - 1) / Math.max(displayMax - 1, 1)) * sparkChartH
           return `${x},${y}`
         }).join(" ")
+        const lastSparkPt = sparkPoints.split(" ").at(-1)!
+        const sparkArea = `${sparkPadX},${sparkPadY + sparkChartH} ${sparkPoints} ${lastSparkPt.split(",")[0]},${sparkPadY + sparkChartH}`
+
+        // Latest dot position (emphasize the "where you are now")
+        const lastRank = ranks[ranks.length - 1]
+        const lastX = sparkPadX + (ranks.length === 1 ? sparkChartW / 2 : ((ranks.length - 1) / (ranks.length - 1)) * sparkChartW)
+        const lastY = sparkPadY + ((lastRank - 1) / Math.max(displayMax - 1, 1)) * sparkChartH
+
+        // Rank distribution: count how often each rank was achieved
+        const distribution = new Map<number, number>()
+        for (const r of ranks) distribution.set(r, (distribution.get(r) ?? 0) + 1)
+        const distRows = Array.from(distribution.entries())
+          .map(([rank, count]) => ({ rank, count, pct: (count / ranks.length) * 100 }))
+          .sort((a, b) => a.rank - b.rank)
+        const maxCount = Math.max(...distRows.map((d) => d.count))
+
+        // Summary stats
         const avgRank = (ranks.reduce((a, b) => a + b, 0) / ranks.length).toFixed(1)
         const bestRank = Math.min(...ranks)
         const latestRank = ranks[ranks.length - 1]
+        const podiumCount = ranks.filter((r) => r <= 3).length
+        const podiumPct = ((podiumCount / ranks.length) * 100).toFixed(0)
+        const winCount = ranks.filter((r) => r === 1).length
 
-        // Gradient fill area points
-        const firstPt = points.split(" ")[0]
-        const lastPt = points.split(" ").at(-1)!
-        const areaPoints = `${padX},${padY + chartH} ${points} ${lastPt.split(",")[0]},${padY + chartH}`
-
-        // Color based on rank value (lower = better = greener)
-        const rankColor = (r: number) => {
-          if (r === 1) return "#22c55e"
-          if (r <= 3) return "#3b82f6"
-          return "#f59e0b"
-        }
+        // Color coding for rank buckets
+        const rankRowColor = (r: number) =>
+          r === 1 ? "bg-emerald-500"
+          : r <= 3 ? "bg-blue-500"
+          : r <= 5 ? "bg-amber-500"
+          : "bg-red-500"
 
         return (
           <Card className="glass">
             <CardHeader className="pb-2">
               <CardTitle className="text-base">Rank Progression</CardTitle>
+              <p className="text-xs text-muted-foreground">{ranks.length} matches · {winCount} win{winCount !== 1 ? "s" : ""} · {podiumPct}% podium rate</p>
             </CardHeader>
-            <CardContent className="space-y-3">
+            <CardContent className="space-y-4">
+              {/* Sparkline — compact trend line, no labels */}
               <div className="overflow-x-auto">
-                <svg width={width} height={height} viewBox={`0 0 ${width} ${height}`} className="block w-full h-auto">
+                <svg width={sparkW} height={sparkH} viewBox={`0 0 ${sparkW} ${sparkH}`} className="block w-full h-auto">
                   <defs>
-                    <linearGradient id="rankFill" x1="0" y1="0" x2="0" y2="1">
+                    <linearGradient id="sparkFill" x1="0" y1="0" x2="0" y2="1">
                       <stop offset="0%" stopColor="hsl(var(--primary))" stopOpacity={0.25} />
                       <stop offset="100%" stopColor="hsl(var(--primary))" stopOpacity={0} />
                     </linearGradient>
                   </defs>
-                  {/* Grid lines */}
-                  {[1, Math.ceil(displayMax / 2), displayMax].map((r) => {
-                    const y = padY + ((r - 1) / (displayMax - 1)) * chartH
-                    return (
-                      <g key={r}>
-                        <line x1={padX} y1={y} x2={width - padX} y2={y}
-                          stroke="currentColor" strokeOpacity={0.15} strokeWidth={1} strokeDasharray="4 4" />
-                        <text x={4} y={y + 4} fontSize={10} fill="currentColor" fillOpacity={0.5} fontFamily="monospace">#{r}</text>
-                      </g>
-                    )
-                  })}
-                  {/* Match labels on x-axis */}
-                  {sorted.map((ms, i) => {
-                    const x = padX + (i / (ranks.length - 1)) * chartW
-                    const matchNum = (ms.match as unknown as { match_number: number })?.match_number
-                    return matchNum ? (
-                      <text key={ms.match_id} x={x} y={height - 4} fontSize={9} fill="currentColor" fillOpacity={0.4} textAnchor="middle">
-                        M{matchNum}
-                      </text>
-                    ) : null
-                  })}
-                  {/* Area fill */}
-                  <polygon points={areaPoints} fill="url(#rankFill)" />
-                  {/* Line */}
-                  <polyline
-                    points={points}
-                    fill="none"
-                    stroke="hsl(var(--primary))"
-                    strokeWidth={2.5}
-                    strokeLinejoin="round"
-                    strokeLinecap="round"
-                  />
-                  {/* Dots */}
-                  {ranks.map((r, i) => {
-                    const x = padX + (i / (ranks.length - 1)) * chartW
-                    const y = padY + ((r - 1) / (displayMax - 1)) * chartH
-                    const isLatest = i === ranks.length - 1
-                    const color = rankColor(r)
-                    return (
-                      <g key={sorted[i].match_id}>
-                        <circle cx={x} cy={y} r={isLatest ? 6 : 4.5}
-                          fill={color} stroke="hsl(var(--background))" strokeWidth={2} />
-                        <text x={x} y={y - 8} fontSize={9} fill="currentColor" fillOpacity={0.7} textAnchor="middle" fontWeight="600">
-                          #{r}
-                        </text>
-                      </g>
-                    )
-                  })}
+                  <polygon points={sparkArea} fill="url(#sparkFill)" />
+                  <polyline points={sparkPoints} fill="none" stroke="hsl(var(--primary))" strokeWidth={1.75} strokeLinejoin="round" strokeLinecap="round" />
+                  <circle cx={lastX} cy={lastY} r={4} fill="hsl(var(--primary))" stroke="hsl(var(--background))" strokeWidth={2} />
                 </svg>
+                <div className="flex justify-between text-[10px] text-muted-foreground px-1 mt-1 font-mono">
+                  <span>M{(sorted[0].match as unknown as { match_number: number })?.match_number ?? 1}</span>
+                  <span className="opacity-50">← best ↑  worst ↓ →</span>
+                  <span>M{(sorted[sorted.length - 1].match as unknown as { match_number: number })?.match_number ?? ranks.length}</span>
+                </div>
               </div>
-              <div className="grid grid-cols-3 gap-2 text-sm">
+
+              {/* Rank Distribution Table */}
+              <div>
+                <p className="text-[10px] uppercase tracking-wide text-muted-foreground mb-2">Distribution</p>
+                <div className="space-y-1">
+                  {distRows.map((d) => (
+                    <div key={d.rank} className="flex items-center gap-2 text-xs">
+                      <span className="font-mono font-semibold w-8 tabular-nums">#{d.rank}</span>
+                      <span className="font-mono w-10 text-muted-foreground tabular-nums">{d.count}×</span>
+                      <div className="flex-1 h-4 bg-muted/40 rounded-sm overflow-hidden">
+                        <div
+                          className={cn("h-full rounded-sm transition-all", rankRowColor(d.rank))}
+                          style={{ width: `${(d.count / maxCount) * 100}%` }}
+                        />
+                      </div>
+                      <span className="font-mono w-10 text-right text-muted-foreground tabular-nums">{d.pct.toFixed(0)}%</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Summary stats */}
+              <div className="grid grid-cols-4 gap-2 pt-2 border-t border-overlay-border">
                 <div className="flex flex-col">
-                  <span className="text-muted-foreground text-xs">Best</span>
-                  <span className="font-semibold">#{bestRank}</span>
+                  <span className="text-muted-foreground text-[10px] uppercase tracking-wide">Best</span>
+                  <span className="font-semibold text-sm">#{bestRank}</span>
                 </div>
                 <div className="flex flex-col">
-                  <span className="text-muted-foreground text-xs">Latest</span>
-                  <span className="font-semibold">#{latestRank}</span>
+                  <span className="text-muted-foreground text-[10px] uppercase tracking-wide">Latest</span>
+                  <span className="font-semibold text-sm">#{latestRank}</span>
                 </div>
                 <div className="flex flex-col">
-                  <span className="text-muted-foreground text-xs">Avg Rank</span>
-                  <span className="font-semibold">#{avgRank}</span>
+                  <span className="text-muted-foreground text-[10px] uppercase tracking-wide">Avg</span>
+                  <span className="font-semibold text-sm">#{avgRank}</span>
+                </div>
+                <div className="flex flex-col">
+                  <span className="text-muted-foreground text-[10px] uppercase tracking-wide">Podium</span>
+                  <span className="font-semibold text-sm">{podiumPct}%</span>
                 </div>
               </div>
             </CardContent>
