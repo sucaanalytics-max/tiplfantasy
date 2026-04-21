@@ -268,28 +268,44 @@ export default async function ProfilePage() {
         const sorted = [...matchScores].reverse().filter((ms) => (ms.rank ?? 999) < 999)
         const ranks = sorted.map((ms) => ms.rank!)
         if (ranks.length < 2) return null
-        const maxRank = Math.max(...ranks)
-        const displayMax = Math.max(maxRank, 5)
 
-        // Sparkline geometry — no labels, no dots, just the trend
-        const sparkW = 320
-        const sparkH = 48
-        const sparkPadX = 4
-        const sparkPadY = 4
-        const sparkChartW = sparkW - sparkPadX * 2
-        const sparkChartH = sparkH - sparkPadY * 2
-        const sparkPoints = ranks.map((r, i) => {
-          const x = sparkPadX + (ranks.length === 1 ? sparkChartW / 2 : (i / (ranks.length - 1)) * sparkChartW)
-          const y = sparkPadY + ((r - 1) / Math.max(displayMax - 1, 1)) * sparkChartH
-          return `${x},${y}`
-        }).join(" ")
-        const lastSparkPt = sparkPoints.split(" ").at(-1)!
-        const sparkArea = `${sparkPadX},${sparkPadY + sparkChartH} ${sparkPoints} ${lastSparkPt.split(",")[0]},${sparkPadY + sparkChartH}`
+        // Match number helper
+        const matchNum = (i: number) =>
+          (sorted[i]?.match as unknown as { match_number: number })?.match_number ?? (i + 1)
 
-        // Latest dot position (emphasize the "where you are now")
-        const lastRank = ranks[ranks.length - 1]
-        const lastX = sparkPadX + (ranks.length === 1 ? sparkChartW / 2 : ((ranks.length - 1) / (ranks.length - 1)) * sparkChartW)
-        const lastY = sparkPadY + ((lastRank - 1) / Math.max(displayMax - 1, 1)) * sparkChartH
+        // Current streak — count consecutive same-rank matches from the end
+        const currentRank = ranks[ranks.length - 1]
+        let currentStreak = 1
+        for (let i = ranks.length - 2; i >= 0; i--) {
+          if (ranks[i] === currentRank) currentStreak++
+          else break
+        }
+
+        // Helper: longest consecutive run matching a predicate, with bounds
+        const longestRun = (pred: (r: number) => boolean) => {
+          let best = 0, bestStart = -1, bestEnd = -1
+          let cur = 0, curStart = 0
+          for (let i = 0; i < ranks.length; i++) {
+            if (pred(ranks[i])) {
+              if (cur === 0) curStart = i
+              cur++
+              if (cur > best) { best = cur; bestStart = curStart; bestEnd = i }
+            } else {
+              cur = 0
+            }
+          }
+          return { length: best, startIdx: bestStart, endIdx: bestEnd }
+        }
+
+        const winRun = longestRun((r) => r === 1)
+        const podiumRun = longestRun((r) => r <= 3)
+        const worstRun = longestRun((r) => r >= 4)
+
+        // Last-5 average with trend direction
+        const last5 = ranks.slice(-5)
+        const last5Avg = last5.reduce((a, b) => a + b, 0) / last5.length
+        const seasonAvg = ranks.reduce((a, b) => a + b, 0) / ranks.length
+        const last5Delta = last5Avg - seasonAvg
 
         // Rank distribution: count how often each rank was achieved
         const distribution = new Map<number, number>()
@@ -300,7 +316,7 @@ export default async function ProfilePage() {
         const maxCount = Math.max(...distRows.map((d) => d.count))
 
         // Summary stats
-        const avgRank = (ranks.reduce((a, b) => a + b, 0) / ranks.length).toFixed(1)
+        const avgRank = seasonAvg.toFixed(1)
         const bestRank = Math.min(...ranks)
         const latestRank = ranks[ranks.length - 1]
         const podiumCount = ranks.filter((r) => r <= 3).length
@@ -321,23 +337,91 @@ export default async function ProfilePage() {
               <p className="text-xs text-muted-foreground">{ranks.length} matches · {winCount} win{winCount !== 1 ? "s" : ""} · {podiumPct}% podium rate</p>
             </CardHeader>
             <CardContent className="space-y-4">
-              {/* Sparkline — compact trend line, no labels */}
-              <div className="overflow-x-auto">
-                <svg width={sparkW} height={sparkH} viewBox={`0 0 ${sparkW} ${sparkH}`} className="block w-full h-auto text-primary">
-                  <defs>
-                    <linearGradient id="sparkFill" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="0%" stopColor="currentColor" stopOpacity={0.3} />
-                      <stop offset="100%" stopColor="currentColor" stopOpacity={0} />
-                    </linearGradient>
-                  </defs>
-                  <polygon points={sparkArea} fill="url(#sparkFill)" />
-                  <polyline points={sparkPoints} fill="none" stroke="currentColor" strokeWidth={1.75} strokeLinejoin="round" strokeLinecap="round" />
-                  <circle cx={lastX} cy={lastY} r={4} fill="currentColor" />
-                </svg>
-                <div className="flex justify-between text-[10px] text-muted-foreground px-1 mt-1 font-mono">
-                  <span>M{(sorted[0].match as unknown as { match_number: number })?.match_number ?? 1}</span>
-                  <span className="opacity-50">← best ↑  worst ↓ →</span>
-                  <span>M{(sorted[sorted.length - 1].match as unknown as { match_number: number })?.match_number ?? ranks.length}</span>
+              {/* Match History Tiles */}
+              <div>
+                <p className="text-[10px] uppercase tracking-wide text-muted-foreground mb-2">
+                  Match History
+                </p>
+                <div className="flex flex-wrap gap-1">
+                  {ranks.map((r, i) => {
+                    const mNum = matchNum(i)
+                    const isLatest = i === ranks.length - 1
+                    return (
+                      <div
+                        key={`${sorted[i].match_id}-${i}`}
+                        title={`M${mNum} · #${r}`}
+                        className={cn(
+                          "text-[10px] font-bold font-mono w-8 h-8 rounded flex items-center justify-center text-white shrink-0",
+                          rankRowColor(r),
+                          isLatest && "ring-2 ring-foreground/40"
+                        )}
+                      >
+                        #{r}
+                      </div>
+                    )
+                  })}
+                </div>
+              </div>
+
+              {/* Streaks & Trends */}
+              <div>
+                <p className="text-[10px] uppercase tracking-wide text-muted-foreground mb-2">
+                  Streaks & Trends
+                </p>
+                <div className="space-y-1.5 text-xs">
+                  <div className="flex items-center justify-between">
+                    <span className="text-muted-foreground">Current streak</span>
+                    <span className="font-mono tabular-nums">
+                      {currentStreak}× at #{currentRank}
+                    </span>
+                  </div>
+                  {winRun.length > 0 && (
+                    <div className="flex items-center justify-between">
+                      <span className="text-muted-foreground">Longest win streak</span>
+                      <span className="font-mono tabular-nums">
+                        {winRun.length}× #1{" "}
+                        <span className="text-muted-foreground">
+                          (M{matchNum(winRun.startIdx)}{winRun.length > 1 ? `–M${matchNum(winRun.endIdx)}` : ""})
+                        </span>
+                      </span>
+                    </div>
+                  )}
+                  {podiumRun.length > 0 && (
+                    <div className="flex items-center justify-between">
+                      <span className="text-muted-foreground">Longest podium run</span>
+                      <span className="font-mono tabular-nums">
+                        {podiumRun.length}× top-3{" "}
+                        <span className="text-muted-foreground">
+                          (M{matchNum(podiumRun.startIdx)}{podiumRun.length > 1 ? `–M${matchNum(podiumRun.endIdx)}` : ""})
+                        </span>
+                      </span>
+                    </div>
+                  )}
+                  {worstRun.length > 0 && (
+                    <div className="flex items-center justify-between">
+                      <span className="text-muted-foreground">Worst run</span>
+                      <span className="font-mono tabular-nums">
+                        {worstRun.length}× #4+{" "}
+                        <span className="text-muted-foreground">
+                          (M{matchNum(worstRun.startIdx)}{worstRun.length > 1 ? `–M${matchNum(worstRun.endIdx)}` : ""})
+                        </span>
+                      </span>
+                    </div>
+                  )}
+                  <div className="flex items-center justify-between">
+                    <span className="text-muted-foreground">Last 5 avg</span>
+                    <span className="font-mono tabular-nums">
+                      #{last5Avg.toFixed(1)}
+                      <span className={cn(
+                        "ml-2",
+                        last5Delta < -0.05 ? "text-emerald-500"
+                          : last5Delta > 0.05 ? "text-red-500"
+                          : "text-muted-foreground"
+                      )}>
+                        {last5Delta < -0.05 ? "↑" : last5Delta > 0.05 ? "↓" : "="} {Math.abs(last5Delta).toFixed(1)}
+                      </span>
+                    </span>
+                  </div>
                 </div>
               </div>
 
