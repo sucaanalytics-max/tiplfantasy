@@ -54,6 +54,7 @@ export async function GET(req: NextRequest) {
     .from("matches")
     .select("id, cricapi_match_id, team_home_id, team_away_id, live_scores_at, halfway_notified_at, last_banter_push_at, last_banter_message, last_lead_push_at, team_home:teams!matches_team_home_id_fkey(short_name), team_away:teams!matches_team_away_id_fkey(short_name)")
     .eq("status", "live")
+    .eq("is_relay_paused", false)
     .not("cricapi_match_id", "is", null)
 
   if (!liveMatches || liveMatches.length === 0) {
@@ -66,21 +67,9 @@ export async function GET(req: NextRequest) {
 
   for (const match of liveMatches) {
     try {
-      // ── Push: Match started (first live detection) ──
       const isFirstLiveTick = !match.live_scores_at
       if (isFirstLiveTick) {
-        // Stamp immediately so the next cron tick won't re-send
         await admin.from("matches").update({ live_scores_at: new Date().toISOString() }).eq("id", match.id)
-        try {
-          const home = (match.team_home as unknown as { short_name: string })?.short_name ?? "?"
-          const away = (match.team_away as unknown as { short_name: string })?.short_name ?? "?"
-          await sendPushToAll({
-            title: "🏏 Match Started!",
-            body: `${home} vs ${away} is LIVE — fantasy points updating`,
-            url: `/match/${match.id}/scores`,
-            tag: `match-${match.id}-live`,
-          })
-        } catch { /* non-critical */ }
       }
 
       // 1. Fetch fixture stats from SportMonks
@@ -317,39 +306,6 @@ export async function GET(req: NextRequest) {
         .in("id", userIds)
       const profileNameMap = new Map((profiles ?? []).map((p) => [p.id, p.display_name ?? "Unknown"]))
 
-      // 12b. ── Push: Rank milestone (#1 or last place change) ──
-      if (!isFirstLiveTick) {
-        try {
-          const { data: prevScores } = await admin
-            .from("user_match_scores")
-            .select("user_id, rank")
-            .eq("match_id", match.id)
-          if (prevScores && prevScores.length > 0) {
-            const prevRankMap = new Map(prevScores.map((s) => [s.user_id, s.rank as number]))
-            for (const us of userScores) {
-              const prevRank = prevRankMap.get(us.userId)
-              if (prevRank == null) continue
-              // New #1 who wasn't #1 before — throttle to max once per ~5 overs (20 min)
-              if (us.rank === 1 && prevRank !== 1) {
-                const lastLeadPush = match.last_lead_push_at ? new Date(match.last_lead_push_at as string).getTime() : 0
-                const minsSinceLeadPush = (Date.now() - lastLeadPush) / 60_000
-                if (minsSinceLeadPush >= 20) {
-                  const name = profileNameMap.get(us.userId) ?? "Unknown"
-                  await sendPushToAll({
-                    title: "🚀 New Leader!",
-                    body: `${name} takes the lead with ${us.total} pts`,
-                    url: `/match/${match.id}/scores`,
-                    tag: `milestone-${match.id}-lead`,
-                  })
-                  await admin.from("matches").update({ last_lead_push_at: new Date().toISOString() }).eq("id", match.id)
-                }
-              }
-              // (dropped-to-last notification removed)
-            }
-          }
-        } catch { /* non-critical */ }
-      }
-
       // 13. Upsert user match scores — safe to run repeatedly
       const userRows = userScores.map((s) => ({
         user_id: s.userId,
@@ -484,41 +440,87 @@ export async function GET(req: NextRequest) {
         // Banter generation is non-critical — don't fail the cron
       }
 
-      // 14c. ── Push: Banter highlight every ~30 min (rotating, no repeats) ──
+      // 14c. ── Push: factual cricket milestones (deduped per match+player+event) ──
       try {
-        const lastBanterPush = match.last_banter_push_at ? new Date(match.last_banter_push_at as string).getTime() : 0
-        const minutesSinceLastPush = (Date.now() - lastBanterPush) / 60_000
-        if (minutesSinceLastPush >= 25) {
-          const { data: currentBanter } = await admin
-            .from("match_banter")
-            .select("message, event_type")
-            .eq("match_id", match.id)
-          if (currentBanter && currentBanter.length > 0) {
-            // Push-worthy event types (skip mild/generic)
-            const pushWorthy = new Set([
-              "expensive_bowling", "wicketless", "captain_fail", "bottom_rank",
-              "duck", "low_sr", "vc_fail", "captain_haul", "fifty", "century",
-              "top_rank", "three_plus_wickets", "three_wicket_haul",
-            ])
-            // Exclude last sent message + filter to push-worthy types
-            const lastMsg = (match.last_banter_message as string | null) ?? ""
-            const candidates = currentBanter.filter((b) => pushWorthy.has(b.event_type) && b.message !== lastMsg)
-            const pool = candidates.length > 0 ? candidates : currentBanter.filter((b) => b.message !== lastMsg)
-            // Random pick
-            const best = pool.length > 0 ? pool[Math.floor(Math.random() * pool.length)] : null
-            if (best?.message) {
-              const pushCount = Math.floor(Date.now() / 1000)
-              await sendPushToAll({
-                title: "Baba T 🧘🏽",
-                body: best.message,
-                url: `/match/${match.id}/scores`,
-                tag: `banter-${match.id}-${pushCount}`,
-              })
-              await admin.from("matches").update({
-                last_banter_push_at: new Date().toISOString(),
-                last_banter_message: best.message,
-              }).eq("id", match.id)
-            }
+        const homeTeamId = match.team_home_id as string
+        const awayTeamId = match.team_away_id as string
+        const homeShort = (match.team_home as unknown as { short_name: string })?.short_name ?? "?"
+        const awayShort = (match.team_away as unknown as { short_name: string })?.short_name ?? "?"
+        const playerTeamMap = new Map(dbPlayers.map((p) => [p.id, p.team_id as string]))
+        const playerNameMap = new Map(dbPlayers.map((p) => [p.id, p.name]))
+        const teamShort = (tid: string) => (tid === homeTeamId ? homeShort : tid === awayTeamId ? awayShort : "?")
+
+        const captainCounts = new Map<string, number>()
+        for (const sel of selections) {
+          if (sel.captain_id) captainCounts.set(sel.captain_id, (captainCounts.get(sel.captain_id) ?? 0) + 1)
+        }
+
+        type Milestone = { event_type: string; title: string; body: string }
+        const candidates: Array<{ player_id: string; m: Milestone }> = []
+
+        for (const ps of scoreRows) {
+          const name = playerNameMap.get(ps.player_id) ?? "Player"
+          const team = teamShort(playerTeamMap.get(ps.player_id) ?? "")
+
+          if (ps.runs >= 100) {
+            candidates.push({
+              player_id: ps.player_id,
+              m: {
+                event_type: "century",
+                title: "🏏 Century",
+                body: `${name} · ${ps.runs}${ps.balls_faced ? ` (${ps.balls_faced})` : ""} for ${team}`,
+              },
+            })
+          } else if (ps.runs >= 50) {
+            candidates.push({
+              player_id: ps.player_id,
+              m: {
+                event_type: "fifty",
+                title: "🏏 Fifty",
+                body: `${name} · ${ps.runs}${ps.balls_faced ? ` (${ps.balls_faced})` : ""} for ${team}`,
+              },
+            })
+          }
+
+          if (ps.wickets >= 3) {
+            candidates.push({
+              player_id: ps.player_id,
+              m: {
+                event_type: "three_plus_wickets",
+                title: "🎯 3-fer",
+                body: `${name} · ${ps.wickets}/${ps.runs_conceded} for ${team}`,
+              },
+            })
+          }
+
+          const cCount = captainCounts.get(ps.player_id) ?? 0
+          if (cCount > 0 && ps.fantasy_points >= 60) {
+            candidates.push({
+              player_id: ps.player_id,
+              m: {
+                event_type: "captain_haul",
+                title: "⭐ Captain haul",
+                body: `${name} · ${ps.fantasy_points} pts as C — picked by ${cCount} of you`,
+              },
+            })
+          }
+        }
+
+        for (const { player_id, m } of candidates) {
+          const { data: inserted } = await admin
+            .from("match_milestone_pushes")
+            .upsert(
+              { match_id: match.id, player_id, event_type: m.event_type },
+              { onConflict: "match_id,player_id,event_type", ignoreDuplicates: true }
+            )
+            .select()
+          if (inserted && inserted.length > 0) {
+            await sendPushToAll({
+              title: m.title,
+              body: m.body,
+              url: `/match/${match.id}/scores`,
+              tag: `milestone-${match.id}-${player_id}-${m.event_type}`,
+            })
           }
         }
       } catch { /* non-critical */ }

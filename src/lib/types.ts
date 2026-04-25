@@ -72,6 +72,7 @@ export type Match = {
   status: MatchStatus
   cricapi_match_id: string | null
   result_summary: string | null
+  is_relay_paused: boolean
   created_at: string
   updated_at: string
 }

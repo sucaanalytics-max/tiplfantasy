@@ -10,7 +10,7 @@ import { Separator } from "@/components/ui/separator"
 import { formatIST } from "@/lib/utils"
 import type { MatchWithTeams, PlayerWithTeam, MatchPlayerScore } from "@/lib/types"
 import type { PlayerStats } from "@/lib/scoring"
-import { lockMatch, markNoResult, fetchPlayingXI, fetchMatchScorecard, autoScoreMatch, testMatchPoints, getMatchMemo, generateMatchBanter, getPreMatchAnalysis } from "@/actions/matches"
+import { lockMatch, markNoResult, fetchPlayingXI, fetchMatchScorecard, autoScoreMatch, testMatchPoints, getMatchMemo, generateMatchBanter, getPreMatchAnalysis, pauseMatchRelay, resumeMatchRelay } from "@/actions/matches"
 import { savePlayerScores, calculateMatchPoints, calculateLiveMatchPoints, applyPotmBonus } from "@/actions/scoring"
 import { adminUpdateCaptainVc } from "@/actions/selections"
 import { formatMatchMessage } from "@/lib/whatsapp"
@@ -163,6 +163,28 @@ export function AdminMatchClient({
       if (res.error) showMsg("error", res.error)
       else {
         showMsg("success", "Marked no result")
+        router.refresh()
+      }
+    })
+  }
+
+  function handlePauseRelay() {
+    startTransition(async () => {
+      const res = await pauseMatchRelay(match.id)
+      if (res.error) showMsg("error", res.error)
+      else {
+        showMsg("success", "Relay paused")
+        router.refresh()
+      }
+    })
+  }
+
+  function handleResumeRelay() {
+    startTransition(async () => {
+      const res = await resumeMatchRelay(match.id)
+      if (res.error) showMsg("error", res.error)
+      else {
+        showMsg("success", "Relay resumed")
         router.refresh()
       }
     })
@@ -429,6 +451,16 @@ export function AdminMatchClient({
               disabled={isPending}
             >
               📊 Live Points
+            </Button>
+          )}
+          {match.status === "live" && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={match.is_relay_paused ? handleResumeRelay : handlePauseRelay}
+              disabled={isPending}
+            >
+              {match.is_relay_paused ? "▶️ Resume Relay" : "⏸️ Pause Relay"}
             </Button>
           )}
           <Button

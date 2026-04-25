@@ -37,6 +37,29 @@ export async function lockMatch(matchId: string) {
   return { success: true }
 }
 
+export async function pauseMatchRelay(matchId: string) {
+  await requireAdmin()
+  const admin = createAdminClient()
+  const { error } = await admin
+    .from("matches")
+    .update({ is_relay_paused: true, updated_at: new Date().toISOString() })
+    .eq("id", matchId)
+    .eq("status", "live")
+  if (error) return { error: error.message }
+  return { success: true }
+}
+
+export async function resumeMatchRelay(matchId: string) {
+  await requireAdmin()
+  const admin = createAdminClient()
+  const { error } = await admin
+    .from("matches")
+    .update({ is_relay_paused: false, updated_at: new Date().toISOString() })
+    .eq("id", matchId)
+  if (error) return { error: error.message }
+  return { success: true }
+}
+
 export async function markNoResult(matchId: string): Promise<{ success?: boolean; error?: string }> {
   await requireAdmin()
   const admin = createAdminClient()
