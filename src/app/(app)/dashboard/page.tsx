@@ -62,7 +62,7 @@ export default async function DashboardPage() {
   // Phase 2: queries that depend on Phase 1 results (4 queries, was 5)
   const allRelevantMatchIds = [...upcomingMatches, ...liveMatches].map((m) => m.id)
   const completedMatchIds = completedMatches.map((m) => m.id)
-  const [subsRes, lastScoreRes, streakRes, lastSelectionRes, liveScoresRes] = await Promise.all([
+  const [subsRes, lastScoreRes, streakRes, lastSelectionRes, liveScoresRes, userAboveRes] = await Promise.all([
     allRelevantMatchIds.length > 0
       ? supabase.from("selections").select("match_id").eq("user_id", user.id).in("match_id", allRelevantMatchIds).limit(10)
       : Promise.resolve({ data: [] as { match_id: string }[] }),
@@ -83,6 +83,9 @@ export default async function DashboardPage() {
     liveMatches.length > 0
       ? supabase.from("user_match_scores").select("match_id, total_points, rank").eq("user_id", user.id).in("match_id", liveMatches.map((m) => m.id)).limit(2)
       : Promise.resolve({ data: [] as { match_id: string; total_points: number; rank: number | null }[] }),
+    myRank && myRank.season_rank > 6
+      ? supabase.from("season_leaderboard").select("total_points").eq("season_rank", myRank.season_rank - 1).maybeSingle()
+      : Promise.resolve({ data: null as { total_points: number } | null }),
   ])
 
   const lastSelection = lastSelectionRes.data
@@ -389,55 +392,107 @@ export default async function DashboardPage() {
               </div>
 
               <div className="glass rounded-xl overflow-hidden divide-y divide-overlay-border stagger-children">
-                {(top6 ?? []).map((entry) => {
-                  const e = entry as unknown as { user_id: string; display_name: string; total_points: number; season_rank: number }
+                <div className="flex items-center justify-between px-4 py-2 text-[10px] uppercase tracking-wider text-muted-foreground font-medium">
+                  <span className="pl-[3.25rem]">Player</span>
+                  <div className="flex items-center gap-3 tabular-nums">
+                    <span className="w-7 text-right">W</span>
+                    <span className="w-12 text-right">Δ1st</span>
+                    <span className="w-12 text-right">ΔNext</span>
+                    <span className="w-16 text-right">Pts</span>
+                  </div>
+                </div>
+
+                {(top6 ?? []).map((entry, idx) => {
+                  const e = entry as unknown as { user_id: string; display_name: string; total_points: number; season_rank: number; first_place_count: number }
                   const isMe = e.user_id === user.id
                   const rank = e.season_rank
+                  const leader = (top6 ?? [])[0] as unknown as { total_points: number } | undefined
+                  const prev = idx > 0 ? ((top6 ?? [])[idx - 1] as unknown as { total_points: number }) : null
+                  const diffFirst = idx === 0 || !leader ? null : Number(e.total_points) - Number(leader.total_points)
+                  const diffNext = prev ? Number(e.total_points) - Number(prev.total_points) : null
+                  const wins = e.first_place_count ?? 0
 
                   return (
                     <div
                       key={e.user_id}
                       className={cn(
-                        "flex items-center justify-between px-4 py-3 transition-colors",
+                        "px-4 py-3 transition-colors",
                         rank === 1 && "bg-amber-500/[0.08] shadow-[inset_0_0_20px_oklch(0.78_0.17_86/0.06)]",
                         rank === 2 && "bg-gray-400/[0.05]",
                         rank === 3 && "bg-amber-700/[0.05]",
                         isMe && "bg-primary/10 border-l-2 border-l-primary"
                       )}
                     >
-                      <div className="flex items-center gap-3">
-                        <RankBadge rank={rank} size="sm" />
-                        <div className={cn("h-8 w-8 rounded-full flex items-center justify-center shrink-0", getAvatarColor(e.display_name))}>
-                          <span className="text-white text-xs font-semibold">{getInitials(e.display_name)}</span>
+                      <div className="flex items-center justify-between gap-2">
+                        <div className="flex items-center gap-3 min-w-0">
+                          <RankBadge rank={rank} size="sm" />
+                          <div className={cn("h-8 w-8 rounded-full flex items-center justify-center shrink-0", getAvatarColor(e.display_name))}>
+                            <span className="text-white text-xs font-semibold">{getInitials(e.display_name)}</span>
+                          </div>
+                          <span className={cn("text-sm truncate", isMe && "font-semibold")}>
+                            {e.display_name}{isMe && " (you)"}
+                          </span>
                         </div>
-                        <span className={cn("text-sm", isMe && "font-semibold")}>
-                          {e.display_name}{isMe && " (you)"}
+                        <span className="font-bold text-sm font-display tabular-nums shrink-0">
+                          {e.total_points} <span className="text-muted-foreground font-normal text-xs">pts</span>
                         </span>
                       </div>
-                      <span className="font-bold text-sm font-display tabular-nums">
-                        {e.total_points} <span className="text-muted-foreground font-normal text-xs">pts</span>
-                      </span>
+                      <div className="flex items-center justify-between mt-1.5 pl-[3.25rem]">
+                        <span />
+                        <div className="flex items-center gap-3 text-[10px] tabular-nums text-muted-foreground">
+                          <span className="w-7 text-right font-semibold text-foreground/80">{wins}</span>
+                          <span className={cn("w-12 text-right", diffFirst !== null && diffFirst < 0 && "text-rose-400/80")}>
+                            {diffFirst === null ? "—" : `−${Math.round(Math.abs(diffFirst))}`}
+                          </span>
+                          <span className={cn("w-12 text-right", diffNext !== null && diffNext < 0 && "text-amber-400/80")}>
+                            {diffNext === null ? "—" : `−${Math.round(Math.abs(diffNext))}`}
+                          </span>
+                          <span className="w-16" />
+                        </div>
+                      </div>
                     </div>
                   )
                 })}
 
-                {myRank && myRank.season_rank > 6 && (
-                  <>
-                    <div className="text-center py-1.5 text-muted-foreground text-xs">&middot;&middot;&middot;</div>
-                    <div className="flex items-center justify-between px-4 py-3 bg-primary/10 border-l-2 border-l-primary">
-                      <div className="flex items-center gap-3">
-                        <RankBadge rank={myRank.season_rank} size="sm" />
-                        <div className={cn("h-8 w-8 rounded-full flex items-center justify-center shrink-0", getAvatarColor(myRank.display_name))}>
-                          <span className="text-white text-xs font-semibold">{getInitials(myRank.display_name)}</span>
+                {myRank && myRank.season_rank > 6 && (() => {
+                  const leader = (top6 ?? [])[0] as unknown as { total_points: number } | undefined
+                  const prevAbove = userAboveRes.data
+                  const diffFirst = leader ? Number(myRank.total_points) - Number(leader.total_points) : null
+                  const diffNext = prevAbove ? Number(myRank.total_points) - Number(prevAbove.total_points) : null
+                  const wins = (myRank as unknown as { first_place_count: number }).first_place_count ?? 0
+                  return (
+                    <>
+                      <div className="text-center py-1.5 text-muted-foreground text-xs">&middot;&middot;&middot;</div>
+                      <div className="px-4 py-3 bg-primary/10 border-l-2 border-l-primary">
+                        <div className="flex items-center justify-between gap-2">
+                          <div className="flex items-center gap-3 min-w-0">
+                            <RankBadge rank={myRank.season_rank} size="sm" />
+                            <div className={cn("h-8 w-8 rounded-full flex items-center justify-center shrink-0", getAvatarColor(myRank.display_name))}>
+                              <span className="text-white text-xs font-semibold">{getInitials(myRank.display_name)}</span>
+                            </div>
+                            <span className="text-sm font-semibold truncate">{myRank.display_name} (you)</span>
+                          </div>
+                          <span className="font-bold text-sm font-display tabular-nums shrink-0">
+                            {myRank.total_points} <span className="text-muted-foreground font-normal text-xs">pts</span>
+                          </span>
                         </div>
-                        <span className="text-sm font-semibold">{myRank.display_name} (you)</span>
+                        <div className="flex items-center justify-between mt-1.5 pl-[3.25rem]">
+                          <span />
+                          <div className="flex items-center gap-3 text-[10px] tabular-nums text-muted-foreground">
+                            <span className="w-7 text-right font-semibold text-foreground/80">{wins}</span>
+                            <span className={cn("w-12 text-right", diffFirst !== null && diffFirst < 0 && "text-rose-400/80")}>
+                              {diffFirst === null ? "—" : `−${Math.round(Math.abs(diffFirst))}`}
+                            </span>
+                            <span className={cn("w-12 text-right", diffNext !== null && diffNext < 0 && "text-amber-400/80")}>
+                              {diffNext === null ? "—" : `−${Math.round(Math.abs(diffNext))}`}
+                            </span>
+                            <span className="w-16" />
+                          </div>
+                        </div>
                       </div>
-                      <span className="font-bold text-sm font-display tabular-nums">
-                        {myRank.total_points} <span className="text-muted-foreground font-normal text-xs">pts</span>
-                      </span>
-                    </div>
-                  </>
-                )}
+                    </>
+                  )
+                })()}
               </div>
             </div>
 
