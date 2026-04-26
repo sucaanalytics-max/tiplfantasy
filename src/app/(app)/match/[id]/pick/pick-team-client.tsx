@@ -453,55 +453,47 @@ export function PickTeamClient({
     const totalPts = entries.length > 0 ? entries.reduce((a, e) => a + e.fantasyPoints, 0) : null
     const avgPts = entries.length > 0 ? Math.round(totalPts! / entries.length) : null
 
-    const firstName = player.name.split(" ")[0]
-    const restName = player.name.split(" ").slice(1).join(" ")
-
     return (
       <div
         key={player.id}
         className={cn(
-          "relative rounded-xl border border-overlay-border bg-card transition-colors overflow-hidden",
+          "relative rounded-lg border border-overlay-border bg-card transition-colors overflow-hidden",
           isSelected && "ring-2 ring-primary/50 border-primary/40",
           isDisabled && "opacity-35",
           hasPlayingXI && !isInXI && "opacity-40"
         )}
         style={{ borderLeftWidth: 3, borderLeftColor: player.team.color }}
       >
-        <div className={cn("p-2.5 space-y-2", ROLE_ACCENT[player.role])}>
-          {/* Photo / initials + plus button */}
-          <div className="flex items-start justify-between gap-1.5">
+        <div className={cn("p-2 space-y-1.5", ROLE_ACCENT[player.role])}>
+          {/* Name row + plus button (entire name area is the stats trigger) */}
+          <div className="flex items-start gap-1.5">
             <button
               type="button"
               onClick={(e) => { e.stopPropagation(); setStatsPlayerId(player.id) }}
-              className="shrink-0"
+              className="block text-left flex-1 min-w-0"
               aria-label={`View ${player.name} stats`}
             >
-              {player.image_url ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img
-                  src={player.image_url}
-                  alt={player.name}
-                  className="h-12 w-12 rounded-full object-cover ring-1 ring-overlay-border-hover"
-                />
-              ) : (
-                <span
-                  className="h-12 w-12 rounded-full flex items-center justify-center font-display font-bold text-base ring-1"
-                  style={{
-                    backgroundColor: `${player.team.color}22`,
-                    color: player.team.color,
-                    boxShadow: `0 0 0 1px ${player.team.color}55`,
-                  }}
-                >
-                  {player.name.split(" ").slice(0, 2).map((n) => n[0]?.toUpperCase()).join("")}
+              <div className="flex items-center gap-1">
+                <span className="text-sm font-semibold leading-tight truncate flex-1 min-w-0">
+                  {player.name}
                 </span>
-              )}
+                {isCaptain && <span className="text-[9px] font-bold text-[var(--tw-amber-text)] bg-amber-400/15 px-1 rounded shrink-0">C</span>}
+                {isVC && <span className="text-[9px] font-bold text-violet-400 bg-violet-400/15 px-1 rounded shrink-0">VC</span>}
+                <FormIcon indicator={player.form_indicator} />
+              </div>
+              <p className="text-[10px] text-muted-foreground truncate mt-0.5">
+                <span className="font-semibold" style={{ color: player.team.color }}>{player.team.short_name}</span>
+                <span className="text-muted-foreground/50"> · </span>
+                <span className="uppercase tracking-wide">{player.role}</span>
+                {hasPlayingXI && isInXI && <span className="text-status-success font-bold"> · XI</span>}
+              </p>
             </button>
             <button
               type="button"
               onClick={(e) => { e.stopPropagation(); if (!isDisabled) togglePlayer(player.id) }}
               disabled={isDisabled}
               className={cn(
-                "h-7 w-7 rounded-full flex items-center justify-center text-sm font-bold border shrink-0 transition-colors",
+                "h-7 w-7 rounded-full flex items-center justify-center text-sm font-bold border shrink-0 transition-colors mt-0.5",
                 isSelected
                   ? "bg-primary border-primary text-white"
                   : isDisabled
@@ -514,35 +506,10 @@ export function PickTeamClient({
             </button>
           </div>
 
-          {/* Name + role line */}
-          <button
-            type="button"
-            onClick={(e) => { e.stopPropagation(); setStatsPlayerId(player.id) }}
-            className="block text-left w-full min-w-0"
-          >
-            <div className="flex items-center gap-1 min-w-0">
-              <span className="text-sm font-semibold leading-tight truncate">{firstName}</span>
-              {isCaptain && <span className="text-[9px] font-bold text-[var(--tw-amber-text)] bg-amber-400/15 px-1 rounded shrink-0">C</span>}
-              {isVC && <span className="text-[9px] font-bold text-violet-400 bg-violet-400/15 px-1 rounded shrink-0">VC</span>}
-              <FormIcon indicator={player.form_indicator} />
-            </div>
-            {restName && (
-              <span className="block text-xs font-medium text-muted-foreground leading-tight truncate">
-                {restName}
-              </span>
-            )}
-            <p className="text-[10px] text-muted-foreground truncate mt-0.5">
-              <span className="font-semibold" style={{ color: player.team.color }}>{player.team.short_name}</span>
-              <span className="text-muted-foreground/50"> · </span>
-              {ROLE_LABELS[player.role]}
-              {hasPlayingXI && isInXI && <span className="text-status-success font-bold"> · XI</span>}
-            </p>
-          </button>
-
-          {/* Headline stats — total + avg (gold) */}
-          <div className="pt-2 border-t border-overlay-border flex items-baseline justify-between gap-1">
-            <div className="flex items-baseline gap-1.5 min-w-0">
-              <span className={cn("text-gold-stat text-base leading-none", totalPts == null && "text-muted-foreground/30")}>
+          {/* Stats line — total + avg + selection % */}
+          <div className="pt-1.5 border-t border-overlay-border flex items-baseline justify-between gap-1">
+            <div className="flex items-baseline gap-1 min-w-0">
+              <span className={cn("text-gold-stat text-sm leading-none", totalPts == null && "text-muted-foreground/30")}>
                 {totalPts ?? "—"}
               </span>
               <span className="text-[10px] text-muted-foreground">pts</span>
