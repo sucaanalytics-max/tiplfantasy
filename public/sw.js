@@ -1,4 +1,4 @@
-const CACHE_NAME = "tipl-v6"
+const CACHE_NAME = "tipl-v7"
 const APP_SHELL = [
   "/",
   "/dashboard",

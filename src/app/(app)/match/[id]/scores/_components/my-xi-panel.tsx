@@ -1,7 +1,6 @@
 "use client"
 
-import { useEffect, useMemo, useState } from "react"
-import * as DialogPrimitive from "@radix-ui/react-dialog"
+import { useMemo, useState } from "react"
 import { Badge } from "@/components/ui/badge"
 import { TeamLogo } from "@/components/team-logo"
 import { cn } from "@/lib/utils"
@@ -15,8 +14,6 @@ const ROLE_COLORS: Record<string, string> = {
 }
 
 type Props = {
-  open: boolean
-  onOpenChange: (open: boolean) => void
   myXI: Array<PlayerScoreRow & { isC: boolean; isVC: boolean; mult: number; effective: number }>
   allPlayerScores: PlayerScoreRow[]
   myPlayerSet: Set<string>
@@ -24,18 +21,12 @@ type Props = {
   away: TeamInfo
 }
 
-export function MyXIDrawer({ open, onOpenChange, myXI, allPlayerScores, myPlayerSet, home, away }: Props) {
+/**
+ * Inline My XI / All Players panel — renders below the user's own row
+ * when expanded. Replaces the previous modal/drawer wrapper.
+ */
+export function MyXIPanel({ myXI, allPlayerScores, myPlayerSet, home, away }: Props) {
   const [tab, setTab] = useState<"mine" | "all">("mine")
-  const [viewportH, setViewportH] = useState(0)
-  useEffect(() => {
-    if (typeof window === "undefined") return
-    const update = () => setViewportH(window.innerHeight)
-    update()
-    window.addEventListener("resize", update)
-    return () => window.removeEventListener("resize", update)
-  }, [])
-  const dialogH = Math.max(360, Math.floor(viewportH * 0.9))
-  const scrollH = Math.max(220, dialogH - 96)   // minus drag handle + segmented toggle row
 
   const myTotal = useMemo(
     () => Math.round(myXI.reduce((s, p) => s + p.effective, 0)),
@@ -43,71 +34,51 @@ export function MyXIDrawer({ open, onOpenChange, myXI, allPlayerScores, myPlayer
   )
 
   return (
-    <DialogPrimitive.Root open={open} onOpenChange={onOpenChange}>
-      <DialogPrimitive.Portal>
-        <DialogPrimitive.Overlay
-          className="fixed inset-0 z-50 bg-black/60 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=open]:fade-in-0 data-[state=closed]:fade-out-0"
-        />
-        <DialogPrimitive.Content
-          data-build="myxi-dlg-pxh-v1"
-          style={{ height: dialogH > 0 ? `${dialogH}px` : "90vh" }}
-          className="fixed inset-x-0 bottom-0 z-50 mx-auto w-full max-w-2xl flex flex-col bg-background border-t border-x rounded-t-xl shadow-2xl outline-none data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=open]:slide-in-from-bottom data-[state=closed]:slide-out-to-bottom"
+    <div className="flex flex-col px-4 pt-3 pb-5 gap-3 bg-overlay-subtle/40">
+      <div className="flex gap-1 p-0.5 rounded-lg bg-secondary/40 self-center">
+        <button
+          onClick={() => setTab("mine")}
+          className={cn(
+            "px-3 py-1.5 rounded-md text-xs font-medium transition-colors tabular-nums",
+            tab === "mine" ? "bg-primary text-primary-foreground" : "text-muted-foreground",
+          )}
         >
-          <DialogPrimitive.Title className="sr-only">My XI</DialogPrimitive.Title>
-          <div className="mx-auto mt-3 mb-1 h-1 w-12 rounded-full bg-muted-foreground/30 shrink-0" />
+          My XI · {myTotal}
+        </button>
+        <button
+          onClick={() => setTab("all")}
+          className={cn(
+            "px-3 py-1.5 rounded-md text-xs font-medium transition-colors",
+            tab === "all" ? "bg-primary text-primary-foreground" : "text-muted-foreground",
+          )}
+        >
+          All Players · {allPlayerScores.length}
+        </button>
+      </div>
 
-          <div className="flex flex-col overflow-hidden px-4 pb-6 pt-2">
-          {/* Segmented toggle */}
-          <div className="flex gap-1 mb-3 p-0.5 rounded-lg bg-secondary/40 self-center">
-            <button
-              onClick={() => setTab("mine")}
-              className={cn(
-                "px-3 py-1.5 rounded-md text-xs font-medium transition-colors tabular-nums",
-                tab === "mine" ? "bg-primary text-primary-foreground" : "text-muted-foreground",
-              )}
-            >
-              My XI · {myTotal}
-            </button>
-            <button
-              onClick={() => setTab("all")}
-              className={cn(
-                "px-3 py-1.5 rounded-md text-xs font-medium transition-colors",
-                tab === "all" ? "bg-primary text-primary-foreground" : "text-muted-foreground",
-              )}
-            >
-              All Players · {allPlayerScores.length}
-            </button>
-          </div>
-
-          <div
-            style={{ height: scrollH > 0 ? `${scrollH}px` : undefined }}
-            className="overflow-y-auto overscroll-contain"
-          >
-            {tab === "mine" ? (
-              myXI.length === 0 ? (
-                <p className="text-sm text-muted-foreground text-center py-8">
-                  You didn&apos;t pick a team for this match.
-                </p>
-              ) : (
-                <MyXITable rows={myXI} />
-              )
-            ) : (
-              <AllPlayersTables
-                allPlayerScores={allPlayerScores}
-                myPlayerSet={myPlayerSet}
-                home={home}
-                away={away}
-              />
-            )}
-          </div>
-          </div>
-        </DialogPrimitive.Content>
-      </DialogPrimitive.Portal>
-    </DialogPrimitive.Root>
+      <div>
+        {tab === "mine" ? (
+          myXI.length === 0 ? (
+            <p className="text-sm text-muted-foreground text-center py-8">
+              You didn&apos;t pick a team for this match.
+            </p>
+          ) : (
+            <MyXITable rows={myXI} />
+          )
+        ) : (
+          <AllPlayersTables
+            allPlayerScores={allPlayerScores}
+            myPlayerSet={myPlayerSet}
+            home={home}
+            away={away}
+          />
+        )}
+      </div>
+    </div>
   )
 }
 
-// ─── My XI table (compact dense) ─────────────────────────────────────────
+// ─── My XI table ─────────────────────────────────────────────────────────
 
 function MyXITable({ rows }: { rows: Array<PlayerScoreRow & { isC: boolean; isVC: boolean; mult: number; effective: number }> }) {
   const totalCatches = rows.reduce((s, p) => s + p.catches, 0)
@@ -116,7 +87,7 @@ function MyXITable({ rows }: { rows: Array<PlayerScoreRow & { isC: boolean; isVC
   const hasField = totalCatches + totalStumpings + totalRunOuts > 0
 
   return (
-    <div className="rounded-xl border border-overlay-border overflow-x-auto">
+    <div className="rounded-xl border border-overlay-border overflow-x-auto bg-background">
       <div className="grid grid-cols-[2.5rem_1fr_1.5rem_1.5rem_1.5rem_1.5rem_1px_1.5rem_1.8rem_1.8rem_1.5rem_3.2rem] gap-px px-3 py-2 text-[9px] text-muted-foreground/70 uppercase tracking-widest font-semibold border-b border-overlay-border bg-secondary/40 min-w-[420px]">
         <span /><span>Player</span>
         <span className="text-right">R</span><span className="text-right">B</span>
@@ -172,7 +143,7 @@ function MyXITable({ rows }: { rows: Array<PlayerScoreRow & { isC: boolean; isVC
   )
 }
 
-// ─── All players (per-team tables) ───────────────────────────────────────
+// ─── All players (per-team tables) ──────────────────────────────────────
 
 function AllPlayersTables({
   allPlayerScores, myPlayerSet, home, away,
@@ -188,7 +159,7 @@ function AllPlayersTables({
       ].map(({ team, players, label }) => {
         const sorted = [...players].sort((a, b) => Number(b.fantasy_points) - Number(a.fantasy_points))
         return (
-          <div key={team.short_name} className="rounded-xl border border-overlay-border overflow-hidden">
+          <div key={team.short_name} className="rounded-xl border border-overlay-border overflow-hidden bg-background">
             <div className="flex items-center gap-2 px-3 py-2 border-b border-overlay-border bg-overlay-subtle">
               <div className="w-1 h-4 rounded-full" style={{ backgroundColor: team.color }} />
               <TeamLogo team={team} size="sm" />

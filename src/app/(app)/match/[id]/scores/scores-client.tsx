@@ -1,22 +1,22 @@
 "use client"
 
-import { useCallback, useEffect, useMemo, useState } from "react"
-import { ClipboardList, Trophy } from "lucide-react"
+import { useCallback, useMemo, useState } from "react"
+import { Trophy } from "lucide-react"
 import { EmptyState } from "@/components/empty-state"
 import { LiveRefresher } from "@/components/live-refresher"
 import { cn } from "@/lib/utils"
-import { pickDefaultRival, type PlayerLite, type PlayerScore, type Selection } from "@/lib/rivalry"
+import { type PlayerLite, type PlayerScore, type Selection } from "@/lib/rivalry"
 import { buildAnalysis } from "@/lib/match-analysis"
 
 import { StickyHeader } from "./_components/sticky-header"
 import { StandingsTable } from "./_components/standings-table"
-import { RivalDrawer } from "./_components/rival-drawer"
-import { MyXIDrawer } from "./_components/my-xi-drawer"
+import { RivalPanel } from "./_components/rival-panel"
+import { MyXIPanel } from "./_components/my-xi-panel"
 import { OwnershipMatrix } from "./_components/ownership-matrix"
 import { TopScorers } from "./_components/top-scorers"
 import { useRankDelta } from "./_hooks/use-rank-delta"
 
-// ─── Types (re-exported for page.tsx + drawers) ─────────────────────────
+// ─── Types (re-exported for page.tsx + panels) ─────────────────────────
 
 export type TeamInfo = { short_name: string; color: string; logo_url: string | null }
 
@@ -101,9 +101,9 @@ export function ScoresClient({
   const [leagueFilter, setLeagueFilter] = useState<string | null>(
     userLeagues.length > 0 ? userLeagues[0].id : null,
   )
-  const [selectedRivalId, setSelectedRivalId] = useState<string | null>(null)
-  const [rivalOpen, setRivalOpen] = useState(false)
-  const [myXIOpen, setMyXIOpen] = useState(false)
+  // Single piece of expansion state — replaces the previous drawer-open
+  // booleans. null when no row is expanded.
+  const [expandedUserId, setExpandedUserId] = useState<string | null>(null)
 
   const myPoints = Number(myScore?.total_points ?? 0)
 
@@ -126,7 +126,7 @@ export function ScoresClient({
     return m
   }, [allSelections])
 
-  // My XI (with C/VC multiplier applied) for the FAB drawer.
+  // My XI (with C/VC multiplier applied) for the inline My XI panel.
   const myXI = useMemo(() => {
     return myPlayerIds
       .map((pid) => playerScores.find((ps) => ps.player_id === pid))
@@ -148,10 +148,8 @@ export function ScoresClient({
     return userScores.filter((s) => league.memberIds.includes(s.user_id))
   }, [userScores, leagueFilter, userLeagues])
 
-  // Track rank deltas across polls (mobile shows arrows, desktop shows sparkline).
   const rankDeltas = useRankDelta(filteredScores.map((s) => ({ user_id: s.user_id, rank: s.rank })))
 
-  // Build the row shape for the table.
   const standingsRows = useMemo(() => filteredScores.map((s, idx) => ({
     user_id: s.user_id,
     display_name: s.profile.display_name,
@@ -161,8 +159,7 @@ export function ScoresClient({
     vc_name: vcPicks[s.user_id]?.name ?? null,
   })), [filteredScores, leagueFilter, captainPicks, vcPicks])
 
-  // Full league ownership matrix — tiers × users × C/VC. Scoped to the
-  // active league filter; built client-side via the existing helper.
+  // Full league ownership matrix.
   const analysis = useMemo(() => {
     if (allSelections.length < 2) return null
     const memberIds = leagueFilter
@@ -202,21 +199,10 @@ export function ScoresClient({
     return buildAnalysis(`M#${match.match_number}`, inputs)
   }, [allSelections, leagueFilter, userLeagues, userScores, psMap, rosterMap, captainPicks, vcPicks, match.match_number])
 
-  // Default rival is the person directly above me (or below if leader).
-  useEffect(() => {
-    if (selectedRivalId) return
-    const def = pickDefaultRival(filteredScores, currentUserId)
-    if (def) setSelectedRivalId(def)
-  }, [filteredScores, currentUserId, selectedRivalId])
-
+  // Toggle row expansion.
   const onRowClick = useCallback((userId: string) => {
-    if (userId === currentUserId) {
-      setMyXIOpen(true)
-      return
-    }
-    setSelectedRivalId(userId)
-    setRivalOpen(true)
-  }, [currentUserId])
+    setExpandedUserId((prev) => (prev === userId ? null : userId))
+  }, [])
 
   const captainName = myCaptainId ? psMap.get(myCaptainId)?.player.name ?? null : null
   const vcName = myVcId ? psMap.get(myVcId)?.player.name ?? null : null
@@ -224,15 +210,49 @@ export function ScoresClient({
   const vcPoints = Number(myScore?.vc_points ?? 0)
   const leaderPoints = Number(userScores[0]?.total_points ?? 0)
 
-  const rival = selectedRivalId ? userScores.find((s) => s.user_id === selectedRivalId) ?? null : null
   const mySelection = selMap.get(currentUserId) ?? null
-  const rivalSelection = selectedRivalId ? selMap.get(selectedRivalId) ?? null : null
+  const meHeader = myScore
+    ? { display_name: myScore.profile.display_name, total_points: myPoints }
+    : null
+
+  // Render the inline expansion panel for a given user id.
+  const renderPanel = useCallback((userId: string) => {
+    if (userId === currentUserId) {
+      return (
+        <MyXIPanel
+          myXI={myXI}
+          allPlayerScores={playerScores}
+          myPlayerSet={myPlayerSet}
+          home={home}
+          away={away}
+        />
+      )
+    }
+    const rivalScore = userScores.find((s) => s.user_id === userId)
+    if (!rivalScore) return null
+    const rivalSel = selMap.get(userId) ?? null
+    return (
+      <RivalPanel
+        me={meHeader}
+        rival={{
+          user_id: rivalScore.user_id,
+          display_name: rivalScore.profile.display_name,
+          total_points: Number(rivalScore.total_points),
+        }}
+        mySelection={mySelection}
+        rivalSelection={rivalSel}
+        psMap={psMap}
+        rosterMap={rosterMap}
+        matchStatus={match.status}
+      />
+    )
+  }, [
+    currentUserId, myXI, playerScores, myPlayerSet, home, away,
+    userScores, selMap, mySelection, psMap, rosterMap, match.status, meHeader,
+  ])
 
   return (
-    <div
-      className="max-w-3xl mx-auto"
-      style={{ paddingBottom: "calc(8rem + env(safe-area-inset-bottom))" }}
-    >
+    <div className="max-w-3xl mx-auto pb-12">
       {isLive && <LiveRefresher interval={30000} />}
 
       <StickyHeader
@@ -265,8 +285,6 @@ export function ScoresClient({
         </div>
       ) : (
         <>
-          {/* Toolbar — scrolls with the page (the sticky group above already
-              owns the always-visible region). */}
           {userLeagues.length > 0 && (
             <div className="px-3 py-2 bg-background border-b border-overlay-border">
               <div className="flex gap-1.5 overflow-x-auto scrollbar-hide">
@@ -293,6 +311,8 @@ export function ScoresClient({
             rankDeltas={rankDeltas}
             snapshots={snapshots}
             onRowClick={onRowClick}
+            expandedUserId={expandedUserId}
+            renderPanel={renderPanel}
           />
 
           {filteredScores.length === 0 && (
@@ -306,48 +326,6 @@ export function ScoresClient({
           {analysis && <OwnershipMatrix analysis={analysis} />}
         </>
       )}
-
-      {/* FAB — opens My XI drawer. Sits above the 3.5rem bottom nav. */}
-      {(playerScores.length > 0 || myXI.length > 0) && (
-        <button
-          onClick={() => setMyXIOpen(true)}
-          className={cn(
-            "fixed z-30 right-4 flex items-center gap-2 px-4 h-12 rounded-full shadow-lg",
-            "bg-primary text-primary-foreground font-semibold text-sm",
-            "active:scale-95 transition-transform",
-          )}
-          style={{ bottom: "calc(3.5rem + 1rem + env(safe-area-inset-bottom))" }}
-        >
-          <ClipboardList className="h-4 w-4" />
-          <span>My XI</span>
-          <span className="font-display font-bold tabular-nums">
-            {Math.round(myXI.reduce((s, p) => s + p.effective, 0))}
-          </span>
-        </button>
-      )}
-
-      {/* Drawers */}
-      <RivalDrawer
-        open={rivalOpen}
-        onOpenChange={setRivalOpen}
-        me={myScore ? { display_name: myScore.profile.display_name, total_points: myPoints } : null}
-        rival={rival ? { user_id: rival.user_id, display_name: rival.profile.display_name, total_points: Number(rival.total_points) } : null}
-        mySelection={mySelection}
-        rivalSelection={rivalSelection}
-        psMap={psMap}
-        rosterMap={rosterMap}
-        matchStatus={match.status}
-      />
-
-      <MyXIDrawer
-        open={myXIOpen}
-        onOpenChange={setMyXIOpen}
-        myXI={myXI}
-        allPlayerScores={playerScores}
-        myPlayerSet={myPlayerSet}
-        home={home}
-        away={away}
-      />
     </div>
   )
 }
@@ -367,5 +345,3 @@ function FilterPill({ active, onClick, children }: { active: boolean; onClick: (
     </button>
   )
 }
-
-

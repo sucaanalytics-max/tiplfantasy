@@ -1,6 +1,7 @@
 "use client"
 
-import { memo, useEffect, useMemo, useRef, useState } from "react"
+import { memo, useEffect, useMemo, useRef, useState, type ReactNode } from "react"
+import { ChevronDown } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { getInitials, getAvatarColor } from "@/lib/avatar"
 import { computeMomentumSeries } from "@/lib/rivalry"
@@ -22,21 +23,19 @@ type Props = {
   rankDeltas: Map<string, number>
   snapshots: Array<{ over_number: number; scores: Record<string, number> }>
   onRowClick: (userId: string) => void
+  expandedUserId: string | null
+  renderPanel: (userId: string) => ReactNode
 }
 
 /**
- * League standings as a 2-line card per row:
- *   [#]  [avatar]  Display Name (you)            Pts
- *                  C: Captain · VC: VC           +12 ──╱
- *
- * - Full names always visible; long names wrap into the captain line area.
- * - Sparkline column reads from `match_score_snapshots` (always populated
- *   when ≥2 snapshots exist).
- * - "You" row pins to viewport bottom via IntersectionObserver when it
- *   scrolls offscreen.
+ * League standings as a 2-line card per row. When a row is tapped, an
+ * expansion panel is rendered as a normal sibling element directly below
+ * the row (no modal, no overlay). The page body scrolls naturally to
+ * accommodate the expanded content.
  */
 export function StandingsTable({
-  rows, currentUserId, myPoints, rankDeltas, snapshots, onRowClick,
+  rows, currentUserId, myPoints, rankDeltas, snapshots,
+  onRowClick, expandedUserId, renderPanel,
 }: Props) {
   const myRow = useMemo(() => rows.find((r) => r.user_id === currentUserId), [rows, currentUserId])
   const myRowRef = useRef<HTMLDivElement | null>(null)
@@ -61,6 +60,7 @@ export function StandingsTable({
       <div className="divide-y divide-overlay-border">
         {rows.map((row) => {
           const isMe = row.user_id === currentUserId
+          const isExpanded = expandedUserId === row.user_id
           const series = computeMomentumSeries(row.user_id, snapshots)
           const delta = rankDeltas.get(row.user_id) ?? 0
           const vMe = isMe ? null : Math.round((row.total_points - myPoints) * 10) / 10
@@ -69,11 +69,17 @@ export function StandingsTable({
               <StandingsRow
                 row={row}
                 isMe={isMe}
+                isExpanded={isExpanded}
                 vMe={vMe}
                 delta={delta}
                 series={series}
                 onClick={() => onRowClick(row.user_id)}
               />
+              {isExpanded && (
+                <div className="border-t border-overlay-border">
+                  {renderPanel(row.user_id)}
+                </div>
+              )}
             </div>
           )
         })}
@@ -85,6 +91,7 @@ export function StandingsTable({
           <StandingsRow
             row={myRow}
             isMe
+            isExpanded={expandedUserId === myRow.user_id}
             vMe={null}
             delta={rankDeltas.get(myRow.user_id) ?? 0}
             series={computeMomentumSeries(myRow.user_id, snapshots)}
@@ -102,6 +109,7 @@ export function StandingsTable({
 type RowProps = {
   row: UserRow
   isMe: boolean
+  isExpanded: boolean
   vMe: number | null
   delta: number
   series: ReturnType<typeof computeMomentumSeries>
@@ -110,7 +118,7 @@ type RowProps = {
 }
 
 const StandingsRow = memo(function StandingsRow({
-  row, isMe, vMe, series, onClick, pinned,
+  row, isMe, isExpanded, vMe, series, onClick, pinned,
 }: RowProps) {
   const rank = row.rank ?? 0
   const podiumClass =
@@ -122,25 +130,24 @@ const StandingsRow = memo(function StandingsRow({
   return (
     <button
       onClick={onClick}
+      aria-expanded={isExpanded}
       className={cn(
-        "w-full grid grid-cols-[1.75rem_2rem_1fr_auto] items-start gap-2.5 px-3 py-2.5 text-left transition-colors",
+        "w-full grid grid-cols-[1.75rem_2rem_1fr_auto_1rem] items-start gap-2.5 px-3 py-2.5 text-left transition-colors",
         isMe && !pinned && "bg-primary/10",
         isMe && "border-l-[3px] border-primary",
         !isMe && "hover:bg-overlay-subtle active:bg-overlay-muted",
         pinned && "bg-background",
+        isExpanded && !pinned && "bg-overlay-subtle",
       )}
     >
-      {/* Rank */}
       <span className={cn("text-sm font-display font-bold tabular-nums leading-tight pt-0.5", podiumClass)}>
         {row.rank ?? "—"}
       </span>
 
-      {/* Avatar */}
       <div className={cn("h-7 w-7 rounded-full flex items-center justify-center shrink-0 mt-px", getAvatarColor(row.display_name))}>
         <span className="text-white text-[10px] font-semibold">{getInitials(row.display_name)}</span>
       </div>
 
-      {/* Name + C/VC stack */}
       <div className="min-w-0">
         <p className={cn(
           "text-[13px] leading-tight break-words",
@@ -168,7 +175,6 @@ const StandingsRow = memo(function StandingsRow({
         </p>
       </div>
 
-      {/* Right column: pts + vMe + sparkline */}
       <div className="text-right shrink-0 flex flex-col items-end gap-0.5 min-w-[3.75rem]">
         <p className="text-base font-bold font-display tabular-nums leading-tight">
           {row.total_points}
@@ -186,6 +192,13 @@ const StandingsRow = memo(function StandingsRow({
           <MomentumSparkline series={series} width={32} height={12} />
         </div>
       </div>
+
+      <ChevronDown
+        className={cn(
+          "h-4 w-4 mt-1 text-muted-foreground/40 transition-transform shrink-0",
+          isExpanded && "rotate-180 text-muted-foreground",
+        )}
+      />
     </button>
   )
 })

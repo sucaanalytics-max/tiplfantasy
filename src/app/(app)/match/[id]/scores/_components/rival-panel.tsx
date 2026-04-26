@@ -1,7 +1,6 @@
 "use client"
 
-import { useEffect, useMemo, useState } from "react"
-import * as DialogPrimitive from "@radix-ui/react-dialog"
+import { useMemo } from "react"
 import { Badge } from "@/components/ui/badge"
 import { cn } from "@/lib/utils"
 import { getInitials, getAvatarColor } from "@/lib/avatar"
@@ -31,8 +30,6 @@ type Rival = {
 }
 
 type Props = {
-  open: boolean
-  onOpenChange: (open: boolean) => void
   me: { display_name: string; total_points: number } | null
   rival: Rival | null
   mySelection: Selection | null
@@ -42,25 +39,14 @@ type Props = {
   matchStatus: string
 }
 
-export function RivalDrawer({
-  open, onOpenChange,
-  me, rival,
-  mySelection, rivalSelection,
-  psMap, rosterMap, matchStatus,
+/**
+ * Inline rival comparison panel — renders the head-to-head content as a
+ * normal block-level subtree below an expanded standings row. Replaces
+ * the previous modal/drawer wrapper. Page body scroll handles overflow.
+ */
+export function RivalPanel({
+  me, rival, mySelection, rivalSelection, psMap, rosterMap, matchStatus,
 }: Props) {
-  // JS-computed pixel height for the dialog. Bypasses flex/vh ambiguity
-  // entirely so overflow-y-auto reliably has a definite parent height.
-  const [viewportH, setViewportH] = useState(0)
-  useEffect(() => {
-    if (typeof window === "undefined") return
-    const update = () => setViewportH(window.innerHeight)
-    update()
-    window.addEventListener("resize", update)
-    return () => window.removeEventListener("resize", update)
-  }, [])
-  const dialogH = Math.max(360, Math.floor(viewportH * 0.9))   // 90vh, min 360px
-  const scrollH = Math.max(240, dialogH - 32)                   // minus drag-handle/title space
-
   const data = useMemo(() => {
     if (!me || !rival || !mySelection || !rivalSelection) return null
     const h2h = buildHeadToHead(mySelection, rivalSelection, psMap, rosterMap)
@@ -81,75 +67,44 @@ export function RivalDrawer({
     return { h2h, captainDuel, insight, roster }
   }, [me, rival, mySelection, rivalSelection, psMap, rosterMap, matchStatus])
 
+  if (!data || !me || !rival) {
+    return (
+      <p className="text-sm text-muted-foreground text-center py-8">
+        No comparison available — opponent has no team selected yet.
+      </p>
+    )
+  }
+
   return (
-    <DialogPrimitive.Root open={open} onOpenChange={onOpenChange}>
-      <DialogPrimitive.Portal>
-        <DialogPrimitive.Overlay
-          className="fixed inset-0 z-50 bg-black/60 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=open]:fade-in-0 data-[state=closed]:fade-out-0"
-        />
-        <DialogPrimitive.Content
-          data-build="rival-dlg-pxh-v1"
-          style={{ height: dialogH > 0 ? `${dialogH}px` : "90vh" }}
-          className="fixed inset-x-0 bottom-0 z-50 mx-auto w-full max-w-2xl flex flex-col bg-background border-t border-x rounded-t-xl shadow-2xl outline-none data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=open]:slide-in-from-bottom data-[state=closed]:slide-out-to-bottom"
-        >
-          <DialogPrimitive.Title className="sr-only">Rival comparison</DialogPrimitive.Title>
-          {/* Drag-handle affordance */}
-          <div className="mx-auto mt-3 mb-1 h-1 w-12 rounded-full bg-muted-foreground/30 shrink-0" />
+    <div className="flex flex-col px-4 pt-3 pb-5 gap-4 bg-overlay-subtle/40">
+      <div className="flex items-center justify-between gap-3">
+        <Side name={me.display_name} points={me.total_points} align="left" isMe />
+        <SignedDelta delta={me.total_points - rival.total_points} />
+        <Side name={rival.display_name} points={rival.total_points} align="right" />
+      </div>
 
-        {!data || !me || !rival ? (
-          <p className="text-sm text-muted-foreground text-center py-8">
-            No comparison available — opponent has no team selected yet.
-          </p>
-        ) : (
-          <div
-            style={{ height: scrollH > 0 ? `${scrollH}px` : undefined }}
-            className="overflow-y-auto overscroll-contain px-4 pb-6 pt-2 flex flex-col gap-4"
-          >
-            {/* Header */}
-            <div className="flex items-center justify-between gap-3 pt-2">
-              <Side
-                name={me.display_name}
-                points={me.total_points}
-                align="left"
-                isMe
-              />
-              <SignedDelta delta={me.total_points - rival.total_points} />
-              <Side
-                name={rival.display_name}
-                points={rival.total_points}
-                align="right"
-              />
-            </div>
+      <CaptainDuelBlock
+        myCaptain={data.captainDuel.myCaptain}
+        theirCaptain={data.captainDuel.theirCaptain}
+        myVC={data.captainDuel.myVC}
+        theirVC={data.captainDuel.theirVC}
+        captainDelta={data.captainDuel.captainDelta}
+        vcDelta={data.captainDuel.vcDelta}
+      />
 
-            {/* Captain duel */}
-            <CaptainDuelBlock
-              myCaptain={data.captainDuel.myCaptain}
-              theirCaptain={data.captainDuel.theirCaptain}
-              myVC={data.captainDuel.myVC}
-              theirVC={data.captainDuel.theirVC}
-              captainDelta={data.captainDuel.captainDelta}
-              vcDelta={data.captainDuel.vcDelta}
-            />
+      {data.insight && (
+        <div className="rounded-lg border border-overlay-border bg-background px-3 py-2">
+          <p className="text-[10px] uppercase tracking-widest text-muted-foreground mb-0.5">Insight</p>
+          <p className="text-xs text-foreground/90">{data.insight}</p>
+        </div>
+      )}
 
-            {/* Insight */}
-            {data.insight && (
-              <div className="rounded-lg border border-overlay-border bg-overlay-subtle px-3 py-2">
-                <p className="text-[10px] uppercase tracking-widest text-muted-foreground mb-0.5">Insight</p>
-                <p className="text-xs text-foreground/90">{data.insight}</p>
-              </div>
-            )}
-
-            {/* Aligned roster table — replaces 3-tile metrics, points-in-play, edge lists, shared list */}
-            <RosterTable
-              rows={data.roster}
-              myTotal={me.total_points}
-              theirTotal={rival.total_points}
-            />
-          </div>
-        )}
-        </DialogPrimitive.Content>
-      </DialogPrimitive.Portal>
-    </DialogPrimitive.Root>
+      <RosterTable
+        rows={data.roster}
+        myTotal={me.total_points}
+        theirTotal={rival.total_points}
+      />
+    </div>
   )
 }
 
@@ -199,24 +154,12 @@ function CaptainDuelBlock({
   vcDelta: number
 }) {
   return (
-    <div className="rounded-xl border border-overlay-border overflow-hidden">
-      <CaptainRow
-        label="C"
-        mult="2×"
-        my={myCaptain}
-        their={theirCaptain}
-        delta={captainDelta}
-      />
+    <div className="rounded-xl border border-overlay-border overflow-hidden bg-background">
+      <CaptainRow label="C" mult="2×" my={myCaptain} their={theirCaptain} delta={captainDelta} />
       {(myVC || theirVC) && (
         <>
           <div className="h-px bg-overlay-border" />
-          <CaptainRow
-            label="VC"
-            mult="1.5×"
-            my={myVC}
-            their={theirVC}
-            delta={vcDelta}
-          />
+          <CaptainRow label="VC" mult="1.5×" my={myVC} their={theirVC} delta={vcDelta} />
         </>
       )}
     </div>
@@ -227,7 +170,7 @@ function CaptainRow({
   label, mult, my, their, delta,
 }: { label: string; mult: string; my: CaptainSlot; their: CaptainSlot; delta: number }) {
   return (
-    <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-2 px-3 py-2.5 bg-overlay-subtle/40">
+    <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-2 px-3 py-2.5">
       <CaptainSide slot={my} align="left" />
       <div className="flex flex-col items-center text-center">
         <span className="text-[10px] uppercase tracking-widest text-muted-foreground">{label} {mult}</span>
@@ -264,7 +207,7 @@ function CaptainSide({ slot, align }: { slot: CaptainSlot; align: "left" | "righ
 type RosterCell = {
   name: string
   role: string
-  mult: number       // 1, 1.5, 2
+  mult: number
   eff: number
   basePoints: number
 }
@@ -282,7 +225,6 @@ type RosterRow = {
 function buildAlignedRoster(h2h: HeadToHead): RosterRow[] {
   const rows: RosterRow[] = []
 
-  // Pure shared (equal multipliers on both sides)
   for (const s of h2h.shared) {
     rows.push({
       player_id: s.player_id,
@@ -295,7 +237,6 @@ function buildAlignedRoster(h2h: HeadToHead): RosterRow[] {
     })
   }
 
-  // myEdge: my-only OR shared-with-my-higher-mult (captaincy edge)
   for (const e of h2h.myEdge) {
     if (e.isMultEdge) {
       const myMult = e.isC ? 2 : e.isVC ? 1.5 : 1
@@ -323,7 +264,6 @@ function buildAlignedRoster(h2h: HeadToHead): RosterRow[] {
     }
   }
 
-  // theirEdge: their-only OR shared-with-their-higher-mult
   for (const e of h2h.theirEdge) {
     if (e.isMultEdge) {
       const myMult = e.myIsC ? 2 : e.myIsVC ? 1.5 : 1
@@ -351,9 +291,6 @@ function buildAlignedRoster(h2h: HeadToHead): RosterRow[] {
     }
   }
 
-  // 3-tier sort: edge differentials → uncommon (one-side-only) → common.
-  // Within each tier, descending by max effective so the most impactful
-  // row in the tier sits at the top.
   rows.sort((a, b) => {
     const ta = tier(a)
     const tb = tier(b)
@@ -366,10 +303,6 @@ function buildAlignedRoster(h2h: HeadToHead): RosterRow[] {
   return rows
 }
 
-// Tier 0: My Edge — my-only picks AND captaincy edges where I have the
-//                    higher multiplier (i.e. my side wins the duel).
-// Tier 1: Their Edge — symmetric on the other side.
-// Tier 2: Common — shared with equal multipliers.
 function tier(r: RosterRow): number {
   if (r.isMyOnly) return 0
   if (r.isTheirOnly) return 1
@@ -390,7 +323,6 @@ function RosterTable({
 }: { rows: RosterRow[]; myTotal: number; theirTotal: number }) {
   if (rows.length === 0) return null
 
-  // Group rows by tier so we can render section labels between tiers.
   const grouped: Array<{ tier: number; rows: RosterRow[] }> = []
   let current: { tier: number; rows: RosterRow[] } | null = null
   for (const r of rows) {
@@ -403,8 +335,7 @@ function RosterTable({
   }
 
   return (
-    <div className="rounded-xl border border-overlay-border overflow-hidden">
-      {/* Header row */}
+    <div className="rounded-xl border border-overlay-border overflow-hidden bg-background">
       <div className="grid grid-cols-2 bg-overlay-subtle border-b border-overlay-border">
         <HeaderCell label="ME" total={myTotal} align="left" />
         <HeaderCell label="THEM" total={theirTotal} align="right" />
@@ -446,10 +377,7 @@ function HeaderCell({ label, total, align }: { label: string; total: number; ali
 }
 
 function Row({ row }: { row: RosterRow }) {
-  const rowTint =
-    row.isCaptaincyEdge ? "bg-amber-500/5" :
-    null
-
+  const rowTint = row.isCaptaincyEdge ? "bg-amber-500/5" : null
   return (
     <div className={cn("grid grid-cols-2", rowTint)}>
       <Cell
