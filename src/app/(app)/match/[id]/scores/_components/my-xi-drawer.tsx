@@ -1,7 +1,7 @@
 "use client"
 
 import { useMemo, useState } from "react"
-import { Drawer, DrawerContent, DrawerTitle } from "@/components/ui/drawer"
+import * as DialogPrimitive from "@radix-ui/react-dialog"
 import { Badge } from "@/components/ui/badge"
 import { TeamLogo } from "@/components/team-logo"
 import { cn } from "@/lib/utils"
@@ -33,11 +33,18 @@ export function MyXIDrawer({ open, onOpenChange, myXI, allPlayerScores, myPlayer
   )
 
   return (
-    <Drawer open={open} onOpenChange={onOpenChange}>
-      <DrawerContent className="h-[90vh]">
-        <DrawerTitle className="sr-only">My XI</DrawerTitle>
+    <DialogPrimitive.Root open={open} onOpenChange={onOpenChange}>
+      <DialogPrimitive.Portal>
+        <DialogPrimitive.Overlay
+          className="fixed inset-0 z-50 bg-black/60 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=open]:fade-in-0 data-[state=closed]:fade-out-0"
+        />
+        <DialogPrimitive.Content
+          className="fixed inset-x-0 bottom-0 z-50 mx-auto w-full max-w-2xl h-[90vh] flex flex-col bg-background border-t border-x rounded-t-xl shadow-2xl outline-none data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=open]:slide-in-from-bottom data-[state=closed]:slide-out-to-bottom"
+        >
+          <DialogPrimitive.Title className="sr-only">My XI</DialogPrimitive.Title>
+          <div className="mx-auto mt-3 mb-1 h-1 w-12 rounded-full bg-muted-foreground/30 shrink-0" />
 
-        <div className="flex-1 min-h-0 flex flex-col overflow-hidden px-4 pb-6 pt-2">
+          <div className="flex-1 min-h-0 flex flex-col overflow-hidden px-4 pb-6 pt-2">
           {/* Segmented toggle */}
           <div className="flex gap-1 mb-3 p-0.5 rounded-lg bg-secondary/40 self-center">
             <button
@@ -62,7 +69,6 @@ export function MyXIDrawer({ open, onOpenChange, myXI, allPlayerScores, myPlayer
 
           <div
             className="flex-1 min-h-0 overflow-y-auto overscroll-contain"
-            data-vaul-no-drag
           >
             {tab === "mine" ? (
               myXI.length === 0 ? (
@@ -81,9 +87,10 @@ export function MyXIDrawer({ open, onOpenChange, myXI, allPlayerScores, myPlayer
               />
             )}
           </div>
-        </div>
-      </DrawerContent>
-    </Drawer>
+          </div>
+        </DialogPrimitive.Content>
+      </DialogPrimitive.Portal>
+    </DialogPrimitive.Root>
   )
 }
 

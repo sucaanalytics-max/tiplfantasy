@@ -1,7 +1,7 @@
 "use client"
 
 import { useMemo } from "react"
-import { Drawer, DrawerContent, DrawerTitle } from "@/components/ui/drawer"
+import * as DialogPrimitive from "@radix-ui/react-dialog"
 import { Badge } from "@/components/ui/badge"
 import { cn } from "@/lib/utils"
 import { getInitials, getAvatarColor } from "@/lib/avatar"
@@ -69,9 +69,17 @@ export function RivalDrawer({
   }, [me, rival, mySelection, rivalSelection, psMap, rosterMap, matchStatus])
 
   return (
-    <Drawer open={open} onOpenChange={onOpenChange}>
-      <DrawerContent className="h-[90vh]">
-        <DrawerTitle className="sr-only">Rival comparison</DrawerTitle>
+    <DialogPrimitive.Root open={open} onOpenChange={onOpenChange}>
+      <DialogPrimitive.Portal>
+        <DialogPrimitive.Overlay
+          className="fixed inset-0 z-50 bg-black/60 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=open]:fade-in-0 data-[state=closed]:fade-out-0"
+        />
+        <DialogPrimitive.Content
+          className="fixed inset-x-0 bottom-0 z-50 mx-auto w-full max-w-2xl h-[90vh] flex flex-col bg-background border-t border-x rounded-t-xl shadow-2xl outline-none data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=open]:slide-in-from-bottom data-[state=closed]:slide-out-to-bottom"
+        >
+          <DialogPrimitive.Title className="sr-only">Rival comparison</DialogPrimitive.Title>
+          {/* Drag-handle affordance */}
+          <div className="mx-auto mt-3 mb-1 h-1 w-12 rounded-full bg-muted-foreground/30 shrink-0" />
 
         {!data || !me || !rival ? (
           <p className="text-sm text-muted-foreground text-center py-8">
@@ -80,7 +88,6 @@ export function RivalDrawer({
         ) : (
           <div
             className="flex-1 min-h-0 flex flex-col overflow-y-auto overscroll-contain px-4 pb-6 pt-2 gap-4"
-            data-vaul-no-drag
           >
             {/* Header */}
             <div className="flex items-center justify-between gap-3 pt-2">
@@ -124,8 +131,9 @@ export function RivalDrawer({
             />
           </div>
         )}
-      </DrawerContent>
-    </Drawer>
+        </DialogPrimitive.Content>
+      </DialogPrimitive.Portal>
+    </DialogPrimitive.Root>
   )
 }
 
