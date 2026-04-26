@@ -6,12 +6,13 @@ import { EmptyState } from "@/components/empty-state"
 import { LiveRefresher } from "@/components/live-refresher"
 import { cn } from "@/lib/utils"
 import { pickDefaultRival, type PlayerLite, type PlayerScore, type Selection } from "@/lib/rivalry"
+import { buildAnalysis } from "@/lib/match-analysis"
 
 import { StickyHeader } from "./_components/sticky-header"
 import { StandingsTable } from "./_components/standings-table"
 import { RivalDrawer } from "./_components/rival-drawer"
 import { MyXIDrawer } from "./_components/my-xi-drawer"
-import { OwnershipGrid, type OwnershipEntry } from "./_components/ownership-grid"
+import { OwnershipMatrix } from "./_components/ownership-matrix"
 import { useRankDelta } from "./_hooks/use-rank-delta"
 
 // ─── Types (re-exported for page.tsx + drawers) ─────────────────────────
@@ -159,38 +160,46 @@ export function ScoresClient({
     vc_name: vcPicks[s.user_id]?.name ?? null,
   })), [filteredScores, leagueFilter, captainPicks, vcPicks])
 
-  // Top owned players across the (filtered) league.
-  const ownership: OwnershipEntry[] = useMemo(() => {
-    if (allSelections.length < 2) return []
+  // Full league ownership matrix — tiers × users × C/VC. Scoped to the
+  // active league filter; built client-side via the existing helper.
+  const analysis = useMemo(() => {
+    if (allSelections.length < 2) return null
     const memberIds = leagueFilter
       ? new Set(userLeagues.find((l) => l.id === leagueFilter)?.memberIds ?? [])
       : null
     const scopedSelections = memberIds
       ? allSelections.filter((s) => memberIds.has(s.user_id))
       : allSelections
-    if (scopedSelections.length < 2) return []
-    const total = scopedSelections.length
-    const counts = new Map<string, number>()
-    for (const sel of scopedSelections) {
-      for (const pid of sel.player_ids) counts.set(pid, (counts.get(pid) ?? 0) + 1)
-    }
-    const out: OwnershipEntry[] = []
-    for (const [pid, count] of counts) {
+    if (scopedSelections.length < 2) return null
+
+    const userNameById = new Map<string, string>()
+    for (const u of userScores) userNameById.set(u.user_id, u.profile.display_name)
+
+    const playerLookup = (pid: string) => {
       const ps = psMap.get(pid)
-      const name = ps?.player.name ?? rosterMap.get(pid)?.name
-      if (!name) continue
-      out.push({
-        player_id: pid,
-        name,
-        pct: Math.round((count / total) * 100),
-        isMine: myPlayerSet.has(pid),
-      })
+      if (ps) return { id: pid, name: ps.player.name, role: ps.player.role, team: ps.player.team.short_name }
+      const info = rosterMap.get(pid)
+      if (info) return { id: pid, name: info.name, role: info.role, team: info.team.short_name }
+      return null
     }
-    return out
-      .filter((p) => p.pct > 0)
-      .sort((a, b) => b.pct - a.pct)
-      .slice(0, 8)
-  }, [allSelections, leagueFilter, userLeagues, psMap, rosterMap, myPlayerSet])
+
+    const inputs = scopedSelections.map((s) => {
+      const players = s.player_ids
+        .map(playerLookup)
+        .filter((p): p is { id: string; name: string; role: string; team: string } => Boolean(p))
+      return {
+        displayName: userNameById.get(s.user_id) ?? "?",
+        captainId: s.captain_id,
+        viceCaptainId: s.vice_captain_id,
+        captainName: s.captain_id ? captainPicks[s.user_id]?.name ?? null : null,
+        vcName: s.vice_captain_id ? vcPicks[s.user_id]?.name ?? null : null,
+        players,
+      }
+    }).filter((s) => s.players.length > 0)
+
+    if (inputs.length < 2) return null
+    return buildAnalysis(`M#${match.match_number}`, inputs)
+  }, [allSelections, leagueFilter, userLeagues, userScores, psMap, rosterMap, captainPicks, vcPicks, match.match_number])
 
   // Default rival is the person directly above me (or below if leader).
   useEffect(() => {
@@ -291,7 +300,7 @@ export function ScoresClient({
             </p>
           )}
 
-          <OwnershipGrid entries={ownership} />
+          {analysis && <OwnershipMatrix analysis={analysis} />}
         </>
       )}
 
