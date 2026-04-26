@@ -462,6 +462,43 @@ function NextMatchTab({
       }
     })
 
+  // Build optimal 11 from historical averages (role-constrained greedy)
+  const optimal11 = useMemo(() => {
+    const LIMITS: Record<string, [number, number]> = { WK: [1, 4], BAT: [2, 5], AR: [1, 3], BOWL: [2, 5] }
+    const candidates = [...matchPlayers].filter((p) => p.matches > 0).sort((a, b) => b.avgFP - a.avgFP)
+    const picked: typeof matchPlayers = []
+    const rc: Record<string, number> = { WK: 0, BAT: 0, AR: 0, BOWL: 0 }
+    const tc = new Map<string, number>()
+    const used = new Set<string>()
+
+    // Phase 1: fill minimums per role
+    for (const role of ["WK", "AR", "BAT", "BOWL"]) {
+      const [min] = LIMITS[role]
+      for (const c of candidates) {
+        if (c.role !== role || used.has(c.id)) continue
+        if (rc[role] >= min) break
+        if ((tc.get(c.team) ?? 0) >= 7) continue
+        picked.push(c); used.add(c.id); rc[role]++; tc.set(c.team, (tc.get(c.team) ?? 0) + 1)
+      }
+    }
+    // Phase 2: fill to 11 with best remaining
+    for (const c of candidates) {
+      if (picked.length >= 11) break
+      if (used.has(c.id)) continue
+      const [, max] = LIMITS[c.role]
+      if (rc[c.role] >= max) continue
+      if ((tc.get(c.team) ?? 0) >= 7) continue
+      picked.push(c); used.add(c.id); rc[c.role]++; tc.set(c.team, (tc.get(c.team) ?? 0) + 1)
+    }
+    if (picked.length < 11) return null
+
+    const byAvg = [...picked].sort((a, b) => b.avgFP - a.avgFP)
+    const capId = byAvg[0].id
+    const vcId = byAvg[1].id
+    const total = Math.round(picked.reduce((s, p) => s + p.avgFP * (p.id === capId ? 2 : p.id === vcId ? 1.5 : 1), 0) * 10) / 10
+    return { players: picked, capId, vcId, total }
+  }, [matchPlayers])
+
   const filtered = teamFilter
     ? matchPlayers.filter((p) => p.team === teamFilter)
     : matchPlayers
@@ -492,6 +529,48 @@ function NextMatchTab({
           </div>
         </CardContent>
       </Card>
+
+      {/* Optimal 11 based on historical averages */}
+      {optimal11 && (
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm flex items-center gap-2">
+              Optimal XI by Avg FP — {optimal11.total} projected
+              <span className="text-[10px] font-normal text-muted-foreground">(C 2x + VC 1.5x + 9×1x)</span>
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="flex flex-wrap gap-2">
+              {optimal11.players
+                .sort((a, b) => {
+                  const order: Record<string, number> = { WK: 0, BAT: 1, AR: 2, BOWL: 3 }
+                  return (order[a.role] ?? 4) - (order[b.role] ?? 4)
+                })
+                .map((p) => {
+                  const isCap = p.id === optimal11.capId
+                  const isVC = p.id === optimal11.vcId
+                  return (
+                    <div
+                      key={p.id}
+                      className={cn(
+                        "px-3 py-1.5 rounded-lg text-xs flex items-center gap-1.5 border",
+                        isCap ? "border-amber-500/50 bg-amber-500/10"
+                        : isVC ? "border-blue-500/50 bg-blue-500/10"
+                        : "border-border bg-muted/30"
+                      )}
+                    >
+                      <Badge variant="outline" className={cn("text-[9px] px-1 py-0 h-4", ROLE_COLORS[p.role])}>{p.role}</Badge>
+                      <span className="font-medium">{p.name.split(" ").pop()}</span>
+                      <span className="tabular-nums text-muted-foreground">{p.avgFP}</span>
+                      {isCap && <Badge className="text-[8px] px-1 py-0 h-3.5 bg-amber-500 text-white">C</Badge>}
+                      {isVC && <Badge className="text-[8px] px-1 py-0 h-3.5 bg-blue-500 text-white">VC</Badge>}
+                    </div>
+                  )
+                })}
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Historical Fact Sheet Table */}
       <Card>
