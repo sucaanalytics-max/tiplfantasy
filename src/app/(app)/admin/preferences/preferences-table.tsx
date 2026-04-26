@@ -1,6 +1,6 @@
 "use client"
 
-import { useMemo, useState } from "react"
+import { useMemo, useRef, useState } from "react"
 import { cn } from "@/lib/utils"
 import type { UserPreference } from "@/lib/analytics"
 
@@ -35,6 +35,21 @@ const ROLE_KEYS: Array<{ key: "WK" | "BAT" | "AR" | "BOWL"; label: string }> = [
 export function UserPreferencesTable({ preferences, teamColumns, teamIdToColor }: Props) {
   const [sortKey, setSortKey] = useState<SortKey>("name")
   const [sortDir, setSortDir] = useState<SortDir>("asc")
+  const [drillUserId, setDrillUserId] = useState<string | null>(null)
+  const [drillTeamId, setDrillTeamId] = useState<string | null>(null)
+  const drillRef = useRef<HTMLDivElement | null>(null)
+
+  function pickUser(userId: string) {
+    setDrillUserId(userId)
+    if (!drillTeamId) {
+      // Default to user's most-picked team for instant feedback
+      const user = preferences.find((p) => p.userId === userId)
+      if (user?.topTeam) setDrillTeamId(user.topTeam.teamId)
+    }
+    requestAnimationFrame(() => {
+      drillRef.current?.scrollIntoView({ behavior: "smooth", block: "start" })
+    })
+  }
 
   function toggleSort(k: SortKey) {
     const sameKey =
@@ -142,10 +157,23 @@ export function UserPreferencesTable({ preferences, teamColumns, teamIdToColor }
             {rows.map((row) => (
               <tr
                 key={row.userId}
-                className="border-b border-overlay-border last:border-b-0 hover:bg-overlay-subtle/50"
+                className={cn(
+                  "border-b border-overlay-border last:border-b-0 hover:bg-overlay-subtle/50",
+                  drillUserId === row.userId && "bg-primary/[0.06]"
+                )}
               >
-                <Td sticky className="font-medium text-foreground whitespace-nowrap">
-                  {row.displayName}
+                <Td sticky className="whitespace-nowrap">
+                  <button
+                    type="button"
+                    onClick={() => pickUser(row.userId)}
+                    className={cn(
+                      "font-medium text-left hover:text-primary transition-colors cursor-pointer",
+                      drillUserId === row.userId ? "text-primary" : "text-foreground"
+                    )}
+                    title="Click to drill down by team"
+                  >
+                    {row.displayName}
+                  </button>
                 </Td>
                 <Td align="right" className="text-muted-foreground">
                   {row.matchesPlayed}
@@ -193,7 +221,205 @@ export function UserPreferencesTable({ preferences, teamColumns, teamIdToColor }
           </tbody>
         </table>
       </div>
+
+      <DrillDownPanel
+        ref={drillRef}
+        preferences={preferences}
+        teamColumns={teamColumns}
+        teamIdToColor={teamIdToColor}
+        userId={drillUserId}
+        teamId={drillTeamId}
+        onUserChange={setDrillUserId}
+        onTeamChange={setDrillTeamId}
+      />
     </div>
+  )
+}
+
+function DrillDownPanel({
+  ref,
+  preferences,
+  teamColumns,
+  teamIdToColor,
+  userId,
+  teamId,
+  onUserChange,
+  onTeamChange,
+}: {
+  ref: React.RefObject<HTMLDivElement | null>
+  preferences: UserPreference[]
+  teamColumns: TeamColumn[]
+  teamIdToColor: Record<string, string>
+  userId: string | null
+  teamId: string | null
+  onUserChange: (id: string | null) => void
+  onTeamChange: (id: string | null) => void
+}) {
+  const user = userId ? preferences.find((p) => p.userId === userId) ?? null : null
+  const team = teamId ? teamColumns.find((t) => t.id === teamId) ?? null : null
+  const players = user && teamId ? user.picksByTeam[teamId] ?? [] : []
+
+  return (
+    <div ref={ref} className="rounded-lg glass overflow-hidden mt-4">
+      <div className="px-4 py-3 border-b border-overlay-border bg-overlay-subtle">
+        <span className="text-xs font-semibold text-muted-foreground uppercase tracking-widest">
+          Player drill-down
+        </span>
+      </div>
+
+      <div className="p-4 space-y-3">
+        {/* User selector */}
+        <div className="flex items-center gap-2 flex-wrap">
+          <span className="text-xs text-muted-foreground uppercase tracking-wider w-12 shrink-0">
+            User
+          </span>
+          <select
+            value={userId ?? ""}
+            onChange={(e) => onUserChange(e.target.value || null)}
+            className="bg-overlay-subtle border border-overlay-border rounded px-2 py-1 text-sm text-foreground"
+          >
+            <option value="">— select user —</option>
+            {preferences.map((p) => (
+              <option key={p.userId} value={p.userId}>
+                {p.displayName}
+              </option>
+            ))}
+          </select>
+          {user && (
+            <span className="text-[11px] text-muted-foreground">
+              {user.matchesPlayed} matches · {user.totalPicks} total picks
+            </span>
+          )}
+        </div>
+
+        {/* Team chip selector */}
+        <div className="flex items-center gap-2 flex-wrap">
+          <span className="text-xs text-muted-foreground uppercase tracking-wider w-12 shrink-0">
+            Team
+          </span>
+          {teamColumns.map((t) => {
+            const active = teamId === t.id
+            const userTeamPickCount = user?.picksByTeam[t.id]?.length ?? 0
+            const disabled = !user || userTeamPickCount === 0
+            return (
+              <button
+                key={t.id}
+                type="button"
+                onClick={() => !disabled && onTeamChange(t.id)}
+                disabled={disabled}
+                className={cn(
+                  "inline-flex items-center gap-1 px-2 py-1 rounded text-[11px] font-medium border transition-colors",
+                  active
+                    ? "bg-primary/15 border-primary/40 text-primary"
+                    : disabled
+                    ? "bg-overlay-subtle border-overlay-border text-muted-foreground/40 cursor-not-allowed"
+                    : "bg-overlay-subtle border-overlay-border text-foreground hover:border-primary/30"
+                )}
+                title={disabled && user ? `No ${t.short} picks by ${user.displayName}` : undefined}
+              >
+                <span
+                  className="inline-block h-2 w-2 rounded-sm shrink-0"
+                  style={{ backgroundColor: t.color }}
+                  aria-hidden
+                />
+                {t.short}
+                {user && userTeamPickCount > 0 && (
+                  <span className="opacity-60 tabular-nums">{userTeamPickCount}</span>
+                )}
+              </button>
+            )
+          })}
+        </div>
+
+        {/* Detail table */}
+        {!user ? (
+          <p className="text-sm text-muted-foreground py-6 text-center">
+            Select a user above (or click a name in the table) to drill down.
+          </p>
+        ) : !team ? (
+          <p className="text-sm text-muted-foreground py-6 text-center">
+            Select a team chip to see {user.displayName}&apos;s player picks.
+          </p>
+        ) : players.length === 0 ? (
+          <p className="text-sm text-muted-foreground py-6 text-center">
+            {user.displayName} has not picked any {team.short} players.
+          </p>
+        ) : (
+          <div className="rounded border border-overlay-border overflow-hidden">
+            <div className="px-3 py-2 bg-overlay-subtle border-b border-overlay-border flex items-baseline gap-2">
+              <span
+                className="inline-block h-2 w-2 rounded-sm"
+                style={{ backgroundColor: teamIdToColor[team.id] ?? "#888" }}
+                aria-hidden
+              />
+              <span className="text-sm font-semibold">{team.short}</span>
+              <span className="text-[11px] text-muted-foreground">
+                · {user.displayName} picked {players.length} unique{" "}
+                {players.length === 1 ? "player" : "players"} from {team.short}
+              </span>
+            </div>
+            <table className="w-full text-xs tabular-nums">
+              <thead className="text-[10px] uppercase tracking-wider text-muted-foreground">
+                <tr className="border-b border-overlay-border">
+                  <th className="px-3 py-2 text-left font-semibold">Player</th>
+                  <th className="px-2 py-2 text-left font-semibold w-12">Role</th>
+                  <th className="px-2 py-2 text-right font-semibold">Picks</th>
+                  <th className="px-2 py-2 text-right font-semibold">Pick %</th>
+                  <th className="px-2 py-2 text-right font-semibold">As C</th>
+                  <th className="px-3 py-2 text-right font-semibold">C %</th>
+                </tr>
+              </thead>
+              <tbody>
+                {players.map((p) => (
+                  <tr
+                    key={p.id}
+                    className="border-b border-overlay-border last:border-b-0 hover:bg-overlay-subtle/40"
+                  >
+                    <td className="px-3 py-1.5 font-medium text-foreground whitespace-nowrap">
+                      {p.name}
+                    </td>
+                    <td className="px-2 py-1.5 text-muted-foreground">{p.role}</td>
+                    <td className="px-2 py-1.5 text-right font-medium">
+                      {p.picks}
+                      <span className="text-muted-foreground/60">/{user.matchesPlayed}</span>
+                    </td>
+                    <td className="px-2 py-1.5 text-right">
+                      <PickPctCell pct={p.pickPct} />
+                    </td>
+                    <td className="px-2 py-1.5 text-right text-muted-foreground">
+                      {p.captainCount > 0 ? p.captainCount : <span className="text-muted-foreground/40">—</span>}
+                    </td>
+                    <td className="px-3 py-1.5 text-right">
+                      {p.captainPct > 0 ? (
+                        <span className="text-primary font-medium">{p.captainPct}%</span>
+                      ) : (
+                        <span className="text-muted-foreground/40">—</span>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}
+
+function PickPctCell({ pct }: { pct: number }) {
+  // Visual bar to show pick rate within the team for this user
+  const w = Math.min(100, Math.max(2, pct))
+  return (
+    <span className="inline-flex items-center gap-1.5 justify-end">
+      <span className="relative inline-block h-1.5 w-12 rounded-full bg-overlay-subtle overflow-hidden">
+        <span
+          className="absolute inset-y-0 left-0 bg-primary/70 rounded-full"
+          style={{ width: `${w}%` }}
+        />
+      </span>
+      <span className="font-medium tabular-nums w-10 text-right">{pct}%</span>
+    </span>
   )
 }
 

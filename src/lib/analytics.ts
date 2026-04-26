@@ -1276,6 +1276,16 @@ export type UserPreferenceTopPlayer = {
   pct: number
 }
 
+export type UserPreferencePlayerPickRow = {
+  id: string
+  name: string
+  role: PlayerRole
+  picks: number
+  pickPct: number
+  captainCount: number
+  captainPct: number
+}
+
 export type UserPreference = {
   userId: string
   displayName: string
@@ -1286,6 +1296,7 @@ export type UserPreference = {
   topTeam: UserPreferenceTeamSlice | null
   topCaptain: UserPreferenceTopPlayer | null
   topPlayer: UserPreferenceTopPlayer | null
+  picksByTeam: Record<string, UserPreferencePlayerPickRow[]>
 }
 
 export const computeUserPreferences = (
@@ -1313,6 +1324,8 @@ export const computeUserPreferences = (
     const roleCount = { WK: 0, BAT: 0, AR: 0, BOWL: 0 }
     const captainCount = new Map<string, number>()
     const playerCount = new Map<string, number>()
+    // teamId -> playerId -> { picks, captain }
+    const playerByTeam = new Map<string, Map<string, { picks: number; captain: number }>>()
 
     for (const s of sels) {
       for (const pid of s.players) {
@@ -1321,8 +1334,24 @@ export const computeUserPreferences = (
         teamCount.set(p.teamId, (teamCount.get(p.teamId) ?? 0) + 1)
         if (p.role in roleCount) roleCount[p.role as keyof typeof roleCount]++
         playerCount.set(pid, (playerCount.get(pid) ?? 0) + 1)
+        let teamMap2 = playerByTeam.get(p.teamId)
+        if (!teamMap2) {
+          teamMap2 = new Map()
+          playerByTeam.set(p.teamId, teamMap2)
+        }
+        const entry = teamMap2.get(pid) ?? { picks: 0, captain: 0 }
+        entry.picks++
+        teamMap2.set(pid, entry)
       }
-      if (s.captain_id) captainCount.set(s.captain_id, (captainCount.get(s.captain_id) ?? 0) + 1)
+      if (s.captain_id) {
+        captainCount.set(s.captain_id, (captainCount.get(s.captain_id) ?? 0) + 1)
+        const cp = playerMap.get(s.captain_id)
+        if (cp) {
+          const tm = playerByTeam.get(cp.teamId)
+          const entry = tm?.get(s.captain_id)
+          if (entry) entry.captain++
+        }
+      }
     }
 
     // Build full team allocation (one entry per known team, even if 0 picks)
@@ -1369,6 +1398,26 @@ export const computeUserPreferences = (
       }
     }
 
+    const picksByTeam: Record<string, UserPreferencePlayerPickRow[]> = {}
+    for (const [teamId, players] of playerByTeam) {
+      const rows: UserPreferencePlayerPickRow[] = []
+      for (const [pid, e] of players) {
+        const info = playerMap.get(pid)
+        if (!info) continue
+        rows.push({
+          id: pid,
+          name: info.name,
+          role: info.role,
+          picks: e.picks,
+          pickPct: round1((e.picks / matchesPlayed) * 100),
+          captainCount: e.captain,
+          captainPct: round1((e.captain / matchesPlayed) * 100),
+        })
+      }
+      rows.sort((a, b) => b.picks - a.picks || b.captainCount - a.captainCount)
+      picksByTeam[teamId] = rows
+    }
+
     out.push({
       userId,
       displayName: profileMap.get(userId) ?? "Unknown",
@@ -1379,6 +1428,7 @@ export const computeUserPreferences = (
       topTeam,
       topCaptain: pickTopPlayer(captainCount, matchesPlayed),
       topPlayer: pickTopPlayer(playerCount, matchesPlayed),
+      picksByTeam,
     })
   }
 
