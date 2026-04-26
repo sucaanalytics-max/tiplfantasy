@@ -26,7 +26,7 @@ export default async function AdminPreferencesPage() {
 
   const admin = createAdminClient()
 
-  const [selectionsRes, playersRes, profilesRes, teamsRes] = await Promise.all([
+  const [selectionsRes, playersRes, profilesRes, teamsRes, matchesRes] = await Promise.all([
     admin
       .from("selections")
       .select("user_id, match_id, captain_id, vice_captain_id, is_auto_pick, selection_players(player_id)")
@@ -37,7 +37,13 @@ export default async function AdminPreferencesPage() {
       .eq("is_active", true),
     admin.from("profiles").select("id, display_name"),
     admin.from("teams").select("id, short_name, color").order("short_name", { ascending: true }),
+    admin.from("matches").select("id, team_home_id, team_away_id").limit(200),
   ])
+
+  const matchTeams = new Map<string, [string, string]>()
+  for (const m of matchesRes.data ?? []) {
+    matchTeams.set(m.id, [m.team_home_id, m.team_away_id])
+  }
 
   const teams = teamsRes.data ?? []
   const teamIdToShort = new Map<string, string>(teams.map((t) => [t.id, t.short_name]))
@@ -69,7 +75,7 @@ export default async function AdminPreferencesPage() {
     players: (s.selection_players as { player_id: string }[]).map((sp) => sp.player_id),
   }))
 
-  const preferences = computeUserPreferences(rawSelections, playerMap, profileMap, teamIdToShort)
+  const preferences = computeUserPreferences(rawSelections, playerMap, profileMap, teamIdToShort, matchTeams)
 
   const teamColumns = teams.map((t) => ({
     id: t.id,

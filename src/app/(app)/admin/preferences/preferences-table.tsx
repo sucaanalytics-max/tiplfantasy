@@ -345,62 +345,82 @@ function DrillDownPanel({
             {user.displayName} has not picked any {team.short} players.
           </p>
         ) : (
-          <div className="rounded border border-overlay-border overflow-hidden">
-            <div className="px-3 py-2 bg-overlay-subtle border-b border-overlay-border flex items-baseline gap-2">
-              <span
-                className="inline-block h-2 w-2 rounded-sm"
-                style={{ backgroundColor: teamIdToColor[team.id] ?? "#888" }}
-                aria-hidden
-              />
-              <span className="text-sm font-semibold">{team.short}</span>
-              <span className="text-[11px] text-muted-foreground">
-                · {user.displayName} picked {players.length} unique{" "}
-                {players.length === 1 ? "player" : "players"} from {team.short}
-              </span>
-            </div>
-            <table className="w-full text-xs tabular-nums">
-              <thead className="text-[10px] uppercase tracking-wider text-muted-foreground">
-                <tr className="border-b border-overlay-border">
-                  <th className="px-3 py-2 text-left font-semibold">Player</th>
-                  <th className="px-2 py-2 text-left font-semibold w-12">Role</th>
-                  <th className="px-2 py-2 text-right font-semibold">Picks</th>
-                  <th className="px-2 py-2 text-right font-semibold">Pick %</th>
-                  <th className="px-2 py-2 text-right font-semibold">As C</th>
-                  <th className="px-3 py-2 text-right font-semibold">C %</th>
-                </tr>
-              </thead>
-              <tbody>
-                {players.map((p) => (
-                  <tr
-                    key={p.id}
-                    className="border-b border-overlay-border last:border-b-0 hover:bg-overlay-subtle/40"
-                  >
-                    <td className="px-3 py-1.5 font-medium text-foreground whitespace-nowrap">
-                      {p.name}
-                    </td>
-                    <td className="px-2 py-1.5 text-muted-foreground">{p.role}</td>
-                    <td className="px-2 py-1.5 text-right font-medium">
-                      {p.picks}
-                      <span className="text-muted-foreground/60">/{user.matchesPlayed}</span>
-                    </td>
-                    <td className="px-2 py-1.5 text-right">
-                      <PickPctCell pct={p.pickPct} />
-                    </td>
-                    <td className="px-2 py-1.5 text-right text-muted-foreground">
-                      {p.captainCount > 0 ? p.captainCount : <span className="text-muted-foreground/40">—</span>}
-                    </td>
-                    <td className="px-3 py-1.5 text-right">
-                      {p.captainPct > 0 ? (
-                        <span className="text-primary font-medium">{p.captainPct}%</span>
-                      ) : (
-                        <span className="text-muted-foreground/40">—</span>
-                      )}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+          (() => {
+            const opps = user.teamOpportunities[team.id] ?? 0
+            return (
+              <div className="rounded border border-overlay-border overflow-hidden">
+                <div className="px-3 py-2 bg-overlay-subtle border-b border-overlay-border flex items-baseline gap-2 flex-wrap">
+                  <span
+                    className="inline-block h-2 w-2 rounded-sm"
+                    style={{ backgroundColor: teamIdToColor[team.id] ?? "#888" }}
+                    aria-hidden
+                  />
+                  <span className="text-sm font-semibold">{team.short}</span>
+                  <span className="text-[11px] text-muted-foreground">
+                    · {user.displayName} picked {players.length} unique{" "}
+                    {players.length === 1 ? "player" : "players"} from {team.short}
+                  </span>
+                  {opps > 0 && (
+                    <span className="text-[11px] text-muted-foreground/80">
+                      · {team.short} played in {opps} of {user.displayName}&apos;s {user.matchesPlayed} matches
+                    </span>
+                  )}
+                </div>
+                <table className="w-full text-xs tabular-nums">
+                  <thead className="text-[10px] uppercase tracking-wider text-muted-foreground">
+                    <tr className="border-b border-overlay-border">
+                      <th className="px-3 py-2 text-left font-semibold">Player</th>
+                      <th className="px-2 py-2 text-left font-semibold w-12">Role</th>
+                      <th
+                        className="px-2 py-2 text-right font-semibold"
+                        title={`Picks out of ${opps} ${team.short} matches`}
+                      >
+                        Picks
+                      </th>
+                      <th
+                        className="px-2 py-2 text-right font-semibold"
+                        title="Pick rate when team was playing"
+                      >
+                        Pick %
+                      </th>
+                      <th className="px-2 py-2 text-right font-semibold">As C</th>
+                      <th className="px-3 py-2 text-right font-semibold">C %</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {players.map((p) => (
+                      <tr
+                        key={p.id}
+                        className="border-b border-overlay-border last:border-b-0 hover:bg-overlay-subtle/40"
+                      >
+                        <td className="px-3 py-1.5 font-medium text-foreground whitespace-nowrap">
+                          {p.name}
+                        </td>
+                        <td className="px-2 py-1.5 text-muted-foreground">{p.role}</td>
+                        <td className="px-2 py-1.5 text-right font-medium">
+                          {p.picks}
+                          <span className="text-muted-foreground/60">/{opps || p.picks}</span>
+                        </td>
+                        <td className="px-2 py-1.5 text-right">
+                          <PickPctCell pct={p.pickPct} />
+                        </td>
+                        <td className="px-2 py-1.5 text-right text-muted-foreground">
+                          {p.captainCount > 0 ? p.captainCount : <span className="text-muted-foreground/40">—</span>}
+                        </td>
+                        <td className="px-3 py-1.5 text-right">
+                          {p.captainPct > 0 ? (
+                            <span className="text-primary font-medium">{p.captainPct}%</span>
+                          ) : (
+                            <span className="text-muted-foreground/40">—</span>
+                          )}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )
+          })()
         )}
       </div>
     </div>

@@ -1297,6 +1297,9 @@ export type UserPreference = {
   topCaptain: UserPreferenceTopPlayer | null
   topPlayer: UserPreferenceTopPlayer | null
   picksByTeam: Record<string, UserPreferencePlayerPickRow[]>
+  // Number of matches the user submitted picks for in which a given team played.
+  // Used as the denominator for per-player pick rate inside picksByTeam.
+  teamOpportunities: Record<string, number>
 }
 
 export const computeUserPreferences = (
@@ -1304,6 +1307,7 @@ export const computeUserPreferences = (
   playerMap: Map<string, PlayerInfo>,
   profileMap: Map<string, string>,
   teamIdToShort: Map<string, string>,
+  matchTeams: Map<string, [string, string]>,
 ): UserPreference[] => {
   const byUser = new Map<string, RawSelection[]>()
   for (const s of selections) {
@@ -1326,8 +1330,16 @@ export const computeUserPreferences = (
     const playerCount = new Map<string, number>()
     // teamId -> playerId -> { picks, captain }
     const playerByTeam = new Map<string, Map<string, { picks: number; captain: number }>>()
+    // teamId -> # of this user's matches in which the team played
+    const opportunitiesByTeam = new Map<string, number>()
 
     for (const s of sels) {
+      const matchPair = matchTeams.get(s.match_id)
+      if (matchPair) {
+        const [home, away] = matchPair
+        opportunitiesByTeam.set(home, (opportunitiesByTeam.get(home) ?? 0) + 1)
+        opportunitiesByTeam.set(away, (opportunitiesByTeam.get(away) ?? 0) + 1)
+      }
       for (const pid of s.players) {
         const p = playerMap.get(pid)
         if (!p) continue
@@ -1400,22 +1412,32 @@ export const computeUserPreferences = (
 
     const picksByTeam: Record<string, UserPreferencePlayerPickRow[]> = {}
     for (const [teamId, players] of playerByTeam) {
+      // Denominator: matches in which this user could have picked from this team.
+      // Falls back to picks count itself if matchTeams was missing the rows
+      // (so the rate stays bounded ≤ 100%).
+      const opps = opportunitiesByTeam.get(teamId) ?? 0
       const rows: UserPreferencePlayerPickRow[] = []
       for (const [pid, e] of players) {
         const info = playerMap.get(pid)
         if (!info) continue
+        const denom = opps > 0 ? opps : Math.max(e.picks, 1)
         rows.push({
           id: pid,
           name: info.name,
           role: info.role,
           picks: e.picks,
-          pickPct: round1((e.picks / matchesPlayed) * 100),
+          pickPct: round1((e.picks / denom) * 100),
           captainCount: e.captain,
-          captainPct: round1((e.captain / matchesPlayed) * 100),
+          captainPct: round1((e.captain / denom) * 100),
         })
       }
       rows.sort((a, b) => b.picks - a.picks || b.captainCount - a.captainCount)
       picksByTeam[teamId] = rows
+    }
+
+    const teamOpportunities: Record<string, number> = {}
+    for (const [teamId, count] of opportunitiesByTeam) {
+      teamOpportunities[teamId] = count
     }
 
     out.push({
@@ -1429,6 +1451,7 @@ export const computeUserPreferences = (
       topCaptain: pickTopPlayer(captainCount, matchesPlayed),
       topPlayer: pickTopPlayer(playerCount, matchesPlayed),
       picksByTeam,
+      teamOpportunities,
     })
   }
 
