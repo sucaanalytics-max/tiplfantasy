@@ -14,6 +14,8 @@ import { getInitials, getAvatarColor } from "@/lib/avatar"
 import { RankBadge } from "@/components/rank-badge"
 import { EmptyState } from "@/components/empty-state"
 import { PageTransition } from "@/components/page-transition"
+import { RaceChart } from "@/components/charts/race-chart"
+import { buildRaceData } from "@/lib/race-data"
 import type { LeagueMemberStats, LeagueMatchScore } from "@/lib/types"
 
 const MEDALS = ["🥇", "🥈", "🥉"] as const
@@ -82,6 +84,9 @@ export default async function LeaderboardPage({
     captain: sortedByCaptain[0],
     consistent: sortedByConsistent[0],
   } : null
+
+  // Race chart: derived purely from data already fetched above
+  const raceData = buildRaceData(matchScores, leaderboard, user.id)
 
   const selectedLeague = myLeagues.find((l) => l.id === leagueId)
 
@@ -154,6 +159,9 @@ export default async function LeaderboardPage({
           </div>
         )}
       </div>
+
+      {/* ═══ SEASON RACE ═══ */}
+      {raceData && <RaceChart data={raceData} />}
 
       {/* ═══ KEY STATS ═══ */}
       {awardLeaders && (
