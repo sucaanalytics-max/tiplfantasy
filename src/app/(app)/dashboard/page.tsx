@@ -56,7 +56,7 @@ export default async function DashboardPage() {
   // Phase 2: queries that depend on Phase 1 IDs
   const allRelevantMatchIds = [...upcomingMatches, ...liveMatches].map((m) => m.id)
   const completedMatchIds = completedMatches.map((m) => m.id)
-  const [subsRes, lastScoreRes, streakRes, lastSelectionRes, liveScoresRes, userAboveRes] = await Promise.all([
+  const [subsRes, lastScoreRes, streakRes, lastSelectionRes, liveScoresRes] = await Promise.all([
     allRelevantMatchIds.length > 0
       ? supabase.from("selections").select("match_id").eq("user_id", user.id).in("match_id", allRelevantMatchIds).limit(10)
       : Promise.resolve({ data: [] as { match_id: string }[] }),
@@ -84,9 +84,6 @@ export default async function DashboardPage() {
           .in("match_id", liveMatches.map((m) => m.id))
           .limit(2)
       : Promise.resolve({ data: [] as { match_id: string; total_points: number; rank: number | null }[] }),
-    myRank && myRank.season_rank > 6
-      ? supabase.from("season_leaderboard").select("total_points").eq("season_rank", myRank.season_rank - 1).maybeSingle()
-      : Promise.resolve({ data: null as { total_points: number } | null }),
   ])
 
   const lastSelection = lastSelectionRes.data
@@ -218,10 +215,8 @@ export default async function DashboardPage() {
                     <span className="text-center">#</span>
                     <span />
                     <span>Player</span>
-                    <span className="col-wins text-right tabular-nums">W</span>
-                    <span className="text-right tabular-nums">Δ1st</span>
-                    <span className="text-right tabular-nums">ΔNext</span>
                     <span className="text-right tabular-nums">Pts</span>
+                    <span className="text-right tabular-nums">Gap</span>
                   </div>
 
                   {(top6 ?? []).map((entry, idx) => {
@@ -230,13 +225,10 @@ export default async function DashboardPage() {
                       display_name: string
                       total_points: number
                       season_rank: number
-                      first_place_count: number
                     }
                     const isMe = e.user_id === user.id
                     const leader = (top6 ?? [])[0] as unknown as { total_points: number } | undefined
-                    const prev = idx > 0 ? ((top6 ?? [])[idx - 1] as unknown as { total_points: number }) : null
-                    const diffFirst = idx === 0 || !leader ? null : Number(e.total_points) - Number(leader.total_points)
-                    const diffNext = prev ? Number(e.total_points) - Number(prev.total_points) : null
+                    const gap = idx === 0 || !leader ? null : Number(e.total_points) - Number(leader.total_points)
 
                     return (
                       <StandingsRow
@@ -244,9 +236,7 @@ export default async function DashboardPage() {
                         rank={e.season_rank}
                         displayName={e.display_name}
                         isMe={isMe}
-                        wins={e.first_place_count ?? 0}
-                        diffFirst={diffFirst}
-                        diffNext={diffNext}
+                        gap={gap}
                         points={e.total_points}
                       />
                     )
@@ -254,10 +244,7 @@ export default async function DashboardPage() {
 
                   {myRank && myRank.season_rank > 6 && (() => {
                     const leader = (top6 ?? [])[0] as unknown as { total_points: number } | undefined
-                    const prevAbove = userAboveRes.data
-                    const diffFirst = leader ? Number(myRank.total_points) - Number(leader.total_points) : null
-                    const diffNext = prevAbove ? Number(myRank.total_points) - Number(prevAbove.total_points) : null
-                    const wins = (myRank as unknown as { first_place_count: number }).first_place_count ?? 0
+                    const gap = leader ? Number(myRank.total_points) - Number(leader.total_points) : null
                     return (
                       <>
                         <div className="text-center py-1.5 text-muted-foreground text-xs">···</div>
@@ -265,9 +252,7 @@ export default async function DashboardPage() {
                           rank={myRank.season_rank}
                           displayName={myRank.display_name}
                           isMe
-                          wins={wins}
-                          diffFirst={diffFirst}
-                          diffNext={diffNext}
+                          gap={gap}
                           points={myRank.total_points}
                         />
                       </>
@@ -321,17 +306,13 @@ function StandingsRow({
   rank,
   displayName,
   isMe,
-  wins,
-  diffFirst,
-  diffNext,
+  gap,
   points,
 }: {
   rank: number
   displayName: string
   isMe: boolean
-  wins: number
-  diffFirst: number | null
-  diffNext: number | null
+  gap: number | null
   points: number
 }) {
   const top1 = rank === 1
@@ -370,31 +351,18 @@ function StandingsRow({
         {isMe && " (you)"}
       </span>
 
-      {/* Wins */}
-      <span className="col-wins text-right tabular-nums text-xs text-foreground/80 font-medium">{wins}</span>
-
-      {/* Δ1st */}
-      <span
-        className={cn(
-          "text-right tabular-nums text-xs",
-          diffFirst === null ? "text-muted-foreground" : diffFirst < 0 ? "text-rose-400/80" : "text-muted-foreground"
-        )}
-      >
-        {diffFirst === null ? "—" : `−${Math.round(Math.abs(diffFirst))}`}
-      </span>
-
-      {/* ΔNext */}
-      <span
-        className={cn(
-          "text-right tabular-nums text-xs",
-          diffNext === null ? "text-muted-foreground" : diffNext < 0 ? "text-amber-400/80" : "text-muted-foreground"
-        )}
-      >
-        {diffNext === null ? "—" : `−${Math.round(Math.abs(diffNext))}`}
-      </span>
-
-      {/* Pts */}
+      {/* Pts (gold) */}
       <span className="text-gold-stat text-base text-right">{points.toLocaleString()}</span>
+
+      {/* Gap to leader */}
+      <span
+        className={cn(
+          "text-right tabular-nums text-xs",
+          gap === null ? "text-muted-foreground/60" : "text-rose-400/80"
+        )}
+      >
+        {gap === null ? "—" : `−${Math.round(Math.abs(gap)).toLocaleString()}`}
+      </span>
     </div>
   )
 }

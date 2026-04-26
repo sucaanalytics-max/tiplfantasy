@@ -31,6 +31,7 @@ import { Drawer, DrawerClose, DrawerContent, DrawerTrigger, DrawerTitle } from "
 import { PlayerStatsDrawer } from "@/components/player-stats-drawer"
 import { Confetti } from "@/components/confetti"
 import { TeamSubmitPreview } from "@/components/team-submit-preview"
+import { TeamTacticalPreview } from "@/components/team-tactical-preview"
 import type { PlayerWithTeam, MatchWithTeams, PlayerRole, PlayerVenueStats, PlayerVsTeamStats, TiplMatchEntry, TiplSeasonAggregates } from "@/lib/types"
 import { CAPTAIN_BADGE, VICE_CAPTAIN_BADGE } from "@/lib/badges"
 
@@ -96,7 +97,7 @@ export function PickTeamClient({
   const [error, setError] = useState<string | null>(null)
   const [showConfetti, setShowConfetti] = useState(false)
   const [showSubmitPreview, setShowSubmitPreview] = useState(false)
-  const [sortBy, setSortBy] = useState<"default" | "credits" | "points">("points")
+  const [sortBy, setSortBy] = useState<"default" | "credits" | "total" | "average">("total")
   const [cvDrawerOpen, setCvDrawerOpen] = useState(false)
   const prevSelectedCount = useRef(selectedIds.size)
   const [statsPlayerId, setStatsPlayerId] = useState<string | null>(null)
@@ -183,7 +184,13 @@ export function PickTeamClient({
     // Sort
     if (sortBy === "credits") {
       list = [...list].sort((a, b) => b.credit_cost - a.credit_cost)
-    } else if (sortBy === "points") {
+    } else if (sortBy === "total") {
+      list = [...list].sort((a, b) => {
+        const aTot = (tiplMatchLog[a.id] ?? []).reduce((x, y) => x + y.fantasyPoints, 0)
+        const bTot = (tiplMatchLog[b.id] ?? []).reduce((x, y) => x + y.fantasyPoints, 0)
+        return bTot - aTot
+      })
+    } else if (sortBy === "average") {
       list = [...list].sort((a, b) => {
         const aEntries = tiplMatchLog[a.id] ?? []
         const bEntries = tiplMatchLog[b.id] ?? []
@@ -335,7 +342,7 @@ export function PickTeamClient({
           hasPlayingXI && !isInXI && "opacity-40"
         )}
       >
-        {/* Player photo / avatar */}
+        {/* Player photo / initials avatar */}
         <button
           className="shrink-0"
           onClick={(e) => { e.stopPropagation(); setStatsPlayerId(player.id) }}
@@ -348,7 +355,16 @@ export function PickTeamClient({
               className="h-10 w-10 rounded-full object-cover ring-1 ring-overlay-border-hover"
             />
           ) : (
-            <TeamLogo team={player.team} size="md" />
+            <span
+              className="h-10 w-10 rounded-full flex items-center justify-center font-display font-bold text-sm ring-1"
+              style={{
+                backgroundColor: `${player.team.color}22`,
+                color: player.team.color,
+                boxShadow: `0 0 0 1px ${player.team.color}55`,
+              }}
+            >
+              {player.name.split(" ").slice(0, 2).map((n) => n[0]?.toUpperCase()).join("")}
+            </span>
           )}
         </button>
 
@@ -435,6 +451,7 @@ export function PickTeamClient({
 
     const entries = tiplMatchLog[player.id] ?? []
     const totalPts = entries.length > 0 ? entries.reduce((a, e) => a + e.fantasyPoints, 0) : null
+    const avgPts = entries.length > 0 ? Math.round(totalPts! / entries.length) : null
 
     const firstName = player.name.split(" ")[0]
     const restName = player.name.split(" ").slice(1).join(" ")
@@ -451,7 +468,7 @@ export function PickTeamClient({
         style={{ borderLeftWidth: 3, borderLeftColor: player.team.color }}
       >
         <div className={cn("p-2.5 space-y-2", ROLE_ACCENT[player.role])}>
-          {/* Photo + plus button */}
+          {/* Photo / initials + plus button */}
           <div className="flex items-start justify-between gap-1.5">
             <button
               type="button"
@@ -467,7 +484,16 @@ export function PickTeamClient({
                   className="h-12 w-12 rounded-full object-cover ring-1 ring-overlay-border-hover"
                 />
               ) : (
-                <TeamLogo team={player.team} size="md" />
+                <span
+                  className="h-12 w-12 rounded-full flex items-center justify-center font-display font-bold text-base ring-1"
+                  style={{
+                    backgroundColor: `${player.team.color}22`,
+                    color: player.team.color,
+                    boxShadow: `0 0 0 1px ${player.team.color}55`,
+                  }}
+                >
+                  {player.name.split(" ").slice(0, 2).map((n) => n[0]?.toUpperCase()).join("")}
+                </span>
               )}
             </button>
             <button
@@ -513,14 +539,25 @@ export function PickTeamClient({
             </p>
           </button>
 
-          {/* Headline stat — total points (gold) */}
-          <div className="pt-2 border-t border-overlay-border flex items-baseline justify-between">
-            <span className={cn("text-gold-stat text-lg leading-none", totalPts == null && "text-muted-foreground/30")}>
-              {totalPts ?? "—"}
-              {totalPts != null && <span className="text-[10px] text-muted-foreground font-normal ml-0.5">pts</span>}
-            </span>
+          {/* Headline stats — total + avg (gold) */}
+          <div className="pt-2 border-t border-overlay-border flex items-baseline justify-between gap-1">
+            <div className="flex items-baseline gap-1.5 min-w-0">
+              <span className={cn("text-gold-stat text-base leading-none", totalPts == null && "text-muted-foreground/30")}>
+                {totalPts ?? "—"}
+              </span>
+              <span className="text-[10px] text-muted-foreground">pts</span>
+              {avgPts != null && (
+                <>
+                  <span className="text-[10px] text-muted-foreground/40">·</span>
+                  <span className="text-xs text-muted-foreground tabular-nums font-display font-semibold">
+                    {avgPts}
+                  </span>
+                  <span className="text-[10px] text-muted-foreground">avg</span>
+                </>
+              )}
+            </div>
             {selectionPcts[player.id] > 0 && (
-              <span className="text-[10px] text-muted-foreground tabular-nums">
+              <span className="text-[10px] text-muted-foreground tabular-nums shrink-0">
                 {selectionPcts[player.id]}%
               </span>
             )}
@@ -791,14 +828,20 @@ export function PickTeamClient({
             )}
           </div>
           <button
-            onClick={() => setSortBy(sortBy === "default" ? "points" : sortBy === "points" ? "credits" : "default")}
+            onClick={() => setSortBy(
+              sortBy === "default" ? "total"
+                : sortBy === "total" ? "average"
+                : sortBy === "average" ? "credits"
+                : "default"
+            )}
             className={cn(
               "flex items-center gap-1 px-2.5 py-1.5 rounded-lg border text-xs transition-colors shrink-0",
               sortBy !== "default" ? "border-primary/30 text-primary" : "border-overlay-border text-muted-foreground"
             )}
+            aria-label={`Sort: ${sortBy}`}
           >
             <ArrowUpDown className="h-3 w-3" />
-            {sortBy === "points" ? "Pts" : sortBy === "credits" ? "Cr" : ""}
+            {sortBy === "total" ? "Pts" : sortBy === "average" ? "Avg" : sortBy === "credits" ? "Cr" : ""}
           </button>
         </div>
 
@@ -1167,14 +1210,18 @@ export function PickTeamClient({
                   Preview
                 </button>
               </DrawerTrigger>
-              <DrawerContent className="max-h-[85vh]">
-                <DrawerTitle className="text-center text-sm font-semibold py-2">Team Preview</DrawerTitle>
-                <div className="px-4 pb-[max(1.5rem,env(safe-area-inset-bottom))] overflow-y-auto" data-vaul-no-drag>
-                  <div className="flex items-center justify-between text-xs text-muted-foreground mb-3">
-                    <span>Players: {selectedIds.size}/11</span>
-                    <span>Credits: {totalCost.toFixed(1)}/{TOTAL_BUDGET}</span>
-                  </div>
-                  <CricketField players={selectedPlayers} captainId={captainId} viceCaptainId={viceCaptainId} />
+              <DrawerContent className="max-h-[90vh]">
+                <DrawerTitle className="text-center text-sm font-semibold py-2 border-b border-overlay-border">Team Preview</DrawerTitle>
+                <div className="px-4 pt-4 pb-[max(1.5rem,env(safe-area-inset-bottom))] overflow-y-auto" data-vaul-no-drag>
+                  <TeamTacticalPreview
+                    selectedPlayers={selectedPlayers}
+                    captainId={captainId}
+                    viceCaptainId={viceCaptainId}
+                    match={match}
+                    totalCost={totalCost}
+                    totalBudget={TOTAL_BUDGET}
+                    tiplMatchLog={tiplMatchLog}
+                  />
                 </div>
               </DrawerContent>
             </Drawer>
