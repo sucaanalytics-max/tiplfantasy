@@ -152,8 +152,8 @@ export function HeroMatchBanner({ match, hasSubmitted, liveScore }: Props) {
         </div>
       </div>
 
-      {/* ── CTA pill (full-width below hero) ─────────────── */}
-      <div className="px-4 md:px-6 -mt-4 relative z-20">
+      {/* ── CTA pill (full-width below hero, fully clear of hero band) ── */}
+      <div className="px-4 md:px-6 mt-3 relative">
         <div className="max-w-2xl lg:max-w-5xl mx-auto">
           <HeroCTA matchId={match.id} matchStartTime={match.start_time} status={match.status} hasSubmitted={hasSubmitted} liveScore={liveScore} />
         </div>

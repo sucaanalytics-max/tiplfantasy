@@ -790,7 +790,6 @@ export function PickTeamClient({
 
               const homePlayers = rolePlayers.filter((p) => p.team_id === match.team_home_id)
               const awayPlayers = rolePlayers.filter((p) => p.team_id === match.team_away_id)
-              const maxLen = Math.max(homePlayers.length, awayPlayers.length)
 
               return (
                 <div key={role}>
@@ -807,13 +806,54 @@ export function PickTeamClient({
                   )}
 
                   {teamFilter === "ALL" ? (
-                    /* Single-column list — interleaved home/away */
-                    <div>
-                      {rolePlayers.map((player) => renderPlayerCompact(player))}
-                      {rolePlayers.length === 0 && (
-                        <div className="py-8 text-center text-2xs text-muted-foreground">No players</div>
-                      )}
-                    </div>
+                    /* Mobile: stacked with team headers. Desktop (lg+): two columns side-by-side, home left / away right. */
+                    rolePlayers.length === 0 ? (
+                      <div className="py-8 text-center text-2xs text-muted-foreground">No players</div>
+                    ) : (
+                      <div className="lg:grid lg:grid-cols-2 lg:gap-x-3">
+                        {/* Home team group */}
+                        <div className="lg:border-r lg:border-overlay-border">
+                          <div
+                            className="px-4 py-1.5 flex items-center gap-2 border-l-4 bg-overlay-muted"
+                            style={{ borderColor: match.team_home.color }}
+                          >
+                            <TeamLogo team={match.team_home} size="sm" />
+                            <span className="font-display font-bold text-2xs uppercase tracking-widest">
+                              {match.team_home.short_name}
+                            </span>
+                            <span className="ml-auto text-2xs text-muted-foreground tabular-nums">
+                              {homePlayers.length}
+                            </span>
+                          </div>
+                          {homePlayers.length > 0 ? (
+                            homePlayers.map((player) => renderPlayerCompact(player))
+                          ) : (
+                            <div className="py-4 text-center text-2xs text-muted-foreground">No players</div>
+                          )}
+                        </div>
+
+                        {/* Away team group */}
+                        <div>
+                          <div
+                            className="px-4 py-1.5 flex items-center gap-2 border-l-4 bg-overlay-muted"
+                            style={{ borderColor: match.team_away.color }}
+                          >
+                            <TeamLogo team={match.team_away} size="sm" />
+                            <span className="font-display font-bold text-2xs uppercase tracking-widest">
+                              {match.team_away.short_name}
+                            </span>
+                            <span className="ml-auto text-2xs text-muted-foreground tabular-nums">
+                              {awayPlayers.length}
+                            </span>
+                          </div>
+                          {awayPlayers.length > 0 ? (
+                            awayPlayers.map((player) => renderPlayerCompact(player))
+                          ) : (
+                            <div className="py-4 text-center text-2xs text-muted-foreground">No players</div>
+                          )}
+                        </div>
+                      </div>
+                    )
                   ) : (
                     /* Single column for HOME/AWAY filter */
                     <div className="divide-y divide-border">
