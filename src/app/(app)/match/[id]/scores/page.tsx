@@ -20,7 +20,7 @@ export default async function ScoresPage({
   const admin = createAdminClient()
 
   // All queries in parallel
-  const [matchRes, playerScoresRes, userScoresRes, mySelectionRes, allSelectionsRes, captainPicksRes, banterRes, myLeaguesRes, snapshotsRes] = await Promise.all([
+  const [matchRes, playerScoresRes, userScoresRes, mySelectionRes, allSelectionsRes, captainPicksRes, vcPicksRes, banterRes, myLeaguesRes, snapshotsRes] = await Promise.all([
     admin
       .from("matches")
       .select("*, team_home:teams!matches_team_home_id_fkey(short_name, color, logo_url), team_away:teams!matches_team_away_id_fkey(short_name, color, logo_url)")
@@ -56,6 +56,12 @@ export default async function ScoresPage({
       .select("user_id, captain_id, captain:players!selections_captain_id_fkey(name)")
       .eq("match_id", id)
       .not("captain_id", "is", null)
+      .limit(200),
+    admin
+      .from("selections")
+      .select("user_id, vice_captain_id, vc:players!selections_vice_captain_id_fkey(name)")
+      .eq("match_id", id)
+      .not("vice_captain_id", "is", null)
       .limit(200),
     admin
       .from("match_banter")
@@ -109,6 +115,11 @@ export default async function ScoresPage({
     captainPicks[s.user_id] = { name: (s.captain as unknown as { name: string })?.name ?? "—" }
   }
 
+  const vcPicks: Record<string, { name: string }> = {}
+  for (const s of vcPicksRes.data ?? []) {
+    vcPicks[s.user_id] = { name: (s.vc as unknown as { name: string })?.name ?? "—" }
+  }
+
   // Build league filter data
   const leagueIds = (myLeaguesRes.data ?? []).map((lm) => lm.league_id)
   let userLeagues: { id: string; name: string; memberIds: string[] }[] = []
@@ -153,6 +164,7 @@ export default async function ScoresPage({
         myVcId={mySelection?.vice_captain_id as string | null ?? null}
         allSelections={allSelections}
         captainPicks={captainPicks}
+        vcPicks={vcPicks}
         currentUserId={user.id}
         banter={(banterRes.data ?? []).map((b) => ({ message: b.message, event_type: b.event_type }))}
         userLeagues={userLeagues}

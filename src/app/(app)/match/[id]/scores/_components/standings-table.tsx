@@ -1,7 +1,6 @@
 "use client"
 
 import { memo, useEffect, useMemo, useRef, useState } from "react"
-import { ChevronDown, ChevronUp } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { getInitials, getAvatarColor } from "@/lib/avatar"
 import { computeMomentumSeries } from "@/lib/rivalry"
@@ -12,7 +11,8 @@ type UserRow = {
   display_name: string
   rank: number | null
   total_points: number
-  captain_short_name: string | null
+  captain_name: string | null
+  vc_name: string | null
 }
 
 type Props = {
@@ -25,14 +25,15 @@ type Props = {
 }
 
 /**
- * Dense league standings table with sticky-bottom "you" pin.
+ * League standings as a 2-line card per row:
+ *   [#]  [avatar]  Display Name (you)            Pts
+ *                  C: Captain · VC: VC           +12 ──╱
  *
- * Mobile (390px) columns:  # | Player | Cap | Pts | vMe / Δ
- * ≥430px adds:             + Mom sparkline column
- *
- * "You" row is rendered inline, plus a duplicate copy pinned to the bottom
- * of the viewport via IntersectionObserver — fades in only when the real
- * row scrolls offscreen.
+ * - Full names always visible; long names wrap into the captain line area.
+ * - Sparkline column reads from `match_score_snapshots` (always populated
+ *   when ≥2 snapshots exist).
+ * - "You" row pins to viewport bottom via IntersectionObserver when it
+ *   scrolls offscreen.
  */
 export function StandingsTable({
   rows, currentUserId, myPoints, rankDeltas, snapshots, onRowClick,
@@ -57,18 +58,6 @@ export function StandingsTable({
 
   return (
     <div className="relative">
-      {/* Header */}
-      <div className="grid grid-cols-[1.5rem_1fr_3.25rem_3rem_3.5rem_minmax(0,_3.5rem)] sm:grid-cols-[1.5rem_1fr_3.5rem_3rem_3.75rem_3.5rem] items-center gap-2 px-3 py-1.5 text-[9px] font-semibold uppercase tracking-widest text-muted-foreground/70 border-b border-overlay-border bg-overlay-subtle">
-        <span className="text-left">#</span>
-        <span>Player</span>
-        <span className="text-left truncate">Cap</span>
-        <span className="text-right">Pts</span>
-        <span className="text-right">vMe</span>
-        <span className="text-right hidden sm:inline">Trend</span>
-        <span className="text-right inline sm:hidden">Δ</span>
-      </div>
-
-      {/* Rows */}
       <div className="divide-y divide-overlay-border">
         {rows.map((row) => {
           const isMe = row.user_id === currentUserId
@@ -90,7 +79,7 @@ export function StandingsTable({
         })}
       </div>
 
-      {/* Sticky-bottom "you" pin — only when myRow scrolls offscreen */}
+      {/* Sticky-bottom "you" pin */}
       {showPin && myRow && (
         <div className="sticky bottom-0 left-0 right-0 z-20 -mx-px border-t-2 border-primary/40 shadow-[0_-8px_16px_-8px_rgba(0,0,0,0.25)]">
           <StandingsRow
@@ -121,7 +110,7 @@ type RowProps = {
 }
 
 const StandingsRow = memo(function StandingsRow({
-  row, isMe, vMe, delta, series, onClick, pinned,
+  row, isMe, vMe, series, onClick, pinned,
 }: RowProps) {
   const rank = row.rank ?? 0
   const podiumClass =
@@ -134,72 +123,69 @@ const StandingsRow = memo(function StandingsRow({
     <button
       onClick={onClick}
       className={cn(
-        "w-full grid grid-cols-[1.5rem_1fr_3.25rem_3rem_3.5rem_minmax(0,_3.5rem)] sm:grid-cols-[1.5rem_1fr_3.5rem_3rem_3.75rem_3.5rem] items-center gap-2 px-3 py-2 text-left transition-colors",
+        "w-full grid grid-cols-[1.75rem_2rem_1fr_auto] items-start gap-2.5 px-3 py-2.5 text-left transition-colors",
         isMe && !pinned && "bg-primary/10",
         isMe && "border-l-[3px] border-primary",
         !isMe && "hover:bg-overlay-subtle active:bg-overlay-muted",
         pinned && "bg-background",
       )}
     >
-      <span className={cn("text-xs font-display font-bold tabular-nums", podiumClass)}>
+      {/* Rank */}
+      <span className={cn("text-sm font-display font-bold tabular-nums leading-tight pt-0.5", podiumClass)}>
         {row.rank ?? "—"}
       </span>
 
-      <div className="flex items-center gap-2 min-w-0">
-        <div className={cn("h-7 w-7 rounded-full flex items-center justify-center shrink-0", getAvatarColor(row.display_name))}>
-          <span className="text-white text-[10px] font-semibold">{getInitials(row.display_name)}</span>
-        </div>
-        <div className="min-w-0">
-          <p className={cn("text-[13px] truncate", isMe ? "font-semibold" : "font-medium")}>
-            {row.display_name}
-            {isMe && <span className="text-primary text-[10px] ml-1">(you)</span>}
-          </p>
-        </div>
+      {/* Avatar */}
+      <div className={cn("h-7 w-7 rounded-full flex items-center justify-center shrink-0 mt-px", getAvatarColor(row.display_name))}>
+        <span className="text-white text-[10px] font-semibold">{getInitials(row.display_name)}</span>
       </div>
 
-      <span className="text-[11px] text-muted-foreground truncate">
-        {row.captain_short_name ?? "—"}
-      </span>
+      {/* Name + C/VC stack */}
+      <div className="min-w-0">
+        <p className={cn(
+          "text-[13px] leading-tight break-words",
+          isMe ? "font-semibold" : "font-medium",
+        )}>
+          {row.display_name}
+          {isMe && <span className="text-primary text-[10px] ml-1 font-medium">(you)</span>}
+        </p>
+        <p className="text-[10px] leading-snug mt-1 text-muted-foreground break-words">
+          {row.captain_name ? (
+            <>
+              <span className="text-muted-foreground/60">C:</span>{" "}
+              <span className="text-foreground/80">{row.captain_name}</span>
+            </>
+          ) : (
+            <span className="text-muted-foreground/40">No captain</span>
+          )}
+          {row.vc_name && (
+            <>
+              <span className="text-muted-foreground/40 mx-1">·</span>
+              <span className="text-muted-foreground/60">VC:</span>{" "}
+              <span className="text-foreground/80">{row.vc_name}</span>
+            </>
+          )}
+        </p>
+      </div>
 
-      <span className="text-sm font-bold font-display tabular-nums text-right">
-        {row.total_points}
-      </span>
-
-      <span className={cn(
-        "text-[11px] tabular-nums text-right font-medium",
-        vMe == null ? "text-muted-foreground/40" :
-        vMe > 0 ? "text-[var(--tw-red-text)]" :
-        vMe < 0 ? "text-[var(--tw-emerald-text)]" :
-        "text-muted-foreground",
-      )}>
-        {vMe == null ? "—" : vMe > 0 ? `+${vMe}` : vMe < 0 ? `${vMe}` : "0"}
-      </span>
-
-      {/* Mobile: small Δ-rank arrow. Desktop: replaced with sparkline. */}
-      <div className="text-right justify-self-end">
-        <span className="hidden sm:inline-block text-muted-foreground">
-          <MomentumSparkline series={series} width={48} height={16} />
-        </span>
-        <span className="inline sm:hidden">
-          <RankDeltaBadge delta={delta} />
-        </span>
+      {/* Right column: pts + vMe + sparkline */}
+      <div className="text-right shrink-0 flex flex-col items-end gap-0.5 min-w-[3.75rem]">
+        <p className="text-base font-bold font-display tabular-nums leading-tight">
+          {row.total_points}
+        </p>
+        <div className="flex items-center gap-1.5">
+          <span className={cn(
+            "text-[10px] tabular-nums font-medium leading-tight",
+            vMe == null ? "text-muted-foreground/40" :
+            vMe > 0 ? "text-[var(--tw-red-text)]" :
+            vMe < 0 ? "text-[var(--tw-emerald-text)]" :
+            "text-muted-foreground",
+          )}>
+            {vMe == null ? "—" : vMe > 0 ? `+${vMe}` : vMe < 0 ? `${vMe}` : "0"}
+          </span>
+          <MomentumSparkline series={series} width={32} height={12} />
+        </div>
       </div>
     </button>
   )
 })
-
-function RankDeltaBadge({ delta }: { delta: number }) {
-  if (delta === 0) {
-    return <span className="text-[10px] text-muted-foreground/40">—</span>
-  }
-  const up = delta > 0
-  return (
-    <span className={cn(
-      "inline-flex items-center gap-0.5 text-[10px] font-semibold tabular-nums",
-      up ? "text-[var(--tw-emerald-text)]" : "text-[var(--tw-red-text)]",
-    )}>
-      {up ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
-      {Math.abs(delta)}
-    </span>
-  )
-}

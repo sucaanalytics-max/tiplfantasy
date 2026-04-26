@@ -11,6 +11,7 @@ import { StickyHeader } from "./_components/sticky-header"
 import { StandingsTable } from "./_components/standings-table"
 import { RivalDrawer } from "./_components/rival-drawer"
 import { MyXIDrawer } from "./_components/my-xi-drawer"
+import { OwnershipGrid, type OwnershipEntry } from "./_components/ownership-grid"
 import { useRankDelta } from "./_hooks/use-rank-delta"
 
 // ─── Types (re-exported for page.tsx + drawers) ─────────────────────────
@@ -73,6 +74,7 @@ type Props = {
   myVcId: string | null
   allSelections: SelectionRow[]
   captainPicks: Record<string, { name: string }>
+  vcPicks?: Record<string, { name: string }>
   currentUserId: string
   banter?: Array<{ message: string; event_type: string }>
   userLeagues?: { id: string; name: string; memberIds: string[] }[]
@@ -87,7 +89,7 @@ type Props = {
 export function ScoresClient({
   match, home, away, playerScores, userScores, myScore,
   myPlayerIds, myCaptainId, myVcId, allSelections,
-  captainPicks, currentUserId,
+  captainPicks, vcPicks = {}, currentUserId,
   userLeagues = [], lastBalls = [], snapshots = [],
   allPlayers = [],
 }: Props) {
@@ -153,8 +155,42 @@ export function ScoresClient({
     display_name: s.profile.display_name,
     rank: leagueFilter ? idx + 1 : s.rank,
     total_points: Number(s.total_points),
-    captain_short_name: shortSurname(captainPicks[s.user_id]?.name ?? null),
-  })), [filteredScores, leagueFilter, captainPicks])
+    captain_name: captainPicks[s.user_id]?.name ?? null,
+    vc_name: vcPicks[s.user_id]?.name ?? null,
+  })), [filteredScores, leagueFilter, captainPicks, vcPicks])
+
+  // Top owned players across the (filtered) league.
+  const ownership: OwnershipEntry[] = useMemo(() => {
+    if (allSelections.length < 2) return []
+    const memberIds = leagueFilter
+      ? new Set(userLeagues.find((l) => l.id === leagueFilter)?.memberIds ?? [])
+      : null
+    const scopedSelections = memberIds
+      ? allSelections.filter((s) => memberIds.has(s.user_id))
+      : allSelections
+    if (scopedSelections.length < 2) return []
+    const total = scopedSelections.length
+    const counts = new Map<string, number>()
+    for (const sel of scopedSelections) {
+      for (const pid of sel.player_ids) counts.set(pid, (counts.get(pid) ?? 0) + 1)
+    }
+    const out: OwnershipEntry[] = []
+    for (const [pid, count] of counts) {
+      const ps = psMap.get(pid)
+      const name = ps?.player.name ?? rosterMap.get(pid)?.name
+      if (!name) continue
+      out.push({
+        player_id: pid,
+        name,
+        pct: Math.round((count / total) * 100),
+        isMine: myPlayerSet.has(pid),
+      })
+    }
+    return out
+      .filter((p) => p.pct > 0)
+      .sort((a, b) => b.pct - a.pct)
+      .slice(0, 8)
+  }, [allSelections, leagueFilter, userLeagues, psMap, rosterMap, myPlayerSet])
 
   // Default rival is the person directly above me (or below if leader).
   useEffect(() => {
@@ -183,7 +219,10 @@ export function ScoresClient({
   const rivalSelection = selectedRivalId ? selMap.get(selectedRivalId) ?? null : null
 
   return (
-    <div className="max-w-3xl mx-auto pb-24">
+    <div
+      className="max-w-3xl mx-auto"
+      style={{ paddingBottom: "calc(8rem + env(safe-area-inset-bottom))" }}
+    >
       {isLive && <LiveRefresher interval={30000} />}
 
       <StickyHeader
@@ -251,10 +290,12 @@ export function ScoresClient({
               No one in this league has scored yet.
             </p>
           )}
+
+          <OwnershipGrid entries={ownership} />
         </>
       )}
 
-      {/* FAB — opens My XI drawer */}
+      {/* FAB — opens My XI drawer. Sits above the 3.5rem bottom nav. */}
       {(playerScores.length > 0 || myXI.length > 0) && (
         <button
           onClick={() => setMyXIOpen(true)}
@@ -263,7 +304,7 @@ export function ScoresClient({
             "bg-primary text-primary-foreground font-semibold text-sm",
             "active:scale-95 transition-transform",
           )}
-          style={{ bottom: "calc(1rem + env(safe-area-inset-bottom))" }}
+          style={{ bottom: "calc(3.5rem + 1rem + env(safe-area-inset-bottom))" }}
         >
           <ClipboardList className="h-4 w-4" />
           <span>My XI</span>
@@ -315,10 +356,4 @@ function FilterPill({ active, onClick, children }: { active: boolean; onClick: (
   )
 }
 
-function shortSurname(name: string | null): string | null {
-  if (!name) return null
-  const parts = name.trim().split(/\s+/)
-  if (parts.length <= 1) return parts[0] ?? name
-  return parts[parts.length - 1]
-}
 
