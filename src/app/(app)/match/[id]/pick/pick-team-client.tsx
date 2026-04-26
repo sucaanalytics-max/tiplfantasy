@@ -424,6 +424,116 @@ export function PickTeamClient({
     )
   }
 
+  // Compact card variant — mobile 2-col grid, drops AVG/LAST/Cr columns
+  const renderPlayerMobileCard = (player: PlayerWithTeam) => {
+    const isSelected = selectedIds.has(player.id)
+    const isCaptain = captainId === player.id
+    const isVC = viceCaptainId === player.id
+    const isInXI = playingXIIds.includes(player.id)
+    const disabledReason = getDisabledReason(player)
+    const isDisabled = !!disabledReason
+
+    const entries = tiplMatchLog[player.id] ?? []
+    const totalPts = entries.length > 0 ? entries.reduce((a, e) => a + e.fantasyPoints, 0) : null
+
+    const firstName = player.name.split(" ")[0]
+    const restName = player.name.split(" ").slice(1).join(" ")
+
+    return (
+      <div
+        key={player.id}
+        className={cn(
+          "relative rounded-xl border border-overlay-border bg-card transition-colors overflow-hidden",
+          isSelected && "ring-2 ring-primary/50 border-primary/40",
+          isDisabled && "opacity-35",
+          hasPlayingXI && !isInXI && "opacity-40"
+        )}
+        style={{ borderLeftWidth: 3, borderLeftColor: player.team.color }}
+      >
+        <div className={cn("p-2.5 space-y-2", ROLE_ACCENT[player.role])}>
+          {/* Photo + plus button */}
+          <div className="flex items-start justify-between gap-1.5">
+            <button
+              type="button"
+              onClick={(e) => { e.stopPropagation(); setStatsPlayerId(player.id) }}
+              className="shrink-0"
+              aria-label={`View ${player.name} stats`}
+            >
+              {player.image_url ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={player.image_url}
+                  alt={player.name}
+                  className="h-12 w-12 rounded-full object-cover ring-1 ring-overlay-border-hover"
+                />
+              ) : (
+                <TeamLogo team={player.team} size="md" />
+              )}
+            </button>
+            <button
+              type="button"
+              onClick={(e) => { e.stopPropagation(); if (!isDisabled) togglePlayer(player.id) }}
+              disabled={isDisabled}
+              className={cn(
+                "h-7 w-7 rounded-full flex items-center justify-center text-sm font-bold border shrink-0 transition-colors",
+                isSelected
+                  ? "bg-primary border-primary text-white"
+                  : isDisabled
+                  ? "border-border/30 text-muted-foreground/30"
+                  : "border-overlay-border-hover text-muted-foreground hover:border-primary/40 hover:text-primary"
+              )}
+              aria-label={isSelected ? `Deselect ${player.name}` : `Select ${player.name}`}
+            >
+              {isSelected ? "✓" : "+"}
+            </button>
+          </div>
+
+          {/* Name + role line */}
+          <button
+            type="button"
+            onClick={(e) => { e.stopPropagation(); setStatsPlayerId(player.id) }}
+            className="block text-left w-full min-w-0"
+          >
+            <div className="flex items-center gap-1 min-w-0">
+              <span className="text-sm font-semibold leading-tight truncate">{firstName}</span>
+              {isCaptain && <span className="text-[9px] font-bold text-[var(--tw-amber-text)] bg-amber-400/15 px-1 rounded shrink-0">C</span>}
+              {isVC && <span className="text-[9px] font-bold text-violet-400 bg-violet-400/15 px-1 rounded shrink-0">VC</span>}
+              <FormIcon indicator={player.form_indicator} />
+            </div>
+            {restName && (
+              <span className="block text-xs font-medium text-muted-foreground leading-tight truncate">
+                {restName}
+              </span>
+            )}
+            <p className="text-[10px] text-muted-foreground truncate mt-0.5">
+              <span className="font-semibold" style={{ color: player.team.color }}>{player.team.short_name}</span>
+              <span className="text-muted-foreground/50"> · </span>
+              {ROLE_LABELS[player.role]}
+              {hasPlayingXI && isInXI && <span className="text-status-success font-bold"> · XI</span>}
+            </p>
+          </button>
+
+          {/* Headline stat — total points (gold) */}
+          <div className="pt-2 border-t border-overlay-border flex items-baseline justify-between">
+            <span className={cn("text-gold-stat text-lg leading-none", totalPts == null && "text-muted-foreground/30")}>
+              {totalPts ?? "—"}
+              {totalPts != null && <span className="text-[10px] text-muted-foreground font-normal ml-0.5">pts</span>}
+            </span>
+            {selectionPcts[player.id] > 0 && (
+              <span className="text-[10px] text-muted-foreground tabular-nums">
+                {selectionPcts[player.id]}%
+              </span>
+            )}
+          </div>
+
+          {isDisabled && (
+            <p className="text-[10px] text-status-danger leading-tight">{disabledReason}</p>
+          )}
+        </div>
+      </div>
+    )
+  }
+
   // Role-segmented selected players list for desktop left panel
   const renderDesktopSelectedPlayers = () => (
     <div className="flex-1 overflow-y-auto space-y-1">
@@ -692,8 +802,8 @@ export function PickTeamClient({
           </button>
         </div>
 
-        {/* Column headers */}
-        <div className="px-4 pb-1.5 flex items-center">
+        {/* Column headers — desktop only (mobile uses card grid) */}
+        <div className="hidden lg:flex px-4 pb-1.5 items-center">
           <span className="text-2xs font-semibold text-muted-foreground uppercase flex-1">Player</span>
           <span className="text-2xs font-semibold text-muted-foreground uppercase w-9 text-right">Tot</span>
           <span className="text-2xs font-semibold text-muted-foreground uppercase w-9 text-right">Avg</span>
@@ -806,53 +916,94 @@ export function PickTeamClient({
                   )}
 
                   {teamFilter === "ALL" ? (
-                    /* Mobile: stacked with team headers. Desktop (lg+): two columns side-by-side, home left / away right. */
                     rolePlayers.length === 0 ? (
                       <div className="py-8 text-center text-2xs text-muted-foreground">No players</div>
                     ) : (
-                      <div className="lg:grid lg:grid-cols-2 lg:gap-x-3">
-                        {/* Home team group */}
-                        <div className="lg:border-r lg:border-overlay-border">
-                          <div
-                            className="px-4 py-1.5 flex items-center gap-2 border-l-4 bg-overlay-muted"
-                            style={{ borderColor: match.team_home.color }}
-                          >
-                            <TeamLogo team={match.team_home} size="sm" />
-                            <span className="font-display font-bold text-2xs uppercase tracking-widest">
-                              {match.team_home.short_name}
-                            </span>
-                            <span className="ml-auto text-2xs text-muted-foreground tabular-nums">
-                              {homePlayers.length}
-                            </span>
+                      <>
+                        {/* MOBILE: true 2-column compact card grid */}
+                        <div className="grid grid-cols-2 gap-2 px-2 py-2 lg:hidden">
+                          <div className="space-y-2">
+                            <div
+                              className="px-2 py-1.5 flex items-center gap-1.5 border-l-[3px] rounded-r bg-overlay-muted"
+                              style={{ borderColor: match.team_home.color }}
+                            >
+                              <TeamLogo team={match.team_home} size="sm" />
+                              <span className="font-display font-bold text-2xs uppercase tracking-widest truncate">
+                                {match.team_home.short_name}
+                              </span>
+                              <span className="ml-auto text-2xs text-muted-foreground tabular-nums">
+                                {homePlayers.length}
+                              </span>
+                            </div>
+                            {homePlayers.length > 0 ? (
+                              homePlayers.map((player) => renderPlayerMobileCard(player))
+                            ) : (
+                              <div className="py-4 text-center text-2xs text-muted-foreground">No players</div>
+                            )}
                           </div>
-                          {homePlayers.length > 0 ? (
-                            homePlayers.map((player) => renderPlayerCompact(player))
-                          ) : (
-                            <div className="py-4 text-center text-2xs text-muted-foreground">No players</div>
-                          )}
+                          <div className="space-y-2">
+                            <div
+                              className="px-2 py-1.5 flex items-center gap-1.5 border-l-[3px] rounded-r bg-overlay-muted"
+                              style={{ borderColor: match.team_away.color }}
+                            >
+                              <TeamLogo team={match.team_away} size="sm" />
+                              <span className="font-display font-bold text-2xs uppercase tracking-widest truncate">
+                                {match.team_away.short_name}
+                              </span>
+                              <span className="ml-auto text-2xs text-muted-foreground tabular-nums">
+                                {awayPlayers.length}
+                              </span>
+                            </div>
+                            {awayPlayers.length > 0 ? (
+                              awayPlayers.map((player) => renderPlayerMobileCard(player))
+                            ) : (
+                              <div className="py-4 text-center text-2xs text-muted-foreground">No players</div>
+                            )}
+                          </div>
                         </div>
 
-                        {/* Away team group */}
-                        <div>
-                          <div
-                            className="px-4 py-1.5 flex items-center gap-2 border-l-4 bg-overlay-muted"
-                            style={{ borderColor: match.team_away.color }}
-                          >
-                            <TeamLogo team={match.team_away} size="sm" />
-                            <span className="font-display font-bold text-2xs uppercase tracking-widest">
-                              {match.team_away.short_name}
-                            </span>
-                            <span className="ml-auto text-2xs text-muted-foreground tabular-nums">
-                              {awayPlayers.length}
-                            </span>
+                        {/* DESKTOP: 2-column row layout (full stats) */}
+                        <div className="hidden lg:grid lg:grid-cols-2 lg:gap-x-3">
+                          <div className="lg:border-r lg:border-overlay-border">
+                            <div
+                              className="px-4 py-1.5 flex items-center gap-2 border-l-4 bg-overlay-muted"
+                              style={{ borderColor: match.team_home.color }}
+                            >
+                              <TeamLogo team={match.team_home} size="sm" />
+                              <span className="font-display font-bold text-2xs uppercase tracking-widest">
+                                {match.team_home.short_name}
+                              </span>
+                              <span className="ml-auto text-2xs text-muted-foreground tabular-nums">
+                                {homePlayers.length}
+                              </span>
+                            </div>
+                            {homePlayers.length > 0 ? (
+                              homePlayers.map((player) => renderPlayerCompact(player))
+                            ) : (
+                              <div className="py-4 text-center text-2xs text-muted-foreground">No players</div>
+                            )}
                           </div>
-                          {awayPlayers.length > 0 ? (
-                            awayPlayers.map((player) => renderPlayerCompact(player))
-                          ) : (
-                            <div className="py-4 text-center text-2xs text-muted-foreground">No players</div>
-                          )}
+                          <div>
+                            <div
+                              className="px-4 py-1.5 flex items-center gap-2 border-l-4 bg-overlay-muted"
+                              style={{ borderColor: match.team_away.color }}
+                            >
+                              <TeamLogo team={match.team_away} size="sm" />
+                              <span className="font-display font-bold text-2xs uppercase tracking-widest">
+                                {match.team_away.short_name}
+                              </span>
+                              <span className="ml-auto text-2xs text-muted-foreground tabular-nums">
+                                {awayPlayers.length}
+                              </span>
+                            </div>
+                            {awayPlayers.length > 0 ? (
+                              awayPlayers.map((player) => renderPlayerCompact(player))
+                            ) : (
+                              <div className="py-4 text-center text-2xs text-muted-foreground">No players</div>
+                            )}
+                          </div>
                         </div>
-                      </div>
+                      </>
                     )
                   ) : (
                     /* Single column for HOME/AWAY filter */
