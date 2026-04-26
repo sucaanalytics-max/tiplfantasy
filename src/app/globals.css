@@ -541,6 +541,96 @@
     border-left: 4px solid oklch(0.65 0.20 304);
     background-color: oklch(0.65 0.20 304 / 0.05);
   }
+
+  /* ── Homepage Redesign Utilities ───────────────── */
+
+  /* Gold tag pill — PREVIEW / SUMMARY chips on cards */
+  .tag-pill-gold {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    padding: 0.125rem 0.5rem;
+    border-radius: 9999px;
+    background: var(--accent);
+    color: var(--accent-foreground);
+    font-family: var(--font-rajdhani), var(--font-geist-sans), sans-serif;
+    font-weight: 700;
+    font-size: 0.625rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    line-height: 1;
+  }
+
+  /* Diagonal hero split — clip-paths for the two team-color halves */
+  .diagonal-half-home {
+    clip-path: polygon(0 0, 58% 0, 42% 100%, 0 100%);
+  }
+  .diagonal-half-away {
+    clip-path: polygon(58% 0, 100% 0, 100% 100%, 42% 100%);
+  }
+
+  /* Standings: highlighted "you" row gradient bar */
+  .row-highlight-you {
+    background: linear-gradient(
+      90deg,
+      oklch(from var(--primary) l c h / 0.18) 0%,
+      oklch(from var(--primary) l c h / 0.06) 35%,
+      transparent 75%
+    );
+    border-left: 3px solid var(--primary);
+  }
+
+  /* Pitch-line texture — used as low-opacity backdrop on recap cards */
+  .pitch-lines-bg {
+    background-image:
+      linear-gradient(
+        90deg,
+        transparent 0,
+        transparent calc(50% - 1px),
+        currentColor calc(50% - 1px),
+        currentColor calc(50% + 1px),
+        transparent calc(50% + 1px),
+        transparent 100%
+      ),
+      linear-gradient(
+        90deg,
+        transparent 0,
+        transparent calc(20% - 0.5px),
+        currentColor calc(20% - 0.5px),
+        currentColor calc(20% + 0.5px),
+        transparent calc(20% + 0.5px),
+        transparent calc(80% - 0.5px),
+        currentColor calc(80% - 0.5px),
+        currentColor calc(80% + 0.5px),
+        transparent calc(80% + 0.5px),
+        transparent 100%
+      );
+  }
+
+  /* Gold numeral utility — for stats hits */
+  .text-gold-stat {
+    color: var(--accent);
+    font-family: var(--font-rajdhani), var(--font-geist-sans), sans-serif;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* Hero VS badge — gold floating circle at the diagonal seam */
+  .vs-badge-hero {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 4rem;
+    height: 4rem;
+    border-radius: 9999px;
+    background: var(--background);
+    color: var(--accent);
+    font-family: var(--font-rajdhani), var(--font-geist-sans), sans-serif;
+    font-weight: 700;
+    font-size: 1.75rem;
+    letter-spacing: 0.04em;
+    box-shadow: 0 0 0 2px var(--accent), var(--glow-accent);
+  }
 }
 
 /* ============================================================

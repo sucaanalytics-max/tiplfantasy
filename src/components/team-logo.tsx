@@ -9,6 +9,7 @@ const SIZES = {
   md: 40,
   lg: 64,
   xl: 96,
+  "2xl": 144,
 } as const
 
 export function TeamLogo({

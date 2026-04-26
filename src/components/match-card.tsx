@@ -48,40 +48,66 @@ export function MatchCard({ match, userPoints, userRank, hasSubmitted, compact =
     : `/match/${match.id}/pick`
 
   if (compact) {
+    const tagLabel = isLive ? "LIVE" : isCompleted ? "SUMMARY" : "PREVIEW"
     return (
       <Link href={href} className="snap-start">
         <Card
-          className={`glass min-w-[160px] w-[160px] glass-hover transition-all relative overflow-hidden ${isLive ? "live-glow" : ""}`}
+          className={`glass min-w-[180px] w-[180px] glass-hover transition-all relative overflow-hidden rounded-2xl ${isLive ? "live-glow" : ""}`}
         >
-          {/* Top color bar */}
+          {/* Team-color gradient wash */}
           <div
-            className="absolute top-0 left-0 right-0 h-0.5"
-            style={{ background: `linear-gradient(to right, ${home.color}, ${away.color})` }}
+            className="absolute inset-0 pointer-events-none"
+            style={{
+              background: `linear-gradient(135deg, ${home.color}24 0%, transparent 45%, ${away.color}24 100%)`,
+            }}
           />
-          <CardContent className="p-3 pt-3.5 space-y-2">
+          <CardContent className="p-3 pt-3 space-y-3 relative">
+            {/* Tag pill */}
             <div className="flex items-center justify-between">
-              <span className="text-[10px] text-muted-foreground">#{match.match_number}</span>
-              <div className="flex items-center gap-1">
+              <span
+                className={
+                  isLive
+                    ? "tag-pill-gold !bg-status-live !text-white"
+                    : "tag-pill-gold"
+                }
+              >
                 {isLive && (
-                  <span className="flex items-center gap-1">
-                    <span className="animate-ping absolute inline-flex h-1.5 w-1.5 rounded-full bg-orange-400 opacity-75" />
-                    <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-orange-500" />
+                  <span className="relative inline-flex h-1.5 w-1.5">
+                    <span className="absolute inline-flex h-full w-full rounded-full bg-white opacity-75 animate-ping" />
+                    <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-white" />
                   </span>
                 )}
-                {hasSubmitted && <CheckCircle2 className="h-3.5 w-3.5 text-status-success" />}
+                {tagLabel}
+              </span>
+              {hasSubmitted && !isCompleted && <CheckCircle2 className="h-3.5 w-3.5 text-status-success" />}
+            </div>
+
+            {/* Teams */}
+            <div className="flex items-center justify-center gap-2">
+              <div className="flex flex-col items-center gap-1">
+                <TeamLogo team={home} size="md" />
+                <span className="text-[10px] font-display font-bold tracking-wider" style={{ color: home.color }}>
+                  {home.short_name}
+                </span>
+              </div>
+              <span className="text-[10px] font-display font-bold text-muted-foreground/60">VS</span>
+              <div className="flex flex-col items-center gap-1">
+                <TeamLogo team={away} size="md" />
+                <span className="text-[10px] font-display font-bold tracking-wider" style={{ color: away.color }}>
+                  {away.short_name}
+                </span>
               </div>
             </div>
-            <div className="flex items-center justify-center gap-2">
-              <TeamLogo team={home} size="sm" />
-              <span className="text-[10px] font-bold text-muted-foreground">VS</span>
-              <TeamLogo team={away} size="sm" />
-            </div>
-            <div className="text-center">
+
+            {/* Time / score */}
+            <div className="text-center pt-1 border-t border-overlay-border">
               {isCompleted && userPoints != null ? (
-                <p className="text-sm font-bold font-display">{userPoints} pts</p>
+                <p className="text-gold-stat text-lg leading-none pt-1">{userPoints} <span className="text-muted-foreground text-2xs font-normal">pts</span></p>
+              ) : isLive ? (
+                <p className="text-2xs text-status-live font-bold uppercase tracking-wider pt-1">In Play</p>
               ) : (
-                <p className="text-[10px] text-muted-foreground">
-                  {formatIST(match.start_time, "MMM d, h:mm a")}
+                <p className="text-2xs text-muted-foreground pt-1">
+                  {formatIST(match.start_time, "MMM d · h:mma")}
                 </p>
               )}
             </div>
