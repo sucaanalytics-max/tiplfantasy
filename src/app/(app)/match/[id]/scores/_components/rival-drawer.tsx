@@ -70,7 +70,7 @@ export function RivalDrawer({
 
   return (
     <Drawer open={open} onOpenChange={onOpenChange}>
-      <DrawerContent className="max-h-[90vh]">
+      <DrawerContent className="h-[90vh]">
         <DrawerTitle className="sr-only">Rival comparison</DrawerTitle>
 
         {!data || !me || !rival ? (
@@ -79,8 +79,7 @@ export function RivalDrawer({
           </p>
         ) : (
           <div
-            className="flex flex-col overflow-y-auto overscroll-contain px-4 pb-6 pt-2 gap-4"
-            style={{ maxHeight: "calc(90vh - 2.5rem)" }}
+            className="flex-1 min-h-0 flex flex-col overflow-y-auto overscroll-contain px-4 pb-6 pt-2 gap-4"
             data-vaul-no-drag
           >
             {/* Header */}
