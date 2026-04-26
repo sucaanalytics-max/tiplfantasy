@@ -4,7 +4,7 @@ import { useMemo, useRef, useState } from "react"
 import type { RaceData } from "@/lib/race-data"
 import { cn } from "@/lib/utils"
 
-type View = "rank" | "points"
+type View = "rank" | "gap"
 
 type RaceChartProps = {
   data: RaceData
@@ -44,16 +44,35 @@ export function RaceChart({ data, className }: RaceChartProps) {
   const chartW = width - PAD.left - PAD.right
   const chartH = HEIGHT - PAD.top - PAD.bottom
 
+  // Gap-to-leader per user per match: leaderCumPoints[i] - user.cumPoints[i]
+  const cumGapsByUser = useMemo(() => {
+    const leaderAt: number[] = new Array(N).fill(0)
+    for (let i = 0; i < N; i++) {
+      let m = -Infinity
+      for (const u of data.users) {
+        if (u.cumPoints[i] > m) m = u.cumPoints[i]
+      }
+      leaderAt[i] = m
+    }
+    const map = new Map<string, number[]>()
+    for (const u of data.users) {
+      map.set(u.userId, u.cumPoints.map((p, i) => leaderAt[i] - p))
+    }
+    return map
+  }, [data, N])
+
   const { yMin, yMax, invert } = useMemo(() => {
     if (view === "rank") {
       // Rank 1 should sit at the TOP of the chart (leader at top).
       const allRanks = data.users.flatMap((u) => u.cumRanks)
       return { yMin: 1, yMax: Math.max(...allRanks, 2), invert: true }
     }
-    // Points: 0 at the bottom, max at the top — lines rise over time.
-    const allPts = data.users.flatMap((u) => u.cumPoints)
-    return { yMin: 0, yMax: Math.max(...allPts, 10) * 1.05, invert: false }
-  }, [view, data])
+    // Gap-to-leader: 0 (leader) at top, max gap at bottom.
+    const allGaps = [...cumGapsByUser.values()].flat()
+    const maxGap = Math.max(...allGaps, 5)
+    const pad = Math.max(maxGap * 0.08, 5)
+    return { yMin: 0, yMax: maxGap + pad, invert: true }
+  }, [view, data, cumGapsByUser])
 
   function toX(i: number) {
     if (N <= 1) return PAD.left
@@ -71,9 +90,13 @@ export function RaceChart({ data, className }: RaceChartProps) {
       const ticks = [1, Math.ceil(yMax / 2), Math.ceil(yMax)].filter((v, i, a) => a.indexOf(v) === i)
       return ticks.map((v) => ({ y: toY(v), label: String(v) }))
     }
-    return Array.from({ length: 5 }, (_, i) => {
-      const v = yMin + (i / 4) * (yMax - yMin)
-      return { y: toY(v), label: Math.round(v).toLocaleString() }
+    // Gap view: label as "0", "−50", "−100" — minus sign communicates "behind leader"
+    return Array.from({ length: 4 }, (_, i) => {
+      const v = (i / 3) * yMax
+      return {
+        y: toY(v),
+        label: v === 0 ? "0" : `−${Math.round(v).toLocaleString()}`,
+      }
     })
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [view, yMin, yMax, chartH])
@@ -92,9 +115,11 @@ export function RaceChart({ data, className }: RaceChartProps) {
   }
 
   const meUser = data.users.find((u) => u.isCurrentUser)
-  const leaderUser = view === "rank"
-    ? data.users.reduce((best, u) => (u.cumRanks[hoverIdx ?? N - 1] < (best?.cumRanks[hoverIdx ?? N - 1] ?? 99) ? u : best), data.users[0])
-    : data.users.reduce((best, u) => (u.cumPoints[hoverIdx ?? N - 1] > (best?.cumPoints[hoverIdx ?? N - 1] ?? -Infinity) ? u : best), data.users[0])
+  const idxAt = hoverIdx ?? N - 1
+  const leaderUser = data.users.reduce(
+    (best, u) => (u.cumPoints[idxAt] > (best?.cumPoints[idxAt] ?? -Infinity) ? u : best),
+    data.users[0],
+  )
 
   function colorFor(u: RaceData["users"][number]) {
     if (u.isCurrentUser) return PRIMARY
@@ -108,7 +133,7 @@ export function RaceChart({ data, className }: RaceChartProps) {
           Season Race
         </span>
         <div className="inline-flex rounded-md bg-overlay-subtle border border-overlay-border p-0.5 text-[11px]">
-          {(["rank", "points"] as const).map((v) => (
+          {(["rank", "gap"] as const).map((v) => (
             <button
               key={v}
               type="button"
@@ -118,7 +143,7 @@ export function RaceChart({ data, className }: RaceChartProps) {
                 view === v ? "bg-background text-primary shadow-sm" : "text-muted-foreground"
               )}
             >
-              {v === "rank" ? "Rank" : "Points"}
+              {v === "rank" ? "Rank" : "Gap"}
             </button>
           ))}
         </div>
@@ -203,7 +228,7 @@ export function RaceChart({ data, className }: RaceChartProps) {
             .slice()
             .sort((a, b) => Number(a.isCurrentUser) - Number(b.isCurrentUser))
             .map((u) => {
-              const values = view === "rank" ? u.cumRanks : u.cumPoints
+              const values = view === "rank" ? u.cumRanks : (cumGapsByUser.get(u.userId) ?? [])
               const points = values.map((v, i) => `${toX(i)},${toY(v)}`).join(" ")
               const isActive = activeUserId === u.userId
               const isMe = u.isCurrentUser
@@ -227,7 +252,9 @@ export function RaceChart({ data, className }: RaceChartProps) {
           {/* Hover dots */}
           {hoverIdx !== null &&
             data.users.map((u) => {
-              const v = view === "rank" ? u.cumRanks[hoverIdx] : u.cumPoints[hoverIdx]
+              const v = view === "rank"
+                ? u.cumRanks[hoverIdx]
+                : (cumGapsByUser.get(u.userId)?.[hoverIdx] ?? 0)
               const isMe = u.isCurrentUser
               return (
                 <circle
@@ -264,7 +291,9 @@ export function RaceChart({ data, className }: RaceChartProps) {
               <span className="text-muted-foreground">Lead:</span>
               <span className="font-medium truncate max-w-[100px]">{leaderUser.displayName}</span>
               <span className="font-display tabular-nums font-bold">
-                {view === "rank" ? `#${leaderUser.cumRanks[hoverIdx]}` : `${leaderUser.cumPoints[hoverIdx]} pts`}
+                {view === "rank"
+                  ? `#${leaderUser.cumRanks[hoverIdx]}`
+                  : `${leaderUser.cumPoints[hoverIdx].toLocaleString()} pts`}
               </span>
             </span>
             {meUser && meUser.userId !== leaderUser.userId && (
@@ -274,7 +303,9 @@ export function RaceChart({ data, className }: RaceChartProps) {
                   <span className="h-2 w-2 rounded-full" style={{ backgroundColor: PRIMARY }} />
                   <span className="text-muted-foreground">You:</span>
                   <span className="font-display tabular-nums font-bold text-primary">
-                    {view === "rank" ? `#${meUser.cumRanks[hoverIdx]}` : `${meUser.cumPoints[hoverIdx]} pts`}
+                    {view === "rank"
+                      ? `#${meUser.cumRanks[hoverIdx]}`
+                      : `−${(cumGapsByUser.get(meUser.userId)?.[hoverIdx] ?? 0).toLocaleString()} pts`}
                   </span>
                 </span>
               </>
