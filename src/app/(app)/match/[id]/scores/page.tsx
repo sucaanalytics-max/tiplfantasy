@@ -37,6 +37,8 @@ export default async function ScoresPage({
       .select("*, profile:profiles(display_name)")
       .eq("match_id", id)
       .order("rank", { ascending: true })
+      .order("total_points", { ascending: false })
+      .order("user_id", { ascending: true })
       .limit(200),
     supabase
       .from("selections")
