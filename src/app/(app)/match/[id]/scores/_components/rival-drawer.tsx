@@ -1,6 +1,6 @@
 "use client"
 
-import { useMemo } from "react"
+import { useEffect, useMemo, useState } from "react"
 import * as DialogPrimitive from "@radix-ui/react-dialog"
 import { Badge } from "@/components/ui/badge"
 import { cn } from "@/lib/utils"
@@ -48,6 +48,19 @@ export function RivalDrawer({
   mySelection, rivalSelection,
   psMap, rosterMap, matchStatus,
 }: Props) {
+  // JS-computed pixel height for the dialog. Bypasses flex/vh ambiguity
+  // entirely so overflow-y-auto reliably has a definite parent height.
+  const [viewportH, setViewportH] = useState(0)
+  useEffect(() => {
+    if (typeof window === "undefined") return
+    const update = () => setViewportH(window.innerHeight)
+    update()
+    window.addEventListener("resize", update)
+    return () => window.removeEventListener("resize", update)
+  }, [])
+  const dialogH = Math.max(360, Math.floor(viewportH * 0.9))   // 90vh, min 360px
+  const scrollH = Math.max(240, dialogH - 32)                   // minus drag-handle/title space
+
   const data = useMemo(() => {
     if (!me || !rival || !mySelection || !rivalSelection) return null
     const h2h = buildHeadToHead(mySelection, rivalSelection, psMap, rosterMap)
@@ -75,7 +88,9 @@ export function RivalDrawer({
           className="fixed inset-0 z-50 bg-black/60 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=open]:fade-in-0 data-[state=closed]:fade-out-0"
         />
         <DialogPrimitive.Content
-          className="fixed inset-x-0 bottom-0 z-50 mx-auto w-full max-w-2xl h-[90vh] flex flex-col bg-background border-t border-x rounded-t-xl shadow-2xl outline-none data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=open]:slide-in-from-bottom data-[state=closed]:slide-out-to-bottom"
+          data-build="rival-dlg-pxh-v1"
+          style={{ height: dialogH > 0 ? `${dialogH}px` : "90vh" }}
+          className="fixed inset-x-0 bottom-0 z-50 mx-auto w-full max-w-2xl flex flex-col bg-background border-t border-x rounded-t-xl shadow-2xl outline-none data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=open]:slide-in-from-bottom data-[state=closed]:slide-out-to-bottom"
         >
           <DialogPrimitive.Title className="sr-only">Rival comparison</DialogPrimitive.Title>
           {/* Drag-handle affordance */}
@@ -87,7 +102,8 @@ export function RivalDrawer({
           </p>
         ) : (
           <div
-            className="flex-1 min-h-0 flex flex-col overflow-y-auto overscroll-contain px-4 pb-6 pt-2 gap-4"
+            style={{ height: scrollH > 0 ? `${scrollH}px` : undefined }}
+            className="overflow-y-auto overscroll-contain px-4 pb-6 pt-2 flex flex-col gap-4"
           >
             {/* Header */}
             <div className="flex items-center justify-between gap-3 pt-2">

@@ -1,6 +1,6 @@
 "use client"
 
-import { useMemo, useState } from "react"
+import { useEffect, useMemo, useState } from "react"
 import * as DialogPrimitive from "@radix-ui/react-dialog"
 import { Badge } from "@/components/ui/badge"
 import { TeamLogo } from "@/components/team-logo"
@@ -26,6 +26,16 @@ type Props = {
 
 export function MyXIDrawer({ open, onOpenChange, myXI, allPlayerScores, myPlayerSet, home, away }: Props) {
   const [tab, setTab] = useState<"mine" | "all">("mine")
+  const [viewportH, setViewportH] = useState(0)
+  useEffect(() => {
+    if (typeof window === "undefined") return
+    const update = () => setViewportH(window.innerHeight)
+    update()
+    window.addEventListener("resize", update)
+    return () => window.removeEventListener("resize", update)
+  }, [])
+  const dialogH = Math.max(360, Math.floor(viewportH * 0.9))
+  const scrollH = Math.max(220, dialogH - 96)   // minus drag handle + segmented toggle row
 
   const myTotal = useMemo(
     () => Math.round(myXI.reduce((s, p) => s + p.effective, 0)),
@@ -39,12 +49,14 @@ export function MyXIDrawer({ open, onOpenChange, myXI, allPlayerScores, myPlayer
           className="fixed inset-0 z-50 bg-black/60 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=open]:fade-in-0 data-[state=closed]:fade-out-0"
         />
         <DialogPrimitive.Content
-          className="fixed inset-x-0 bottom-0 z-50 mx-auto w-full max-w-2xl h-[90vh] flex flex-col bg-background border-t border-x rounded-t-xl shadow-2xl outline-none data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=open]:slide-in-from-bottom data-[state=closed]:slide-out-to-bottom"
+          data-build="myxi-dlg-pxh-v1"
+          style={{ height: dialogH > 0 ? `${dialogH}px` : "90vh" }}
+          className="fixed inset-x-0 bottom-0 z-50 mx-auto w-full max-w-2xl flex flex-col bg-background border-t border-x rounded-t-xl shadow-2xl outline-none data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=open]:slide-in-from-bottom data-[state=closed]:slide-out-to-bottom"
         >
           <DialogPrimitive.Title className="sr-only">My XI</DialogPrimitive.Title>
           <div className="mx-auto mt-3 mb-1 h-1 w-12 rounded-full bg-muted-foreground/30 shrink-0" />
 
-          <div className="flex-1 min-h-0 flex flex-col overflow-hidden px-4 pb-6 pt-2">
+          <div className="flex flex-col overflow-hidden px-4 pb-6 pt-2">
           {/* Segmented toggle */}
           <div className="flex gap-1 mb-3 p-0.5 rounded-lg bg-secondary/40 self-center">
             <button
@@ -68,7 +80,8 @@ export function MyXIDrawer({ open, onOpenChange, myXI, allPlayerScores, myPlayer
           </div>
 
           <div
-            className="flex-1 min-h-0 overflow-y-auto overscroll-contain"
+            style={{ height: scrollH > 0 ? `${scrollH}px` : undefined }}
+            className="overflow-y-auto overscroll-contain"
           >
             {tab === "mine" ? (
               myXI.length === 0 ? (
