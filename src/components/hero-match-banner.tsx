@@ -1,10 +1,10 @@
 import Link from "next/link"
 import { CheckCircle2, ChevronRight, Pencil, MapPin } from "lucide-react"
-import { Button } from "@/components/ui/button"
 import { TeamLogo } from "@/components/team-logo"
 import { CountdownTimer } from "@/components/countdown-timer"
 import { LiveScoreWidget } from "@/components/live-score-widget"
 import { StadiumSilhouette } from "@/components/decor/stadium-silhouette"
+import { Bat } from "@/components/icons/cricket-icons"
 import { formatIST } from "@/lib/utils"
 import type { MatchStatus } from "@/lib/types"
 
@@ -38,7 +38,6 @@ export function HeroMatchBanner({ match, hasSubmitted, liveScore }: Props) {
   const away = match.team_away
   const isLive = match.status === "live"
   const isCompleted = match.status === "completed" || match.status === "no_result"
-  const isUpcoming = match.status === "upcoming"
 
   const tag = isLive ? "live" : isCompleted ? "summary" : "preview"
   const homeFullName = home.name ?? home.short_name
@@ -136,33 +135,27 @@ export function HeroMatchBanner({ match, hasSubmitted, liveScore }: Props) {
           <span className="vs-badge-hero">VS</span>
         </div>
 
-        {/* ── Bottom band: venue + countdown/score ───────── */}
-        <div className="absolute bottom-0 inset-x-0 bg-black/55 backdrop-blur-sm z-10 px-4 py-2.5 flex items-center justify-between gap-3">
-          <div className="min-w-0 flex items-center gap-1.5 text-white/85 text-xs">
-            <MapPin className="h-3 w-3 shrink-0" />
-            <span className="truncate">{match.venue}</span>
-            <span className="text-white/40">·</span>
-            <span className="shrink-0">{formatIST(match.start_time, "EEE, MMM d")}</span>
-          </div>
-          <div className="shrink-0">
-            {isLive ? (
+        {/* ── Bottom band: venue + date (countdown moved into CTA) ─── */}
+        <div className="absolute bottom-0 inset-x-0 bg-black/55 backdrop-blur-sm z-10 px-4 py-2.5 flex items-center gap-2 text-white/85 text-xs">
+          <MapPin className="h-3 w-3 shrink-0" />
+          <span className="truncate">{match.venue}</span>
+          <span className="text-white/40 shrink-0">·</span>
+          <span className="shrink-0">{formatIST(match.start_time, "EEE, MMM d · h:mm a")}</span>
+          {isLive && (
+            <span className="ml-auto shrink-0">
               <LiveScoreWidget
                 cricapiMatchId={match.cricapi_match_id ?? null}
                 startTime={match.start_time}
               />
-            ) : isUpcoming ? (
-              <CountdownTimer targetTime={match.start_time} variant="compact" className="text-accent font-display font-bold text-sm" />
-            ) : (
-              <span className="text-white/85 text-xs">{match.result_summary ?? "Result"}</span>
-            )}
-          </div>
+            </span>
+          )}
         </div>
       </div>
 
       {/* ── CTA pill (full-width below hero) ─────────────── */}
       <div className="px-4 md:px-6 -mt-4 relative z-20">
         <div className="max-w-2xl lg:max-w-5xl mx-auto">
-          <HeroCTA matchId={match.id} status={match.status} hasSubmitted={hasSubmitted} liveScore={liveScore} />
+          <HeroCTA matchId={match.id} matchStartTime={match.start_time} status={match.status} hasSubmitted={hasSubmitted} liveScore={liveScore} />
         </div>
       </div>
     </section>
@@ -171,11 +164,13 @@ export function HeroMatchBanner({ match, hasSubmitted, liveScore }: Props) {
 
 function HeroCTA({
   matchId,
+  matchStartTime,
   status,
   hasSubmitted,
   liveScore,
 }: {
   matchId: string
+  matchStartTime: string
   status: MatchStatus
   hasSubmitted: boolean
   liveScore?: { total_points: number; rank: number | null }
@@ -183,18 +178,21 @@ function HeroCTA({
   if (status === "live") {
     return (
       <Link href={`/match/${matchId}/scores`} className="block">
-        <Button size="lg" className="w-full bg-status-live hover:bg-status-live/90 text-white font-display font-bold text-base h-12 rounded-full gap-2 shadow-lg shadow-red-900/20">
-          {liveScore ? (
-            <>
-              Live · {liveScore.total_points} pts {liveScore.rank ? `· #${liveScore.rank}` : ""}
-              <ChevronRight className="h-5 w-5" />
-            </>
-          ) : (
-            <>
-              View Live Scores <ChevronRight className="h-5 w-5" />
-            </>
-          )}
-        </Button>
+        <div className="cta-pick-pill w-full h-16 rounded-2xl flex items-center justify-between px-5 text-white">
+          <div className="flex items-center gap-3 min-w-0">
+            <span className="relative inline-flex h-2.5 w-2.5 shrink-0">
+              <span className="absolute inline-flex h-full w-full rounded-full bg-white opacity-75 animate-ping" />
+              <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-white" />
+            </span>
+            <div className="min-w-0">
+              <p className="font-display font-bold text-base leading-tight tracking-wide">LIVE SCORES</p>
+              <p className="text-xs text-white/75 leading-tight tabular-nums truncate">
+                {liveScore ? `${liveScore.total_points} pts${liveScore.rank ? ` · #${liveScore.rank}` : ""}` : "Tap to follow"}
+              </p>
+            </div>
+          </div>
+          <ChevronRight className="h-5 w-5 shrink-0 text-white/85" />
+        </div>
       </Link>
     )
   }
@@ -202,45 +200,70 @@ function HeroCTA({
   if (status === "completed" || status === "no_result") {
     return (
       <Link href={`/match/${matchId}/scores`} className="block">
-        <Button
-          size="lg"
-          variant="outline"
-          className="w-full bg-card font-display font-bold text-base h-12 rounded-full gap-2"
-        >
-          View Result <ChevronRight className="h-5 w-5" />
-        </Button>
+        <div className="cta-pick-pill-submitted w-full h-16 rounded-2xl flex items-center justify-between px-5">
+          <div className="flex items-center gap-3 min-w-0">
+            <CheckCircle2 className="h-5 w-5 text-accent shrink-0" />
+            <div className="min-w-0">
+              <p className="font-display font-bold text-base leading-tight tracking-wide">VIEW RESULT</p>
+              <p className="text-xs text-muted-foreground leading-tight">See match scorecard</p>
+            </div>
+          </div>
+          <ChevronRight className="h-5 w-5 shrink-0 text-muted-foreground" />
+        </div>
       </Link>
     )
   }
 
   if (hasSubmitted) {
     return (
-      <div className="flex items-center gap-2">
-        <div className="flex-1 flex items-center justify-center gap-2 h-12 rounded-full bg-status-success/10 border border-status-success/30 text-status-success font-display font-bold">
-          <CheckCircle2 className="h-5 w-5" />
-          Team Submitted
+      <Link href={`/match/${matchId}/pick`} className="block">
+        <div className="cta-pick-pill-submitted w-full h-16 rounded-2xl flex items-center justify-between px-5">
+          <div className="flex items-center gap-3 min-w-0">
+            <CheckCircle2 className="h-5 w-5 text-status-success shrink-0" />
+            <div className="min-w-0">
+              <p className="font-display font-bold text-base leading-tight tracking-wide text-status-success">TEAM LOCKED IN</p>
+              <p className="text-xs text-muted-foreground leading-tight flex items-center gap-1.5">
+                <Pencil className="h-3 w-3" />
+                Tap to edit · <CountdownTimer targetTime={matchStartTime} variant="compact" className="!text-muted-foreground" />
+              </p>
+            </div>
+          </div>
+          <ChevronRight className="h-5 w-5 shrink-0 text-muted-foreground" />
         </div>
-        <Link href={`/match/${matchId}/pick`}>
-          <Button
-            size="lg"
-            variant="outline"
-            className="h-12 rounded-full font-display font-bold gap-1.5 border-primary/40 text-primary px-5"
-          >
-            <Pencil className="h-4 w-4" /> Edit
-          </Button>
-        </Link>
-      </div>
+      </Link>
     )
   }
 
+  // Default: pick your team — with urgency state
   return (
     <Link href={`/match/${matchId}/pick`} className="block">
-      <Button
-        size="lg"
-        className="w-full bg-primary hover:bg-primary/90 text-white font-display font-bold text-base h-12 rounded-full gap-2 glow-card"
-      >
-        Pick Your Team <ChevronRight className="h-5 w-5" />
-      </Button>
+      <UrgencyCTA matchId={matchId} matchStartTime={matchStartTime} />
     </Link>
+  )
+}
+
+function UrgencyCTA({ matchId: _matchId, matchStartTime }: { matchId: string; matchStartTime: string }) {
+  // Note: urgency state via CSS data attribute toggled by CountdownTimer onExpire is complex.
+  // Simpler pattern: server-derived urgency via time-since-now at render. For SSR pages,
+  // the urgency just animates uniformly via CSS; the timer text update is client-side.
+  const isUrgent = new Date(matchStartTime).getTime() - Date.now() < 2 * 60 * 60 * 1000
+  return (
+    <div
+      data-urgent={isUrgent || undefined}
+      className="cta-pick-pill w-full h-16 rounded-2xl flex items-center justify-between px-5 text-white"
+    >
+      <div className="flex items-center gap-3 min-w-0">
+        <Bat className="h-5 w-5 shrink-0 text-white" />
+        <div className="min-w-0">
+          <p className="font-display font-bold text-base leading-tight tracking-wide">
+            {isUrgent ? "FINAL HOUR — PICK NOW" : "PICK YOUR XI"}
+          </p>
+          <p className="text-xs text-white/80 leading-tight tabular-nums">
+            Locks in <CountdownTimer targetTime={matchStartTime} variant="compact" className="!text-white inline" />
+          </p>
+        </div>
+      </div>
+      <ChevronRight className="h-5 w-5 shrink-0 text-white/90" />
+    </div>
   )
 }

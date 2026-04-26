@@ -86,6 +86,23 @@ export function Gloves({ className, ...props }: IconProps) {
   )
 }
 
+export function Crown({ className, ...props }: IconProps) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      fill="currentColor"
+      className={className}
+      aria-hidden="true"
+      {...props}
+    >
+      <path d="M3 8l3.5 3 5.5-7 5.5 7L21 8l-1.8 9H4.8L3 8z" />
+      <circle cx="3" cy="7" r="1.4" />
+      <circle cx="21" cy="7" r="1.4" />
+      <circle cx="12" cy="3.5" r="1.4" />
+    </svg>
+  )
+}
+
 export function Boundary({ className, ...props }: IconProps) {
   return (
     <svg

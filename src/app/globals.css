@@ -569,15 +569,14 @@
     clip-path: polygon(58% 0, 100% 0, 100% 100%, 42% 100%);
   }
 
-  /* Standings: highlighted "you" row gradient bar */
+  /* Standings: highlighted "you" row — full-width tint, strong left border */
   .row-highlight-you {
-    background: linear-gradient(
-      90deg,
-      oklch(from var(--primary) l c h / 0.18) 0%,
-      oklch(from var(--primary) l c h / 0.06) 35%,
-      transparent 75%
-    );
-    border-left: 3px solid var(--primary);
+    background: oklch(from var(--primary) l c h / 0.14);
+    border-left: 4px solid var(--primary);
+    font-weight: 600;
+  }
+  .row-highlight-you:hover {
+    background: oklch(from var(--primary) l c h / 0.18);
   }
 
   /* Pitch-line texture — used as low-opacity backdrop on recap cards */
@@ -613,6 +612,96 @@
     font-family: var(--font-rajdhani), var(--font-geist-sans), sans-serif;
     font-weight: 700;
     font-variant-numeric: tabular-nums;
+  }
+
+  /* Pick Your Team CTA pill — refined gradient + crisp shadow */
+  .cta-pick-pill {
+    background: linear-gradient(
+      180deg,
+      var(--primary) 0%,
+      oklch(from var(--primary) calc(l - 0.07) c h) 100%
+    );
+    box-shadow:
+      0 8px 24px oklch(from var(--primary) l c h / 0.30),
+      inset 0 1px 0 rgba(255, 255, 255, 0.20),
+      inset 0 -1px 0 rgba(0, 0, 0, 0.10);
+    transition: box-shadow 0.2s, transform 0.15s;
+  }
+  .cta-pick-pill:hover {
+    box-shadow:
+      0 10px 28px oklch(from var(--primary) l c h / 0.40),
+      inset 0 1px 0 rgba(255, 255, 255, 0.24),
+      inset 0 -1px 0 rgba(0, 0, 0, 0.10);
+  }
+  .cta-pick-pill:active {
+    transform: scale(0.98);
+  }
+  .cta-pick-pill[data-urgent="true"] {
+    background: linear-gradient(
+      180deg,
+      var(--status-live) 0%,
+      oklch(from var(--status-live) calc(l - 0.07) c h) 100%
+    );
+    box-shadow:
+      0 0 0 2px oklch(from var(--status-live) l c h / 0.40),
+      0 8px 24px oklch(from var(--status-live) l c h / 0.35),
+      inset 0 1px 0 rgba(255, 255, 255, 0.20);
+    animation: urgency-pulse 1.4s ease-in-out infinite;
+  }
+
+  /* Submitted state for the CTA — dark surface, no orange */
+  .cta-pick-pill-submitted {
+    background: var(--card);
+    border: 1px solid var(--glass-border-hover);
+    box-shadow:
+      0 4px 14px oklch(0 0 0 / 0.10),
+      inset 0 1px 0 rgba(255, 255, 255, 0.06);
+    transition: box-shadow 0.2s, transform 0.15s;
+  }
+  .cta-pick-pill-submitted:hover {
+    background: var(--glass-bg-hover);
+  }
+  .cta-pick-pill-submitted:active {
+    transform: scale(0.98);
+  }
+
+  /* Live state CTA — red gradient */
+  .cta-pick-pill-live {
+    background: linear-gradient(
+      180deg,
+      var(--status-live) 0%,
+      oklch(from var(--status-live) calc(l - 0.07) c h) 100%
+    );
+    box-shadow:
+      0 8px 24px oklch(from var(--status-live) l c h / 0.30),
+      inset 0 1px 0 rgba(255, 255, 255, 0.20);
+    transition: box-shadow 0.2s, transform 0.15s;
+  }
+  .cta-pick-pill-live:hover {
+    box-shadow:
+      0 10px 28px oklch(from var(--status-live) l c h / 0.40),
+      inset 0 1px 0 rgba(255, 255, 255, 0.24);
+  }
+  .cta-pick-pill-live:active {
+    transform: scale(0.98);
+  }
+
+  /* Standings grid — shared layout for header + rows */
+  .standings-grid {
+    display: grid;
+    grid-template-columns: 32px 32px minmax(0, 1fr) 28px 56px 56px 72px;
+    gap: 0.75rem;
+    align-items: center;
+  }
+  /* Mobile: hide W column */
+  @media (max-width: 380px) {
+    .standings-grid {
+      grid-template-columns: 28px 28px minmax(0, 1fr) 0 50px 50px 64px;
+      gap: 0.5rem;
+    }
+    .standings-grid .col-wins {
+      display: none;
+    }
   }
 
   /* Hero VS badge — gold floating circle at the diagonal seam */
