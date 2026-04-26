@@ -24,8 +24,6 @@ const ROLE_COLORS: Record<string, string> = {
   BOWL: "text-[var(--tw-purple-text)] border-purple-400/30 bg-[var(--tw-purple-bg)]",
 }
 
-const ROLE_ORDER: Record<string, number> = { WK: 0, BAT: 1, AR: 2, BOWL: 3 }
-
 type Rival = {
   user_id: string
   display_name: string
@@ -80,7 +78,11 @@ export function RivalDrawer({
             No comparison available — opponent has no team selected yet.
           </p>
         ) : (
-          <div className="flex flex-1 min-h-0 flex-col overflow-y-auto overscroll-contain px-4 pb-6 pt-2 gap-4" data-vaul-no-drag>
+          <div
+            className="flex flex-col overflow-y-auto overscroll-contain px-4 pb-6 pt-2 gap-4"
+            style={{ maxHeight: "calc(90vh - 2.5rem)" }}
+            data-vaul-no-drag
+          >
             {/* Header */}
             <div className="flex items-center justify-between gap-3 pt-2">
               <Side
@@ -326,11 +328,13 @@ function buildAlignedRoster(h2h: HeadToHead): RosterRow[] {
     }
   }
 
-  // Group by role, then descending by max effective
+  // 3-tier sort: edge differentials → uncommon (one-side-only) → common.
+  // Within each tier, descending by max effective so the most impactful
+  // row in the tier sits at the top.
   rows.sort((a, b) => {
-    const ra = ROLE_ORDER[a.role] ?? 4
-    const rb = ROLE_ORDER[b.role] ?? 4
-    if (ra !== rb) return ra - rb
+    const ta = tier(a)
+    const tb = tier(b)
+    if (ta !== tb) return ta - tb
     const maxA = Math.max(a.my?.eff ?? -Infinity, a.their?.eff ?? -Infinity)
     const maxB = Math.max(b.my?.eff ?? -Infinity, b.their?.eff ?? -Infinity)
     return maxB - maxA
@@ -339,10 +343,41 @@ function buildAlignedRoster(h2h: HeadToHead): RosterRow[] {
   return rows
 }
 
+// Tier 0: My Edge — my-only picks AND captaincy edges where I have the
+//                    higher multiplier (i.e. my side wins the duel).
+// Tier 1: Their Edge — symmetric on the other side.
+// Tier 2: Common — shared with equal multipliers.
+function tier(r: RosterRow): number {
+  if (r.isMyOnly) return 0
+  if (r.isTheirOnly) return 1
+  if (r.isCaptaincyEdge) {
+    return (r.my?.mult ?? 0) > (r.their?.mult ?? 0) ? 0 : 1
+  }
+  return 2
+}
+
+const TIER_LABEL: Record<number, string> = {
+  0: "My Edge",
+  1: "Their Edge",
+  2: "Common Players",
+}
+
 function RosterTable({
   rows, myTotal, theirTotal,
 }: { rows: RosterRow[]; myTotal: number; theirTotal: number }) {
   if (rows.length === 0) return null
+
+  // Group rows by tier so we can render section labels between tiers.
+  const grouped: Array<{ tier: number; rows: RosterRow[] }> = []
+  let current: { tier: number; rows: RosterRow[] } | null = null
+  for (const r of rows) {
+    const t = tier(r)
+    if (!current || current.tier !== t) {
+      current = { tier: t, rows: [] }
+      grouped.push(current)
+    }
+    current.rows.push(r)
+  }
 
   return (
     <div className="rounded-xl border border-overlay-border overflow-hidden">
@@ -352,9 +387,23 @@ function RosterTable({
         <HeaderCell label="THEM" total={theirTotal} align="right" />
       </div>
 
-      <div className="divide-y divide-overlay-border">
-        {rows.map((row) => (
-          <Row key={row.player_id} row={row} />
+      <div>
+        {grouped.map((group, idx) => (
+          <div key={group.tier} className={cn(idx > 0 && "border-t border-overlay-border")}>
+            <div className="px-3 py-1.5 bg-overlay-subtle/40 border-b border-overlay-border">
+              <span className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">
+                {TIER_LABEL[group.tier]}
+              </span>
+              <span className="text-[10px] text-muted-foreground/60 ml-1.5 tabular-nums">
+                {group.rows.length}
+              </span>
+            </div>
+            <div className="divide-y divide-overlay-border">
+              {group.rows.map((row) => (
+                <Row key={row.player_id} row={row} />
+              ))}
+            </div>
+          </div>
         ))}
       </div>
     </div>
