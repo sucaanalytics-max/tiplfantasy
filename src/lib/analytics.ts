@@ -1256,3 +1256,131 @@ export function computePaceSpinAnalysis(
 
   return { venues, teams: teamRows }
 }
+
+// ============================================================
+// User Preferences — bias per team / role / captain / loyalty
+// ============================================================
+
+export type UserPreferenceTeamSlice = {
+  teamId: string
+  teamShort: string
+  count: number
+  pct: number
+}
+
+export type UserPreferenceTopPlayer = {
+  id: string
+  name: string
+  team: string
+  count: number
+  pct: number
+}
+
+export type UserPreference = {
+  userId: string
+  displayName: string
+  matchesPlayed: number
+  totalPicks: number
+  byTeam: UserPreferenceTeamSlice[]
+  byRole: { WK: number; BAT: number; AR: number; BOWL: number }
+  topTeam: UserPreferenceTeamSlice | null
+  topCaptain: UserPreferenceTopPlayer | null
+  topPlayer: UserPreferenceTopPlayer | null
+}
+
+export const computeUserPreferences = (
+  selections: RawSelection[],
+  playerMap: Map<string, PlayerInfo>,
+  profileMap: Map<string, string>,
+  teamIdToShort: Map<string, string>,
+): UserPreference[] => {
+  const byUser = new Map<string, RawSelection[]>()
+  for (const s of selections) {
+    const arr = byUser.get(s.user_id) ?? []
+    arr.push(s)
+    byUser.set(s.user_id, arr)
+  }
+
+  const allTeamIds = [...teamIdToShort.keys()]
+  const out: UserPreference[] = []
+
+  for (const [userId, sels] of byUser) {
+    const matchesPlayed = sels.length
+    const totalPicks = sels.reduce((acc, s) => acc + s.players.length, 0)
+    if (totalPicks === 0) continue
+
+    const teamCount = new Map<string, number>()
+    const roleCount = { WK: 0, BAT: 0, AR: 0, BOWL: 0 }
+    const captainCount = new Map<string, number>()
+    const playerCount = new Map<string, number>()
+
+    for (const s of sels) {
+      for (const pid of s.players) {
+        const p = playerMap.get(pid)
+        if (!p) continue
+        teamCount.set(p.teamId, (teamCount.get(p.teamId) ?? 0) + 1)
+        if (p.role in roleCount) roleCount[p.role as keyof typeof roleCount]++
+        playerCount.set(pid, (playerCount.get(pid) ?? 0) + 1)
+      }
+      if (s.captain_id) captainCount.set(s.captain_id, (captainCount.get(s.captain_id) ?? 0) + 1)
+    }
+
+    // Build full team allocation (one entry per known team, even if 0 picks)
+    const byTeam: UserPreferenceTeamSlice[] = allTeamIds.map((teamId) => {
+      const count = teamCount.get(teamId) ?? 0
+      return {
+        teamId,
+        teamShort: teamIdToShort.get(teamId) ?? "?",
+        count,
+        pct: round1((count / totalPicks) * 100),
+      }
+    })
+
+    const topTeam = byTeam.reduce<UserPreferenceTeamSlice | null>(
+      (best, t) => (best === null || t.count > best.count ? t : best),
+      null,
+    )
+
+    const byRole = {
+      WK: round1((roleCount.WK / totalPicks) * 100),
+      BAT: round1((roleCount.BAT / totalPicks) * 100),
+      AR: round1((roleCount.AR / totalPicks) * 100),
+      BOWL: round1((roleCount.BOWL / totalPicks) * 100),
+    }
+
+    function pickTopPlayer(counts: Map<string, number>, denom: number): UserPreferenceTopPlayer | null {
+      let topId: string | null = null
+      let topN = 0
+      for (const [pid, c] of counts) {
+        if (c > topN) {
+          topN = c
+          topId = pid
+        }
+      }
+      if (!topId) return null
+      const info = playerMap.get(topId)
+      if (!info) return null
+      return {
+        id: topId,
+        name: info.name,
+        team: info.team,
+        count: topN,
+        pct: round1((topN / denom) * 100),
+      }
+    }
+
+    out.push({
+      userId,
+      displayName: profileMap.get(userId) ?? "Unknown",
+      matchesPlayed,
+      totalPicks,
+      byTeam,
+      byRole,
+      topTeam,
+      topCaptain: pickTopPlayer(captainCount, matchesPlayed),
+      topPlayer: pickTopPlayer(playerCount, matchesPlayed),
+    })
+  }
+
+  return out.sort((a, b) => a.displayName.localeCompare(b.displayName))
+}
