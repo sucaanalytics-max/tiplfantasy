@@ -37,7 +37,7 @@ export function MyXIDrawer({ open, onOpenChange, myXI, allPlayerScores, myPlayer
       <DrawerContent className="max-h-[90vh]">
         <DrawerTitle className="sr-only">My XI</DrawerTitle>
 
-        <div className="flex flex-col overflow-hidden px-4 pb-6 pt-2">
+        <div className="flex flex-1 min-h-0 flex-col overflow-hidden px-4 pb-6 pt-2">
           {/* Segmented toggle */}
           <div className="flex gap-1 mb-3 p-0.5 rounded-lg bg-secondary/40 self-center">
             <button
@@ -60,7 +60,7 @@ export function MyXIDrawer({ open, onOpenChange, myXI, allPlayerScores, myPlayer
             </button>
           </div>
 
-          <div className="flex-1 overflow-y-auto" data-vaul-no-drag>
+          <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain" data-vaul-no-drag>
             {tab === "mine" ? (
               myXI.length === 0 ? (
                 <p className="text-sm text-muted-foreground text-center py-8">

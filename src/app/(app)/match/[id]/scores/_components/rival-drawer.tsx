@@ -80,7 +80,7 @@ export function RivalDrawer({
             No comparison available — opponent has no team selected yet.
           </p>
         ) : (
-          <div className="flex flex-col overflow-y-auto px-4 pb-6 pt-2 gap-4" data-vaul-no-drag>
+          <div className="flex flex-1 min-h-0 flex-col overflow-y-auto overscroll-contain px-4 pb-6 pt-2 gap-4" data-vaul-no-drag>
             {/* Header */}
             <div className="flex items-center justify-between gap-3 pt-2">
               <Side

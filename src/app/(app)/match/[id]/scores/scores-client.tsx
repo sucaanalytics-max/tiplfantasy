@@ -13,6 +13,7 @@ import { StandingsTable } from "./_components/standings-table"
 import { RivalDrawer } from "./_components/rival-drawer"
 import { MyXIDrawer } from "./_components/my-xi-drawer"
 import { OwnershipMatrix } from "./_components/ownership-matrix"
+import { TopScorers } from "./_components/top-scorers"
 import { useRankDelta } from "./_hooks/use-rank-delta"
 
 // ─── Types (re-exported for page.tsx + drawers) ─────────────────────────
@@ -299,6 +300,8 @@ export function ScoresClient({
               No one in this league has scored yet.
             </p>
           )}
+
+          <TopScorers playerScores={playerScores} myPlayerSet={myPlayerSet} />
 
           {analysis && <OwnershipMatrix analysis={analysis} />}
         </>
