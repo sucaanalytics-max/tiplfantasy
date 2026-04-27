@@ -342,23 +342,41 @@ function RosterTable({
       </div>
 
       <div>
-        {grouped.map((group, idx) => (
-          <div key={group.tier} className={cn(idx > 0 && "border-t border-overlay-border")}>
-            <div className="px-3 py-1.5 bg-overlay-subtle/40 border-b border-overlay-border">
-              <span className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">
-                {TIER_LABEL[group.tier]}
-              </span>
-              <span className="text-[10px] text-muted-foreground/60 ml-1.5 tabular-nums">
-                {group.rows.length}
-              </span>
+        {grouped.map((group, idx) => {
+          // Per-section signed total from my perspective (sum of my.eff − their.eff)
+          // Mirrors the Captain Duel row's signed-delta convention.
+          const sectionDiff = group.rows.reduce(
+            (sum, r) => sum + ((r.my?.eff ?? 0) - (r.their?.eff ?? 0)),
+            0,
+          )
+          const diffRounded = Math.round(sectionDiff * 10) / 10
+          return (
+            <div key={group.tier} className={cn(idx > 0 && "border-t border-overlay-border")}>
+              <div className="flex items-baseline gap-1.5 px-3 py-1.5 bg-overlay-subtle/40 border-b border-overlay-border">
+                <span className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">
+                  {TIER_LABEL[group.tier]}
+                </span>
+                <span className="text-[10px] text-muted-foreground/60 tabular-nums">
+                  {group.rows.length}
+                </span>
+                <span className="text-[10px] text-muted-foreground/40">·</span>
+                <span className={cn(
+                  "text-[11px] font-bold font-display tabular-nums",
+                  diffRounded > 0 ? "text-[var(--tw-emerald-text)]" :
+                  diffRounded < 0 ? "text-[var(--tw-red-text)]" :
+                  "text-muted-foreground",
+                )}>
+                  {diffRounded > 0 ? `+${diffRounded}` : diffRounded < 0 ? `${diffRounded}` : "0"}
+                </span>
+              </div>
+              <div className="divide-y divide-overlay-border">
+                {group.rows.map((row) => (
+                  <Row key={row.player_id} row={row} />
+                ))}
+              </div>
             </div>
-            <div className="divide-y divide-overlay-border">
-              {group.rows.map((row) => (
-                <Row key={row.player_id} row={row} />
-              ))}
-            </div>
-          </div>
-        ))}
+          )
+        })}
       </div>
     </div>
   )
