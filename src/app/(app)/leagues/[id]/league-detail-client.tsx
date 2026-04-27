@@ -8,7 +8,7 @@ import { Copy, Check, Share2, Trash2, ArrowLeft, Users, Trophy, Swords, Zap, Cro
 import { LiveRefresher } from "@/components/live-refresher"
 import { LiveScoreWidget } from "@/components/live-score-widget"
 import { getInitials as getAvatarInitials, getAvatarColor } from "@/lib/avatar"
-import { LeaderboardRow } from "@/components/shared/leaderboard-row"
+import { LeaderboardTable, type LeaderboardRow as LeaderboardTableRow } from "@/components/leaderboard-table"
 import { PlayerRow } from "@/components/shared/player-row"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -131,93 +131,132 @@ export function LeagueDetailClient({ league, members, isCreator, leaderboard, aw
     })
   }
 
+  // ── Derived: user's rank within this league + table rows ──────────
+  const myLeagueRank = (() => {
+    const idx = leaderboard.findIndex((e) => e.user_id === currentUserId)
+    return idx === -1 ? null : idx + 1
+  })()
+  const myLeagueEntry = leaderboard.find((e) => e.user_id === currentUserId)
+  const awardsByUser = new Map(awards.map((a) => [a.user_id, a]))
+  const tableRows: LeaderboardTableRow[] = leaderboard.map((entry, i) => {
+    const award = awardsByUser.get(entry.user_id)
+    return {
+      user_id: entry.user_id,
+      display_name: entry.display_name ?? "Unknown",
+      season_rank: i + 1,
+      total_points: Number(entry.total_points),
+      avg_points: Number(entry.avg_points ?? 0),
+      matches_played: entry.matches_played,
+      highest_score: Number(award?.highest_score ?? 0),
+      matchday_wins: award?.matchday_wins ?? 0,
+    }
+  })
+
   return (
     <div className="p-4 md:p-6 space-y-6 max-w-3xl lg:max-w-5xl">
-      {/* Header with compact invite code */}
-      <div className="flex items-center gap-3">
-        <Link href="/leagues">
-          <Button variant="ghost" size="sm" className="h-9 w-9 p-0" aria-label="Back to leagues">
-            <ArrowLeft className="h-4 w-4" aria-hidden="true" />
-          </Button>
-        </Link>
-        <div className="flex-1 min-w-0">
-          <h1 className="text-xl font-bold tracking-tight truncate">{league.name}</h1>
-          <div className="flex items-center gap-2 mt-1">
-            <Badge variant="secondary" className="gap-1">
+      {/* ── Hero header ──────────────────────────────────────── */}
+      <div className="space-y-3">
+        {/* Top row: back + actions */}
+        <div className="flex items-center justify-between gap-2">
+          <Link href="/leagues">
+            <Button variant="ghost" size="sm" className="h-8 w-8 p-0" aria-label="Back to leagues">
+              <ArrowLeft className="h-4 w-4" aria-hidden="true" />
+            </Button>
+          </Link>
+          <div className="flex gap-1.5">
+            <Button variant="outline" size="sm" onClick={handleShare} className="h-8 w-8 p-0" aria-label="Share invite">
+              <Share2 className="h-3.5 w-3.5" />
+            </Button>
+            {isCreator ? (
+              <Dialog open={deleteOpen} onOpenChange={setDeleteOpen}>
+                <DialogTrigger asChild>
+                  <Button variant="outline" size="sm" className="h-8 w-8 p-0 text-destructive hover:text-destructive" aria-label="Delete league">
+                    <Trash2 className="h-3.5 w-3.5" />
+                  </Button>
+                </DialogTrigger>
+                <DialogContent>
+                  <DialogHeader>
+                    <DialogTitle>Delete League</DialogTitle>
+                    <DialogDescription>
+                      This will permanently delete &quot;{league.name}&quot; and remove all members.
+                    </DialogDescription>
+                  </DialogHeader>
+                  <DialogFooter className="gap-2">
+                    <Button variant="outline" onClick={() => setDeleteOpen(false)}>Cancel</Button>
+                    <Button variant="destructive" onClick={handleDelete} disabled={isPending}>
+                      {isPending ? "Deleting..." : "Delete"}
+                    </Button>
+                  </DialogFooter>
+                </DialogContent>
+              </Dialog>
+            ) : (
+              <Button variant="outline" size="sm" onClick={handleLeave} disabled={isPending} className="h-8 text-xs">
+                Leave
+              </Button>
+            )}
+          </div>
+        </div>
+
+        {/* Title + meta */}
+        <div className="space-y-2">
+          <h1 className="font-display font-bold text-2xl md:text-3xl tracking-tight uppercase truncate">
+            {league.name}
+          </h1>
+          <div className="flex items-center gap-2 flex-wrap">
+            <span className="inline-flex items-center gap-1.5 glass-panel rounded-full px-3 py-1 text-2xs font-semibold text-muted-foreground uppercase tracking-wider">
               <Users className="h-3 w-3" />
-              {members.length}
-            </Badge>
-            <button onClick={copyCode} className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-overlay-subtle border border-overlay-border-hover text-xs text-muted-foreground hover:text-foreground hover:border-primary/30 transition-colors font-mono">
+              {members.length} {members.length === 1 ? "member" : "members"}
+            </span>
+            <button
+              onClick={copyCode}
+              className="inline-flex items-center gap-1.5 glass-panel rounded-full px-3 py-1 text-2xs font-mono text-muted-foreground hover:text-foreground transition-colors"
+              aria-label="Copy invite code"
+            >
               {copied ? <Check className="h-3 w-3 text-status-success" /> : <Copy className="h-3 w-3" />}
               {league.invite_code}
             </button>
           </div>
         </div>
-        <div className="flex gap-1.5 shrink-0">
-          <Button variant="outline" size="sm" onClick={handleShare} className="h-8 w-8 p-0">
-            <Share2 className="h-3.5 w-3.5" />
-          </Button>
-          {isCreator ? (
-            <Dialog open={deleteOpen} onOpenChange={setDeleteOpen}>
-              <DialogTrigger asChild>
-                <Button variant="outline" size="sm" className="h-8 w-8 p-0 text-destructive hover:text-destructive">
-                  <Trash2 className="h-3.5 w-3.5" />
-                </Button>
-              </DialogTrigger>
-              <DialogContent>
-                <DialogHeader>
-                  <DialogTitle>Delete League</DialogTitle>
-                  <DialogDescription>
-                    This will permanently delete &quot;{league.name}&quot; and remove all members.
-                  </DialogDescription>
-                </DialogHeader>
-                <DialogFooter className="gap-2">
-                  <Button variant="outline" onClick={() => setDeleteOpen(false)}>Cancel</Button>
-                  <Button variant="destructive" onClick={handleDelete} disabled={isPending}>
-                    {isPending ? "Deleting..." : "Delete"}
-                  </Button>
-                </DialogFooter>
-              </DialogContent>
-            </Dialog>
-          ) : (
-            <Button variant="outline" size="sm" onClick={handleLeave} disabled={isPending} className="h-8 text-xs">
-              Leave
-            </Button>
-          )}
-        </div>
+
+        {/* Your rank / total points pills (only if user has scored) */}
+        {myLeagueRank != null && myLeagueEntry && (
+          <div className="grid grid-cols-2 gap-3 mt-2">
+            <div className="glass rounded-2xl p-3 flex items-baseline gap-2">
+              <span className="text-2xs uppercase tracking-widest text-muted-foreground font-semibold">Your rank</span>
+              <span className="text-gold-stat text-2xl leading-none ml-auto">
+                #{myLeagueRank}
+                <span className="text-muted-foreground text-xs font-normal ml-1">of {leaderboard.length}</span>
+              </span>
+            </div>
+            <div className="glass rounded-2xl p-3 flex items-baseline gap-2">
+              <span className="text-2xs uppercase tracking-widest text-muted-foreground font-semibold">Points</span>
+              <span className="text-gold-stat text-2xl leading-none ml-auto">
+                {Number(myLeagueEntry.total_points).toLocaleString()}
+              </span>
+            </div>
+          </div>
+        )}
       </div>
 
-      {/* Season Leaderboard — always visible, above tabs */}
-      <div className="rounded-lg glass overflow-hidden">
-        <div className="flex items-center justify-between px-4 py-2.5 border-b border-overlay-border bg-overlay-subtle">
-          <span className="text-xs font-semibold text-muted-foreground uppercase tracking-widest">Season Standings</span>
+      {/* ── Season Standings ────────────────────────────────── */}
+      <div className="space-y-2">
+        <div className="flex items-center justify-between">
+          <span className="text-xs font-semibold text-muted-foreground uppercase tracking-widest">
+            Season Standings
+          </span>
           <Link href={`/leagues/${league.id}/h2h`}>
-            <Button variant="ghost" size="sm" className="gap-1 text-[10px] h-6 px-2">
+            <Button variant="ghost" size="sm" className="gap-1 text-2xs h-6 px-2">
               <Swords className="h-3 w-3" />
               H2H
             </Button>
           </Link>
         </div>
         {leaderboard.length === 0 ? (
-          <p className="text-sm text-muted-foreground text-center py-8">No scores yet. Play some matches!</p>
-        ) : (
-          <div>
-            {leaderboard.map((entry, i) => (
-              <LeaderboardRow
-                key={entry.user_id}
-                entry={{
-                  userId: entry.user_id,
-                  displayName: entry.display_name ?? "Unknown",
-                  totalPoints: Number(entry.total_points),
-                  rank: i + 1,
-                  matchesPlayed: entry.matches_played,
-                  avgPoints: entry.avg_points,
-                }}
-                isCurrentUser={entry.user_id === currentUserId}
-                variant="season"
-              />
-            ))}
+          <div className="glass rounded-2xl p-8">
+            <p className="text-sm text-muted-foreground text-center">No scores yet. Play some matches!</p>
           </div>
+        ) : (
+          <LeaderboardTable rows={tableRows} currentUserId={currentUserId ?? ""} />
         )}
       </div>
 
