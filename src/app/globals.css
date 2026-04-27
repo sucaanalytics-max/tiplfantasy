@@ -69,6 +69,10 @@
   --color-overlay-muted: var(--overlay-muted);
   --color-overlay-border: var(--overlay-border);
   --color-overlay-border-hover: var(--overlay-border-hover);
+
+  /* Captain / VC tokens for Tailwind class generation */
+  --color-captain-gold: var(--captain-gold);
+  --color-vice-silver: var(--vice-silver);
 }
 
 :root {
@@ -156,6 +160,16 @@
   --overlay-muted: oklch(0.15 0.01 60 / 0.05);
   --overlay-border: oklch(0.15 0.01 60 / 0.06);
   --overlay-border-hover: oklch(0.15 0.01 60 / 0.10);
+
+  /* Headshot drop shadow — soft, premium */
+  --shadow-headshot: 0 2px 6px oklch(0.15 0.01 60 / 0.08), 0 8px 20px oklch(0.15 0.01 60 / 0.10);
+  --shadow-headshot-lg: 0 4px 12px oklch(0.15 0.01 60 / 0.10), 0 16px 32px oklch(0.15 0.01 60 / 0.14);
+
+  /* Captain / VC accents (gold = captain, silver = vice) */
+  --captain-gold: oklch(0.78 0.17 86);
+  --captain-gold-glow: oklch(0.78 0.17 86 / 0.35);
+  --vice-silver: oklch(0.72 0.01 260);
+  --vice-silver-glow: oklch(0.72 0.01 260 / 0.35);
 }
 
 .dark {
@@ -239,6 +253,16 @@
   --overlay-muted: oklch(1 0 0 / 0.05);
   --overlay-border: oklch(1 0 0 / 0.06);
   --overlay-border-hover: oklch(1 0 0 / 0.10);
+
+  /* Headshot drop shadow — heavier in dark to read against true black */
+  --shadow-headshot: 0 4px 12px oklch(0 0 0 / 0.45), 0 12px 28px oklch(0 0 0 / 0.30);
+  --shadow-headshot-lg: 0 8px 20px oklch(0 0 0 / 0.55), 0 20px 40px oklch(0 0 0 / 0.40);
+
+  /* Captain / VC accents — slightly hotter in dark */
+  --captain-gold: oklch(0.82 0.18 86);
+  --captain-gold-glow: oklch(0.82 0.18 86 / 0.45);
+  --vice-silver: oklch(0.78 0.01 260);
+  --vice-silver-glow: oklch(0.78 0.01 260 / 0.45);
 }
 
 @layer base {
@@ -536,6 +560,48 @@
   .role-ar {
     border-left: 4px solid oklch(0.65 0.20 145);
     background-color: oklch(0.65 0.20 145 / 0.05);
+  }
+
+  /* ── Premium uplift utilities (Phase 1) ─────────────
+     Headshot rings + soft drop shadows used by <PlayerHeadshot/>
+     and the captain overlay. Theme-aware via the tokens above. */
+  .shadow-headshot {
+    box-shadow: var(--shadow-headshot);
+  }
+  .shadow-headshot-lg {
+    box-shadow: var(--shadow-headshot-lg);
+  }
+  .ring-role-wk {
+    box-shadow: 0 0 0 2px var(--role-wk);
+  }
+  .ring-role-bat {
+    box-shadow: 0 0 0 2px var(--role-bat);
+  }
+  .ring-role-ar {
+    box-shadow: 0 0 0 2px var(--role-ar);
+  }
+  .ring-role-bowl {
+    box-shadow: 0 0 0 2px var(--role-bowl);
+  }
+  /* Team color ring — components set --team-color inline (e.g. style={{ "--team-color": team.color }}) */
+  .ring-team {
+    box-shadow: 0 0 0 2px var(--team-color, transparent);
+  }
+  /* Team color stripe (left) — same convention */
+  .stripe-team-left {
+    border-left: 4px solid var(--team-color, transparent);
+  }
+  /* Captain ring + glow — gold star */
+  .ring-captain {
+    box-shadow:
+      0 0 0 2px var(--captain-gold),
+      0 0 18px var(--captain-gold-glow);
+  }
+  /* Vice-captain ring + glow — silver chevron */
+  .ring-vice {
+    box-shadow:
+      0 0 0 2px var(--vice-silver),
+      0 0 14px var(--vice-silver-glow);
   }
   .role-bowl {
     border-left: 4px solid oklch(0.65 0.20 304);

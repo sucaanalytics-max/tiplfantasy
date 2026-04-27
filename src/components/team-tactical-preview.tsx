@@ -1,6 +1,7 @@
 import { Crown } from "@/components/icons/cricket-icons"
 import { Star } from "lucide-react"
 import { TeamLogo } from "@/components/team-logo"
+import { PlayerHeadshot } from "@/components/player-headshot"
 import { cn } from "@/lib/utils"
 import type { PlayerWithTeam, PlayerRole, MatchWithTeams, TiplMatchEntry } from "@/lib/types"
 
@@ -251,17 +252,8 @@ function CaptainCard({
       </div>
 
       {/* Photo */}
-      {player.image_url ? (
-        // eslint-disable-next-line @next/next/no-img-element
-        <img
-          src={player.image_url}
-          alt={player.name}
-          className="h-14 w-14 rounded-full object-cover ring-2 shrink-0"
-          style={{ boxShadow: `0 0 0 2px ${player.team.color}` }}
-        />
-      ) : (
-        <TeamLogo team={player.team} size="lg" />
-      )}
+      <PlayerHeadshot player={player} size="lg" ring="team" />
+
 
       <div className="flex-1 min-w-0 mt-5">
         <p className="font-display font-bold text-base leading-tight truncate">{player.name}</p>

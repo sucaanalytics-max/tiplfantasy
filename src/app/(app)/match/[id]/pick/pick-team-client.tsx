@@ -30,6 +30,7 @@ import { SegmentedProgressBar } from "@/components/segmented-progress-bar"
 import { CricketField } from "@/components/cricket-field"
 import { Drawer, DrawerClose, DrawerContent, DrawerTrigger, DrawerTitle } from "@/components/ui/drawer"
 import { PlayerStatsDrawer } from "@/components/player-stats-drawer"
+import { PlayerHeadshot } from "@/components/player-headshot"
 import { Confetti } from "@/components/confetti"
 import { TeamSubmitPreview } from "@/components/team-submit-preview"
 import { TeamTacticalPreview } from "@/components/team-tactical-preview"
@@ -348,25 +349,7 @@ export function PickTeamClient({
           className="shrink-0"
           onClick={(e) => { e.stopPropagation(); setStatsPlayerId(player.id) }}
         >
-          {player.image_url ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img
-              src={player.image_url}
-              alt={player.name}
-              className="h-10 w-10 rounded-full object-cover ring-1 ring-overlay-border-hover"
-            />
-          ) : (
-            <span
-              className="h-10 w-10 rounded-full flex items-center justify-center font-display font-bold text-sm ring-1"
-              style={{
-                backgroundColor: `${player.team.color}22`,
-                color: player.team.color,
-                boxShadow: `0 0 0 1px ${player.team.color}55`,
-              }}
-            >
-              {player.name.split(" ").slice(0, 2).map((n) => n[0]?.toUpperCase()).join("")}
-            </span>
-          )}
+          <PlayerHeadshot player={player} size="md" ring="team" />
         </button>
 
         {/* Name + metadata */}
