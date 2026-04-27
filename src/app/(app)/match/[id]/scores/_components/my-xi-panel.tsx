@@ -4,7 +4,10 @@ import { useMemo, useState } from "react"
 import { Badge } from "@/components/ui/badge"
 import { TeamLogo } from "@/components/team-logo"
 import { cn } from "@/lib/utils"
+import { ScoreBreakdownDrawer } from "@/components/score-breakdown-drawer"
 import type { PlayerScoreRow, TeamInfo } from "../scores-client"
+
+type MyXIRow = PlayerScoreRow & { isC: boolean; isVC: boolean; mult: number; effective: number }
 
 const ROLE_COLORS: Record<string, string> = {
   WK: "text-[var(--tw-amber-text)] border-amber-400/30 bg-[var(--tw-amber-bg)]",
@@ -27,6 +30,7 @@ type Props = {
  */
 export function MyXIPanel({ myXI, allPlayerScores, myPlayerSet, home, away }: Props) {
   const [tab, setTab] = useState<"mine" | "all">("mine")
+  const [breakdownRow, setBreakdownRow] = useState<MyXIRow | PlayerScoreRow | null>(null)
 
   const myTotal = useMemo(
     () => Math.round(myXI.reduce((s, p) => s + p.effective, 0)),
@@ -63,7 +67,7 @@ export function MyXIPanel({ myXI, allPlayerScores, myPlayerSet, home, away }: Pr
               You didn&apos;t pick a team for this match.
             </p>
           ) : (
-            <MyXITable rows={myXI} />
+            <MyXITable rows={myXI} onRowClick={setBreakdownRow} />
           )
         ) : (
           <AllPlayersTables
@@ -71,16 +75,24 @@ export function MyXIPanel({ myXI, allPlayerScores, myPlayerSet, home, away }: Pr
             myPlayerSet={myPlayerSet}
             home={home}
             away={away}
+            onRowClick={setBreakdownRow}
           />
         )}
       </div>
+
+      {/* Per-player breakdown drawer */}
+      <ScoreBreakdownDrawer
+        open={breakdownRow !== null}
+        onOpenChange={(o) => { if (!o) setBreakdownRow(null) }}
+        row={breakdownRow}
+      />
     </div>
   )
 }
 
 // ─── My XI table ─────────────────────────────────────────────────────────
 
-function MyXITable({ rows }: { rows: Array<PlayerScoreRow & { isC: boolean; isVC: boolean; mult: number; effective: number }> }) {
+function MyXITable({ rows, onRowClick }: { rows: MyXIRow[]; onRowClick: (row: MyXIRow) => void }) {
   const totalCatches = rows.reduce((s, p) => s + p.catches, 0)
   const totalStumpings = rows.reduce((s, p) => s + p.stumpings, 0)
   const totalRunOuts = rows.reduce((s, p) => s + p.run_outs, 0)
@@ -99,12 +111,18 @@ function MyXITable({ rows }: { rows: Array<PlayerScoreRow & { isC: boolean; isVC
       {rows.map((ps, idx) => {
         const isLast = idx === rows.length - 1
         const bowled = Number(ps.overs_bowled) > 0
+        const hasBreakdown = ps.breakdown && Object.keys(ps.breakdown).length > 0
         return (
-          <div
+          <button
+            type="button"
             key={ps.player_id}
+            onClick={hasBreakdown ? () => onRowClick(ps) : undefined}
+            disabled={!hasBreakdown}
+            aria-label={hasBreakdown ? `Show point breakdown for ${ps.player.name}` : undefined}
             className={cn(
-              "grid grid-cols-[2.5rem_1fr_1.5rem_1.5rem_1.5rem_1.5rem_1px_1.5rem_1.8rem_1.8rem_1.5rem_3.2rem] gap-px items-center px-3 py-1.5 min-w-[420px]",
+              "grid grid-cols-[2.5rem_1fr_1.5rem_1.5rem_1.5rem_1.5rem_1px_1.5rem_1.8rem_1.8rem_1.5rem_3.2rem] gap-px items-center px-3 py-1.5 min-w-[420px] text-left w-full transition-colors",
               !isLast && "border-b border-overlay-border",
+              hasBreakdown && "hover:bg-overlay-subtle cursor-pointer",
             )}
           >
             <div className="flex items-center gap-0.5">
@@ -128,7 +146,7 @@ function MyXITable({ rows }: { rows: Array<PlayerScoreRow & { isC: boolean; isVC
               <span className="text-[13px] font-bold font-display tabular-nums">{ps.effective}</span>
               {ps.mult > 1 && <p className="text-[8px] text-muted-foreground/50">{Number(ps.fantasy_points)}×{ps.mult}</p>}
             </div>
-          </div>
+          </button>
         )
       })}
       {hasField && (
@@ -146,8 +164,14 @@ function MyXITable({ rows }: { rows: Array<PlayerScoreRow & { isC: boolean; isVC
 // ─── All players (per-team tables) ──────────────────────────────────────
 
 function AllPlayersTables({
-  allPlayerScores, myPlayerSet, home, away,
-}: { allPlayerScores: PlayerScoreRow[]; myPlayerSet: Set<string>; home: TeamInfo; away: TeamInfo }) {
+  allPlayerScores, myPlayerSet, home, away, onRowClick,
+}: {
+  allPlayerScores: PlayerScoreRow[]
+  myPlayerSet: Set<string>
+  home: TeamInfo
+  away: TeamInfo
+  onRowClick: (row: PlayerScoreRow) => void
+}) {
   const homePlayers = allPlayerScores.filter((ps) => ps.player.team.short_name === home.short_name)
   const awayPlayers = allPlayerScores.filter((ps) => ps.player.team.short_name === away.short_name)
 
@@ -168,8 +192,21 @@ function AllPlayersTables({
             {sorted.map((ps, idx) => {
               const isMine = myPlayerSet.has(ps.player_id)
               const isLast = idx === sorted.length - 1
+              const hasBreakdown = ps.breakdown && Object.keys(ps.breakdown).length > 0
               return (
-                <div key={ps.player_id} className={cn("px-3 py-2", !isLast && "border-b border-overlay-border", isMine && "bg-primary/5")}>
+                <button
+                  type="button"
+                  key={ps.player_id}
+                  onClick={hasBreakdown ? () => onRowClick(ps) : undefined}
+                  disabled={!hasBreakdown}
+                  aria-label={hasBreakdown ? `Show point breakdown for ${ps.player.name}` : undefined}
+                  className={cn(
+                    "px-3 py-2 w-full text-left transition-colors",
+                    !isLast && "border-b border-overlay-border",
+                    isMine && "bg-primary/5",
+                    hasBreakdown && "hover:bg-overlay-subtle cursor-pointer",
+                  )}
+                >
                   <div className="flex items-center gap-2">
                     <Badge variant="outline" className={cn("text-[8px] px-1 py-0 h-[14px] border leading-none shrink-0", ROLE_COLORS[ps.player.role])}>{ps.player.role}</Badge>
                     <span className="text-[13px] font-semibold truncate min-w-0 flex-1">
@@ -183,7 +220,7 @@ function AllPlayersTables({
                     </span>
                     <span className="text-base font-bold font-display tabular-nums shrink-0 ml-2 min-w-[2.5rem] text-right">{Number(ps.fantasy_points)}</span>
                   </div>
-                </div>
+                </button>
               )
             })}
           </div>

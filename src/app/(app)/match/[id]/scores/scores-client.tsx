@@ -40,7 +40,7 @@ export type PlayerScoreRow = {
   breakdown: Record<string, number> | null
   dismissal?: string | null
   batting_position?: number | null
-  player: { name: string; role: string; team_id: string; team: { short_name: string; color: string } }
+  player: { name: string; role: string; team_id: string; image_url: string | null; team: { short_name: string; color: string } }
 }
 
 export type UserScoreRow = {

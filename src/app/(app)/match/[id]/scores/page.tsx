@@ -28,7 +28,7 @@ export default async function ScoresPage({
       .single(),
     admin
       .from("match_player_scores")
-      .select("*, player:players(name, role, team_id, team:teams(short_name, color))")
+      .select("*, player:players(name, role, team_id, image_url, team:teams(short_name, color))")
       .eq("match_id", id)
       .order("fantasy_points", { ascending: false })
       .limit(50),

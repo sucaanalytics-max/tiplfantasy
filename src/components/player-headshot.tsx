@@ -1,6 +1,5 @@
 import Image from "next/image"
 import { cn } from "@/lib/utils"
-import type { PlayerWithTeam, Player, Team } from "@/lib/types"
 
 const SIZE = {
   sm: 32,
@@ -20,8 +19,17 @@ const RING_BY_ROLE: Record<string, string> = {
 type Size = keyof typeof SIZE
 type Ring = "team" | "role" | "captain" | "vice" | "none"
 
+/** Minimum shape needed to render a player avatar. Accepts any object with
+ *  `name` + (optional) `image_url` + (optional) `role` + `team.color`. */
+export type HeadshotPlayer = {
+  name: string
+  image_url?: string | null
+  role?: string | null
+  team: { color: string; short_name?: string }
+}
+
 type Props = {
-  player: PlayerWithTeam | (Player & { team: Pick<Team, "color" | "short_name"> })
+  player: HeadshotPlayer
   size?: Size
   ring?: Ring
   shadow?: boolean
@@ -42,7 +50,7 @@ export function PlayerHeadshot({
     ring === "team"
       ? "ring-team"
       : ring === "role"
-      ? RING_BY_ROLE[player.role] ?? ""
+      ? (player.role ? RING_BY_ROLE[player.role] ?? "" : "")
       : ring === "captain"
       ? "ring-captain"
       : ring === "vice"
