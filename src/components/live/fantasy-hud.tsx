@@ -45,7 +45,7 @@ export function FantasyHUD({
             of {totalUsers}
           </span>
           <span className={cn(
-            "ml-2 text-lg font-bold font-display tabular-nums",
+            "ml-2 text-gold-stat text-lg leading-none",
             isLive && "animate-pulse-subtle",
           )}>
             {totalPoints}

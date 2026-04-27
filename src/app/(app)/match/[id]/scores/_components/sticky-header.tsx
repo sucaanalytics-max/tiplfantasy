@@ -3,7 +3,6 @@
 import Link from "next/link"
 import { ArrowLeft } from "lucide-react"
 import { Button } from "@/components/ui/button"
-import { TeamLogo } from "@/components/team-logo"
 import { CricketStrip } from "@/components/live/cricket-strip"
 import { FantasyHUD } from "@/components/live/fantasy-hud"
 
@@ -32,51 +31,41 @@ type Props = {
 }
 
 /**
- * Status-aware sticky group: app row + cricket strip + my-strip.
- * The whole group is `position: sticky; top: 0` so my rank/pts and the
- * live score never leave the screen during scroll.
+ * Sticky live-state bar shown below the hero band:
+ *   nav back + cricket strip (live balls / result) + my fantasy HUD.
+ * The whole group is `position: sticky; top: 0` so during scroll the user
+ * always sees their rank/pts and the live score.
  */
 export function StickyHeader({
-  match, home, away, lastBalls,
+  match, home: _home, away: _away, lastBalls,
   myRank, myPoints, totalUsers, leaderPoints,
   captainName, captainPoints, vcName, vcPoints,
 }: Props) {
   const isLive = match.status === "live"
 
   return (
-    <div className="sticky top-0 z-30 bg-background">
-      {/* App row */}
-      <div className="relative overflow-hidden">
-        <div
-          className="absolute inset-0 pointer-events-none opacity-15"
-          style={{ background: `linear-gradient(135deg, ${home.color} 0%, transparent 40%, transparent 60%, ${away.color} 100%)` }}
-        />
-        <div className="relative px-4 pt-3 pb-2">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2 min-w-0">
-              <Link href="/matches">
-                <Button variant="ghost" size="sm" className="h-8 w-8 p-0 shrink-0">
-                  <ArrowLeft className="h-4 w-4" />
-                </Button>
-              </Link>
-              <div className="flex items-center gap-2 min-w-0">
-                <TeamLogo team={home} size="md" />
-                <span className="text-2xs font-bold text-muted-foreground/50">VS</span>
-                <TeamLogo team={away} size="md" />
-              </div>
-              <span className="text-xs text-muted-foreground shrink-0">M#{match.match_number}</span>
-            </div>
-            {isLive && (
-              <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-status-live/15 border border-status-live/20">
-                <span className="h-2 w-2 rounded-full bg-status-live animate-pulse" />
-                <span className="text-2xs font-bold uppercase tracking-wider text-status-live">LIVE</span>
-              </div>
-            )}
-            {(match.status === "completed" || match.status === "no_result") && match.result_summary && (
-              <span className="text-[10px] text-muted-foreground max-w-[160px] text-right truncate">{match.result_summary}</span>
-            )}
-          </div>
-        </div>
+    <div className="sticky top-0 z-30 bg-background border-b border-overlay-border">
+      {/* Compact nav row */}
+      <div className="px-3 py-1.5 flex items-center gap-2 bg-overlay-subtle">
+        <Link href="/matches">
+          <Button variant="ghost" size="sm" className="h-7 w-7 p-0 shrink-0">
+            <ArrowLeft className="h-4 w-4" />
+          </Button>
+        </Link>
+        <span className="text-2xs uppercase tracking-widest text-muted-foreground font-semibold">
+          Match {match.match_number}
+        </span>
+        {isLive && (
+          <span className="ml-auto inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-status-live/15">
+            <span className="h-1.5 w-1.5 rounded-full bg-status-live animate-pulse" />
+            <span className="text-2xs font-bold uppercase tracking-wider text-status-live">LIVE</span>
+          </span>
+        )}
+        {(match.status === "completed" || match.status === "no_result") && (
+          <span className="ml-auto inline-flex items-center px-2 py-0.5 rounded-full tag-pill-gold">
+            FINAL
+          </span>
+        )}
       </div>
 
       {/* Cricket strip — only renders when live or completed-with-summary */}

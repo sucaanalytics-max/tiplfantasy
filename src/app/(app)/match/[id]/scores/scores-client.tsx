@@ -8,6 +8,8 @@ import { cn } from "@/lib/utils"
 import { type PlayerLite, type PlayerScore, type Selection } from "@/lib/rivalry"
 import { buildAnalysis } from "@/lib/match-analysis"
 
+import { MatchHeroBand } from "@/components/match-hero-band"
+import type { MatchStatus } from "@/lib/types"
 import { StickyHeader } from "./_components/sticky-header"
 import { StandingsTable } from "./_components/standings-table"
 import { RivalPanel } from "./_components/rival-panel"
@@ -18,7 +20,7 @@ import { useRankDelta } from "./_hooks/use-rank-delta"
 
 // ─── Types (re-exported for page.tsx + panels) ─────────────────────────
 
-export type TeamInfo = { short_name: string; color: string; logo_url: string | null }
+export type TeamInfo = { short_name: string; name?: string | null; color: string; logo_url: string | null }
 
 export type PlayerScoreRow = {
   id: string
@@ -65,6 +67,7 @@ type Props = {
     result_summary: string | null
     cricapi_match_id: string | null
     start_time: string
+    venue: string
   }
   home: TeamInfo
   away: TeamInfo
@@ -252,23 +255,38 @@ export function ScoresClient({
   ])
 
   return (
-    <div className="max-w-3xl mx-auto pb-12">
+    <div className="pb-12">
       {isLive && <LiveRefresher interval={30000} />}
 
-      <StickyHeader
-        match={match}
-        home={home}
-        away={away}
-        lastBalls={lastBalls}
-        myRank={myScore?.rank ?? null}
-        myPoints={myPoints}
-        totalUsers={userScores.length}
-        leaderPoints={leaderPoints}
-        captainName={captainName}
-        captainPoints={captainPoints}
-        vcName={vcName}
-        vcPoints={vcPoints}
+      {/* Full-bleed hero band — diagonal team-color split, status chip, venue */}
+      <MatchHeroBand
+        match={{
+          match_number: match.match_number,
+          status: match.status as MatchStatus,
+          result_summary: match.result_summary,
+          cricapi_match_id: match.cricapi_match_id,
+          start_time: match.start_time,
+          venue: match.venue,
+          team_home: home,
+          team_away: away,
+        }}
       />
+
+      <div className="max-w-3xl mx-auto">
+        <StickyHeader
+          match={match}
+          home={home}
+          away={away}
+          lastBalls={lastBalls}
+          myRank={myScore?.rank ?? null}
+          myPoints={myPoints}
+          totalUsers={userScores.length}
+          leaderPoints={leaderPoints}
+          captainName={captainName}
+          captainPoints={captainPoints}
+          vcName={vcName}
+          vcPoints={vcPoints}
+        />
 
       {userScores.length === 0 ? (
         <div className="px-4 pt-6">
@@ -326,6 +344,7 @@ export function ScoresClient({
           {analysis && <OwnershipMatrix analysis={analysis} />}
         </>
       )}
+      </div>
     </div>
   )
 }

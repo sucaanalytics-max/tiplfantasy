@@ -23,7 +23,7 @@ export default async function ScoresPage({
   const [matchRes, playerScoresRes, userScoresRes, mySelectionRes, allSelectionsRes, captainPicksRes, vcPicksRes, banterRes, myLeaguesRes, snapshotsRes] = await Promise.all([
     admin
       .from("matches")
-      .select("*, team_home:teams!matches_team_home_id_fkey(short_name, color, logo_url), team_away:teams!matches_team_away_id_fkey(short_name, color, logo_url)")
+      .select("*, team_home:teams!matches_team_home_id_fkey(name, short_name, color, logo_url), team_away:teams!matches_team_away_id_fkey(name, short_name, color, logo_url)")
       .eq("id", id)
       .single(),
     admin
@@ -153,6 +153,7 @@ export default async function ScoresPage({
           result_summary: match.result_summary,
           cricapi_match_id: match.cricapi_match_id,
           start_time: match.start_time,
+          venue: match.venue ?? "",
         }}
         home={home}
         away={away}
