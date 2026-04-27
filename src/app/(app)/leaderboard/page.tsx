@@ -14,6 +14,7 @@ import { EmptyState } from "@/components/empty-state"
 import { PageTransition } from "@/components/page-transition"
 import { RaceChart } from "@/components/charts/race-chart"
 import { LeaderboardTable, type LeaderboardRow } from "@/components/leaderboard-table"
+import { MedalGold, MedalSilver, MedalBronze } from "@/components/icons/medal-icons"
 import { buildRaceData } from "@/lib/race-data"
 import type { LeagueMemberStats } from "@/lib/types"
 
@@ -203,8 +204,8 @@ export default async function LeaderboardPage({
                 <div className="divide-y divide-overlay-border">
                   {data.slice(0, 3).map((entry, i) => (
                     <div key={entry.user_id} className="flex items-center gap-2 px-3 py-2">
-                      <span className="text-xs w-4 text-center shrink-0">
-                        {i === 0 ? "🥇" : i === 1 ? "🥈" : "🥉"}
+                      <span className="w-5 h-5 shrink-0 flex items-center justify-center">
+                        {i === 0 ? <MedalGold className="h-5 w-5" /> : i === 1 ? <MedalSilver className="h-5 w-5" /> : <MedalBronze className="h-5 w-5" />}
                       </span>
                       <span className="text-sm flex-1 truncate">{entry.display_name}</span>
                       <span className="text-sm font-bold font-display tabular-nums shrink-0">{getValue(entry)}</span>

@@ -99,7 +99,7 @@ export default async function ProfilePage() {
     <PageTransition>
     <div className="p-4 md:p-6 space-y-6 max-w-2xl lg:max-w-4xl">
       {/* ── Hero: avatar + name + rank + pts ──────────────────── */}
-      <div className="flex items-center gap-5 py-2">
+      <div className="relative flex items-center gap-5 py-4 px-4 -mx-4 md:-mx-6 md:px-6 mesh-gradient-bg-strong rounded-3xl">
         <div className={cn(
           "h-24 w-24 rounded-full flex items-center justify-center shrink-0 ring-2 shadow-lg",
           getAvatarColor(profile?.display_name ?? "U"),

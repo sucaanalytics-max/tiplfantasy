@@ -614,6 +614,23 @@
     font-variant-numeric: tabular-nums;
   }
 
+  /* Background mesh gradient — abstract multi-radial backdrop using brand
+     tokens. Theme-aware via oklch(from var(...)). Use sparingly: hero
+     sections, empty states, post-match celebration cards. */
+  .mesh-gradient-bg {
+    background-image:
+      radial-gradient(at 20% 0%, oklch(from var(--primary) l c h / 0.10) 0px, transparent 50%),
+      radial-gradient(at 80% 0%, oklch(from var(--accent) l c h / 0.08) 0px, transparent 50%),
+      radial-gradient(at 0% 60%, oklch(from var(--primary) l c h / 0.06) 0px, transparent 50%),
+      radial-gradient(at 100% 100%, oklch(from var(--accent) l c h / 0.05) 0px, transparent 50%);
+  }
+  .mesh-gradient-bg-strong {
+    background-image:
+      radial-gradient(at 30% 10%, oklch(from var(--primary) l c h / 0.18) 0px, transparent 55%),
+      radial-gradient(at 80% 30%, oklch(from var(--accent) l c h / 0.14) 0px, transparent 55%),
+      radial-gradient(at 10% 90%, oklch(from var(--primary) l c h / 0.12) 0px, transparent 50%);
+  }
+
   /* Pick Your Team CTA pill — refined gradient + crisp shadow */
   .cta-pick-pill {
     background: linear-gradient(
