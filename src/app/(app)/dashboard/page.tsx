@@ -8,15 +8,12 @@ import { format } from "date-fns"
 import { MatchCard } from "@/components/match-card"
 import { Users, ChevronRight } from "lucide-react"
 import { Trophy } from "@/components/icons/trophy"
-import { Crown } from "@/components/icons/cricket-icons"
 import { getMyLeagues } from "@/actions/leagues"
-import { getInitials, getAvatarColor } from "@/lib/avatar"
-import { RankBadge } from "@/components/rank-badge"
 import { PageTransition } from "@/components/page-transition"
 import { HeroMatchBanner } from "@/components/hero-match-banner"
 import { FormStrip } from "@/components/form-strip"
 import { RecentMatchRecap } from "@/components/recent-match-recap"
-import { cn } from "@/lib/utils"
+import { StandingsTable } from "@/components/standings-table"
 
 export default async function DashboardPage() {
   const [user, supabase] = await Promise.all([getAuthUser(), createClient()])
@@ -209,56 +206,11 @@ export default async function DashboardPage() {
                   </Link>
                 </div>
 
-                <div className="glass rounded-2xl overflow-hidden divide-y divide-overlay-border stagger-children">
-                  {/* Header row — shares grid columns with data rows for vertical alignment */}
-                  <div className="standings-grid px-4 py-2 text-[10px] uppercase tracking-wider text-muted-foreground font-medium bg-overlay-subtle">
-                    <span className="text-center">#</span>
-                    <span />
-                    <span>Player</span>
-                    <span className="text-right tabular-nums">Pts</span>
-                    <span className="text-right tabular-nums">Gap</span>
-                  </div>
-
-                  {(top6 ?? []).map((entry, idx) => {
-                    const e = entry as unknown as {
-                      user_id: string
-                      display_name: string
-                      total_points: number
-                      season_rank: number
-                    }
-                    const isMe = e.user_id === user.id
-                    const leader = (top6 ?? [])[0] as unknown as { total_points: number } | undefined
-                    const gap = idx === 0 || !leader ? null : Number(e.total_points) - Number(leader.total_points)
-
-                    return (
-                      <StandingsRow
-                        key={e.user_id}
-                        rank={e.season_rank}
-                        displayName={e.display_name}
-                        isMe={isMe}
-                        gap={gap}
-                        points={e.total_points}
-                      />
-                    )
-                  })}
-
-                  {myRank && myRank.season_rank > 6 && (() => {
-                    const leader = (top6 ?? [])[0] as unknown as { total_points: number } | undefined
-                    const gap = leader ? Number(myRank.total_points) - Number(leader.total_points) : null
-                    return (
-                      <>
-                        <div className="text-center py-1.5 text-muted-foreground text-xs">···</div>
-                        <StandingsRow
-                          rank={myRank.season_rank}
-                          displayName={myRank.display_name}
-                          isMe
-                          gap={gap}
-                          points={myRank.total_points}
-                        />
-                      </>
-                    )
-                  })()}
-                </div>
+                <StandingsTable
+                  entries={(top6 ?? []) as unknown as Parameters<typeof StandingsTable>[0]["entries"]}
+                  currentUserId={user.id}
+                  myRank={myRank as unknown as Parameters<typeof StandingsTable>[0]["myRank"]}
+                />
               </div>
 
               {/* My Leagues */}
@@ -302,67 +254,3 @@ export default async function DashboardPage() {
   )
 }
 
-function StandingsRow({
-  rank,
-  displayName,
-  isMe,
-  gap,
-  points,
-}: {
-  rank: number
-  displayName: string
-  isMe: boolean
-  gap: number | null
-  points: number
-}) {
-  const top1 = rank === 1
-  const top2 = rank === 2
-  const top3 = rank === 3
-
-  return (
-    <div className={cn("standings-grid px-4 py-3 transition-colors", isMe && "row-highlight-you")}>
-      {/* Rank cell */}
-      <div className="flex items-center justify-center">
-        {top1 ? (
-          <span className="relative inline-flex items-center justify-center h-7 w-7 rounded-full bg-accent text-accent-foreground ring-2 ring-accent shadow-[0_0_12px_oklch(0.78_0.17_86/0.4)]">
-            <Crown className="h-3.5 w-3.5" />
-          </span>
-        ) : top2 ? (
-          <span className="inline-flex items-center justify-center h-7 w-7 rounded-full bg-[oklch(0.72_0.01_260)] text-foreground/90 font-display font-bold text-xs ring-2 ring-[oklch(0.72_0.01_260)] shadow-sm">
-            {rank}
-          </span>
-        ) : top3 ? (
-          <span className="inline-flex items-center justify-center h-7 w-7 rounded-full bg-[oklch(0.63_0.10_55)] text-white font-display font-bold text-xs ring-2 ring-[oklch(0.63_0.10_55)] shadow-sm">
-            {rank}
-          </span>
-        ) : (
-          <span className="font-display font-semibold text-sm text-muted-foreground tabular-nums">{rank}</span>
-        )}
-      </div>
-
-      {/* Avatar */}
-      <div className={cn("h-8 w-8 rounded-full flex items-center justify-center shrink-0", getAvatarColor(displayName))}>
-        <span className="text-white text-xs font-semibold">{getInitials(displayName)}</span>
-      </div>
-
-      {/* Name */}
-      <span className={cn("text-sm truncate", isMe && "font-semibold")}>
-        {displayName}
-        {isMe && " (you)"}
-      </span>
-
-      {/* Pts (gold) */}
-      <span className="text-gold-stat text-base text-right">{points.toLocaleString()}</span>
-
-      {/* Gap to leader */}
-      <span
-        className={cn(
-          "text-right tabular-nums text-xs",
-          gap === null ? "text-muted-foreground/60" : "text-rose-400/80"
-        )}
-      >
-        {gap === null ? "—" : `−${Math.round(Math.abs(gap)).toLocaleString()}`}
-      </span>
-    </div>
-  )
-}
