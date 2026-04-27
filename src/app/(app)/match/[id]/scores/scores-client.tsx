@@ -153,6 +153,22 @@ export function ScoresClient({
 
   const rankDeltas = useRankDelta(filteredScores.map((s) => ({ user_id: s.user_id, rank: s.rank })))
 
+  // Selections scoped to active league filter — reused by TopScorers and analysis.
+  const scopedSelections = useMemo(() => {
+    if (!leagueFilter) return allSelections
+    const league = userLeagues.find((l) => l.id === leagueFilter)
+    if (!league) return allSelections
+    const memberIds = new Set(league.memberIds)
+    return allSelections.filter((s) => memberIds.has(s.user_id))
+  }, [allSelections, leagueFilter, userLeagues])
+
+  // user_id → display_name map, derived from userScores.
+  const userNamesById = useMemo(() => {
+    const m = new Map<string, string>()
+    for (const u of userScores) m.set(u.user_id, u.profile.display_name)
+    return m
+  }, [userScores])
+
   const standingsRows = useMemo(() => filteredScores.map((s, idx) => ({
     user_id: s.user_id,
     display_name: s.profile.display_name,
@@ -164,17 +180,7 @@ export function ScoresClient({
 
   // Full league ownership matrix.
   const analysis = useMemo(() => {
-    if (allSelections.length < 2) return null
-    const memberIds = leagueFilter
-      ? new Set(userLeagues.find((l) => l.id === leagueFilter)?.memberIds ?? [])
-      : null
-    const scopedSelections = memberIds
-      ? allSelections.filter((s) => memberIds.has(s.user_id))
-      : allSelections
     if (scopedSelections.length < 2) return null
-
-    const userNameById = new Map<string, string>()
-    for (const u of userScores) userNameById.set(u.user_id, u.profile.display_name)
 
     const playerLookup = (pid: string) => {
       const ps = psMap.get(pid)
@@ -189,7 +195,7 @@ export function ScoresClient({
         .map(playerLookup)
         .filter((p): p is { id: string; name: string; role: string; team: string } => Boolean(p))
       return {
-        displayName: userNameById.get(s.user_id) ?? "?",
+        displayName: userNamesById.get(s.user_id) ?? "?",
         captainId: s.captain_id,
         viceCaptainId: s.vice_captain_id,
         captainName: s.captain_id ? captainPicks[s.user_id]?.name ?? null : null,
@@ -200,7 +206,7 @@ export function ScoresClient({
 
     if (inputs.length < 2) return null
     return buildAnalysis(`M#${match.match_number}`, inputs)
-  }, [allSelections, leagueFilter, userLeagues, userScores, psMap, rosterMap, captainPicks, vcPicks, match.match_number])
+  }, [scopedSelections, userNamesById, psMap, rosterMap, captainPicks, vcPicks, match.match_number])
 
   // Toggle row expansion.
   const onRowClick = useCallback((userId: string) => {
@@ -339,7 +345,13 @@ export function ScoresClient({
             </p>
           )}
 
-          <TopScorers playerScores={playerScores} myPlayerSet={myPlayerSet} />
+          <TopScorers
+            playerScores={playerScores}
+            myPlayerSet={myPlayerSet}
+            scopedSelections={scopedSelections}
+            userNamesById={userNamesById}
+            currentUserId={currentUserId}
+          />
 
           {analysis && <OwnershipMatrix analysis={analysis} />}
         </>
