@@ -14,6 +14,7 @@ import { HeroMatchBanner } from "@/components/hero-match-banner"
 import { FormStrip } from "@/components/form-strip"
 import { RecentMatchRecap } from "@/components/recent-match-recap"
 import { StandingsTable } from "@/components/standings-table"
+import { PodiumCard } from "@/components/podium-card"
 
 export default async function DashboardPage() {
   const [user, supabase] = await Promise.all([getAuthUser(), createClient()])
@@ -206,6 +207,15 @@ export default async function DashboardPage() {
                   </Link>
                 </div>
 
+                {/* Top-3 visual podium (hero) */}
+                {(top6?.length ?? 0) > 0 && (
+                  <PodiumCard
+                    entries={(top6 ?? []) as unknown as Parameters<typeof PodiumCard>[0]["entries"]}
+                    currentUserId={user.id}
+                  />
+                )}
+
+                {/* Full top-6 table (data) */}
                 <StandingsTable
                   entries={(top6 ?? []) as unknown as Parameters<typeof StandingsTable>[0]["entries"]}
                   currentUserId={user.id}
