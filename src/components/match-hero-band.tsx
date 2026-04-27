@@ -25,9 +25,10 @@ export type HeroBandMatch = {
 
 interface Props {
   match: HeroBandMatch
+  compact?: boolean
 }
 
-export function MatchHeroBand({ match }: Props) {
+export function MatchHeroBand({ match, compact = false }: Props) {
   const home = match.team_home
   const away = match.team_away
   const isLive = match.status === "live"
@@ -36,6 +37,74 @@ export function MatchHeroBand({ match }: Props) {
   const tag = isLive ? "live" : isCompleted ? "summary" : "preview"
   const homeFullName = home.name ?? home.short_name
   const awayFullName = away.name ?? away.short_name
+
+  if (compact) {
+    return (
+      <div className="relative h-[140px] md:h-[160px] w-full overflow-hidden">
+        {/* Diagonal team-color halves */}
+        <div
+          className="absolute inset-0 diagonal-half-home"
+          style={{ background: `linear-gradient(135deg, ${home.color} 0%, ${home.color}cc 100%)` }}
+          aria-hidden
+        />
+        <div
+          className="absolute inset-0 diagonal-half-away"
+          style={{ background: `linear-gradient(135deg, ${away.color}cc 0%, ${away.color} 100%)` }}
+          aria-hidden
+        />
+
+        {/* Subtle dark vignette */}
+        <div
+          className="absolute inset-0 pointer-events-none"
+          style={{ background: "radial-gradient(ellipse 60% 60% at 50% 100%, rgba(0,0,0,0.4) 0%, transparent 70%)" }}
+          aria-hidden
+        />
+
+        {/* Status tag pill (top-right) */}
+        <div className="absolute top-3 right-3 z-10">
+          {tag === "live" && (
+            <span className="tag-pill-gold !bg-status-live !text-white">
+              <span className="relative inline-flex h-1.5 w-1.5">
+                <span className="absolute inline-flex h-full w-full rounded-full bg-white opacity-75 animate-ping" />
+                <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-white" />
+              </span>
+              LIVE
+            </span>
+          )}
+          {tag === "preview" && <span className="tag-pill-gold">PREVIEW</span>}
+          {tag === "summary" && <span className="tag-pill-gold">SUMMARY</span>}
+        </div>
+
+        {/* Match number (top-left) */}
+        <div className="absolute top-3 left-3 z-10">
+          <span className="font-display font-bold text-2xs text-white/85 tracking-widest uppercase">
+            Match {match.match_number}
+          </span>
+        </div>
+
+        {/* Team identity blocks — logo + short_name nameplate */}
+        <div className="absolute inset-0 grid grid-cols-2 z-[5]">
+          <div className="flex items-center justify-center gap-2 px-3 pt-4">
+            <TeamLogo team={home} size="lg" className="drop-shadow-2xl" />
+            <span className="font-display font-bold text-white text-xl tracking-wider drop-shadow">
+              {home.short_name}
+            </span>
+          </div>
+          <div className="flex items-center justify-center gap-2 px-3 pt-4">
+            <span className="font-display font-bold text-white text-xl tracking-wider drop-shadow">
+              {away.short_name}
+            </span>
+            <TeamLogo team={away} size="lg" className="drop-shadow-2xl" />
+          </div>
+        </div>
+
+        {/* Centered VS badge (smaller) */}
+        <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-10 pt-4">
+          <span className="vs-badge-hero !w-11 !h-11 !text-sm">VS</span>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div className="relative h-[320px] md:h-[380px] w-full overflow-hidden">

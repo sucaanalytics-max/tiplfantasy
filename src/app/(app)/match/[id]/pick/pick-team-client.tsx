@@ -17,6 +17,7 @@ import {
 } from "lucide-react"
 import { FormIcon } from "@/components/form-icon"
 import { TeamLogo } from "@/components/team-logo"
+import { MatchHeroBand } from "@/components/match-hero-band"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Card } from "@/components/ui/card"
@@ -657,54 +658,86 @@ export function PickTeamClient({
   return (
     <div className="min-h-dvh pb-[calc(10rem+env(safe-area-inset-bottom))] md:pb-28 lg:pb-0">
       {showConfetti && <Confetti />}
-      {/* ── Sticky Header ─────────────────────────────── */}
+
+      {/* ── Compact hero band — non-sticky, scrolls away ───────── */}
+      <div className="relative">
+        <MatchHeroBand
+          match={{
+            match_number: match.match_number,
+            status: match.status,
+            result_summary: match.result_summary ?? null,
+            cricapi_match_id: (match as unknown as { cricapi_match_id?: string | null }).cricapi_match_id ?? null,
+            start_time: match.start_time,
+            venue: match.venue,
+            team_home: match.team_home,
+            team_away: match.team_away,
+          }}
+          compact
+        />
+        {/* Back button + countdown overlaid on hero */}
+        <button
+          onClick={() => router.back()}
+          className="absolute top-3 left-1/2 -translate-x-1/2 z-20 hidden"
+          aria-hidden
+        />
+      </div>
+
+      {/* ── Sticky picker context bar ─────────────────────────── */}
       <div className="sticky top-0 z-30 bg-background border-b border-overlay-border">
 
-        {/* Row 1: Back + Match banner + Credits */}
-        <div className="px-4 pt-3 pb-2">
-          <div className="flex items-center justify-between mb-2">
-            <button
-              onClick={() => router.back()}
-              className="flex items-center gap-1 text-xs text-muted-foreground"
-            >
-              <ChevronLeft className="h-4 w-4" />
-            </button>
+        {/* Row 1: Picker pills (X/11 · team counts · countdown) */}
+        <div className="px-3 pt-3 pb-2 flex items-center gap-2 overflow-x-auto scrollbar-hide">
+          <button
+            onClick={() => router.back()}
+            className="shrink-0 h-8 w-8 rounded-full glass-panel flex items-center justify-center text-muted-foreground"
+            aria-label="Back"
+          >
+            <ChevronLeft className="h-4 w-4" />
+          </button>
+
+          {/* Players X/11 pill */}
+          <div className="glass-panel rounded-full px-3 py-1.5 flex items-center gap-1.5 shrink-0">
+            <span className="text-2xs uppercase tracking-wider text-muted-foreground font-medium">Players</span>
+            <span className="text-gold-stat text-base leading-none">{selectedIds.size}<span className="text-muted-foreground text-xs">/11</span></span>
+          </div>
+
+          {/* Home team count pill */}
+          <div
+            className="glass-panel rounded-full px-3 py-1.5 flex items-center gap-1.5 shrink-0"
+            style={{ borderColor: `${match.team_home.color}55` }}
+          >
+            <TeamLogo team={match.team_home} size="sm" />
+            <span className="text-2xs font-bold" style={{ color: match.team_home.color }}>
+              {(match.team_home as unknown as { short_name: string }).short_name}
+            </span>
+            <span className="font-display font-bold text-sm tabular-nums">
+              {teamCount.get(match.team_home_id) ?? 0}
+            </span>
+          </div>
+
+          {/* Away team count pill */}
+          <div
+            className="glass-panel rounded-full px-3 py-1.5 flex items-center gap-1.5 shrink-0"
+            style={{ borderColor: `${match.team_away.color}55` }}
+          >
+            <TeamLogo team={match.team_away} size="sm" />
+            <span className="text-2xs font-bold" style={{ color: match.team_away.color }}>
+              {(match.team_away as unknown as { short_name: string }).short_name}
+            </span>
+            <span className="font-display font-bold text-sm tabular-nums">
+              {teamCount.get(match.team_away_id) ?? 0}
+            </span>
+          </div>
+
+          {/* Countdown pill */}
+          <div className="glass-panel rounded-full px-3 py-1.5 flex items-center gap-1.5 shrink-0 ml-auto">
             <CountdownTimer targetTime={match.start_time} variant="compact" />
           </div>
+        </div>
 
-          {/* Teams + Player count + Credits */}
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="flex items-center gap-1.5">
-                <TeamLogo team={match.team_home} size="md" />
-                <span className="text-xs font-bold" style={{ color: match.team_home.color }}>{(match.team_home as unknown as { short_name: string }).short_name}</span>
-              </div>
-              <span className="text-lg font-bold font-display tabular-nums">
-                {teamCount.get(match.team_home_id) ?? 0}
-              </span>
-            </div>
-
-            <div className="flex flex-col items-center">
-              <span className="text-2xs text-muted-foreground uppercase tracking-wider">Players</span>
-              <span className="text-xl font-bold font-display tabular-nums">{selectedIds.size}<span className="text-muted-foreground text-sm">/11</span></span>
-            </div>
-
-            <div className="flex items-center gap-3">
-              <span className="text-lg font-bold font-display tabular-nums">
-                {teamCount.get(match.team_away_id) ?? 0}
-              </span>
-              <div className="flex items-center gap-1.5">
-                <span className="text-xs font-bold" style={{ color: match.team_away.color }}>{(match.team_away as unknown as { short_name: string }).short_name}</span>
-                <TeamLogo team={match.team_away} size="md" />
-              </div>
-            </div>
-          </div>
-
-          {/* Max 7 per team hint */}
-          <p className="text-center text-2xs text-muted-foreground mt-1">Max 7 players from a team</p>
-
-          {/* Segmented composition bar (Dream11 style) */}
-          <div className="flex gap-[2px] mt-2 h-2 rounded-full overflow-hidden bg-border/30">
+        {/* Segmented composition bar (Dream11 style) */}
+        <div className="px-4 pb-2">
+          <div className="flex gap-[2px] h-2 rounded-full overflow-hidden bg-border/30">
             {Array.from({ length: 11 }).map((_, i) => {
               const player = selectedPlayers[i]
               const roleColor = player ? ({
@@ -721,6 +754,7 @@ export function PickTeamClient({
               )
             })}
           </div>
+          <p className="text-center text-[10px] text-muted-foreground mt-1">Max 7 from a team</p>
         </div>
 
         {/* Row 2: Role tabs (underline style) */}
