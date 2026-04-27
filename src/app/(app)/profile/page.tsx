@@ -98,46 +98,41 @@ export default async function ProfilePage() {
   return (
     <PageTransition>
     <div className="p-4 md:p-6 space-y-6 max-w-2xl lg:max-w-4xl">
-      {/* Hero section — rank-focused */}
-      <div className="flex items-center gap-5 py-4">
+      {/* ── Hero: avatar + name + rank + pts ──────────────────── */}
+      <div className="flex items-center gap-5 py-2">
         <div className={cn(
-          "h-20 w-20 rounded-full flex items-center justify-center shrink-0 ring-2",
+          "h-24 w-24 rounded-full flex items-center justify-center shrink-0 ring-2 shadow-lg",
           getAvatarColor(profile?.display_name ?? "U"),
-          rankEntry?.season_rank === 1 ? "ring-amber-400 glow-accent"
-            : rankEntry?.season_rank === 2 ? "ring-gray-400"
-            : rankEntry?.season_rank === 3 ? "ring-amber-600"
-            : "ring-white/10"
+          rankEntry?.season_rank === 1 ? "ring-accent shadow-[0_0_24px_oklch(0.78_0.17_86/0.4)]"
+            : rankEntry?.season_rank === 2 ? "ring-[oklch(0.72_0.01_260)]"
+            : rankEntry?.season_rank === 3 ? "ring-[oklch(0.63_0.10_55)]"
+            : "ring-overlay-border-hover"
         )}>
-          <span className="text-white text-2xl font-bold font-display">
+          <span className="text-white text-3xl font-bold font-display">
             {getInitials(profile?.display_name ?? "U")}
           </span>
         </div>
         <div className="flex-1 min-w-0">
           <ProfileNameForm currentName={profile?.display_name ?? ""} />
-          <p className="text-2xs text-muted-foreground mt-0.5">{user.email}</p>
+          <p className="text-2xs text-muted-foreground mt-0.5 truncate">{user.email}</p>
           {rankEntry && (
-            <div className="flex items-center gap-3 mt-2">
-              <div>
-                <span className="text-3xl font-bold font-display tabular-nums">#{rankEntry.season_rank}</span>
-                <span className="text-2xs text-muted-foreground ml-1">Rank</span>
+            <div className="flex items-baseline gap-3 mt-2 flex-wrap">
+              <div className="flex items-baseline gap-1">
+                <span className="text-gold-stat text-3xl leading-none">#{rankEntry.season_rank}</span>
+                <span className="text-2xs text-muted-foreground uppercase tracking-wider">Rank</span>
               </div>
-              <div className="h-6 w-px bg-overlay-muted" />
-              <div>
-                <span className="text-xl font-bold font-display tabular-nums">{rankEntry.total_points}</span>
-                <span className="text-2xs text-muted-foreground ml-1">Pts</span>
-              </div>
-              <div className="h-6 w-px bg-overlay-muted" />
-              <div>
-                <span className="text-xl font-bold font-display tabular-nums">{rankEntry.matches_played}</span>
-                <span className="text-2xs text-muted-foreground ml-1">MP</span>
+              <span className="text-muted-foreground/40">·</span>
+              <div className="flex items-baseline gap-1">
+                <span className="text-gold-stat text-2xl leading-none">{rankEntry.total_points.toLocaleString()}</span>
+                <span className="text-2xs text-muted-foreground uppercase tracking-wider">Pts</span>
               </div>
             </div>
           )}
         </div>
       </div>
 
-      {/* Quick stats — secondary tier */}
-      <div className="grid grid-cols-3 gap-3">
+      {/* ── Form strip: best / worst / avg / matches ──────────── */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         <StatCard
           icon={TrendingUp}
           value={bestMatch ? bestMatch.total_points : "\u2014"}
@@ -158,6 +153,13 @@ export default async function ProfilePage() {
           label="Avg / Match"
           gradient="from-primary/10"
           iconColor="bg-primary/15 text-primary"
+        />
+        <StatCard
+          icon={Trophy}
+          value={String(rankEntry?.matches_played ?? 0)}
+          label="Matches"
+          gradient="from-amber-500/10"
+          iconColor="bg-accent/15 text-accent"
         />
       </div>
 
