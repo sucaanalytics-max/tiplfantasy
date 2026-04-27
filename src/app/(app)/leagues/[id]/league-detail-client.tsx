@@ -4,7 +4,7 @@ import { useState, useTransition, useRef, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
 import { cn, formatIST } from "@/lib/utils"
-import { Copy, Check, Share2, Trash2, ArrowLeft, Users, Trophy, Swords, Zap, Crown, Target, ChevronRight, ChevronDown, GitCompareArrows, Radio, type LucideIcon } from "lucide-react"
+import { Copy, Check, Share2, Trash2, ArrowLeft, Users, Trophy, Zap, Crown, Target, ChevronRight, ChevronDown, GitCompareArrows, Radio, type LucideIcon } from "lucide-react"
 import { LiveRefresher } from "@/components/live-refresher"
 import { LiveScoreWidget } from "@/components/live-score-widget"
 import { getInitials as getAvatarInitials, getAvatarColor } from "@/lib/avatar"
@@ -244,12 +244,6 @@ export function LeagueDetailClient({ league, members, isCreator, leaderboard, aw
           <span className="text-xs font-semibold text-muted-foreground uppercase tracking-widest">
             Season Standings
           </span>
-          <Link href={`/leagues/${league.id}/h2h`}>
-            <Button variant="ghost" size="sm" className="gap-1 text-2xs h-6 px-2">
-              <Swords className="h-3 w-3" />
-              H2H
-            </Button>
-          </Link>
         </div>
         {leaderboard.length === 0 ? (
           <div className="glass rounded-2xl p-8">
