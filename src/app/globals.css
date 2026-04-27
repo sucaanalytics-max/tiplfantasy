@@ -74,51 +74,49 @@
 :root {
   --radius: 0.75rem;
 
-  /* Warm cream background — inspired by Oryx/Core dashboard */
-  --background: oklch(0.965 0.008 75);
-  --foreground: oklch(0.15 0.01 60);
+  /* Court Side theme — pale stone + regal navy + champion gold */
+  --background: oklch(0.96 0.005 70);
+  --foreground: oklch(0.18 0.015 250);
 
-  /* Warm white cards with subtle warmth */
-  --card: oklch(0.995 0.003 75);
-  --card-foreground: oklch(0.15 0.01 60);
-  --popover: oklch(0.995 0.003 75);
-  --popover-foreground: oklch(0.15 0.01 60);
+  --card: oklch(0.995 0 0);
+  --card-foreground: oklch(0.18 0.015 250);
+  --popover: oklch(0.995 0 0);
+  --popover-foreground: oklch(0.18 0.015 250);
 
-  /* TIPL orange — the action/energy color from brand */
-  --primary: oklch(0.55 0.20 35);
+  /* Primary — regal navy (premium athletic) */
+  --primary: oklch(0.32 0.13 260);
   --primary-foreground: oklch(0.99 0 0);
 
-  /* Warm light surfaces */
-  --secondary: oklch(0.94 0.010 75);
-  --secondary-foreground: oklch(0.20 0.01 60);
-  --muted: oklch(0.93 0.010 75);
-  --muted-foreground: oklch(0.45 0.01 60);
+  --secondary: oklch(0.94 0.005 70);
+  --secondary-foreground: oklch(0.20 0.015 250);
+  --muted: oklch(0.93 0.005 70);
+  --muted-foreground: oklch(0.45 0.015 250);
 
-  /* TIPL gold — prestige/achievement */
-  --accent: oklch(0.68 0.17 86);
-  --accent-foreground: oklch(0.15 0.01 86);
+  /* Accent — champion gold (trophy, medals) */
+  --accent: oklch(0.72 0.16 85);
+  --accent-foreground: oklch(0.18 0.015 85);
 
   --destructive: oklch(0.55 0.245 27.325);
-  --border: oklch(0.90 0.008 75);
-  --input: oklch(0.90 0.008 75);
-  --ring: oklch(0.55 0.20 35);
+  --border: oklch(0.90 0.005 70);
+  --input: oklch(0.90 0.005 70);
+  --ring: oklch(0.32 0.13 260);
 
-  --chart-1: oklch(0.52 0.22 35);
-  --chart-2: oklch(0.68 0.17 86);
+  --chart-1: oklch(0.32 0.13 260);
+  --chart-2: oklch(0.72 0.16 85);
   --chart-3: oklch(0.55 0.15 145);
-  --chart-4: oklch(0.70 0.18 84);
+  --chart-4: oklch(0.50 0.18 30);
   --chart-5: oklch(0.60 0.20 304);
 
-  --sidebar: oklch(0.96 0.008 75);
-  --sidebar-foreground: oklch(0.15 0.01 60);
-  --sidebar-primary: oklch(0.55 0.20 35);
+  --sidebar: oklch(0.96 0.005 70);
+  --sidebar-foreground: oklch(0.18 0.015 250);
+  --sidebar-primary: oklch(0.32 0.13 260);
   --sidebar-primary-foreground: oklch(0.99 0 0);
-  --sidebar-accent: oklch(0.93 0.010 75);
-  --sidebar-accent-foreground: oklch(0.20 0.01 60);
-  --sidebar-border: oklch(0.90 0.008 75);
-  --sidebar-ring: oklch(0.55 0.20 35);
+  --sidebar-accent: oklch(0.93 0.005 70);
+  --sidebar-accent-foreground: oklch(0.20 0.015 250);
+  --sidebar-border: oklch(0.90 0.005 70);
+  --sidebar-ring: oklch(0.32 0.13 260);
 
-  /* Semantic status tokens (light mode) — darker for readability */
+  /* Semantic status tokens — kept constant across themes */
   --status-live: oklch(0.50 0.20 25);
   --status-live-bg: oklch(0.50 0.20 25 / 0.08);
   --status-upcoming: oklch(0.42 0.14 265);
@@ -132,30 +130,27 @@
   --status-danger: oklch(0.50 0.20 25);
   --status-danger-bg: oklch(0.50 0.20 25 / 0.08);
 
-  /* Role colors — darker/muted for light backgrounds */
+  /* Role colors — kept constant across themes */
   --role-wk: oklch(0.55 0.12 75);
   --role-bat: oklch(0.42 0.14 265);
   --role-ar: oklch(0.42 0.12 155);
   --role-bowl: oklch(0.45 0.14 304);
 
-  /* Surface — between background and card */
-  --surface: oklch(0.955 0.008 75);
+  --surface: oklch(0.95 0.005 70);
 
-  /* Light mode glass/elevation — warm soft shadows */
-  --glass-bg: oklch(0.995 0.003 75 / 0.90);
-  --glass-bg-hover: oklch(0.995 0.003 75 / 0.96);
-  --glass-border: oklch(0.15 0.01 60 / 0.08);
-  --glass-border-hover: oklch(0.15 0.01 60 / 0.12);
-  --glass-shadow: 0 1px 3px oklch(0.15 0.01 60 / 0.06), 0 4px 12px oklch(0.15 0.01 60 / 0.04);
-  --glass-shadow-lg: 0 2px 6px oklch(0.15 0.01 60 / 0.06), 0 8px 24px oklch(0.15 0.01 60 / 0.08);
-  --glow-primary: 0 0 12px oklch(0.55 0.20 35 / 0.15);
-  --glow-accent: 0 0 12px oklch(0.68 0.17 86 / 0.15);
+  --glass-bg: oklch(0.995 0 0 / 0.92);
+  --glass-bg-hover: oklch(0.995 0 0 / 0.97);
+  --glass-border: oklch(0.18 0.015 250 / 0.08);
+  --glass-border-hover: oklch(0.18 0.015 250 / 0.12);
+  --glass-shadow: 0 1px 3px oklch(0.18 0.015 250 / 0.06), 0 4px 12px oklch(0.18 0.015 250 / 0.04);
+  --glass-shadow-lg: 0 2px 6px oklch(0.18 0.015 250 / 0.06), 0 8px 24px oklch(0.18 0.015 250 / 0.08);
+  --glow-primary: 0 0 12px oklch(0.32 0.13 260 / 0.15);
+  --glow-accent: 0 0 12px oklch(0.72 0.16 85 / 0.15);
 
-  /* Theme-aware overlay colors (used instead of hardcoded white/[0.0X]) */
-  --overlay-subtle: oklch(0.15 0.01 60 / 0.03);
-  --overlay-muted: oklch(0.15 0.01 60 / 0.05);
-  --overlay-border: oklch(0.15 0.01 60 / 0.06);
-  --overlay-border-hover: oklch(0.15 0.01 60 / 0.10);
+  --overlay-subtle: oklch(0.18 0.015 250 / 0.03);
+  --overlay-muted: oklch(0.18 0.015 250 / 0.05);
+  --overlay-border: oklch(0.18 0.015 250 / 0.06);
+  --overlay-border-hover: oklch(0.18 0.015 250 / 0.10);
 }
 
 .dark {
