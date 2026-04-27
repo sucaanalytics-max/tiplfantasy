@@ -194,6 +194,35 @@ function buildUrl(path: string, params?: Record<string, string>): string {
   return url.toString()
 }
 
+// ─── Player image fetch (one-time headshot import) ──────────────────────
+
+export type SportmonksPlayer = {
+  id: number
+  fullname: string
+  image_path: string | null
+}
+
+/**
+ * Fetch a single player from Sportmonks by ID. Returns null if 404 or no image.
+ * Used by the one-time admin headshot sync — not on the request hot path.
+ */
+export async function fetchSportmonksPlayer(sportmonksId: string | number): Promise<SportmonksPlayer | null> {
+  try {
+    const url = buildUrl(`/players/${sportmonksId}`)
+    const res = await fetchWithTimeout(url, { cache: "no-store" }, 10_000)
+    if (!res.ok) return null
+    const json = (await res.json()) as { data?: SportmonksPlayer }
+    if (!json.data) return null
+    return {
+      id: json.data.id,
+      fullname: json.data.fullname,
+      image_path: json.data.image_path ?? null,
+    }
+  } catch {
+    return null
+  }
+}
+
 // ─── SportMonks team ID → DB team short_name mapping ────────────────────
 
 export const SPORTMONKS_TEAM_MAP: Record<number, string> = {

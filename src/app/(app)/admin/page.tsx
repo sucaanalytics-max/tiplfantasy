@@ -15,6 +15,7 @@ import {
 
 const TOOLS = [
   { href: "/admin/players", emoji: "\u{1F3CF}", title: "Players", subtitle: "Manage player roster" },
+  { href: "/admin/players/sync-images", emoji: "\u{1F5BC}\u{FE0F}", title: "Sync Images", subtitle: "Fetch player headshots from Sportmonks" },
   { href: "/admin/analytics", emoji: "\u{1F4CA}", title: "Analytics", subtitle: "Stats, ratings, predictions" },
   { href: "/admin/preferences", emoji: "\u{1F5D2}\u{FE0F}", title: "Preferences", subtitle: "User pick bias & captaincy" },
 ] as const
