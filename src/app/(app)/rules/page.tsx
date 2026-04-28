@@ -1,3 +1,4 @@
+import { unstable_cache } from "next/cache"
 import { createClient } from "@/lib/supabase/server"
 import { createAdminClient } from "@/lib/supabase/admin"
 import { redirect } from "next/navigation"
@@ -37,17 +38,26 @@ const gameRules = [
   { label: "Abandoned", value: "No points awarded — match doesn't count" },
 ]
 
+const getCachedScoringRules = unstable_cache(
+  async () => {
+    const admin = createAdminClient()
+    const { data } = await admin
+      .from("scoring_rules")
+      .select("category, label, points")
+      .eq("is_active", true)
+      .order("points", { ascending: false })
+    return data
+  },
+  ["scoring-rules"],
+  { tags: ["scoring-rules"], revalidate: 86400 }
+)
+
 export default async function RulesPage() {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect("/login")
 
-  const admin = createAdminClient()
-  const { data: rules } = await admin
-    .from("scoring_rules")
-    .select("category, label, points")
-    .eq("is_active", true)
-    .order("points", { ascending: false })
+  const rules = await getCachedScoringRules()
 
   // Group by category
   type RuleRow = { category: string; label: string; points: number }

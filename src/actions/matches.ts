@@ -1,5 +1,6 @@
 "use server"
 
+import { revalidateTag } from "next/cache"
 import { createClient } from "@/lib/supabase/server"
 import { createAdminClient } from "@/lib/supabase/admin"
 import { fetchSquad, fetchScorecard, fetchMatchPoints, fetchMatchInfo, fetchSeriesInfo, parseScorecardToStats, fuzzyMatchName, testMatchPointsEndpoint, SPORTMONKS_TEAM_MAP } from "@/lib/api/sportmonks"
@@ -34,6 +35,7 @@ export async function lockMatch(matchId: string) {
     .update({ status: "live", updated_at: new Date().toISOString() })
     .eq("id", matchId)
   if (error) return { error: error.message }
+  revalidateTag("matches", "minutes")
   return { success: true }
 }
 
@@ -93,6 +95,8 @@ export async function markNoResult(matchId: string): Promise<{ success?: boolean
     .eq("id", matchId)
 
   await admin.rpc("refresh_leaderboard")
+  revalidateTag("matches", "minutes")
+  revalidateTag("player-stats", "hours")
 
   return { success: true }
 }
@@ -564,6 +568,7 @@ export async function confirmSeriesImport(
     created = rows.length
   }
 
+  revalidateTag("matches", "minutes")
   return { success: true, updated, created }
 }
 

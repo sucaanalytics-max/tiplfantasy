@@ -1,7 +1,5 @@
-import { getMyLeagues } from "@/actions/leagues"
-import { LeaguesClient } from "./leagues-client"
+import { redirect } from "next/navigation"
 
-export default async function LeaguesPage() {
-  const leagues = await getMyLeagues()
-  return <LeaguesClient leagues={leagues} />
+export default function LeaguesPage() {
+  redirect("/leaderboard")
 }
