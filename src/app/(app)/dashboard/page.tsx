@@ -10,7 +10,7 @@ import { Users, ChevronRight } from "lucide-react"
 import { Trophy } from "@/components/icons/trophy"
 import { getMyLeagues } from "@/actions/leagues"
 import { PageTransition } from "@/components/page-transition"
-import { HeroMatchBanner } from "@/components/hero-match-banner"
+import { CinematicHero } from "@/components/cinematic-hero"
 import { FormStrip } from "@/components/form-strip"
 import { RecentMatchRecap } from "@/components/recent-match-recap"
 import { StandingsTable } from "@/components/standings-table"
@@ -89,6 +89,43 @@ export default async function DashboardPage() {
   for (const s of liveScoresRes.data ?? []) liveScoreMap.set(s.match_id, { total_points: s.total_points, rank: s.rank })
   const lastCaptainName = (lastSelection?.captain as unknown as { name: string })?.name ?? null
 
+  // Hero featured players for the cinematic cameo fans (3 per side, only
+  // those with image_urls so the fan reads as photography rather than
+  // initials). Picks the 3 highest-credit players per team — proxy for
+  // "marquee" without needing a separate "is_star" column.
+  const heroMatchTmp = liveMatches[0] ?? upcomingMatches[0] ?? lastMatch
+  const featuredHomePlayersRes = heroMatchTmp
+    ? await supabase
+        .from("players")
+        .select("name, role, image_url, team_id, team:teams!players_team_id_fkey(short_name, color)")
+        .eq("team_id", heroMatchTmp.team_home_id)
+        .not("image_url", "is", null)
+        .order("credit_cost", { ascending: false })
+        .limit(3)
+    : { data: [] as Array<{ name: string; role: string; image_url: string | null; team: { short_name: string; color: string } }> }
+  const featuredAwayPlayersRes = heroMatchTmp
+    ? await supabase
+        .from("players")
+        .select("name, role, image_url, team_id, team:teams!players_team_id_fkey(short_name, color)")
+        .eq("team_id", heroMatchTmp.team_away_id)
+        .not("image_url", "is", null)
+        .order("credit_cost", { ascending: false })
+        .limit(3)
+    : { data: [] as Array<{ name: string; role: string; image_url: string | null; team: { short_name: string; color: string } }> }
+
+  const featuredHomePlayers = (featuredHomePlayersRes.data ?? []).map((p) => ({
+    name: p.name,
+    role: p.role,
+    image_url: p.image_url,
+    team: p.team as unknown as { short_name: string; color: string },
+  }))
+  const featuredAwayPlayers = (featuredAwayPlayersRes.data ?? []).map((p) => ({
+    name: p.name,
+    role: p.role,
+    image_url: p.image_url,
+    team: p.team as unknown as { short_name: string; color: string },
+  }))
+
   const submittedMatchIds = new Set<string>()
   for (const s of subsRes.data ?? []) submittedMatchIds.add(s.match_id)
 
@@ -120,12 +157,14 @@ export default async function DashboardPage() {
   return (
     <PageTransition>
       <div className="space-y-6 pb-10">
-        {/* ── Hero Match Banner ─────────────────────────── */}
+        {/* ── Cinematic Hero (70vh cover) ────────────────── */}
         {heroMatch ? (
-          <HeroMatchBanner
-            match={heroMatch as Parameters<typeof HeroMatchBanner>[0]["match"]}
+          <CinematicHero
+            match={heroMatch as Parameters<typeof CinematicHero>[0]["match"]}
             hasSubmitted={heroSubmitted}
             liveScore={heroLiveScore}
+            featuredHomePlayers={featuredHomePlayers}
+            featuredAwayPlayers={featuredAwayPlayers}
           />
         ) : (
           <section className="px-4 md:px-6 pt-8 pb-2">
