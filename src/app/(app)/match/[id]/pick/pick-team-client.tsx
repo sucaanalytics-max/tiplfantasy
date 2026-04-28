@@ -60,13 +60,6 @@ type Props = {
 
 const ROLE_ORDER: PlayerRole[] = ["WK", "BAT", "AR", "BOWL"]
 
-const ROLE_ACCENT: Record<PlayerRole, string> = {
-  WK:   "role-wk",
-  BAT:  "role-bat",
-  AR:   "role-ar",
-  BOWL: "role-bowl",
-}
-
 const ROLE_LABELS: Record<PlayerRole, string> = {
   WK: "Wicket-keeper",
   BAT: "Batsman",
@@ -120,23 +113,6 @@ export function PickTeamClient({
     }
     prevSelectedCount.current = selectedIds.size
   }, [selectedIds.size, captainId, viceCaptainId])
-
-  const getMatchupChip = useCallback((player: PlayerWithTeam): string | null => {
-    const opponentShort = player.team_id === match.team_home_id
-      ? match.team_away.short_name
-      : match.team_home.short_name
-    const vs = vsTeamStats[player.id]
-    if (!vs || vs.matches < 3) return null
-    if (vs.balls_faced > 0) {
-      const avg = vs.runs / Math.max(vs.matches, 1)
-      if (avg >= 35) return `${avg.toFixed(0)} avg vs ${opponentShort}`
-    }
-    if (Number(vs.overs_bowled) > 0) {
-      const econ = vs.runs_conceded / Number(vs.overs_bowled)
-      if (econ <= 7) return `${econ.toFixed(1)} econ vs ${opponentShort}`
-    }
-    return null
-  }, [match, vsTeamStats])
 
   const hasPlayingXI = playingXIIds.length > 0
 

@@ -44,19 +44,27 @@ export default async function ProfilePage() {
   const captainData = captainRes.data
   const selectionIds = (selectionsRes.data ?? []).map((s) => s.id)
 
-  // Phase 2: role counts — depends on selectionIds
+  // Phase 2: role counts + most-picked team — depends on selectionIds
   const roleCounts = { WK: 0, BAT: 0, AR: 0, BOWL: 0 }
+  const teamPickCounts = new Map<string, number>()
   if (selectionIds.length > 0) {
     const { data: selPlayers } = await supabase
       .from("selection_players")
-      .select("player:players(role)")
+      .select("player:players(role, team_id)")
       .in("selection_id", selectionIds)
       .limit(900)
     for (const sp of selPlayers ?? []) {
-      const role = (sp.player as unknown as { role: string })?.role
+      const player = sp.player as unknown as { role: string; team_id: string } | null
+      const role = player?.role
       if (role && role in roleCounts) roleCounts[role as keyof typeof roleCounts]++
+      if (player?.team_id) teamPickCounts.set(player.team_id, (teamPickCounts.get(player.team_id) ?? 0) + 1)
     }
   }
+  // Tint the hero backdrop with the user's most-picked team color when available
+  const topTeamId = teamPickCounts.size > 0
+    ? Array.from(teamPickCounts.entries()).sort((a, b) => b[1] - a[1])[0][0]
+    : null
+  const heroTintColor = topTeamId ? teamMap.get(topTeamId)?.color ?? null : null
 
   // Best and worst match
   const sorted = [...(matchScores ?? [])].sort((a, b) => b.total_points - a.total_points)
@@ -98,7 +106,21 @@ export default async function ProfilePage() {
     <PageTransition>
     <div className="p-4 md:p-6 space-y-6 max-w-2xl lg:max-w-4xl">
       {/* ── Hero: avatar + name + rank + pts ──────────────────── */}
-      <div className="relative flex items-center gap-5 py-4 px-4 -mx-4 md:-mx-6 md:px-6 mesh-gradient-bg-strong rounded-3xl">
+      <div
+        className="relative flex items-center gap-5 py-4 px-4 -mx-4 md:-mx-6 md:px-6 mesh-gradient-bg-strong rounded-3xl overflow-hidden"
+      >
+        {/* Most-picked team color tint — soft radial behind the avatar.
+            Layers above the parent mesh-gradient backdrop and below the
+            avatar / text siblings via DOM order. */}
+        {heroTintColor && (
+          <div
+            aria-hidden
+            className="pointer-events-none absolute inset-0"
+            style={{
+              background: `radial-gradient(ellipse 40% 80% at 16% 50%, ${heroTintColor}29 0%, transparent 60%)`,
+            }}
+          />
+        )}
         <div className={cn(
           "h-24 w-24 rounded-full flex items-center justify-center shrink-0 ring-2 shadow-lg",
           getAvatarColor(profile?.display_name ?? "U"),
