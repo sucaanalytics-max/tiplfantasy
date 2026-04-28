@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation"
 import { CountdownTimer } from "@/components/countdown-timer"
 import {
   Star,
+  Crown,
   Check,
   ChevronLeft,
   AlertCircle,
@@ -34,6 +35,7 @@ import { PlayerHeadshot } from "@/components/player-headshot"
 import { PlayerCardPremium } from "@/components/player-card-premium"
 import { PitchView } from "@/components/pitch-view"
 import { PlayerResearchTable } from "@/components/player-research-table"
+import { CaptainOverlay } from "@/components/captain-overlay"
 import { List as ListIcon, Map as MapIcon, Table as TableIcon } from "lucide-react"
 import { Confetti } from "@/components/confetti"
 import { TeamSubmitPreview } from "@/components/team-submit-preview"
@@ -940,64 +942,92 @@ export function PickTeamClient({
                 </button>
               </DrawerTrigger>
               <DrawerContent className="max-h-[85vh]">
-                <DrawerTitle className="text-center text-sm font-semibold py-2">
+                <DrawerTitle className="text-center font-display text-base font-bold uppercase tracking-wider py-2">
                   Captain & Vice-Captain
                 </DrawerTitle>
-                <p className="text-xs text-muted-foreground text-center mb-3">
-                  Captain gets 2x points, Vice-Captain gets 1.5x
+                <p className="text-xs text-muted-foreground text-center mb-3 px-4">
+                  <Crown className="inline h-3 w-3 -mt-0.5 text-[var(--captain-gold)]" /> Captain
+                  <span className="font-display font-bold text-foreground"> ×2</span>
+                  <span className="mx-2 text-muted-foreground/40">·</span>
+                  <Star className="inline h-3 w-3 -mt-0.5 text-[var(--vice-silver)] fill-current" /> Vice-Captain
+                  <span className="font-display font-bold text-foreground"> ×1.5</span>
                 </p>
-                <div className="px-4 pb-3 space-y-2 overflow-y-auto" data-vaul-no-drag>
+                <div className="px-3 pb-3 space-y-1.5 overflow-y-auto" data-vaul-no-drag>
                   {selectedPlayers
                     .sort((a, b) => ROLE_ORDER.indexOf(a.role) - ROLE_ORDER.indexOf(b.role))
                     .map((player) => {
                       const isCaptain = captainId === player.id
                       const isVC = viceCaptainId === player.id
                       return (
-                        <Card key={player.id} className="p-3 border border-border">
-                          <div className="flex items-center justify-between">
-                            <div className="flex items-center gap-2 min-w-0">
-                              <Badge variant="outline" className="text-[10px] w-10 justify-center shrink-0">
-                                {player.role}
-                              </Badge>
-                              <div className="min-w-0">
-                                <p className="text-sm font-medium truncate">{player.name}</p>
-                                <p className="text-[10px]" style={{ color: player.team.color }}>
-                                  {player.team.short_name}
-                                </p>
-                              </div>
-                            </div>
-                            <div className="flex items-center gap-2 shrink-0">
-                              <Button
-                                size="sm"
-                                variant={isCaptain ? "default" : "outline"}
-                                className={cn(
-                                  "h-8 w-8 p-0 rounded-full",
-                                  isCaptain && "bg-[var(--tw-amber-text)] text-black hover:bg-amber-400/90"
-                                )}
-                                onClick={() => {
-                                  if (viceCaptainId === player.id) setViceCaptainId(null)
-                                  setCaptainId(isCaptain ? null : player.id)
-                                }}
-                              >
-                                <span className="text-xs font-bold">C</span>
-                              </Button>
-                              <Button
-                                size="sm"
-                                variant={isVC ? "default" : "outline"}
-                                className={cn(
-                                  "h-8 w-8 p-0 rounded-full",
-                                  isVC && "bg-violet-400 text-black hover:bg-violet-400/90"
-                                )}
-                                onClick={() => {
-                                  if (captainId === player.id) setCaptainId(null)
-                                  setViceCaptainId(isVC ? null : player.id)
-                                }}
-                              >
-                                <span className="text-xs font-bold">VC</span>
-                              </Button>
-                            </div>
+                        <div
+                          key={player.id}
+                          className={cn(
+                            "flex items-center gap-3 p-2.5 rounded-xl border transition-all stripe-team-left",
+                            isCaptain
+                              ? "border-[var(--captain-gold)]/50 bg-[var(--captain-gold)]/5"
+                              : isVC
+                              ? "border-[var(--vice-silver)]/50 bg-[var(--vice-silver)]/5"
+                              : "border-overlay-border bg-card"
+                          )}
+                          style={{ "--team-color": player.team.color } as React.CSSProperties}
+                        >
+                          {/* Headshot — bigger, with C/VC ring + corner overlay when selected */}
+                          <span className={cn("relative inline-flex shrink-0 rounded-full", isCaptain && "ring-captain", isVC && "ring-vice")}>
+                            <PlayerHeadshot player={player} size="lg" ring={isCaptain || isVC ? "none" : "team"} shadow />
+                            {isCaptain && <CaptainOverlay variant="captain" size="md" position="tr" />}
+                            {isVC && <CaptainOverlay variant="vice" size="md" position="tr" />}
+                          </span>
+
+                          {/* Name + meta */}
+                          <div className="min-w-0 flex-1">
+                            <p className="font-display font-bold text-sm truncate leading-tight">{player.name}</p>
+                            <p className="text-[11px] truncate mt-0.5">
+                              <span className="font-semibold uppercase tracking-wider" style={{ color: player.team.color }}>
+                                {player.team.short_name}
+                              </span>
+                              <span className="text-muted-foreground/40 mx-1">·</span>
+                              <span className="text-muted-foreground uppercase tracking-wider">{player.role}</span>
+                            </p>
                           </div>
-                        </Card>
+
+                          {/* C / VC pills — bigger, animated, color-tied to overlay tokens */}
+                          <div className="flex items-center gap-1.5 shrink-0">
+                            <button
+                              type="button"
+                              onClick={() => {
+                                if (viceCaptainId === player.id) setViceCaptainId(null)
+                                setCaptainId(isCaptain ? null : player.id)
+                              }}
+                              aria-label={isCaptain ? "Remove captain" : "Set as captain"}
+                              aria-pressed={isCaptain}
+                              className={cn(
+                                "relative h-9 w-9 rounded-full flex items-center justify-center font-display font-bold text-xs transition-all border-2",
+                                isCaptain
+                                  ? "bg-[var(--captain-gold)] border-[var(--captain-gold)] text-[oklch(0.18_0.02_86)] shadow-[0_0_14px_var(--captain-gold-glow)] scale-105"
+                                  : "border-overlay-border-hover text-muted-foreground hover:border-[var(--captain-gold)]/60 hover:text-[var(--captain-gold)]"
+                              )}
+                            >
+                              <Crown className={cn("h-4 w-4", isCaptain && "fill-current")} />
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                if (captainId === player.id) setCaptainId(null)
+                                setViceCaptainId(isVC ? null : player.id)
+                              }}
+                              aria-label={isVC ? "Remove vice-captain" : "Set as vice-captain"}
+                              aria-pressed={isVC}
+                              className={cn(
+                                "relative h-9 w-9 rounded-full flex items-center justify-center font-display font-bold text-xs transition-all border-2",
+                                isVC
+                                  ? "bg-[var(--vice-silver)] border-[var(--vice-silver)] text-[oklch(0.15_0.01_60)] shadow-[0_0_14px_var(--vice-silver-glow)] scale-105"
+                                  : "border-overlay-border-hover text-muted-foreground hover:border-[var(--vice-silver)]/60 hover:text-foreground"
+                              )}
+                            >
+                              <Star className={cn("h-4 w-4", isVC && "fill-current")} />
+                            </button>
+                          </div>
+                        </div>
                       )
                     })}
                 </div>
