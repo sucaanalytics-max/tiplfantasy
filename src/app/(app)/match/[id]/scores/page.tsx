@@ -83,12 +83,18 @@ export default async function ScoresPage({
   const match = matchRes.data
   if (!match) redirect("/matches")
 
-  // Phase 2: fetch all players for both teams (needed for compare when players haven't scored yet)
-  const { data: allPlayersRaw } = await admin
-    .from("players")
-    .select("id, name, role, team_id, team:teams(short_name, color)")
-    .in("team_id", [match.team_home_id, match.team_away_id])
-    .limit(60)
+  // Phase 2: all players for both teams + league members in parallel
+  const leagueIds = (myLeaguesRes.data ?? []).map((lm) => lm.league_id)
+  const [{ data: allPlayersRaw }, membersRes] = await Promise.all([
+    admin
+      .from("players")
+      .select("id, name, role, team_id, team:teams(short_name, color)")
+      .in("team_id", [match.team_home_id, match.team_away_id])
+      .limit(60),
+    leagueIds.length > 0
+      ? admin.from("league_members").select("league_id, user_id").in("league_id", leagueIds).limit(100)
+      : Promise.resolve({ data: [] as { league_id: string; user_id: string }[] }),
+  ])
 
   const home = match.team_home as unknown as TeamInfo
   const away = match.team_away as unknown as TeamInfo
@@ -121,14 +127,8 @@ export default async function ScoresPage({
   }
 
   // Build league filter data
-  const leagueIds = (myLeaguesRes.data ?? []).map((lm) => lm.league_id)
   let userLeagues: { id: string; name: string; memberIds: string[] }[] = []
   if (leagueIds.length > 0) {
-    const membersRes = await admin
-      .from("league_members")
-      .select("league_id, user_id")
-      .in("league_id", leagueIds)
-      .limit(100)
     const membersData = membersRes.data ?? []
     const leagueMap = new Map<string, { id: string; name: string; memberIds: string[] }>()
     for (const lm of myLeaguesRes.data ?? []) {

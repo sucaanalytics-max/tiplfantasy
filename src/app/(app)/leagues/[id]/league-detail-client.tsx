@@ -53,7 +53,6 @@ type LiveMatchData = {
   memberSelections: Array<{ user_id: string; captain_id: string | null; vice_captain_id: string | null; player_ids: string[] }>
   playerPoints: Record<string, number>
   playerNames: Record<string, { name: string; role: string }>
-  banter?: Array<{ message: string; event_type: string; created_at: string }>
 }
 
 type Props = {
@@ -66,12 +65,11 @@ type Props = {
   lockedMatches: LockedMatch[]
   liveMatchData?: LiveMatchData | null
   currentUserId?: string
-  recentBanter?: Array<{ message: string; event_type: string }>
 }
 
 const MEDALS = ["\u{1F947}", "\u{1F948}", "\u{1F949}"] as const
 
-export function LeagueDetailClient({ league, members, isCreator, leaderboard, awards, matchScores, lockedMatches, liveMatchData, currentUserId, recentBanter = [] }: Props) {
+export function LeagueDetailClient({ league, members, isCreator, leaderboard, awards, matchScores, lockedMatches, liveMatchData, currentUserId }: Props) {
   const router = useRouter()
   const [isPending, startTransition] = useTransition()
   const [copied, setCopied] = useState(false)
@@ -391,23 +389,6 @@ export function LeagueDetailClient({ league, members, isCreator, leaderboard, aw
               </div>
             )}
 
-            {/* Banter Feed */}
-            {liveMatchData.banter && liveMatchData.banter.length > 0 && (
-              <div className="mt-4 rounded-xl border border-amber-400/20 bg-gradient-to-b from-amber-400/5 to-transparent overflow-hidden">
-                <div className="px-4 py-3 border-b border-amber-400/10 flex items-center gap-2">
-                  <span className="text-base">🎭</span>
-                  <span className="text-sm font-bold text-[var(--tw-amber-text)] uppercase tracking-wider">Live Commentary</span>
-                  <span className="ml-auto text-[10px] text-muted-foreground">{liveMatchData.banter.length} moments</span>
-                </div>
-                <div className="divide-y divide-overlay-border max-h-[28rem] overflow-y-auto">
-                  {liveMatchData.banter.map((b, i) => (
-                    <div key={i} className="px-4 py-3 text-sm text-foreground leading-relaxed">
-                      {b.message}
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
           </TabsContent>
         )}
 
