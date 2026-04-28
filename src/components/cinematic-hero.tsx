@@ -88,22 +88,6 @@ export function CinematicHero({
           style={{ animation: "team-art-zoom 900ms cubic-bezier(0.16, 1, 0.3, 1) 200ms backwards", transform: "scaleX(-1)" }}
         />
 
-        {/* Layer 3 — giant team crests, opposite corners. team-art-zoom on mount. */}
-        <div
-          className="absolute -top-6 -left-4 md:-top-12 md:-left-12 w-44 h-44 md:w-72 md:h-72 opacity-25 pointer-events-none"
-          style={{ animation: "team-art-zoom 800ms cubic-bezier(0.16, 1, 0.3, 1) 280ms backwards" }}
-          aria-hidden
-        >
-          <TeamLogo team={home} size="2xl" className="w-full h-full" />
-        </div>
-        <div
-          className="absolute -bottom-8 -right-4 md:-bottom-16 md:-right-12 w-44 h-44 md:w-72 md:h-72 opacity-25 pointer-events-none"
-          style={{ animation: "team-art-zoom 800ms cubic-bezier(0.16, 1, 0.3, 1) 400ms backwards" }}
-          aria-hidden
-        >
-          <TeamLogo team={away} size="2xl" className="w-full h-full" />
-        </div>
-
         {/* Layer 4 — cameo headshot fans (the photography substitute) */}
         {featuredHomePlayers.length > 0 && (
           <div className="absolute left-3 md:left-8 bottom-16 md:bottom-24 z-[2] pointer-events-none">
@@ -116,14 +100,16 @@ export function CinematicHero({
           </div>
         )}
 
-        {/* Layer 5 — typography: eyebrow + team names flanking VS */}
+        {/* Layer 5 — typography: eyebrow + venue/date + team names flanking VS */}
         <div className="absolute inset-x-0 top-0 z-[3] flex items-start justify-between px-4 pt-4 md:px-8 md:pt-8 pointer-events-none">
-          <span
-            className="text-cinema-eyebrow text-white/95"
-            style={{ animation: "slide-up 0.4s ease-out 700ms backwards" }}
-          >
-            Match · {match.match_number} · {tag}
-          </span>
+          <div style={{ animation: "slide-up 0.4s ease-out 700ms backwards" }}>
+            <span className="text-cinema-eyebrow text-white/95">
+              Match · {match.match_number} · {tag}
+            </span>
+            <p className="mt-0.5 text-[10px] text-white/70 leading-tight">
+              📍 {match.venue} · {formatIST(match.start_time, "EEE, MMM d · h:mm a")}
+            </p>
+          </div>
           {/* Status corner — LIVE badge or empty */}
           {isLive && (
             <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-status-live text-white text-[10px] font-display font-bold uppercase tracking-widest live-ring">
@@ -140,10 +126,13 @@ export function CinematicHero({
         <div className="absolute inset-0 z-[3] flex items-center justify-center pointer-events-none">
           <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-3 md:gap-6 px-4 w-full max-w-3xl">
             <div
-              className="text-display-xl text-white text-right truncate drop-shadow-[0_4px_24px_oklch(0_0_0_/_0.7)]"
+              className="flex items-center justify-end gap-2 min-w-0"
               style={{ animation: "slide-up 0.45s ease-out 760ms backwards" }}
             >
-              {home.short_name}
+              <span className="text-display-xl text-white text-right truncate drop-shadow-[0_4px_24px_oklch(0_0_0_/_0.7)]">
+                {home.short_name}
+              </span>
+              <TeamLogo team={home} size="md" className="shrink-0 drop-shadow-lg" />
             </div>
             <div
               className="relative inline-flex items-center justify-center h-16 w-16 md:h-24 md:w-24 rounded-full bg-[var(--captain-gold)] text-[oklch(0.18_0.02_86)] font-display font-bold text-lg md:text-2xl shrink-0 ring-2 ring-white/30 shadow-[0_8px_24px_oklch(0_0_0_/_0.5)]"
@@ -153,33 +142,21 @@ export function CinematicHero({
               VS
             </div>
             <div
-              className="text-display-xl text-white text-left truncate drop-shadow-[0_4px_24px_oklch(0_0_0_/_0.7)]"
+              className="flex items-center justify-start gap-2 min-w-0"
               style={{ animation: "slide-up 0.45s ease-out 800ms backwards" }}
             >
-              {away.short_name}
+              <TeamLogo team={away} size="md" className="shrink-0 drop-shadow-lg" />
+              <span className="text-display-xl text-white text-left truncate drop-shadow-[0_4px_24px_oklch(0_0_0_/_0.7)]">
+                {away.short_name}
+              </span>
             </div>
           </div>
         </div>
 
-        {/* Layer 6 — bottom ribbon (venue + date + countdown / live score) */}
-        <div className="absolute inset-x-0 bottom-0 z-[3] px-4 md:px-8 pb-4 pointer-events-none">
-          <div className="flex items-center justify-between gap-3 text-white/85 text-xs">
-            <div className="min-w-0 flex items-center gap-2">
-              <span className="truncate">📍 {match.venue}</span>
-              <span className="text-white/40">·</span>
-              <span className="shrink-0">{formatIST(match.start_time, "EEE, MMM d · h:mm a")}</span>
-            </div>
-            {!isLive && !isCompleted && (
-              <div className="shrink-0 text-right">
-                <CountdownTimer targetTime={match.start_time} variant="compact" className="!text-white" />
-              </div>
-            )}
-          </div>
-        </div>
       </div>
 
       {/* ── CTA pill — floats over the hero's bottom edge ─────────── */}
-      <div className="px-4 md:px-8 -mt-7 relative z-[4]">
+      <div className="px-4 md:px-8 -mt-12 relative z-[4]">
         <div className="max-w-2xl lg:max-w-5xl mx-auto">
           <CinematicCTA
             matchId={match.id}
