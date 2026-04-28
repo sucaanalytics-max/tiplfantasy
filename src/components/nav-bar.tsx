@@ -47,7 +47,6 @@ export function NavBar({ isAdmin = false }: { isAdmin?: boolean }) {
   const isActive = (href: string) => pathname.startsWith(href)
 
   const mobileItems = isAdmin ? [...mobileNavItems, adminItem] : mobileNavItems
-  const sidebarItems = isAdmin ? [...sidebarNavItems, adminItem] : sidebarNavItems
 
   const handleSignOut = async () => {
     const supabase = createClient()
@@ -59,7 +58,7 @@ export function NavBar({ isAdmin = false }: { isAdmin?: boolean }) {
     <>
       {/* Mobile bottom nav */}
       <nav aria-label="Main navigation" className="fixed bottom-0 left-0 right-0 z-50 bg-background border-t border-overlay-border pb-[env(safe-area-inset-bottom)] md:hidden">
-        <div className="flex items-center justify-around h-14">
+        <div className="flex items-center justify-around h-14 px-1">
           {mobileItems.map((item) => {
             const Icon = item.icon
             const active = isActive(item.href)
@@ -68,19 +67,16 @@ export function NavBar({ isAdmin = false }: { isAdmin?: boolean }) {
                 key={item.href}
                 href={item.href}
                 className={cn(
-                  "flex flex-col items-center justify-center gap-0.5 min-w-[44px] min-h-[44px] text-xs transition-colors relative",
+                  "relative flex flex-col items-center justify-center gap-0.5 min-w-[44px] h-11 px-2.5 rounded-full text-xs transition-all",
                   active
-                    ? "text-primary"
-                    : "text-muted-foreground hover:text-foreground"
+                    ? "text-primary bg-primary/10"
+                    : "text-muted-foreground hover:text-foreground hover:bg-overlay-subtle"
                 )}
                 aria-label={item.label}
                 aria-current={active ? "page" : undefined}
               >
-                <Icon className="h-5 w-5" aria-hidden="true" />
-                <span className="text-[10px]">{item.label}</span>
-                {active && (
-                  <span className="absolute -top-0.5 left-1/2 -translate-x-1/2 w-6 h-[3px] rounded-full bg-primary shadow-[0_-2px_8px_oklch(0.72_0.20_45/0.4)]" />
-                )}
+                <Icon className={cn("h-5 w-5 transition-transform", active && "scale-110")} aria-hidden="true" />
+                <span className={cn("text-[10px] leading-none", active && "font-semibold")}>{item.label}</span>
               </Link>
             )
           })}
@@ -102,7 +98,7 @@ export function NavBar({ isAdmin = false }: { isAdmin?: boolean }) {
           </div>
         </div>
         <nav className="flex-1 px-2 space-y-1">
-          {sidebarItems.map((item) => {
+          {sidebarNavItems.map((item) => {
             const Icon = item.icon
             const active = isActive(item.href)
             return (
@@ -122,6 +118,26 @@ export function NavBar({ isAdmin = false }: { isAdmin?: boolean }) {
               </Link>
             )
           })}
+
+          {/* Admin section — visually separated below the divider */}
+          {isAdmin && (
+            <>
+              <div className="my-2 mx-3 h-px bg-overlay-border" aria-hidden />
+              <Link
+                href={adminItem.href}
+                className={cn(
+                  "flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm transition-colors",
+                  isActive(adminItem.href)
+                    ? "bg-primary/10 text-primary border border-primary/20 border-l-2 border-l-primary shadow-[0_0_16px_oklch(0.68_0.22_35/0.25)]"
+                    : "text-muted-foreground hover:bg-secondary hover:text-foreground"
+                )}
+                aria-current={isActive(adminItem.href) ? "page" : undefined}
+              >
+                <adminItem.icon className="h-4 w-4" aria-hidden="true" />
+                {adminItem.label}
+              </Link>
+            </>
+          )}
         </nav>
         <div className="p-2 border-t border-overlay-border space-y-1">
           <ThemeToggle showLabel className="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm text-muted-foreground hover:bg-secondary hover:text-foreground transition-colors w-full" />

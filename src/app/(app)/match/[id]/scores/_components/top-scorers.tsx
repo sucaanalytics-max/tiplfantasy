@@ -5,6 +5,7 @@ import { ChevronDown } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import { cn } from "@/lib/utils"
 import { getInitials, getAvatarColor } from "@/lib/avatar"
+import { PlayerHeadshot } from "@/components/player-headshot"
 import type { PlayerScoreRow, SelectionRow } from "../scores-client"
 
 const ROLE_COLORS: Record<string, string> = {
@@ -109,6 +110,7 @@ export function TopScorers({
                 aria-expanded={isExpanded}
                 className="w-full flex items-center gap-2 py-1.5 px-2.5 text-left transition-colors hover:bg-black/[0.02] dark:hover:bg-white/[0.02]"
               >
+                <PlayerHeadshot player={ps.player} size="sm" ring="team" />
                 <Badge
                   variant="outline"
                   className={cn(

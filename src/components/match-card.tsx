@@ -54,14 +54,20 @@ export function MatchCard({ match, userPoints, userRank, hasSubmitted, compact =
         <Card
           className={`glass min-w-[180px] w-[180px] glass-hover transition-all relative overflow-hidden rounded-2xl ${isLive ? "live-glow" : ""}`}
         >
-          {/* Team-color gradient wash */}
+          {/* Team-color gradient wash (subtle) */}
           <div
             className="absolute inset-0 pointer-events-none"
             style={{
-              background: `linear-gradient(135deg, ${home.color}24 0%, transparent 45%, ${away.color}24 100%)`,
+              background: `linear-gradient(135deg, ${home.color}18 0%, transparent 45%, ${away.color}18 100%)`,
             }}
           />
-          <CardContent className="p-3 pt-3 space-y-3 relative">
+          {/* 4px left stripe — premium team-color accent (home → bottom away) */}
+          <div
+            aria-hidden
+            className="absolute left-0 top-0 bottom-0 w-1 pointer-events-none"
+            style={{ background: `linear-gradient(to bottom, ${home.color} 0%, ${home.color} 50%, ${away.color} 50%, ${away.color} 100%)` }}
+          />
+          <CardContent className="p-3 pt-3 pl-4 space-y-3 relative">
             {/* Tag pill */}
             <div className="flex items-center justify-between">
               <span

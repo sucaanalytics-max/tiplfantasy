@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation"
 import { CountdownTimer } from "@/components/countdown-timer"
 import {
   Star,
+  Crown,
   Check,
   ChevronLeft,
   AlertCircle,
@@ -30,6 +31,12 @@ import { SegmentedProgressBar } from "@/components/segmented-progress-bar"
 import { CricketField } from "@/components/cricket-field"
 import { Drawer, DrawerClose, DrawerContent, DrawerTrigger, DrawerTitle } from "@/components/ui/drawer"
 import { PlayerStatsDrawer } from "@/components/player-stats-drawer"
+import { PlayerHeadshot } from "@/components/player-headshot"
+import { PlayerCardPremium } from "@/components/player-card-premium"
+import { PitchView } from "@/components/pitch-view"
+import { PlayerResearchTable } from "@/components/player-research-table"
+import { CaptainOverlay } from "@/components/captain-overlay"
+import { List as ListIcon, Map as MapIcon, Table as TableIcon } from "lucide-react"
 import { Confetti } from "@/components/confetti"
 import { TeamSubmitPreview } from "@/components/team-submit-preview"
 import { TeamTacticalPreview } from "@/components/team-tactical-preview"
@@ -52,13 +59,6 @@ type Props = {
 }
 
 const ROLE_ORDER: PlayerRole[] = ["WK", "BAT", "AR", "BOWL"]
-
-const ROLE_ACCENT: Record<PlayerRole, string> = {
-  WK:   "role-wk",
-  BAT:  "role-bat",
-  AR:   "role-ar",
-  BOWL: "role-bowl",
-}
 
 const ROLE_LABELS: Record<PlayerRole, string> = {
   WK: "Wicket-keeper",
@@ -91,6 +91,7 @@ export function PickTeamClient({
   const [viceCaptainId, setViceCaptainId] = useState<string | null>(
     initialViceCaptainId
   )
+  const [pickMode, setPickMode] = useState<"list" | "pitch" | "research">("list")
   const [activeFilter, setActiveFilter] = useState<PlayerRole | "ALL">("ALL")
   const [teamFilter, setTeamFilter] = useState<"ALL" | "HOME" | "AWAY">("ALL")
   const [search, setSearch] = useState("")
@@ -112,23 +113,6 @@ export function PickTeamClient({
     }
     prevSelectedCount.current = selectedIds.size
   }, [selectedIds.size, captainId, viceCaptainId])
-
-  const getMatchupChip = useCallback((player: PlayerWithTeam): string | null => {
-    const opponentShort = player.team_id === match.team_home_id
-      ? match.team_away.short_name
-      : match.team_home.short_name
-    const vs = vsTeamStats[player.id]
-    if (!vs || vs.matches < 3) return null
-    if (vs.balls_faced > 0) {
-      const avg = vs.runs / Math.max(vs.matches, 1)
-      if (avg >= 35) return `${avg.toFixed(0)} avg vs ${opponentShort}`
-    }
-    if (Number(vs.overs_bowled) > 0) {
-      const econ = vs.runs_conceded / Number(vs.overs_bowled)
-      if (econ <= 7) return `${econ.toFixed(1)} econ vs ${opponentShort}`
-    }
-    return null
-  }, [match, vsTeamStats])
 
   const hasPlayingXI = playingXIIds.length > 0
 
@@ -317,225 +301,36 @@ export function PickTeamClient({
     setError(null)
   }
 
-  const renderPlayerCompact = (player: PlayerWithTeam) => {
-    const isSelected = selectedIds.has(player.id)
-    const isCaptain = captainId === player.id
-    const isVC = viceCaptainId === player.id
-    const isInXI = playingXIIds.includes(player.id)
-    const disabledReason = getDisabledReason(player)
-    const isDisabled = !!disabledReason
-    const formIndicator = player.form_indicator
-    const matchupChip = getMatchupChip(player)
-
+  /**
+   * Single render path for both mobile (2-col card grid) and desktop (2-col
+   * card grid). Replaces the previous renderPlayerCompact (9-col row) and
+   * renderPlayerMobileCard (compact card) implementations.
+   */
+  const renderPlayer = (player: PlayerWithTeam) => {
     const entries = tiplMatchLog[player.id] ?? []
     const totalPts = entries.length > 0 ? entries.reduce((a, e) => a + e.fantasyPoints, 0) : null
     const avgPts = entries.length > 0 ? Math.round(totalPts! / entries.length) : null
     const lastPts = entries.length > 0 ? entries[entries.length - 1].fantasyPoints : null
-
-    return (
-      <div
-        key={player.id}
-        className={cn(
-          "flex items-center gap-3 px-4 py-2.5 border-b border-overlay-border transition-colors",
-          ROLE_ACCENT[player.role],
-          isSelected && "bg-primary/[0.06]",
-          isDisabled && "opacity-35",
-          hasPlayingXI && !isInXI && "opacity-40"
-        )}
-      >
-        {/* Player photo / initials avatar */}
-        <button
-          className="shrink-0"
-          onClick={(e) => { e.stopPropagation(); setStatsPlayerId(player.id) }}
-        >
-          {player.image_url ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img
-              src={player.image_url}
-              alt={player.name}
-              className="h-10 w-10 rounded-full object-cover ring-1 ring-overlay-border-hover"
-            />
-          ) : (
-            <span
-              className="h-10 w-10 rounded-full flex items-center justify-center font-display font-bold text-sm ring-1"
-              style={{
-                backgroundColor: `${player.team.color}22`,
-                color: player.team.color,
-                boxShadow: `0 0 0 1px ${player.team.color}55`,
-              }}
-            >
-              {player.name.split(" ").slice(0, 2).map((n) => n[0]?.toUpperCase()).join("")}
-            </span>
-          )}
-        </button>
-
-        {/* Name + metadata */}
-        <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-1.5">
-            <span
-              className="text-sm font-semibold leading-tight cursor-pointer"
-              onClick={(e) => { e.stopPropagation(); setStatsPlayerId(player.id) }}
-            >
-              {player.name.split(" ")[0]}
-              {player.name.split(" ").length > 1 && (
-                <span className="block text-xs font-medium text-muted-foreground">
-                  {player.name.split(" ").slice(1).join(" ")}
-                </span>
-              )}
-            </span>
-            {isCaptain && <span className="text-2xs font-bold text-[var(--tw-amber-text)] bg-amber-400/15 px-1 rounded shrink-0">C</span>}
-            {isVC && <span className="text-2xs font-bold text-violet-400 bg-violet-400/15 px-1 rounded shrink-0">VC</span>}
-            <FormIcon indicator={formIndicator} />
-          </div>
-          <div className="flex items-center gap-1.5 mt-0.5">
-            <span className="text-2xs font-medium" style={{ color: player.team.color }}>{player.team.short_name}</span>
-            <span className="text-2xs text-muted-foreground">&middot;</span>
-            <span className="text-2xs text-muted-foreground">{ROLE_LABELS[player.role]}</span>
-            {selectionPcts[player.id] > 0 && (
-              <>
-                <span className="text-2xs text-muted-foreground">&middot;</span>
-                <span className="text-2xs text-muted-foreground">Sel {selectionPcts[player.id]}%</span>
-              </>
-            )}
-            {hasPlayingXI && isInXI && (
-              <span className="text-2xs font-bold text-status-success">XI</span>
-            )}
-          </div>
-          {isDisabled && (
-            <p className="text-2xs text-status-danger mt-0.5">{disabledReason}</p>
-          )}
-        </div>
-
-        {/* Tot / Avg / Last columns */}
-        <span className={cn("text-xs font-bold tabular-nums font-display w-9 text-right shrink-0", totalPts != null ? "text-foreground" : "text-muted-foreground/30")}>
-          {totalPts ?? "—"}
-        </span>
-        <span className={cn("text-xs tabular-nums w-9 text-right shrink-0", avgPts != null ? "text-muted-foreground" : "text-muted-foreground/30")}>
-          {avgPts ?? "—"}
-        </span>
-        <span className={cn("text-xs tabular-nums w-9 text-right shrink-0", lastPts != null ? "text-muted-foreground" : "text-muted-foreground/30")}>
-          {lastPts ?? "—"}
-        </span>
-
-        {/* Credits */}
-        <span className="text-xs font-bold tabular-nums font-display text-muted-foreground w-8 text-center shrink-0">
-          {player.credit_cost}
-        </span>
-
-        {/* +/- button */}
-        <button
-          onClick={() => { if (!isDisabled) togglePlayer(player.id) }}
-          disabled={isDisabled}
-          className={cn(
-            "h-8 w-8 rounded-full flex items-center justify-center shrink-0 text-sm font-bold transition-all border",
-            isSelected
-              ? "bg-primary/15 border-primary/40 text-primary"
-              : isDisabled
-              ? "border-border/30 text-muted-foreground/30"
-              : "border-overlay-border-hover text-muted-foreground hover:border-primary/40 hover:text-primary"
-          )}
-        >
-          {isSelected ? "−" : "+"}
-        </button>
-      </div>
-    )
-  }
-
-  // Compact card variant — mobile 2-col grid, drops AVG/LAST/Cr columns
-  const renderPlayerMobileCard = (player: PlayerWithTeam) => {
-    const isSelected = selectedIds.has(player.id)
-    const isCaptain = captainId === player.id
-    const isVC = viceCaptainId === player.id
-    const isInXI = playingXIIds.includes(player.id)
     const disabledReason = getDisabledReason(player)
-    const isDisabled = !!disabledReason
-
-    const entries = tiplMatchLog[player.id] ?? []
-    const totalPts = entries.length > 0 ? entries.reduce((a, e) => a + e.fantasyPoints, 0) : null
-    const avgPts = entries.length > 0 ? Math.round(totalPts! / entries.length) : null
 
     return (
-      <div
+      <PlayerCardPremium
         key={player.id}
-        className={cn(
-          "relative rounded-lg border border-overlay-border bg-card transition-colors overflow-hidden",
-          isSelected && "ring-2 ring-primary/50 border-primary/40",
-          isDisabled && "opacity-35",
-          hasPlayingXI && !isInXI && "opacity-40"
-        )}
-        style={{ borderLeftWidth: 3, borderLeftColor: player.team.color }}
-      >
-        <div className={cn("p-2 space-y-1.5", ROLE_ACCENT[player.role])}>
-          {/* Name row + plus button (entire name area is the stats trigger) */}
-          <div className="flex items-start gap-1.5">
-            <button
-              type="button"
-              onClick={(e) => { e.stopPropagation(); setStatsPlayerId(player.id) }}
-              className="block text-left flex-1 min-w-0"
-              aria-label={`View ${player.name} stats`}
-            >
-              <div className="flex items-center gap-1">
-                <span className="text-sm font-semibold leading-tight truncate flex-1 min-w-0">
-                  {player.name}
-                </span>
-                {isCaptain && <span className="text-[9px] font-bold text-[var(--tw-amber-text)] bg-amber-400/15 px-1 rounded shrink-0">C</span>}
-                {isVC && <span className="text-[9px] font-bold text-violet-400 bg-violet-400/15 px-1 rounded shrink-0">VC</span>}
-                <FormIcon indicator={player.form_indicator} />
-              </div>
-              <p className="text-[10px] text-muted-foreground truncate mt-0.5">
-                <span className="font-semibold" style={{ color: player.team.color }}>{player.team.short_name}</span>
-                <span className="text-muted-foreground/50"> · </span>
-                <span className="uppercase tracking-wide">{player.role}</span>
-                {hasPlayingXI && isInXI && <span className="text-status-success font-bold"> · XI</span>}
-              </p>
-            </button>
-            <button
-              type="button"
-              onClick={(e) => { e.stopPropagation(); if (!isDisabled) togglePlayer(player.id) }}
-              disabled={isDisabled}
-              className={cn(
-                "h-7 w-7 rounded-full flex items-center justify-center text-sm font-bold border shrink-0 transition-colors mt-0.5",
-                isSelected
-                  ? "bg-primary border-primary text-white"
-                  : isDisabled
-                  ? "border-border/30 text-muted-foreground/30"
-                  : "border-overlay-border-hover text-muted-foreground hover:border-primary/40 hover:text-primary"
-              )}
-              aria-label={isSelected ? `Deselect ${player.name}` : `Select ${player.name}`}
-            >
-              {isSelected ? "✓" : "+"}
-            </button>
-          </div>
-
-          {/* Stats line — total + avg + selection % */}
-          <div className="pt-1.5 border-t border-overlay-border flex items-baseline justify-between gap-1">
-            <div className="flex items-baseline gap-1 min-w-0">
-              <span className={cn("text-gold-stat text-sm leading-none", totalPts == null && "text-muted-foreground/30")}>
-                {totalPts ?? "—"}
-              </span>
-              <span className="text-[10px] text-muted-foreground">pts</span>
-              {avgPts != null && (
-                <>
-                  <span className="text-[10px] text-muted-foreground/40">·</span>
-                  <span className="text-xs text-muted-foreground tabular-nums font-display font-semibold">
-                    {avgPts}
-                  </span>
-                  <span className="text-[10px] text-muted-foreground">avg</span>
-                </>
-              )}
-            </div>
-            {selectionPcts[player.id] > 0 && (
-              <span className="text-[10px] text-muted-foreground tabular-nums shrink-0">
-                {selectionPcts[player.id]}%
-              </span>
-            )}
-          </div>
-
-          {isDisabled && (
-            <p className="text-[10px] text-status-danger leading-tight">{disabledReason}</p>
-          )}
-        </div>
-      </div>
+        player={player}
+        isSelected={selectedIds.has(player.id)}
+        isCaptain={captainId === player.id}
+        isVC={viceCaptainId === player.id}
+        isInXI={playingXIIds.includes(player.id)}
+        hasPlayingXI={hasPlayingXI}
+        isDisabled={!!disabledReason}
+        disabledReason={disabledReason}
+        totalPts={totalPts}
+        avgPts={avgPts}
+        lastPts={lastPts}
+        selectionPct={selectionPcts[player.id] ?? 0}
+        onToggle={() => togglePlayer(player.id)}
+        onShowStats={() => setStatsPlayerId(player.id)}
+      />
     )
   }
 
@@ -757,7 +552,41 @@ export function PickTeamClient({
           <p className="text-center text-[10px] text-muted-foreground mt-1">Max 7 from a team</p>
         </div>
 
-        {/* Row 2: Role tabs (underline style) */}
+        {/* Mode toggle: List · Pitch · Research */}
+        <div className="px-3 pb-2">
+          <div role="tablist" aria-label="Pick view mode" className="flex gap-1 p-0.5 rounded-lg bg-secondary/50 border border-overlay-border w-fit mx-auto">
+            {(
+              [
+                { key: "list", label: "List", Icon: ListIcon },
+                { key: "pitch", label: "Pitch", Icon: MapIcon },
+                { key: "research", label: "Research", Icon: TableIcon },
+              ] as const
+            ).map(({ key, label, Icon }) => {
+              const active = pickMode === key
+              return (
+                <button
+                  key={key}
+                  type="button"
+                  role="tab"
+                  aria-selected={active}
+                  onClick={() => setPickMode(key)}
+                  className={cn(
+                    "px-3 py-1.5 rounded-md text-xs font-display font-bold uppercase tracking-wider transition-colors flex items-center gap-1.5",
+                    active
+                      ? "bg-card text-foreground shadow-sm"
+                      : "text-muted-foreground hover:text-foreground"
+                  )}
+                >
+                  <Icon className="h-3.5 w-3.5" />
+                  {label}
+                </button>
+              )
+            })}
+          </div>
+        </div>
+
+        {/* Row 2: Role tabs (underline style) — only visible in List mode */}
+        {pickMode === "list" && (
         <div className="flex border-b border-overlay-border">
           <button
             onClick={() => setActiveFilter("ALL")}
@@ -788,8 +617,10 @@ export function PickTeamClient({
             )
           })}
         </div>
+        )}
 
-        {/* Row 3: Team filter + search + sort */}
+        {/* Row 3: Team filter + search + sort — only in List mode */}
+        {pickMode === "list" && (
         <div className="px-4 py-2 flex gap-2">
           <div className="flex rounded-lg overflow-hidden border border-overlay-border text-xs">
             {(
@@ -845,16 +676,7 @@ export function PickTeamClient({
             {sortBy === "total" ? "Pts" : sortBy === "average" ? "Avg" : sortBy === "credits" ? "Cr" : ""}
           </button>
         </div>
-
-        {/* Column headers — desktop only (mobile uses card grid) */}
-        <div className="hidden lg:flex px-4 pb-1.5 items-center">
-          <span className="text-2xs font-semibold text-muted-foreground uppercase flex-1">Player</span>
-          <span className="text-2xs font-semibold text-muted-foreground uppercase w-9 text-right">Tot</span>
-          <span className="text-2xs font-semibold text-muted-foreground uppercase w-9 text-right">Avg</span>
-          <span className="text-2xs font-semibold text-muted-foreground uppercase w-9 text-right">Last</span>
-          <span className="text-2xs font-semibold text-muted-foreground uppercase w-8 text-center">Cr</span>
-          <span className="w-8" />
-        </div>
+        )}
 
         {hasPlayingXI && (
           <div className="px-4 pb-2">
@@ -931,8 +753,40 @@ export function PickTeamClient({
         {/* Right panel — player browser (full-width on mobile) */}
         <div className="lg:col-span-7 lg:overflow-y-auto">
 
-      {/* Player list — segmented by role */}
-      {(() => {
+      {/* Pitch mode — visualize current XI on the field */}
+      {pickMode === "pitch" && (
+        <div className="px-3 py-4 max-w-md mx-auto">
+          <PitchView
+            selectedPlayers={selectedPlayers}
+            captainId={captainId}
+            viceCaptainId={viceCaptainId}
+            totalSlots={11}
+            onPlayerClick={(player) => setStatsPlayerId(player.id)}
+            onRemove={(playerId) => togglePlayer(playerId)}
+            onEmptyClick={() => setPickMode("list")}
+          />
+        </div>
+      )}
+
+      {/* Research mode — sortable, dense candidate table */}
+      {pickMode === "research" && (
+        <div className="px-3 py-3">
+          <PlayerResearchTable
+            players={filteredPlayers}
+            tiplMatchLog={tiplMatchLog}
+            selectionPcts={selectionPcts}
+            playingXIIds={playingXIIds}
+            selectedIds={selectedIds}
+            onToggle={(playerId) => togglePlayer(playerId)}
+            onShowStats={(playerId) => setStatsPlayerId(playerId)}
+            getDisabledReason={getDisabledReason}
+            hasPlayingXI={hasPlayingXI}
+          />
+        </div>
+      )}
+
+      {/* List mode — segmented by role with team-split 2-col card grid */}
+      {pickMode === "list" && (() => {
         const rolesToShow = activeFilter === "ALL" ? ROLE_ORDER : [activeFilter]
         const showHeaders = activeFilter === "ALL"
 
@@ -963,96 +817,53 @@ export function PickTeamClient({
                     rolePlayers.length === 0 ? (
                       <div className="py-8 text-center text-2xs text-muted-foreground">No players</div>
                     ) : (
-                      <>
-                        {/* MOBILE: true 2-column compact card grid */}
-                        <div className="grid grid-cols-2 gap-2 px-2 py-2 lg:hidden">
-                          <div className="space-y-2">
-                            <div
-                              className="px-2 py-1.5 flex items-center gap-1.5 border-l-[3px] rounded-r bg-overlay-muted"
-                              style={{ borderColor: match.team_home.color }}
-                            >
-                              <TeamLogo team={match.team_home} size="sm" />
-                              <span className="font-display font-bold text-2xs uppercase tracking-widest truncate">
-                                {match.team_home.short_name}
-                              </span>
-                              <span className="ml-auto text-2xs text-muted-foreground tabular-nums">
-                                {homePlayers.length}
-                              </span>
-                            </div>
-                            {homePlayers.length > 0 ? (
-                              homePlayers.map((player) => renderPlayerMobileCard(player))
-                            ) : (
-                              <div className="py-4 text-center text-2xs text-muted-foreground">No players</div>
-                            )}
+                      /* Unified 2-col card grid — same on mobile and desktop.
+                         Left column = home team, right = away team. */
+                      <div className="grid grid-cols-2 gap-2 px-2 py-2 md:gap-3 md:px-3">
+                        <div className="space-y-2">
+                          <div
+                            className="px-2 py-1.5 flex items-center gap-1.5 border-l-[3px] rounded-r bg-overlay-muted"
+                            style={{ borderColor: match.team_home.color }}
+                          >
+                            <TeamLogo team={match.team_home} size="sm" />
+                            <span className="font-display font-bold text-2xs uppercase tracking-widest truncate">
+                              {match.team_home.short_name}
+                            </span>
+                            <span className="ml-auto text-2xs text-muted-foreground tabular-nums">
+                              {homePlayers.length}
+                            </span>
                           </div>
-                          <div className="space-y-2">
-                            <div
-                              className="px-2 py-1.5 flex items-center gap-1.5 border-l-[3px] rounded-r bg-overlay-muted"
-                              style={{ borderColor: match.team_away.color }}
-                            >
-                              <TeamLogo team={match.team_away} size="sm" />
-                              <span className="font-display font-bold text-2xs uppercase tracking-widest truncate">
-                                {match.team_away.short_name}
-                              </span>
-                              <span className="ml-auto text-2xs text-muted-foreground tabular-nums">
-                                {awayPlayers.length}
-                              </span>
-                            </div>
-                            {awayPlayers.length > 0 ? (
-                              awayPlayers.map((player) => renderPlayerMobileCard(player))
-                            ) : (
-                              <div className="py-4 text-center text-2xs text-muted-foreground">No players</div>
-                            )}
-                          </div>
+                          {homePlayers.length > 0 ? (
+                            homePlayers.map((player) => renderPlayer(player))
+                          ) : (
+                            <div className="py-4 text-center text-2xs text-muted-foreground">No players</div>
+                          )}
                         </div>
-
-                        {/* DESKTOP: 2-column row layout (full stats) */}
-                        <div className="hidden lg:grid lg:grid-cols-2 lg:gap-x-3">
-                          <div className="lg:border-r lg:border-overlay-border">
-                            <div
-                              className="px-4 py-1.5 flex items-center gap-2 border-l-4 bg-overlay-muted"
-                              style={{ borderColor: match.team_home.color }}
-                            >
-                              <TeamLogo team={match.team_home} size="sm" />
-                              <span className="font-display font-bold text-2xs uppercase tracking-widest">
-                                {match.team_home.short_name}
-                              </span>
-                              <span className="ml-auto text-2xs text-muted-foreground tabular-nums">
-                                {homePlayers.length}
-                              </span>
-                            </div>
-                            {homePlayers.length > 0 ? (
-                              homePlayers.map((player) => renderPlayerCompact(player))
-                            ) : (
-                              <div className="py-4 text-center text-2xs text-muted-foreground">No players</div>
-                            )}
+                        <div className="space-y-2">
+                          <div
+                            className="px-2 py-1.5 flex items-center gap-1.5 border-l-[3px] rounded-r bg-overlay-muted"
+                            style={{ borderColor: match.team_away.color }}
+                          >
+                            <TeamLogo team={match.team_away} size="sm" />
+                            <span className="font-display font-bold text-2xs uppercase tracking-widest truncate">
+                              {match.team_away.short_name}
+                            </span>
+                            <span className="ml-auto text-2xs text-muted-foreground tabular-nums">
+                              {awayPlayers.length}
+                            </span>
                           </div>
-                          <div>
-                            <div
-                              className="px-4 py-1.5 flex items-center gap-2 border-l-4 bg-overlay-muted"
-                              style={{ borderColor: match.team_away.color }}
-                            >
-                              <TeamLogo team={match.team_away} size="sm" />
-                              <span className="font-display font-bold text-2xs uppercase tracking-widest">
-                                {match.team_away.short_name}
-                              </span>
-                              <span className="ml-auto text-2xs text-muted-foreground tabular-nums">
-                                {awayPlayers.length}
-                              </span>
-                            </div>
-                            {awayPlayers.length > 0 ? (
-                              awayPlayers.map((player) => renderPlayerCompact(player))
-                            ) : (
-                              <div className="py-4 text-center text-2xs text-muted-foreground">No players</div>
-                            )}
-                          </div>
+                          {awayPlayers.length > 0 ? (
+                            awayPlayers.map((player) => renderPlayer(player))
+                          ) : (
+                            <div className="py-4 text-center text-2xs text-muted-foreground">No players</div>
+                          )}
                         </div>
-                      </>
+                      </div>
                     )
                   ) : (
                     /* Single column for HOME/AWAY filter */
-                    <div className="divide-y divide-border">
-                      {rolePlayers.map((player) => renderPlayerCompact(player))}
+                    <div className="px-2 py-2 space-y-2">
+                      {rolePlayers.map((player) => renderPlayer(player))}
                     </div>
                   )}
                 </div>
@@ -1107,64 +918,92 @@ export function PickTeamClient({
                 </button>
               </DrawerTrigger>
               <DrawerContent className="max-h-[85vh]">
-                <DrawerTitle className="text-center text-sm font-semibold py-2">
+                <DrawerTitle className="text-center font-display text-base font-bold uppercase tracking-wider py-2">
                   Captain & Vice-Captain
                 </DrawerTitle>
-                <p className="text-xs text-muted-foreground text-center mb-3">
-                  Captain gets 2x points, Vice-Captain gets 1.5x
+                <p className="text-xs text-muted-foreground text-center mb-3 px-4">
+                  <Crown className="inline h-3 w-3 -mt-0.5 text-[var(--captain-gold)]" /> Captain
+                  <span className="font-display font-bold text-foreground"> ×2</span>
+                  <span className="mx-2 text-muted-foreground/40">·</span>
+                  <Star className="inline h-3 w-3 -mt-0.5 text-[var(--vice-silver)] fill-current" /> Vice-Captain
+                  <span className="font-display font-bold text-foreground"> ×1.5</span>
                 </p>
-                <div className="px-4 pb-3 space-y-2 overflow-y-auto" data-vaul-no-drag>
+                <div className="px-3 pb-3 space-y-1.5 overflow-y-auto" data-vaul-no-drag>
                   {selectedPlayers
                     .sort((a, b) => ROLE_ORDER.indexOf(a.role) - ROLE_ORDER.indexOf(b.role))
                     .map((player) => {
                       const isCaptain = captainId === player.id
                       const isVC = viceCaptainId === player.id
                       return (
-                        <Card key={player.id} className="p-3 border border-border">
-                          <div className="flex items-center justify-between">
-                            <div className="flex items-center gap-2 min-w-0">
-                              <Badge variant="outline" className="text-[10px] w-10 justify-center shrink-0">
-                                {player.role}
-                              </Badge>
-                              <div className="min-w-0">
-                                <p className="text-sm font-medium truncate">{player.name}</p>
-                                <p className="text-[10px]" style={{ color: player.team.color }}>
-                                  {player.team.short_name}
-                                </p>
-                              </div>
-                            </div>
-                            <div className="flex items-center gap-2 shrink-0">
-                              <Button
-                                size="sm"
-                                variant={isCaptain ? "default" : "outline"}
-                                className={cn(
-                                  "h-8 w-8 p-0 rounded-full",
-                                  isCaptain && "bg-[var(--tw-amber-text)] text-black hover:bg-amber-400/90"
-                                )}
-                                onClick={() => {
-                                  if (viceCaptainId === player.id) setViceCaptainId(null)
-                                  setCaptainId(isCaptain ? null : player.id)
-                                }}
-                              >
-                                <span className="text-xs font-bold">C</span>
-                              </Button>
-                              <Button
-                                size="sm"
-                                variant={isVC ? "default" : "outline"}
-                                className={cn(
-                                  "h-8 w-8 p-0 rounded-full",
-                                  isVC && "bg-violet-400 text-black hover:bg-violet-400/90"
-                                )}
-                                onClick={() => {
-                                  if (captainId === player.id) setCaptainId(null)
-                                  setViceCaptainId(isVC ? null : player.id)
-                                }}
-                              >
-                                <span className="text-xs font-bold">VC</span>
-                              </Button>
-                            </div>
+                        <div
+                          key={player.id}
+                          className={cn(
+                            "flex items-center gap-3 p-2.5 rounded-xl border transition-all stripe-team-left",
+                            isCaptain
+                              ? "border-[var(--captain-gold)]/50 bg-[var(--captain-gold)]/5"
+                              : isVC
+                              ? "border-[var(--vice-silver)]/50 bg-[var(--vice-silver)]/5"
+                              : "border-overlay-border bg-card"
+                          )}
+                          style={{ "--team-color": player.team.color } as React.CSSProperties}
+                        >
+                          {/* Headshot — bigger, with C/VC ring + corner overlay when selected */}
+                          <span className={cn("relative inline-flex shrink-0 rounded-full", isCaptain && "ring-captain", isVC && "ring-vice")}>
+                            <PlayerHeadshot player={player} size="lg" ring={isCaptain || isVC ? "none" : "team"} shadow />
+                            {isCaptain && <CaptainOverlay variant="captain" size="md" position="tr" />}
+                            {isVC && <CaptainOverlay variant="vice" size="md" position="tr" />}
+                          </span>
+
+                          {/* Name + meta */}
+                          <div className="min-w-0 flex-1">
+                            <p className="font-display font-bold text-sm truncate leading-tight">{player.name}</p>
+                            <p className="text-[11px] truncate mt-0.5">
+                              <span className="font-semibold uppercase tracking-wider" style={{ color: player.team.color }}>
+                                {player.team.short_name}
+                              </span>
+                              <span className="text-muted-foreground/40 mx-1">·</span>
+                              <span className="text-muted-foreground uppercase tracking-wider">{player.role}</span>
+                            </p>
                           </div>
-                        </Card>
+
+                          {/* C / VC pills — bigger, animated, color-tied to overlay tokens */}
+                          <div className="flex items-center gap-1.5 shrink-0">
+                            <button
+                              type="button"
+                              onClick={() => {
+                                if (viceCaptainId === player.id) setViceCaptainId(null)
+                                setCaptainId(isCaptain ? null : player.id)
+                              }}
+                              aria-label={isCaptain ? "Remove captain" : "Set as captain"}
+                              aria-pressed={isCaptain}
+                              className={cn(
+                                "relative h-9 w-9 rounded-full flex items-center justify-center font-display font-bold text-xs transition-all border-2",
+                                isCaptain
+                                  ? "bg-[var(--captain-gold)] border-[var(--captain-gold)] text-[oklch(0.18_0.02_86)] shadow-[0_0_14px_var(--captain-gold-glow)] scale-105"
+                                  : "border-overlay-border-hover text-muted-foreground hover:border-[var(--captain-gold)]/60 hover:text-[var(--captain-gold)]"
+                              )}
+                            >
+                              <Crown className={cn("h-4 w-4", isCaptain && "fill-current")} />
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                if (captainId === player.id) setCaptainId(null)
+                                setViceCaptainId(isVC ? null : player.id)
+                              }}
+                              aria-label={isVC ? "Remove vice-captain" : "Set as vice-captain"}
+                              aria-pressed={isVC}
+                              className={cn(
+                                "relative h-9 w-9 rounded-full flex items-center justify-center font-display font-bold text-xs transition-all border-2",
+                                isVC
+                                  ? "bg-[var(--vice-silver)] border-[var(--vice-silver)] text-[oklch(0.15_0.01_60)] shadow-[0_0_14px_var(--vice-silver-glow)] scale-105"
+                                  : "border-overlay-border-hover text-muted-foreground hover:border-[var(--vice-silver)]/60 hover:text-foreground"
+                              )}
+                            >
+                              <Star className={cn("h-4 w-4", isVC && "fill-current")} />
+                            </button>
+                          </div>
+                        </div>
                       )
                     })}
                 </div>
