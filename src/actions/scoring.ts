@@ -1,5 +1,6 @@
 "use server"
 
+import { revalidateTag } from "next/cache"
 import { createClient } from "@/lib/supabase/server"
 import { createAdminClient } from "@/lib/supabase/admin"
 import { loadScoringRules, calculatePlayerPoints, calculateUserMatchScore } from "@/lib/scoring"
@@ -60,6 +61,7 @@ export async function savePlayerScores(
 
   const { error } = await admin.from("match_player_scores").insert(rows)
   if (error) return { error: error.message }
+  revalidateTag("player-stats", "hours")
   return { success: true }
 }
 
@@ -201,6 +203,8 @@ export async function calculateMatchPoints(matchId: string) {
 
   // Refresh leaderboard
   await admin.rpc("refresh_leaderboard")
+  revalidateTag("player-stats", "hours")
+  revalidateTag("matches", "minutes")
 
   // Fire-and-forget: update player stats tables (season/venue/vs-team)
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
@@ -394,6 +398,7 @@ export async function recalculateUserMatchScores(matchId: string) {
     .upsert(rows, { onConflict: "user_id,match_id" })
 
   await admin.rpc("refresh_leaderboard")
+  revalidateTag("player-stats", "hours")
 }
 
 /**
@@ -479,6 +484,7 @@ export async function applyPotmBonus(matchId: string) {
 
   // Recalculate user scores with updated POTM
   await recalculateUserMatchScores(matchId)
+  revalidateTag("player-stats", "hours")
 
   return { success: true, playerName: potmPlayer.name, bonus: potmPts }
 }

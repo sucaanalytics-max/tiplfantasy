@@ -1,4 +1,5 @@
 import { type NextRequest } from "next/server"
+import { revalidateTag } from "next/cache"
 import { createAdminClient } from "@/lib/supabase/admin"
 import { runAutoPickForMatch } from "@/lib/auto-pick"
 
@@ -11,6 +12,7 @@ export async function GET(req: NextRequest) {
 
   // 1. Lock matches whose start_time has passed
   await admin.rpc("auto_lock_matches")
+  revalidateTag("matches", "minutes")
 
   // 2. Find matches that went live in the last 3 minutes (cron window + buffer)
   const windowStart = new Date(Date.now() - 3 * 60 * 1000).toISOString()
