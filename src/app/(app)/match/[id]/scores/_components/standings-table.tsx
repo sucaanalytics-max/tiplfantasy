@@ -127,6 +127,20 @@ const StandingsRow = memo(function StandingsRow({
     rank === 3 ? "text-[var(--tw-orange-text,_#fb923c)]" :
     "text-muted-foreground"
 
+  // Score-tick on live update — when total_points changes between renders,
+  // animate the points cell with the score-tick keyframe (350ms slide+scale).
+  // Pure presentation; doesn't touch the live polling or rank delta hook.
+  const prevPointsRef = useRef(row.total_points)
+  const [pointsTick, setPointsTick] = useState(false)
+  useEffect(() => {
+    if (prevPointsRef.current !== row.total_points) {
+      prevPointsRef.current = row.total_points
+      setPointsTick(true)
+      const t = setTimeout(() => setPointsTick(false), 380)
+      return () => clearTimeout(t)
+    }
+  }, [row.total_points])
+
   return (
     <button
       onClick={onClick}
@@ -176,7 +190,10 @@ const StandingsRow = memo(function StandingsRow({
       </div>
 
       <div className="text-right shrink-0 flex flex-col items-end gap-0.5 min-w-[3.75rem]">
-        <p className="text-base font-bold font-display tabular-nums leading-tight">
+        <p
+          className="text-base font-bold font-display tabular-nums leading-tight"
+          style={pointsTick ? { animation: "score-tick 350ms ease-out" } : undefined}
+        >
           {row.total_points}
         </p>
         <div className="flex items-center gap-1.5">
