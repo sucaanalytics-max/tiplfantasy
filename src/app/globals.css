@@ -502,7 +502,12 @@
   100% { transform: translateY(10vh) rotate(720deg); opacity: 0; }
 }
 
-/* Disable all custom animations for reduced motion */
+/* Disable all custom animations for reduced motion. The first block kills
+ * the named keyframe animations explicitly (kept for clarity & older
+ * browsers); the universal block below also caps any animation/transition
+ * the codebase introduces — including framer-motion, vaul drawer slides,
+ * Tailwind transition-* utilities, and inline transitions on player cards
+ * / podium / pitch view added in the premium uplift. */
 @media (prefers-reduced-motion: reduce) {
   .ambient-orb,
   .animate-fade-in,
@@ -513,6 +518,13 @@
   .animate-urgency-pulse,
   .animate-shimmer {
     animation: none !important;
+  }
+
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
   }
 }
 
