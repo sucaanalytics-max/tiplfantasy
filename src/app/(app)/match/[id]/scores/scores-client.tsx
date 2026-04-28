@@ -264,7 +264,10 @@ export function ScoresClient({
     <div className="pb-12">
       {isLive && <LiveRefresher interval={30000} />}
 
-      {/* Full-bleed hero band — diagonal team-color split, status chip, venue */}
+      {/* Full-bleed hero band — cinematic backdrop on /scores so live
+          matches feel like a final, completed matches feel like a recap.
+          Pure presentation layer — no touch to LiveRefresher / live-score
+          polling / useRankDelta. */}
       <MatchHeroBand
         match={{
           match_number: match.match_number,
@@ -276,6 +279,7 @@ export function ScoresClient({
           team_home: home,
           team_away: away,
         }}
+        cinematic
       />
 
       <div className="max-w-3xl mx-auto">

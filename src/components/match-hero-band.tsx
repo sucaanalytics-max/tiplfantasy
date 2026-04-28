@@ -26,9 +26,14 @@ export type HeroBandMatch = {
 interface Props {
   match: HeroBandMatch
   compact?: boolean
+  /** Cinematic backdrop variant — replaces the diagonal team-color halves
+   *  with the .cinema-bg gradient + grain + spotlight composition.
+   *  Used on /scores live + recap surfaces. Pure presentation; touches
+   *  no live data hooks. */
+  cinematic?: boolean
 }
 
-export function MatchHeroBand({ match, compact = false }: Props) {
+export function MatchHeroBand({ match, compact = false, cinematic = false }: Props) {
   const home = match.team_home
   const away = match.team_away
   const isLive = match.status === "live"
@@ -107,18 +112,36 @@ export function MatchHeroBand({ match, compact = false }: Props) {
   }
 
   return (
-    <div className="relative h-[320px] md:h-[380px] w-full overflow-hidden">
-      {/* ── Diagonal team-color halves ─────────────────── */}
-      <div
-        className="absolute inset-0 diagonal-half-home"
-        style={{ background: `linear-gradient(135deg, ${home.color} 0%, ${home.color}cc 100%)` }}
-        aria-hidden
-      />
-      <div
-        className="absolute inset-0 diagonal-half-away"
-        style={{ background: `linear-gradient(135deg, ${away.color}cc 0%, ${away.color} 100%)` }}
-        aria-hidden
-      />
+    <div
+      className="relative h-[320px] md:h-[380px] w-full overflow-hidden"
+      style={
+        cinematic
+          ? ({ "--team-home-color": home.color, "--team-away-color": away.color } as React.CSSProperties)
+          : undefined
+      }
+    >
+      {cinematic ? (
+        <>
+          {/* Cinematic backdrop — cinema-bg gradient + grain + spotlights,
+              gradient-pan loop. Replaces the diagonal halves entirely on
+              this variant. */}
+          <div className="absolute inset-0 cinema-bg" aria-hidden />
+        </>
+      ) : (
+        <>
+          {/* ── Diagonal team-color halves ─────────────────── */}
+          <div
+            className="absolute inset-0 diagonal-half-home"
+            style={{ background: `linear-gradient(135deg, ${home.color} 0%, ${home.color}cc 100%)` }}
+            aria-hidden
+          />
+          <div
+            className="absolute inset-0 diagonal-half-away"
+            style={{ background: `linear-gradient(135deg, ${away.color}cc 0%, ${away.color} 100%)` }}
+            aria-hidden
+          />
+        </>
+      )}
 
       {/* ── Stadium silhouette backdrop ────────────────── */}
       <StadiumSilhouette className="absolute inset-x-0 bottom-12 w-full h-[40%] text-black/20 dark:text-white/15 pointer-events-none" />
