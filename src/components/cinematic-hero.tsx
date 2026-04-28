@@ -143,27 +143,42 @@ export function CinematicHero({
           )}
         </div>
 
-        {/* Centered seam: TEAM_HOME · VS · TEAM_AWAY in display-xl */}
+        {/* Centered seam: TEAM_HOME · VS · TEAM_AWAY — logo + name stacked */}
         <div className="absolute inset-0 z-[3] flex items-center justify-center pointer-events-none">
-          <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-3 md:gap-6 px-4 w-full max-w-3xl">
+          <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-4 md:gap-8 px-6 w-full max-w-3xl">
+            {/* Home: crest + name, right-aligned */}
             <div
-              className="text-display-xl text-white text-right truncate drop-shadow-[0_4px_24px_oklch(0_0_0_/_0.7)]"
-              style={{ animation: "slide-up 0.45s ease-out 760ms backwards" }}
+              className="flex flex-col items-end gap-2"
+              style={{ animation: "slide-up 0.45s ease-out 700ms backwards" }}
             >
-              {home.short_name}
+              <div style={{ filter: `drop-shadow(0 0 24px ${home.color}99)` }}>
+                <TeamLogo team={home} size="xl" />
+              </div>
+              <span className="text-2xl md:text-4xl font-display font-bold text-white tracking-tight drop-shadow-[0_2px_12px_oklch(0_0_0_/_0.8)]">
+                {home.short_name}
+              </span>
             </div>
+
+            {/* VS disc */}
             <div
-              className="relative inline-flex items-center justify-center h-16 w-16 md:h-24 md:w-24 rounded-full bg-[var(--captain-gold)] text-[oklch(0.18_0.02_86)] font-display font-bold text-lg md:text-2xl shrink-0 ring-2 ring-white/30 shadow-[0_8px_24px_oklch(0_0_0_/_0.5)]"
+              className="relative inline-flex items-center justify-center h-14 w-14 md:h-20 md:w-20 rounded-full bg-[var(--captain-gold)] text-[oklch(0.18_0.02_86)] font-display font-bold text-base md:text-xl shrink-0 ring-2 ring-white/30 shadow-[0_8px_24px_oklch(0_0_0_/_0.5)]"
               style={{ animation: "vs-clash 0.48s cubic-bezier(0.16, 1, 0.3, 1) 540ms backwards" }}
               aria-hidden
             >
               VS
             </div>
+
+            {/* Away: crest + name, left-aligned */}
             <div
-              className="text-display-xl text-white text-left truncate drop-shadow-[0_4px_24px_oklch(0_0_0_/_0.7)]"
-              style={{ animation: "slide-up 0.45s ease-out 800ms backwards" }}
+              className="flex flex-col items-start gap-2"
+              style={{ animation: "slide-up 0.45s ease-out 760ms backwards" }}
             >
-              {away.short_name}
+              <div style={{ filter: `drop-shadow(0 0 24px ${away.color}99)` }}>
+                <TeamLogo team={away} size="xl" />
+              </div>
+              <span className="text-2xl md:text-4xl font-display font-bold text-white tracking-tight drop-shadow-[0_2px_12px_oklch(0_0_0_/_0.8)]">
+                {away.short_name}
+              </span>
             </div>
           </div>
         </div>
