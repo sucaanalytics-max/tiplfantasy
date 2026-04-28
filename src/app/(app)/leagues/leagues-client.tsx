@@ -2,12 +2,11 @@
 
 import { useState, useTransition } from "react"
 import { useRouter } from "next/navigation"
-import Link from "next/link"
-import { Plus, UserPlus, Users, Copy, Check, Crown } from "lucide-react"
+import { Plus, UserPlus, Users } from "lucide-react"
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
+import { LeagueCard } from "@/components/league-card"
 import {
   Dialog,
   DialogContent,
@@ -33,7 +32,6 @@ export function LeaguesClient({ leagues }: LeaguesClientProps) {
   const [leagueName, setLeagueName] = useState("")
   const [inviteCode, setInviteCode] = useState("")
   const [error, setError] = useState("")
-  const [copiedId, setCopiedId] = useState<string | null>(null)
 
   function handleCreate() {
     if (!leagueName.trim()) return
@@ -67,12 +65,6 @@ export function LeaguesClient({ leagues }: LeaguesClientProps) {
       setJoinOpen(false)
       router.refresh()
     })
-  }
-
-  function handleCopyCode(leagueId: string, code: string) {
-    navigator.clipboard.writeText(code)
-    setCopiedId(leagueId)
-    setTimeout(() => setCopiedId(null), 2000)
   }
 
   return (
@@ -165,46 +157,15 @@ export function LeaguesClient({ leagues }: LeaguesClientProps) {
           </CardContent>
         </Card>
       ) : (
-        <div className="grid gap-3">
+        <div className="grid gap-3 md:grid-cols-2">
           {leagues.map((league) => (
-            <Link key={league.id} href={`/leagues/${league.id}`}>
-              <Card className="glass hover:bg-accent/50 transition-colors">
-                <CardContent className="pt-5 pb-5">
-                  <div className="flex items-center justify-between">
-                    <div className="space-y-1 min-w-0">
-                      <div className="flex items-center gap-2">
-                        <h3 className="font-semibold truncate">{league.name}</h3>
-                        {league.creator_id && (
-                          <Crown className="h-3.5 w-3.5 text-amber-500 flex-shrink-0" />
-                        )}
-                      </div>
-                      <div className="flex items-center gap-3 text-sm text-muted-foreground">
-                        <span className="flex items-center gap-1">
-                          <Users className="h-3.5 w-3.5" />
-                          {league.member_count} {league.member_count === 1 ? "member" : "members"}
-                        </span>
-                        <button
-                          onClick={(e) => {
-                            e.preventDefault()
-                            handleCopyCode(league.id, league.invite_code)
-                          }}
-                          className="flex items-center gap-1 hover:text-foreground transition-colors"
-                        >
-                          <Badge variant="outline" className="font-mono text-xs gap-1 cursor-pointer">
-                            {league.invite_code}
-                            {copiedId === league.id ? (
-                              <Check className="h-3 w-3 text-status-success" />
-                            ) : (
-                              <Copy className="h-3 w-3" />
-                            )}
-                          </Badge>
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            </Link>
+            <LeagueCard
+              key={league.id}
+              id={league.id}
+              name={league.name}
+              inviteCode={league.invite_code}
+              memberCount={league.member_count}
+            />
           ))}
         </div>
       )}

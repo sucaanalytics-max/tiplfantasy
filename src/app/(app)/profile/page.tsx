@@ -9,9 +9,8 @@ import { ProfileNameForm } from "./name-form"
 import { SignOutButton } from "./sign-out-button"
 import { ThemeCard } from "./theme-card"
 import { AutoPickToggle } from "./auto-pick-toggle"
+import { MatchHistoryTable, type MatchHistoryRow } from "./match-history-table"
 import { StatCard } from "@/components/stat-card"
-import { RankBadge } from "@/components/rank-badge"
-import { TeamBadge } from "@/components/team-badge"
 import { getInitials, getAvatarColor } from "@/lib/avatar"
 import { PageTransition } from "@/components/page-transition"
 import { cn } from "@/lib/utils"
@@ -197,279 +196,10 @@ export default async function ProfilePage() {
         </CardContent>
       </Card>
 
-      {/* Performance Sparkline */}
-      {matchScores && matchScores.length >= 2 && (() => {
-        const sparkMatches = [...matchScores].reverse().slice(-10)
-        const points = sparkMatches.map((ms) => ms.total_points)
-        const maxPts = Math.max(...points, 1)
-        const avg = points.reduce((a, b) => a + b, 0) / points.length
-        const stdDev = Math.sqrt(points.reduce((sum, p) => sum + (p - avg) ** 2, 0) / points.length)
-        const cv = avg > 0 ? stdDev / avg : 0
-        const consistencyLabel = cv < 0.15 ? "Very Consistent" : cv < 0.3 ? "Consistent" : cv < 0.5 ? "Variable" : "Unpredictable"
-        const consistencyColor = cv < 0.15 ? "text-[var(--tw-green-text)]" : cv < 0.3 ? "text-[var(--tw-blue-text)]" : cv < 0.5 ? "text-[var(--tw-amber-text)]" : "text-[var(--tw-red-text)]"
+      {/* Performance — sparkline replaced by sortable Match History table at the bottom of this page (per "tables over charts" preference). */}
 
-        // Streaks
-        const ranks = [...matchScores].reverse().map((ms) => ms.rank ?? 999)
-        let currentStreak = 0
-        let longestStreak = 0
-        let streak = 0
-        for (const r of ranks) {
-          if (r <= 3) { streak++; longestStreak = Math.max(longestStreak, streak) }
-          else streak = 0
-        }
-        currentStreak = streak
-
-        return (
-          <Card className="glass">
-            <CardHeader className="pb-3">
-              <CardTitle className="text-base">Performance</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              {/* Sparkline */}
-              <div>
-                <p className="text-xs text-muted-foreground mb-2">Last {points.length} matches</p>
-                <div className="flex items-end gap-1 h-24">
-                  {sparkMatches.map((ms) => (
-                    <div key={ms.match_id} className="flex-1 flex flex-col items-center gap-1">
-                      <span className="text-[8px] text-muted-foreground">{ms.total_points}</span>
-                      <div
-                        className="w-full rounded-t-sm bg-gradient-to-t from-primary/50 to-primary min-h-[2px]"
-                        style={{ height: `${(ms.total_points / maxPts) * 80}px` }}
-                      />
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              {/* Consistency + Streaks */}
-              <div className="grid grid-cols-2 gap-3 text-sm">
-                <div className="flex flex-col">
-                  <span className="text-muted-foreground text-xs">Consistency</span>
-                  <span className={`font-semibold ${consistencyColor}`}>{consistencyLabel}</span>
-                </div>
-                <div className="flex flex-col">
-                  <span className="text-muted-foreground text-xs">Avg Points</span>
-                  <span className="font-semibold">{avg.toFixed(1)}</span>
-                </div>
-                <div className="flex flex-col">
-                  <span className="text-muted-foreground text-xs">Current Top-3 Streak</span>
-                  <span className="font-semibold">{currentStreak} {currentStreak === 1 ? "match" : "matches"}</span>
-                </div>
-                <div className="flex flex-col">
-                  <span className="text-muted-foreground text-xs">Best Top-3 Streak</span>
-                  <span className="font-semibold">{longestStreak} {longestStreak === 1 ? "match" : "matches"}</span>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        )
-      })()}
-
-      {/* Rank Progression */}
-      {matchScores && matchScores.length >= 2 && (() => {
-        const sorted = [...matchScores].reverse().filter((ms) => (ms.rank ?? 999) < 999)
-        const ranks = sorted.map((ms) => ms.rank!)
-        if (ranks.length < 2) return null
-
-        // Match number helper
-        const matchNum = (i: number) =>
-          (sorted[i]?.match as unknown as { match_number: number })?.match_number ?? (i + 1)
-
-        // Current streak — count consecutive same-rank matches from the end
-        const currentRank = ranks[ranks.length - 1]
-        let currentStreak = 1
-        for (let i = ranks.length - 2; i >= 0; i--) {
-          if (ranks[i] === currentRank) currentStreak++
-          else break
-        }
-
-        // Helper: longest consecutive run matching a predicate, with bounds
-        const longestRun = (pred: (r: number) => boolean) => {
-          let best = 0, bestStart = -1, bestEnd = -1
-          let cur = 0, curStart = 0
-          for (let i = 0; i < ranks.length; i++) {
-            if (pred(ranks[i])) {
-              if (cur === 0) curStart = i
-              cur++
-              if (cur > best) { best = cur; bestStart = curStart; bestEnd = i }
-            } else {
-              cur = 0
-            }
-          }
-          return { length: best, startIdx: bestStart, endIdx: bestEnd }
-        }
-
-        const winRun = longestRun((r) => r === 1)
-        const podiumRun = longestRun((r) => r <= 3)
-        const worstRun = longestRun((r) => r >= 4)
-
-        // Last-5 average with trend direction
-        const last5 = ranks.slice(-5)
-        const last5Avg = last5.reduce((a, b) => a + b, 0) / last5.length
-        const seasonAvg = ranks.reduce((a, b) => a + b, 0) / ranks.length
-        const last5Delta = last5Avg - seasonAvg
-
-        // Rank distribution: count how often each rank was achieved
-        const distribution = new Map<number, number>()
-        for (const r of ranks) distribution.set(r, (distribution.get(r) ?? 0) + 1)
-        const distRows = Array.from(distribution.entries())
-          .map(([rank, count]) => ({ rank, count, pct: (count / ranks.length) * 100 }))
-          .sort((a, b) => a.rank - b.rank)
-        const maxCount = Math.max(...distRows.map((d) => d.count))
-
-        // Summary stats
-        const avgRank = seasonAvg.toFixed(1)
-        const bestRank = Math.min(...ranks)
-        const latestRank = ranks[ranks.length - 1]
-        const podiumCount = ranks.filter((r) => r <= 3).length
-        const podiumPct = ((podiumCount / ranks.length) * 100).toFixed(0)
-        const winCount = ranks.filter((r) => r === 1).length
-
-        // Color coding for rank buckets
-        const rankRowColor = (r: number) =>
-          r === 1 ? "bg-emerald-500"
-          : r <= 3 ? "bg-blue-500"
-          : r <= 5 ? "bg-amber-500"
-          : "bg-red-500"
-
-        return (
-          <Card className="glass">
-            <CardHeader className="pb-2">
-              <CardTitle className="text-base">Rank Progression</CardTitle>
-              <p className="text-xs text-muted-foreground">{ranks.length} matches · {winCount} win{winCount !== 1 ? "s" : ""} · {podiumPct}% podium rate</p>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              {/* Match History Tiles */}
-              <div>
-                <p className="text-[10px] uppercase tracking-wide text-muted-foreground mb-2">
-                  Match History
-                </p>
-                <div className="flex flex-wrap gap-1">
-                  {ranks.map((r, i) => {
-                    const mNum = matchNum(i)
-                    const isLatest = i === ranks.length - 1
-                    return (
-                      <div
-                        key={`${sorted[i].match_id}-${i}`}
-                        title={`M${mNum} · #${r}`}
-                        className={cn(
-                          "text-[10px] font-bold font-mono w-8 h-8 rounded flex items-center justify-center text-white shrink-0",
-                          rankRowColor(r),
-                          isLatest && "ring-2 ring-foreground/40"
-                        )}
-                      >
-                        #{r}
-                      </div>
-                    )
-                  })}
-                </div>
-              </div>
-
-              {/* Streaks & Trends */}
-              <div>
-                <p className="text-[10px] uppercase tracking-wide text-muted-foreground mb-2">
-                  Streaks & Trends
-                </p>
-                <div className="space-y-1.5 text-xs">
-                  <div className="flex items-center justify-between">
-                    <span className="text-muted-foreground">Current streak</span>
-                    <span className="font-mono tabular-nums">
-                      {currentStreak}× at #{currentRank}
-                    </span>
-                  </div>
-                  {winRun.length > 0 && (
-                    <div className="flex items-center justify-between">
-                      <span className="text-muted-foreground">Longest win streak</span>
-                      <span className="font-mono tabular-nums">
-                        {winRun.length}× #1{" "}
-                        <span className="text-muted-foreground">
-                          (M{matchNum(winRun.startIdx)}{winRun.length > 1 ? `–M${matchNum(winRun.endIdx)}` : ""})
-                        </span>
-                      </span>
-                    </div>
-                  )}
-                  {podiumRun.length > 0 && (
-                    <div className="flex items-center justify-between">
-                      <span className="text-muted-foreground">Longest podium run</span>
-                      <span className="font-mono tabular-nums">
-                        {podiumRun.length}× top-3{" "}
-                        <span className="text-muted-foreground">
-                          (M{matchNum(podiumRun.startIdx)}{podiumRun.length > 1 ? `–M${matchNum(podiumRun.endIdx)}` : ""})
-                        </span>
-                      </span>
-                    </div>
-                  )}
-                  {worstRun.length > 0 && (
-                    <div className="flex items-center justify-between">
-                      <span className="text-muted-foreground">Worst run</span>
-                      <span className="font-mono tabular-nums">
-                        {worstRun.length}× #4+{" "}
-                        <span className="text-muted-foreground">
-                          (M{matchNum(worstRun.startIdx)}{worstRun.length > 1 ? `–M${matchNum(worstRun.endIdx)}` : ""})
-                        </span>
-                      </span>
-                    </div>
-                  )}
-                  <div className="flex items-center justify-between">
-                    <span className="text-muted-foreground">Last 5 avg</span>
-                    <span className="font-mono tabular-nums">
-                      #{last5Avg.toFixed(1)}
-                      <span className={cn(
-                        "ml-2",
-                        last5Delta < -0.05 ? "text-emerald-500"
-                          : last5Delta > 0.05 ? "text-red-500"
-                          : "text-muted-foreground"
-                      )}>
-                        {last5Delta < -0.05 ? "↑" : last5Delta > 0.05 ? "↓" : "="} {Math.abs(last5Delta).toFixed(1)}
-                      </span>
-                    </span>
-                  </div>
-                </div>
-              </div>
-
-              {/* Rank Distribution Table */}
-              <div>
-                <p className="text-[10px] uppercase tracking-wide text-muted-foreground mb-2">Distribution</p>
-                <div className="space-y-1">
-                  {distRows.map((d) => (
-                    <div key={d.rank} className="flex items-center gap-2 text-xs">
-                      <span className="font-mono font-semibold w-8 tabular-nums">#{d.rank}</span>
-                      <span className="font-mono w-10 text-muted-foreground tabular-nums">{d.count}×</span>
-                      <div className="flex-1 h-4 bg-muted/40 rounded-sm overflow-hidden">
-                        <div
-                          className={cn("h-full rounded-sm transition-all", rankRowColor(d.rank))}
-                          style={{ width: `${(d.count / maxCount) * 100}%` }}
-                        />
-                      </div>
-                      <span className="font-mono w-10 text-right text-muted-foreground tabular-nums">{d.pct.toFixed(0)}%</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              {/* Summary stats */}
-              <div className="grid grid-cols-4 gap-2 pt-2 border-t border-overlay-border">
-                <div className="flex flex-col">
-                  <span className="text-muted-foreground text-[10px] uppercase tracking-wide">Best</span>
-                  <span className="font-semibold text-sm">#{bestRank}</span>
-                </div>
-                <div className="flex flex-col">
-                  <span className="text-muted-foreground text-[10px] uppercase tracking-wide">Latest</span>
-                  <span className="font-semibold text-sm">#{latestRank}</span>
-                </div>
-                <div className="flex flex-col">
-                  <span className="text-muted-foreground text-[10px] uppercase tracking-wide">Avg</span>
-                  <span className="font-semibold text-sm">#{avgRank}</span>
-                </div>
-                <div className="flex flex-col">
-                  <span className="text-muted-foreground text-[10px] uppercase tracking-wide">Podium</span>
-                  <span className="font-semibold text-sm">{podiumPct}%</span>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        )
-      })()}
+      {/* Rank Progression — chart-based section removed. Match-by-match
+          ranks are now scannable in the sortable Match History table below. */}
 
       </div>{/* end left detail column */}
       <div className="space-y-6">
@@ -508,60 +238,45 @@ export default async function ProfilePage() {
       </div>{/* end right detail column */}
       </div>{/* end desktop detail grid */}
 
-      {/* Match history */}
-      {matchScores && matchScores.length > 0 && (
-        <Card className="glass">
-          <CardHeader className="pb-3">
-            <CardTitle className="text-base">Match History</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-2">
-            {matchScores.map((ms) => {
-              const m = ms.match as unknown as {
-                match_number: number; team_home_id: string
-                team_away_id: string; start_time: string
-              }
-              const homeTeam = teamMap.get(m.team_home_id)
-              const awayTeam = teamMap.get(m.team_away_id)
-              const rank = ms.rank ?? 999
-
-              return (
-                <div
-                  key={ms.id}
-                  className="py-2.5 px-3 rounded-lg border-b border-overlay-border last:border-b-0"
-                >
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2.5">
-                      <RankBadge rank={rank} size="sm" />
-                      <span className="text-[10px] text-muted-foreground font-mono">
-                        #{m.match_number}
-                      </span>
-                      <div className="flex items-center gap-1">
-                        {homeTeam && (
-                          <TeamBadge shortName={homeTeam.short_name} color={homeTeam.color} logoUrl={homeTeam.logo_url} size="sm" />
-                        )}
-                        <span className="text-[10px] text-muted-foreground">vs</span>
-                        {awayTeam && (
-                          <TeamBadge shortName={awayTeam.short_name} color={awayTeam.color} logoUrl={awayTeam.logo_url} size="sm" />
-                        )}
-                      </div>
-                    </div>
-                    <span className="font-bold text-sm font-display">{ms.total_points} pts</span>
-                  </div>
-                  {matchCaptainMap.has(ms.match_id) && (() => {
-                    const { captainName, vcName } = matchCaptainMap.get(ms.match_id)!
-                    return (
-                      <div className="flex items-center gap-3 mt-1 ml-1 text-[10px] text-muted-foreground">
-                        <span>👑 {captainName}</span>
-                        <span>🥈 {vcName}</span>
-                      </div>
-                    )
-                  })()}
-                </div>
-              )
-            })}
-          </CardContent>
-        </Card>
-      )}
+      {/* Match history — sortable table */}
+      {matchScores && matchScores.length > 0 && (() => {
+        const rows: MatchHistoryRow[] = matchScores.map((ms) => {
+          const m = ms.match as unknown as {
+            match_number: number
+            team_home_id: string
+            team_away_id: string
+            start_time: string
+          }
+          const homeTeam = teamMap.get(m.team_home_id)
+          const awayTeam = teamMap.get(m.team_away_id)
+          const cap = matchCaptainMap.get(ms.match_id)
+          return {
+            id: ms.id,
+            matchId: ms.match_id,
+            matchNumber: m.match_number,
+            startTime: m.start_time,
+            rank: ms.rank,
+            totalPoints: ms.total_points,
+            homeShortName: homeTeam?.short_name ?? "—",
+            homeColor: homeTeam?.color ?? "#888",
+            homeLogoUrl: homeTeam?.logo_url ?? null,
+            awayShortName: awayTeam?.short_name ?? "—",
+            awayColor: awayTeam?.color ?? "#888",
+            awayLogoUrl: awayTeam?.logo_url ?? null,
+            captainName: cap?.captainName ?? null,
+            vcName: cap?.vcName ?? null,
+          }
+        })
+        return (
+          <div className="space-y-3">
+            <div className="flex items-center justify-between">
+              <h2 className="text-base font-display font-bold tracking-wide uppercase">Match History</h2>
+              <span className="text-2xs text-muted-foreground">Tap a header to sort</span>
+            </div>
+            <MatchHistoryTable rows={rows} />
+          </div>
+        )
+      })()}
 
       <Link href="/rules">
         <Card className="glass hover:bg-accent/40 transition-colors cursor-pointer">

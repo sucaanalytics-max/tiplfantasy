@@ -14,7 +14,7 @@ import { EmptyState } from "@/components/empty-state"
 import { PageTransition } from "@/components/page-transition"
 import { RaceChart } from "@/components/charts/race-chart"
 import { LeaderboardTable, type LeaderboardRow } from "@/components/leaderboard-table"
-import { MedalGold, MedalSilver, MedalBronze } from "@/components/icons/medal-icons"
+import { PodiumCard, type PodiumEntry } from "@/components/podium-card"
 import { buildRaceData } from "@/lib/race-data"
 import type { LeagueMemberStats } from "@/lib/types"
 
@@ -191,29 +191,36 @@ export default async function LeaderboardPage({
           <p className="text-xs font-semibold text-muted-foreground uppercase tracking-widest mb-3">Awards Race</p>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             {[
-              { icon: Zap, label: "Highest Score", data: sortedByHighest, getValue: (a: LeagueMemberStats) => `${Number(a.highest_score)} pts` },
-              { icon: TrophyIcon, label: "Matchday Wins", data: sortedByWins, getValue: (a: LeagueMemberStats) => `${a.matchday_wins} wins` },
-              { icon: Crown, label: "Best Captaincy", data: sortedByCaptain, getValue: (a: LeagueMemberStats) => `${Math.round(Number(a.total_captain_points))} pts` },
-              { icon: Target, label: "Most Consistent", data: sortedByConsistent, getValue: (a: LeagueMemberStats) => `${a.top2_finishes} top-2s` },
-            ].map(({ icon: Icon, label, data, getValue }) => (
-              <div key={label} className="rounded-lg glass overflow-hidden">
-                <div className="px-3 py-2 border-b border-overlay-border flex items-center gap-2">
-                  <Icon className="h-3.5 w-3.5 text-muted-foreground" />
-                  <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">{label}</span>
+              { icon: Zap, label: "Highest Score", data: sortedByHighest, getValue: (a: LeagueMemberStats) => Number(a.highest_score), suffix: "pts" },
+              { icon: TrophyIcon, label: "Matchday Wins", data: sortedByWins, getValue: (a: LeagueMemberStats) => a.matchday_wins, suffix: "wins" },
+              { icon: Crown, label: "Best Captaincy", data: sortedByCaptain, getValue: (a: LeagueMemberStats) => Math.round(Number(a.total_captain_points)), suffix: "pts" },
+              { icon: Target, label: "Most Consistent", data: sortedByConsistent, getValue: (a: LeagueMemberStats) => a.top2_finishes, suffix: "top-2s" },
+            ].map(({ icon: Icon, label, data, getValue, suffix }) => {
+              const podiumEntries: PodiumEntry[] = data.slice(0, 3).map((entry) => {
+                const value = getValue(entry)
+                return {
+                  user_id: entry.user_id,
+                  display_name: entry.display_name,
+                  total_points: value,
+                  displayValue: `${value} ${suffix}`,
+                }
+              })
+              return (
+                <div key={label} className="rounded-2xl glass overflow-hidden">
+                  <div className="px-3 py-2 border-b border-overlay-border flex items-center gap-2">
+                    <Icon className="h-3.5 w-3.5 text-muted-foreground" />
+                    <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">{label}</span>
+                  </div>
+                  {/* Visual podium for the leader trio — staggered heights, gold/silver/bronze */}
+                  <PodiumCard
+                    entries={podiumEntries}
+                    currentUserId={user.id}
+                    hideGap
+                    className="!rounded-none border-0"
+                  />
                 </div>
-                <div className="divide-y divide-overlay-border">
-                  {data.slice(0, 3).map((entry, i) => (
-                    <div key={entry.user_id} className="flex items-center gap-2 px-3 py-2">
-                      <span className="w-5 h-5 shrink-0 flex items-center justify-center">
-                        {i === 0 ? <MedalGold className="h-5 w-5" /> : i === 1 ? <MedalSilver className="h-5 w-5" /> : <MedalBronze className="h-5 w-5" />}
-                      </span>
-                      <span className="text-sm flex-1 truncate">{entry.display_name}</span>
-                      <span className="text-sm font-bold font-display tabular-nums shrink-0">{getValue(entry)}</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            ))}
+              )
+            })}
           </div>
         </div>
       )}

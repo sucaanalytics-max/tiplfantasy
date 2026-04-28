@@ -6,13 +6,20 @@ export interface PodiumEntry {
   user_id: string
   display_name: string
   total_points: number
-  season_rank: number
+  /** When omitted, rank is derived from array order (1st, 2nd, 3rd). */
+  season_rank?: number
+  /** Pre-formatted value to display (e.g. "5 wins"). Falls back to
+   *  total_points.toLocaleString() when not set. */
+  displayValue?: string
 }
 
 interface Props {
   entries: PodiumEntry[]
   currentUserId?: string
   className?: string
+  /** Hide the "−123" gap labels under #2 / #3 pedestals. Useful for
+   *  award podiums where gap math is meaningless ("most wins"). */
+  hideGap?: boolean
 }
 
 const PEDESTAL: Record<1 | 2 | 3, { h: string; ring: string; rank: string; tone: string }> = {
@@ -32,16 +39,21 @@ const AVATAR_SIZE: Record<1 | 2 | 3, string> = {
  * right = #3 (bronze). Pedestal heights stagger to convey rank without numerics.
  * Below the podium, name + points list for the same three entries.
  */
-export function PodiumCard({ entries, currentUserId, className }: Props) {
+export function PodiumCard({ entries, currentUserId, className, hideGap = false }: Props) {
   const top3 = entries.slice(0, 3)
   if (top3.length === 0) return null
 
-  // Map by rank position for clean column placement
-  const byRank: Record<1 | 2 | 3, PodiumEntry | undefined> = {
-    1: top3.find((e) => e.season_rank === 1),
-    2: top3.find((e) => e.season_rank === 2),
-    3: top3.find((e) => e.season_rank === 3),
-  }
+  // If any entry lacks a season_rank, fall back to array order. This lets the
+  // same component drive both season standings (rank from the DB column) and
+  // award podiums (rank from sort order of award metric).
+  const allHaveRank = top3.every((e) => typeof e.season_rank === "number")
+  const byRank: Record<1 | 2 | 3, PodiumEntry | undefined> = allHaveRank
+    ? {
+        1: top3.find((e) => e.season_rank === 1),
+        2: top3.find((e) => e.season_rank === 2),
+        3: top3.find((e) => e.season_rank === 3),
+      }
+    : { 1: top3[0], 2: top3[1], 3: top3[2] }
 
   // Read leader to compute point gaps shown under the pedestal of #2 / #3
   const leader = byRank[1]
@@ -67,7 +79,7 @@ export function PodiumCard({ entries, currentUserId, className }: Props) {
             entry={byRank[2]}
             rank={2}
             isMe={byRank[2]?.user_id === currentUserId}
-            gap={byRank[2] && leader ? Number(byRank[2].total_points) - Number(leader.total_points) : null}
+            gap={hideGap || !byRank[2] || !leader ? null : Number(byRank[2].total_points) - Number(leader.total_points)}
           />
           {/* #1 — center */}
           <PodiumColumn
@@ -82,7 +94,7 @@ export function PodiumCard({ entries, currentUserId, className }: Props) {
             entry={byRank[3]}
             rank={3}
             isMe={byRank[3]?.user_id === currentUserId}
-            gap={byRank[3] && leader ? Number(byRank[3].total_points) - Number(leader.total_points) : null}
+            gap={hideGap || !byRank[3] || !leader ? null : Number(byRank[3].total_points) - Number(leader.total_points)}
           />
         </div>
       </div>
@@ -143,14 +155,15 @@ function PodiumColumn({
         {isMe && <span className="text-muted-foreground"> (you)</span>}
       </span>
 
-      {/* Points (gold-stat for #1, normal for 2/3) */}
+      {/* Value (gold-stat for #1, normal for 2/3) — pre-formatted displayValue
+          wins over the locale-formatted points when both are present. */}
       <span
         className={cn(
-          "text-sm tabular-nums font-display font-bold leading-none",
+          "text-sm tabular-nums font-display font-bold leading-none whitespace-nowrap",
           rank === 1 ? "text-gold-stat" : "text-foreground"
         )}
       >
-        {entry.total_points.toLocaleString()}
+        {entry.displayValue ?? entry.total_points.toLocaleString()}
       </span>
 
       {/* Pedestal block — gap to leader for #2 / #3 */}
