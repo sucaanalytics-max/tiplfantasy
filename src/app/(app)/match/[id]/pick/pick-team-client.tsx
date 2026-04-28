@@ -32,6 +32,9 @@ import { Drawer, DrawerClose, DrawerContent, DrawerTrigger, DrawerTitle } from "
 import { PlayerStatsDrawer } from "@/components/player-stats-drawer"
 import { PlayerHeadshot } from "@/components/player-headshot"
 import { PlayerCardPremium } from "@/components/player-card-premium"
+import { PitchView } from "@/components/pitch-view"
+import { PlayerResearchTable } from "@/components/player-research-table"
+import { List as ListIcon, Map as MapIcon, Table as TableIcon } from "lucide-react"
 import { Confetti } from "@/components/confetti"
 import { TeamSubmitPreview } from "@/components/team-submit-preview"
 import { TeamTacticalPreview } from "@/components/team-tactical-preview"
@@ -93,6 +96,7 @@ export function PickTeamClient({
   const [viceCaptainId, setViceCaptainId] = useState<string | null>(
     initialViceCaptainId
   )
+  const [pickMode, setPickMode] = useState<"list" | "pitch" | "research">("list")
   const [activeFilter, setActiveFilter] = useState<PlayerRole | "ALL">("ALL")
   const [teamFilter, setTeamFilter] = useState<"ALL" | "HOME" | "AWAY">("ALL")
   const [search, setSearch] = useState("")
@@ -570,7 +574,41 @@ export function PickTeamClient({
           <p className="text-center text-[10px] text-muted-foreground mt-1">Max 7 from a team</p>
         </div>
 
-        {/* Row 2: Role tabs (underline style) */}
+        {/* Mode toggle: List · Pitch · Research */}
+        <div className="px-3 pb-2">
+          <div role="tablist" aria-label="Pick view mode" className="flex gap-1 p-0.5 rounded-lg bg-secondary/50 border border-overlay-border w-fit mx-auto">
+            {(
+              [
+                { key: "list", label: "List", Icon: ListIcon },
+                { key: "pitch", label: "Pitch", Icon: MapIcon },
+                { key: "research", label: "Research", Icon: TableIcon },
+              ] as const
+            ).map(({ key, label, Icon }) => {
+              const active = pickMode === key
+              return (
+                <button
+                  key={key}
+                  type="button"
+                  role="tab"
+                  aria-selected={active}
+                  onClick={() => setPickMode(key)}
+                  className={cn(
+                    "px-3 py-1.5 rounded-md text-xs font-display font-bold uppercase tracking-wider transition-colors flex items-center gap-1.5",
+                    active
+                      ? "bg-card text-foreground shadow-sm"
+                      : "text-muted-foreground hover:text-foreground"
+                  )}
+                >
+                  <Icon className="h-3.5 w-3.5" />
+                  {label}
+                </button>
+              )
+            })}
+          </div>
+        </div>
+
+        {/* Row 2: Role tabs (underline style) — only visible in List mode */}
+        {pickMode === "list" && (
         <div className="flex border-b border-overlay-border">
           <button
             onClick={() => setActiveFilter("ALL")}
@@ -601,8 +639,10 @@ export function PickTeamClient({
             )
           })}
         </div>
+        )}
 
-        {/* Row 3: Team filter + search + sort */}
+        {/* Row 3: Team filter + search + sort — only in List mode */}
+        {pickMode === "list" && (
         <div className="px-4 py-2 flex gap-2">
           <div className="flex rounded-lg overflow-hidden border border-overlay-border text-xs">
             {(
@@ -658,16 +698,7 @@ export function PickTeamClient({
             {sortBy === "total" ? "Pts" : sortBy === "average" ? "Avg" : sortBy === "credits" ? "Cr" : ""}
           </button>
         </div>
-
-        {/* Column headers — desktop only (mobile uses card grid) */}
-        <div className="hidden lg:flex px-4 pb-1.5 items-center">
-          <span className="text-2xs font-semibold text-muted-foreground uppercase flex-1">Player</span>
-          <span className="text-2xs font-semibold text-muted-foreground uppercase w-9 text-right">Tot</span>
-          <span className="text-2xs font-semibold text-muted-foreground uppercase w-9 text-right">Avg</span>
-          <span className="text-2xs font-semibold text-muted-foreground uppercase w-9 text-right">Last</span>
-          <span className="text-2xs font-semibold text-muted-foreground uppercase w-8 text-center">Cr</span>
-          <span className="w-8" />
-        </div>
+        )}
 
         {hasPlayingXI && (
           <div className="px-4 pb-2">
@@ -744,8 +775,40 @@ export function PickTeamClient({
         {/* Right panel — player browser (full-width on mobile) */}
         <div className="lg:col-span-7 lg:overflow-y-auto">
 
-      {/* Player list — segmented by role */}
-      {(() => {
+      {/* Pitch mode — visualize current XI on the field */}
+      {pickMode === "pitch" && (
+        <div className="px-3 py-4 max-w-md mx-auto">
+          <PitchView
+            selectedPlayers={selectedPlayers}
+            captainId={captainId}
+            viceCaptainId={viceCaptainId}
+            totalSlots={11}
+            onPlayerClick={(player) => setStatsPlayerId(player.id)}
+            onRemove={(playerId) => togglePlayer(playerId)}
+            onEmptyClick={() => setPickMode("list")}
+          />
+        </div>
+      )}
+
+      {/* Research mode — sortable, dense candidate table */}
+      {pickMode === "research" && (
+        <div className="px-3 py-3">
+          <PlayerResearchTable
+            players={filteredPlayers}
+            tiplMatchLog={tiplMatchLog}
+            selectionPcts={selectionPcts}
+            playingXIIds={playingXIIds}
+            selectedIds={selectedIds}
+            onToggle={(playerId) => togglePlayer(playerId)}
+            onShowStats={(playerId) => setStatsPlayerId(playerId)}
+            getDisabledReason={getDisabledReason}
+            hasPlayingXI={hasPlayingXI}
+          />
+        </div>
+      )}
+
+      {/* List mode — segmented by role with team-split 2-col card grid */}
+      {pickMode === "list" && (() => {
         const rolesToShow = activeFilter === "ALL" ? ROLE_ORDER : [activeFilter]
         const showHeaders = activeFilter === "ALL"
 
