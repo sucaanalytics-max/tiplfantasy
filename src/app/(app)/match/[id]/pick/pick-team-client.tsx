@@ -31,6 +31,7 @@ import { CricketField } from "@/components/cricket-field"
 import { Drawer, DrawerClose, DrawerContent, DrawerTrigger, DrawerTitle } from "@/components/ui/drawer"
 import { PlayerStatsDrawer } from "@/components/player-stats-drawer"
 import { PlayerHeadshot } from "@/components/player-headshot"
+import { PlayerCardPremium } from "@/components/player-card-premium"
 import { Confetti } from "@/components/confetti"
 import { TeamSubmitPreview } from "@/components/team-submit-preview"
 import { TeamTacticalPreview } from "@/components/team-tactical-preview"
@@ -318,207 +319,36 @@ export function PickTeamClient({
     setError(null)
   }
 
-  const renderPlayerCompact = (player: PlayerWithTeam) => {
-    const isSelected = selectedIds.has(player.id)
-    const isCaptain = captainId === player.id
-    const isVC = viceCaptainId === player.id
-    const isInXI = playingXIIds.includes(player.id)
-    const disabledReason = getDisabledReason(player)
-    const isDisabled = !!disabledReason
-    const formIndicator = player.form_indicator
-    const matchupChip = getMatchupChip(player)
-
+  /**
+   * Single render path for both mobile (2-col card grid) and desktop (2-col
+   * card grid). Replaces the previous renderPlayerCompact (9-col row) and
+   * renderPlayerMobileCard (compact card) implementations.
+   */
+  const renderPlayer = (player: PlayerWithTeam) => {
     const entries = tiplMatchLog[player.id] ?? []
     const totalPts = entries.length > 0 ? entries.reduce((a, e) => a + e.fantasyPoints, 0) : null
     const avgPts = entries.length > 0 ? Math.round(totalPts! / entries.length) : null
     const lastPts = entries.length > 0 ? entries[entries.length - 1].fantasyPoints : null
-
-    return (
-      <div
-        key={player.id}
-        className={cn(
-          "flex items-center gap-3 px-4 py-2.5 border-b border-overlay-border transition-colors",
-          ROLE_ACCENT[player.role],
-          isSelected && "bg-primary/[0.06]",
-          isDisabled && "opacity-35",
-          hasPlayingXI && !isInXI && "opacity-40"
-        )}
-      >
-        {/* Player photo / initials avatar */}
-        <button
-          className="shrink-0"
-          onClick={(e) => { e.stopPropagation(); setStatsPlayerId(player.id) }}
-        >
-          <PlayerHeadshot player={player} size="md" ring="team" />
-        </button>
-
-        {/* Name + metadata */}
-        <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-1.5">
-            <span
-              className="text-sm font-semibold leading-tight cursor-pointer"
-              onClick={(e) => { e.stopPropagation(); setStatsPlayerId(player.id) }}
-            >
-              {player.name.split(" ")[0]}
-              {player.name.split(" ").length > 1 && (
-                <span className="block text-xs font-medium text-muted-foreground">
-                  {player.name.split(" ").slice(1).join(" ")}
-                </span>
-              )}
-            </span>
-            {isCaptain && <span className="text-2xs font-bold text-[var(--tw-amber-text)] bg-amber-400/15 px-1 rounded shrink-0">C</span>}
-            {isVC && <span className="text-2xs font-bold text-violet-400 bg-violet-400/15 px-1 rounded shrink-0">VC</span>}
-            <FormIcon indicator={formIndicator} />
-          </div>
-          <div className="flex items-center gap-1.5 mt-0.5">
-            <span className="text-2xs font-medium" style={{ color: player.team.color }}>{player.team.short_name}</span>
-            <span className="text-2xs text-muted-foreground">&middot;</span>
-            <span className="text-2xs text-muted-foreground">{ROLE_LABELS[player.role]}</span>
-            {selectionPcts[player.id] > 0 && (
-              <>
-                <span className="text-2xs text-muted-foreground">&middot;</span>
-                <span className="text-2xs text-muted-foreground">Sel {selectionPcts[player.id]}%</span>
-              </>
-            )}
-            {hasPlayingXI && isInXI && (
-              <span className="text-2xs font-bold text-status-success">XI</span>
-            )}
-          </div>
-          {isDisabled && (
-            <p className="text-2xs text-status-danger mt-0.5">{disabledReason}</p>
-          )}
-        </div>
-
-        {/* Tot / Avg / Last columns */}
-        <span className={cn("text-xs font-bold tabular-nums font-display w-9 text-right shrink-0", totalPts != null ? "text-foreground" : "text-muted-foreground/30")}>
-          {totalPts ?? "—"}
-        </span>
-        <span className={cn("text-xs tabular-nums w-9 text-right shrink-0", avgPts != null ? "text-muted-foreground" : "text-muted-foreground/30")}>
-          {avgPts ?? "—"}
-        </span>
-        <span className={cn("text-xs tabular-nums w-9 text-right shrink-0", lastPts != null ? "text-muted-foreground" : "text-muted-foreground/30")}>
-          {lastPts ?? "—"}
-        </span>
-
-        {/* Credits */}
-        <span className="text-xs font-bold tabular-nums font-display text-muted-foreground w-8 text-center shrink-0">
-          {player.credit_cost}
-        </span>
-
-        {/* +/- button */}
-        <button
-          onClick={() => { if (!isDisabled) togglePlayer(player.id) }}
-          disabled={isDisabled}
-          className={cn(
-            "h-8 w-8 rounded-full flex items-center justify-center shrink-0 text-sm font-bold transition-all border",
-            isSelected
-              ? "bg-primary/15 border-primary/40 text-primary"
-              : isDisabled
-              ? "border-border/30 text-muted-foreground/30"
-              : "border-overlay-border-hover text-muted-foreground hover:border-primary/40 hover:text-primary"
-          )}
-        >
-          {isSelected ? "−" : "+"}
-        </button>
-      </div>
-    )
-  }
-
-  // Compact card variant — mobile 2-col grid, drops AVG/LAST/Cr columns
-  const renderPlayerMobileCard = (player: PlayerWithTeam) => {
-    const isSelected = selectedIds.has(player.id)
-    const isCaptain = captainId === player.id
-    const isVC = viceCaptainId === player.id
-    const isInXI = playingXIIds.includes(player.id)
     const disabledReason = getDisabledReason(player)
-    const isDisabled = !!disabledReason
-
-    const entries = tiplMatchLog[player.id] ?? []
-    const totalPts = entries.length > 0 ? entries.reduce((a, e) => a + e.fantasyPoints, 0) : null
-    const avgPts = entries.length > 0 ? Math.round(totalPts! / entries.length) : null
 
     return (
-      <div
+      <PlayerCardPremium
         key={player.id}
-        className={cn(
-          "relative rounded-lg border border-overlay-border bg-card transition-colors overflow-hidden",
-          isSelected && "ring-2 ring-primary/50 border-primary/40",
-          isDisabled && "opacity-35",
-          hasPlayingXI && !isInXI && "opacity-40"
-        )}
-        style={{ borderLeftWidth: 3, borderLeftColor: player.team.color }}
-      >
-        <div className={cn("p-2 space-y-1.5", ROLE_ACCENT[player.role])}>
-          {/* Name row + plus button (entire name area is the stats trigger) */}
-          <div className="flex items-start gap-1.5">
-            <button
-              type="button"
-              onClick={(e) => { e.stopPropagation(); setStatsPlayerId(player.id) }}
-              className="block text-left flex-1 min-w-0"
-              aria-label={`View ${player.name} stats`}
-            >
-              <div className="flex items-center gap-1">
-                <span className="text-sm font-semibold leading-tight truncate flex-1 min-w-0">
-                  {player.name}
-                </span>
-                {isCaptain && <span className="text-[9px] font-bold text-[var(--tw-amber-text)] bg-amber-400/15 px-1 rounded shrink-0">C</span>}
-                {isVC && <span className="text-[9px] font-bold text-violet-400 bg-violet-400/15 px-1 rounded shrink-0">VC</span>}
-                <FormIcon indicator={player.form_indicator} />
-              </div>
-              <p className="text-[10px] text-muted-foreground truncate mt-0.5">
-                <span className="font-semibold" style={{ color: player.team.color }}>{player.team.short_name}</span>
-                <span className="text-muted-foreground/50"> · </span>
-                <span className="uppercase tracking-wide">{player.role}</span>
-                {hasPlayingXI && isInXI && <span className="text-status-success font-bold"> · XI</span>}
-              </p>
-            </button>
-            <button
-              type="button"
-              onClick={(e) => { e.stopPropagation(); if (!isDisabled) togglePlayer(player.id) }}
-              disabled={isDisabled}
-              className={cn(
-                "h-7 w-7 rounded-full flex items-center justify-center text-sm font-bold border shrink-0 transition-colors mt-0.5",
-                isSelected
-                  ? "bg-primary border-primary text-white"
-                  : isDisabled
-                  ? "border-border/30 text-muted-foreground/30"
-                  : "border-overlay-border-hover text-muted-foreground hover:border-primary/40 hover:text-primary"
-              )}
-              aria-label={isSelected ? `Deselect ${player.name}` : `Select ${player.name}`}
-            >
-              {isSelected ? "✓" : "+"}
-            </button>
-          </div>
-
-          {/* Stats line — total + avg + selection % */}
-          <div className="pt-1.5 border-t border-overlay-border flex items-baseline justify-between gap-1">
-            <div className="flex items-baseline gap-1 min-w-0">
-              <span className={cn("text-gold-stat text-sm leading-none", totalPts == null && "text-muted-foreground/30")}>
-                {totalPts ?? "—"}
-              </span>
-              <span className="text-[10px] text-muted-foreground">pts</span>
-              {avgPts != null && (
-                <>
-                  <span className="text-[10px] text-muted-foreground/40">·</span>
-                  <span className="text-xs text-muted-foreground tabular-nums font-display font-semibold">
-                    {avgPts}
-                  </span>
-                  <span className="text-[10px] text-muted-foreground">avg</span>
-                </>
-              )}
-            </div>
-            {selectionPcts[player.id] > 0 && (
-              <span className="text-[10px] text-muted-foreground tabular-nums shrink-0">
-                {selectionPcts[player.id]}%
-              </span>
-            )}
-          </div>
-
-          {isDisabled && (
-            <p className="text-[10px] text-status-danger leading-tight">{disabledReason}</p>
-          )}
-        </div>
-      </div>
+        player={player}
+        isSelected={selectedIds.has(player.id)}
+        isCaptain={captainId === player.id}
+        isVC={viceCaptainId === player.id}
+        isInXI={playingXIIds.includes(player.id)}
+        hasPlayingXI={hasPlayingXI}
+        isDisabled={!!disabledReason}
+        disabledReason={disabledReason}
+        totalPts={totalPts}
+        avgPts={avgPts}
+        lastPts={lastPts}
+        selectionPct={selectionPcts[player.id] ?? 0}
+        onToggle={() => togglePlayer(player.id)}
+        onShowStats={() => setStatsPlayerId(player.id)}
+      />
     )
   }
 
@@ -946,96 +776,53 @@ export function PickTeamClient({
                     rolePlayers.length === 0 ? (
                       <div className="py-8 text-center text-2xs text-muted-foreground">No players</div>
                     ) : (
-                      <>
-                        {/* MOBILE: true 2-column compact card grid */}
-                        <div className="grid grid-cols-2 gap-2 px-2 py-2 lg:hidden">
-                          <div className="space-y-2">
-                            <div
-                              className="px-2 py-1.5 flex items-center gap-1.5 border-l-[3px] rounded-r bg-overlay-muted"
-                              style={{ borderColor: match.team_home.color }}
-                            >
-                              <TeamLogo team={match.team_home} size="sm" />
-                              <span className="font-display font-bold text-2xs uppercase tracking-widest truncate">
-                                {match.team_home.short_name}
-                              </span>
-                              <span className="ml-auto text-2xs text-muted-foreground tabular-nums">
-                                {homePlayers.length}
-                              </span>
-                            </div>
-                            {homePlayers.length > 0 ? (
-                              homePlayers.map((player) => renderPlayerMobileCard(player))
-                            ) : (
-                              <div className="py-4 text-center text-2xs text-muted-foreground">No players</div>
-                            )}
+                      /* Unified 2-col card grid — same on mobile and desktop.
+                         Left column = home team, right = away team. */
+                      <div className="grid grid-cols-2 gap-2 px-2 py-2 md:gap-3 md:px-3">
+                        <div className="space-y-2">
+                          <div
+                            className="px-2 py-1.5 flex items-center gap-1.5 border-l-[3px] rounded-r bg-overlay-muted"
+                            style={{ borderColor: match.team_home.color }}
+                          >
+                            <TeamLogo team={match.team_home} size="sm" />
+                            <span className="font-display font-bold text-2xs uppercase tracking-widest truncate">
+                              {match.team_home.short_name}
+                            </span>
+                            <span className="ml-auto text-2xs text-muted-foreground tabular-nums">
+                              {homePlayers.length}
+                            </span>
                           </div>
-                          <div className="space-y-2">
-                            <div
-                              className="px-2 py-1.5 flex items-center gap-1.5 border-l-[3px] rounded-r bg-overlay-muted"
-                              style={{ borderColor: match.team_away.color }}
-                            >
-                              <TeamLogo team={match.team_away} size="sm" />
-                              <span className="font-display font-bold text-2xs uppercase tracking-widest truncate">
-                                {match.team_away.short_name}
-                              </span>
-                              <span className="ml-auto text-2xs text-muted-foreground tabular-nums">
-                                {awayPlayers.length}
-                              </span>
-                            </div>
-                            {awayPlayers.length > 0 ? (
-                              awayPlayers.map((player) => renderPlayerMobileCard(player))
-                            ) : (
-                              <div className="py-4 text-center text-2xs text-muted-foreground">No players</div>
-                            )}
-                          </div>
+                          {homePlayers.length > 0 ? (
+                            homePlayers.map((player) => renderPlayer(player))
+                          ) : (
+                            <div className="py-4 text-center text-2xs text-muted-foreground">No players</div>
+                          )}
                         </div>
-
-                        {/* DESKTOP: 2-column row layout (full stats) */}
-                        <div className="hidden lg:grid lg:grid-cols-2 lg:gap-x-3">
-                          <div className="lg:border-r lg:border-overlay-border">
-                            <div
-                              className="px-4 py-1.5 flex items-center gap-2 border-l-4 bg-overlay-muted"
-                              style={{ borderColor: match.team_home.color }}
-                            >
-                              <TeamLogo team={match.team_home} size="sm" />
-                              <span className="font-display font-bold text-2xs uppercase tracking-widest">
-                                {match.team_home.short_name}
-                              </span>
-                              <span className="ml-auto text-2xs text-muted-foreground tabular-nums">
-                                {homePlayers.length}
-                              </span>
-                            </div>
-                            {homePlayers.length > 0 ? (
-                              homePlayers.map((player) => renderPlayerCompact(player))
-                            ) : (
-                              <div className="py-4 text-center text-2xs text-muted-foreground">No players</div>
-                            )}
+                        <div className="space-y-2">
+                          <div
+                            className="px-2 py-1.5 flex items-center gap-1.5 border-l-[3px] rounded-r bg-overlay-muted"
+                            style={{ borderColor: match.team_away.color }}
+                          >
+                            <TeamLogo team={match.team_away} size="sm" />
+                            <span className="font-display font-bold text-2xs uppercase tracking-widest truncate">
+                              {match.team_away.short_name}
+                            </span>
+                            <span className="ml-auto text-2xs text-muted-foreground tabular-nums">
+                              {awayPlayers.length}
+                            </span>
                           </div>
-                          <div>
-                            <div
-                              className="px-4 py-1.5 flex items-center gap-2 border-l-4 bg-overlay-muted"
-                              style={{ borderColor: match.team_away.color }}
-                            >
-                              <TeamLogo team={match.team_away} size="sm" />
-                              <span className="font-display font-bold text-2xs uppercase tracking-widest">
-                                {match.team_away.short_name}
-                              </span>
-                              <span className="ml-auto text-2xs text-muted-foreground tabular-nums">
-                                {awayPlayers.length}
-                              </span>
-                            </div>
-                            {awayPlayers.length > 0 ? (
-                              awayPlayers.map((player) => renderPlayerCompact(player))
-                            ) : (
-                              <div className="py-4 text-center text-2xs text-muted-foreground">No players</div>
-                            )}
-                          </div>
+                          {awayPlayers.length > 0 ? (
+                            awayPlayers.map((player) => renderPlayer(player))
+                          ) : (
+                            <div className="py-4 text-center text-2xs text-muted-foreground">No players</div>
+                          )}
                         </div>
-                      </>
+                      </div>
                     )
                   ) : (
                     /* Single column for HOME/AWAY filter */
-                    <div className="divide-y divide-border">
-                      {rolePlayers.map((player) => renderPlayerCompact(player))}
+                    <div className="px-2 py-2 space-y-2">
+                      {rolePlayers.map((player) => renderPlayer(player))}
                     </div>
                   )}
                 </div>
