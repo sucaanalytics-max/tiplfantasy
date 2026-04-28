@@ -104,6 +104,13 @@ export function CinematicHero({
           <TeamLogo team={away} size="2xl" className="w-full h-full" />
         </div>
 
+        {/* Layer 3.5 — bottom vignette for info-ribbon readability */}
+        <div
+          className="absolute inset-x-0 bottom-0 h-2/5 pointer-events-none z-[2]"
+          style={{ background: "linear-gradient(to top, oklch(0 0 0 / 0.65) 0%, transparent 100%)" }}
+          aria-hidden
+        />
+
         {/* Layer 4 — cameo headshot fans (the photography substitute) */}
         {featuredHomePlayers.length > 0 && (
           <div className="absolute left-3 md:left-8 bottom-16 md:bottom-24 z-[2] pointer-events-none">
@@ -163,7 +170,7 @@ export function CinematicHero({
 
         {/* Layer 6 — bottom ribbon (venue + date + countdown / live score) */}
         <div className="absolute inset-x-0 bottom-0 z-[3] px-4 md:px-8 pb-4 pointer-events-none">
-          <div className="flex items-center justify-between gap-3 text-white/85 text-xs">
+          <div className="flex items-center justify-between gap-3 text-white/95 text-xs">
             <div className="min-w-0 flex items-center gap-2">
               <span className="truncate">📍 {match.venue}</span>
               <span className="text-white/40">·</span>

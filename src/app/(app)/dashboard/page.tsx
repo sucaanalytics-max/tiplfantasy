@@ -5,7 +5,6 @@ import Image from "next/image"
 import { format } from "date-fns"
 import { MatchCard } from "@/components/match-card"
 import { Users, ChevronRight } from "lucide-react"
-import { Trophy } from "@/components/icons/trophy"
 import { getMyLeagues } from "@/actions/leagues"
 import { PageTransition } from "@/components/page-transition"
 import { CinematicHero } from "@/components/cinematic-hero"
@@ -157,6 +156,7 @@ export default async function DashboardPage() {
 
   return (
     <PageTransition>
+
       <div className="space-y-6 pb-10">
         {/* ── Cinematic Hero (70vh cover) ────────────────── */}
         {heroMatch ? (
@@ -214,12 +214,7 @@ export default async function DashboardPage() {
               {/* Upcoming Matches Carousel */}
               {remainingMatches.length > 0 && (
                 <div className="space-y-3">
-                  <div className="flex items-center justify-between">
-                    <h2 className="text-base font-display font-bold tracking-wide uppercase">Upcoming</h2>
-                    <Link href="/matches" className="text-xs text-primary flex items-center gap-0.5 font-semibold">
-                      See all <ChevronRight className="h-3 w-3" />
-                    </Link>
-                  </div>
+                  <SectionHeader title="Upcoming" href="/matches" linkLabel="See all" />
                   <div className="flex gap-3 overflow-x-auto scrollbar-hide snap-x-mandatory pb-2 -mx-4 px-4">
                     {remainingMatches.map((match) => (
                       <MatchCard
@@ -238,14 +233,7 @@ export default async function DashboardPage() {
             <div className="lg:col-span-2 space-y-6 mt-6 lg:mt-0">
               {/* Season Standings */}
               <div className="space-y-3">
-                <div className="flex items-center justify-between">
-                  <h2 className="text-base font-display font-bold tracking-wide uppercase flex items-center gap-2">
-                    <Trophy className="h-5 w-5" /> Season Standings
-                  </h2>
-                  <Link href="/leaderboard" className="text-xs text-primary flex items-center gap-0.5 font-semibold">
-                    Full Table <ChevronRight className="h-3 w-3" />
-                  </Link>
-                </div>
+                <SectionHeader title="Season Standings" href="/leaderboard" linkLabel="Full Table" />
 
                 {/* Top-3 visual podium (hero) */}
                 {(top6?.length ?? 0) > 0 && (
@@ -265,14 +253,7 @@ export default async function DashboardPage() {
 
               {/* My Leagues */}
               <div className="space-y-3">
-                <div className="flex items-center justify-between">
-                  <h2 className="text-base font-display font-bold tracking-wide uppercase flex items-center gap-2">
-                    <Users className="h-4 w-4 text-muted-foreground" /> My Leagues
-                  </h2>
-                  <Link href="/leagues" className="text-xs text-primary flex items-center gap-0.5 font-semibold">
-                    {myLeagues.length > 0 ? "View All" : "Join"} <ChevronRight className="h-3 w-3" />
-                  </Link>
-                </div>
+                <SectionHeader title="My Leagues" href="/leagues" linkLabel={myLeagues.length > 0 ? "View All" : "Join"} />
 
                 {/* end standings: my leagues follows */}
                 {myLeagues.length === 0 ? (
@@ -301,6 +282,30 @@ export default async function DashboardPage() {
         </div>
       </div>
     </PageTransition>
+  )
+}
+
+function SectionHeader({
+  title,
+  href,
+  linkLabel = "See all",
+}: {
+  title: string
+  href?: string
+  linkLabel?: string
+}) {
+  return (
+    <div className="flex items-center justify-between">
+      <h2 className="flex items-center gap-2 text-[11px] font-display font-bold uppercase tracking-widest text-muted-foreground">
+        <span className="h-3.5 w-0.5 rounded-full bg-primary shrink-0" aria-hidden />
+        {title}
+      </h2>
+      {href && (
+        <Link href={href} className="text-xs text-primary font-semibold flex items-center gap-0.5">
+          {linkLabel} <ChevronRight className="h-3 w-3" />
+        </Link>
+      )}
+    </div>
   )
 }
 

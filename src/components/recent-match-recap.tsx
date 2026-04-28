@@ -1,5 +1,4 @@
 import Link from "next/link"
-import { ChevronRight } from "lucide-react"
 import { TeamLogo } from "@/components/team-logo"
 
 type RecapTeam = {
@@ -52,7 +51,7 @@ export function RecentMatchRecap({
           <span className="tag-pill-gold">SUMMARY</span>
         </div>
 
-        <div className="relative p-4 md:p-5 flex items-center justify-between gap-4">
+        <div className="relative p-4 md:p-5 flex items-center justify-between gap-4 min-h-[96px]">
           {/* Left side: teams + meta */}
           <div className="min-w-0 flex-1">
             <div className="flex items-center gap-2 mb-2">
@@ -75,17 +74,17 @@ export function RecentMatchRecap({
 
           {/* Right side: oversized gold points */}
           <div className="text-right shrink-0">
+            <p className="text-[10px] uppercase tracking-widest text-muted-foreground mb-1">Your Score</p>
             <div className="flex items-baseline gap-1 justify-end">
               <span className="text-gold-stat text-5xl md:text-6xl leading-none">{totalPoints}</span>
               <span className="text-muted-foreground text-xs font-medium">pts</span>
             </div>
             <p className="text-2xs text-muted-foreground mt-1">
-              Rank {rank != null ? `#${rank}` : "—"}
+              {rank != null ? (
+                <>Rank #{rank}{rank === 1 ? " 🥇" : rank === 2 ? " 🥈" : rank === 3 ? " 🥉" : ""}</>
+              ) : "—"}
             </p>
           </div>
-
-          {/* Subtle chevron on hover */}
-          <ChevronRight className="absolute right-2 bottom-2 h-4 w-4 text-muted-foreground/40 group-hover:text-muted-foreground transition-colors" />
         </div>
       </div>
     </Link>

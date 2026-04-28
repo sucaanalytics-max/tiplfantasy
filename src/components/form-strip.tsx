@@ -8,37 +8,63 @@ interface Props {
   avgPerMatch: number | null
 }
 
+function formatPoints(pts: number): string {
+  if (pts >= 10000) return `${(pts / 1000).toFixed(1)}K`
+  return pts.toLocaleString()
+}
+
 export function FormStrip({ rank, points, streak, avgPerMatch }: Props) {
   return (
-    <div className="flex items-center gap-2.5 overflow-x-auto scrollbar-hide py-1 -mx-4 px-4 md:mx-0 md:px-0">
-      <Pill icon={<Trophy className="h-4 w-4" />} value={rank ? `#${rank}` : "—"} label="Rank" />
-      <Pill icon={<Bat className="h-4 w-4" />} value={points.toLocaleString()} label="Points" />
-      {streak > 1 && <Pill icon={<span className="text-base leading-none">🔥</span>} value={streak} label="Streak" />}
-      {avgPerMatch != null && (
-        <Pill value={avgPerMatch.toFixed(1)} label="Avg / M" />
-      )}
+    <div className="glass rounded-2xl overflow-hidden">
+      <div className="grid grid-cols-2 sm:grid-cols-4 divide-y sm:divide-y-0 divide-x divide-overlay-border">
+        <StatCell
+          icon={<Trophy className="h-3.5 w-3.5" />}
+          value={rank ? `#${rank}` : "—"}
+          label="Season Rank"
+          accent
+        />
+        <StatCell
+          icon={<Bat className="h-3.5 w-3.5" />}
+          value={formatPoints(points)}
+          label="Points"
+          accent
+        />
+        <StatCell
+          icon={streak > 1 ? <span className="text-sm leading-none">🔥</span> : undefined}
+          value={streak > 0 ? String(streak) : "—"}
+          label="Streak"
+        />
+        <StatCell
+          value={avgPerMatch != null ? avgPerMatch.toFixed(1) : "—"}
+          label="Avg / Match"
+        />
+      </div>
     </div>
   )
 }
 
-function Pill({
+function StatCell({
   icon,
   value,
   label,
+  accent,
 }: {
   icon?: React.ReactNode
-  value: string | number
+  value: string
   label: string
+  accent?: boolean
 }) {
   return (
-    <div className="glass-panel rounded-full px-4 py-2 flex items-center gap-2.5 shrink-0 shadow-sm">
+    <div className="flex flex-col items-start px-4 py-3 gap-0.5">
       {icon && (
-        <span className="text-accent flex items-center justify-center h-7 w-7 rounded-full bg-accent/10 shrink-0">
+        <span className={`mb-1 ${accent ? "text-accent" : "text-muted-foreground"} flex items-center`}>
           {icon}
         </span>
       )}
-      <span className="text-gold-stat text-lg leading-none">{value}</span>
-      <span className="text-2xs uppercase tracking-wider text-muted-foreground font-medium shrink-0">
+      <span className={`text-2xl font-display tabular-nums leading-tight font-bold ${accent ? "text-gold-stat" : "text-foreground"}`}>
+        {value}
+      </span>
+      <span className="text-[10px] uppercase tracking-widest text-muted-foreground font-medium">
         {label}
       </span>
     </div>
