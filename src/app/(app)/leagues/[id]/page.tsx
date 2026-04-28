@@ -27,7 +27,7 @@ export default async function LeagueDetailPage({
 
   const memberIds = leagueData.members.map((m) => m.user_id)
 
-  const [leaderboard, awards, matchScores, { data: lockedMatches }, { data: liveMatchRow }, { data: recentBanter }] = await Promise.all([
+  const [leaderboard, awards, matchScores, { data: lockedMatches }, { data: liveMatchRow }] = await Promise.all([
     getLeagueLeaderboard(id),
     getLeagueAwards(id),
     getLeagueMatchScores(id),
@@ -43,11 +43,6 @@ export default async function LeagueDetailPage({
       .eq("status", "live")
       .limit(1)
       .maybeSingle(),
-    admin.from("match_banter")
-      .select("message, event_type, created_at")
-      .in("user_id", memberIds)
-      .order("created_at", { ascending: false })
-      .limit(15),
   ])
 
   // Build member display name lookup
@@ -64,13 +59,12 @@ export default async function LeagueDetailPage({
     memberSelections: Array<{ user_id: string; captain_id: string | null; vice_captain_id: string | null; player_ids: string[] }>
     playerPoints: Record<string, number>
     playerNames: Record<string, { name: string; role: string }>
-    banter?: Array<{ message: string; event_type: string; created_at: string }>
   }
   let liveMatchData: LiveMatchData | null = null
 
   if (liveMatchRow) {
     const matchId = liveMatchRow.id
-    const [{ data: memberScoresRaw }, { data: selectionsRaw }, { data: playerScoresRaw }, { data: banterRaw }] = await Promise.all([
+    const [{ data: memberScoresRaw }, { data: selectionsRaw }, { data: playerScoresRaw }] = await Promise.all([
       admin.from("user_match_scores")
         .select("user_id, total_points, captain_points, vc_points")
         .eq("match_id", matchId)
@@ -86,12 +80,6 @@ export default async function LeagueDetailPage({
         .select("player_id, fantasy_points, player:players(name, role)")
         .eq("match_id", matchId)
         .limit(50),
-      admin.from("match_banter")
-        .select("message, event_type, created_at")
-        .eq("match_id", matchId)
-        .in("user_id", memberIds)
-        .order("created_at", { ascending: false })
-        .limit(20),
     ])
 
     const playerPoints: Record<string, number> = {}
@@ -119,11 +107,6 @@ export default async function LeagueDetailPage({
       })),
       playerPoints,
       playerNames: playerNamesMap,
-      banter: (banterRaw ?? []).map((b) => ({
-        message: b.message,
-        event_type: b.event_type,
-        created_at: b.created_at,
-      })),
     }
   }
 
@@ -138,7 +121,6 @@ export default async function LeagueDetailPage({
       lockedMatches={(lockedMatches ?? []) as unknown as { id: string; match_number: number; start_time: string; status: string; team_home: { short_name: string; color: string }; team_away: { short_name: string; color: string } }[]}
       liveMatchData={liveMatchData}
       currentUserId={user.id}
-      recentBanter={(recentBanter ?? []).map((b) => ({ message: b.message, event_type: b.event_type }))}
     />
   )
 }

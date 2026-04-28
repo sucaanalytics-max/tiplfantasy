@@ -8,11 +8,10 @@ export default async function AppLayout({
 }: {
   children: React.ReactNode
 }) {
-  const user = await getAuthUser()
+  const [user, supabase] = await Promise.all([getAuthUser(), createClient()])
 
   let isAdmin = false
   if (user) {
-    const supabase = await createClient()
     const { data } = await supabase
       .from("profiles")
       .select("is_admin")

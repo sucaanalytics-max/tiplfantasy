@@ -94,24 +94,27 @@ export default async function DashboardPage() {
   // initials). Picks the 3 highest-credit players per team — proxy for
   // "marquee" without needing a separate "is_star" column.
   const heroMatchTmp = liveMatches[0] ?? upcomingMatches[0] ?? lastMatch
-  const featuredHomePlayersRes = heroMatchTmp
-    ? await supabase
-        .from("players")
-        .select("name, role, image_url, team_id, team:teams!players_team_id_fkey(short_name, color)")
-        .eq("team_id", heroMatchTmp.team_home_id)
-        .not("image_url", "is", null)
-        .order("credit_cost", { ascending: false })
-        .limit(3)
-    : { data: [] as Array<{ name: string; role: string; image_url: string | null; team: { short_name: string; color: string } }> }
-  const featuredAwayPlayersRes = heroMatchTmp
-    ? await supabase
-        .from("players")
-        .select("name, role, image_url, team_id, team:teams!players_team_id_fkey(short_name, color)")
-        .eq("team_id", heroMatchTmp.team_away_id)
-        .not("image_url", "is", null)
-        .order("credit_cost", { ascending: false })
-        .limit(3)
-    : { data: [] as Array<{ name: string; role: string; image_url: string | null; team: { short_name: string; color: string } }> }
+  const emptyPlayers = { data: [] as Array<{ name: string; role: string; image_url: string | null; team: { short_name: string; color: string } }> }
+  const [featuredHomePlayersRes, featuredAwayPlayersRes] = await Promise.all([
+    heroMatchTmp
+      ? supabase
+          .from("players")
+          .select("name, role, image_url, team_id, team:teams!players_team_id_fkey(short_name, color)")
+          .eq("team_id", heroMatchTmp.team_home_id)
+          .not("image_url", "is", null)
+          .order("credit_cost", { ascending: false })
+          .limit(3)
+      : Promise.resolve(emptyPlayers),
+    heroMatchTmp
+      ? supabase
+          .from("players")
+          .select("name, role, image_url, team_id, team:teams!players_team_id_fkey(short_name, color)")
+          .eq("team_id", heroMatchTmp.team_away_id)
+          .not("image_url", "is", null)
+          .order("credit_cost", { ascending: false })
+          .limit(3)
+      : Promise.resolve(emptyPlayers),
+  ])
 
   const featuredHomePlayers = (featuredHomePlayersRes.data ?? []).map((p) => ({
     name: p.name,
