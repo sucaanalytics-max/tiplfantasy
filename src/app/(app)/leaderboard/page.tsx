@@ -15,6 +15,7 @@ import { PageTransition } from "@/components/page-transition"
 import { RaceChart } from "@/components/charts/race-chart"
 import { LeaderboardTable, type LeaderboardRow } from "@/components/leaderboard-table"
 import { PodiumCard, type PodiumEntry } from "@/components/podium-card"
+import { MyLeaguesAccordion } from "./_components/my-leagues-accordion"
 import { buildRaceData } from "@/lib/race-data"
 import type { LeagueMemberStats } from "@/lib/types"
 
@@ -122,7 +123,11 @@ export default async function LeaderboardPage({
         </Badge>
       )}
 
-      {/* Player Stats link */}
+      {/* ═══ YOUR LEAGUES (replaces /leagues nav item) ═══ */}
+      <MyLeaguesAccordion leagues={myLeagues} />
+
+      {/* Player Stats link (replaces /stats nav item — preserves direct
+          access to season aggregates while keeping the 4-tab nav clean) */}
       <Link
         href="/stats"
         className="flex items-center justify-center gap-2 py-2.5 px-4 rounded-lg glass-panel text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-overlay-subtle transition-colors"
