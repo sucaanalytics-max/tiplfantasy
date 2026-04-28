@@ -36,6 +36,7 @@ import { PlayerCardPremium } from "@/components/player-card-premium"
 import { PitchView } from "@/components/pitch-view"
 import { PlayerResearchTable } from "@/components/player-research-table"
 import { CaptainOverlay } from "@/components/captain-overlay"
+import { SquadDock } from "@/components/pick/squad-dock"
 import { List as ListIcon, Map as MapIcon, Table as TableIcon } from "lucide-react"
 import { Confetti } from "@/components/confetti"
 import { TeamSubmitPreview } from "@/components/team-submit-preview"
@@ -451,7 +452,7 @@ export function PickTeamClient({
 
   // Main player selection view
   return (
-    <div className="min-h-dvh pb-[calc(10rem+env(safe-area-inset-bottom))] md:pb-28 lg:pb-0">
+    <div className="min-h-dvh pb-[calc(15rem+env(safe-area-inset-bottom))] md:pb-40 lg:pb-0">
       {showConfetti && <Confetti />}
 
       {/* ── Compact hero band — non-sticky, scrolls away ───────── */}
@@ -890,6 +891,20 @@ export function PickTeamClient({
             <p className="text-xs text-destructive">{error}</p>
           </div>
         )}
+        {/* Squad dock — always-visible drafted XI. Tap empty slot to filter
+            list to that role; tap a filled slot to open player stats. */}
+        <div className="px-3 pt-3 pb-1">
+          <SquadDock
+            selectedPlayers={selectedPlayers}
+            captainId={captainId}
+            viceCaptainId={viceCaptainId}
+            onSlotClick={(role) => {
+              setActiveFilter(role)
+              setPickMode("list")
+            }}
+            onPlayerClick={(player) => setStatsPlayerId(player.id)}
+          />
+        </div>
         <div className="px-4 py-3">
           <div className="flex items-center gap-2 mb-2">
             {/* Captain/VC picker as Drawer (auto-opens when 11 selected) */}

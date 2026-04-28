@@ -1,5 +1,6 @@
 "use client"
 
+import { AnimatedNumber } from "@/components/animated-number"
 import { cn } from "@/lib/utils"
 
 type Props = {
@@ -48,7 +49,7 @@ export function FantasyHUD({
             "ml-2 text-gold-stat text-lg leading-none",
             isLive && "animate-pulse-subtle",
           )}>
-            {totalPoints}
+            {isLive ? <AnimatedNumber value={totalPoints} /> : totalPoints}
           </span>
           <span className="text-[10px] text-muted-foreground">pts</span>
           {rank != null && rank > 1 && leaderPoints > 0 && (
@@ -114,7 +115,7 @@ export function FantasyHUD({
           </div>
           <div className="min-w-0">
             <p className={cn("text-xl font-bold font-display tabular-nums", isLive && "animate-pulse-subtle")}>
-              {totalPoints}
+              {isLive ? <AnimatedNumber value={totalPoints} /> : totalPoints}
               <span className="text-xs font-normal text-muted-foreground ml-1">pts</span>
             </p>
             <p className="text-[10px] text-muted-foreground truncate">

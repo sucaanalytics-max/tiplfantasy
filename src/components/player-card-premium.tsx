@@ -79,11 +79,14 @@ export function PlayerCardPremium({
   return (
     <div
       className={cn(
-        "relative rounded-xl border border-overlay-border bg-card overflow-hidden transition-all",
+        "relative rounded-xl border bg-card overflow-hidden transition-all",
         "stripe-team-left", // 4px team-color stripe via --team-color
+        // Selected state — "weighty" cinematic feel: team-color rim glow,
+        // subtle scale lift, deeper shadow. Deselected falls back to the
+        // base card with hover affordance.
         isSelected
-          ? "border-primary/50 shadow-[0_0_0_1px_var(--primary),_0_4px_18px_oklch(0_0_0/0.06)]"
-          : "shadow-[0_1px_3px_oklch(0_0_0/0.04)] hover:border-overlay-border-hover",
+          ? "border-transparent team-color-rim scale-[1.015] shadow-headshot z-[1]"
+          : "border-overlay-border shadow-[0_1px_3px_oklch(0_0_0/0.04)] hover:border-overlay-border-hover",
         isDisabled && "opacity-40",
         hasPlayingXI && !isInXI && "opacity-50"
       )}

@@ -7,33 +7,32 @@ import {
   LayoutDashboard,
   Swords,
   Trophy,
-  Users,
   User,
   Shield,
   LogOut,
   BookOpen,
-  BarChart3,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { createClient } from "@/lib/supabase/client"
 import { useRouter } from "next/navigation"
 import { ThemeToggle } from "@/components/theme-toggle"
 
+// 4-tab mobile nav. Leagues + Stats dropped from primary nav — Leagues
+// now lives as an accordion at the top of /leaderboard, Stats remains
+// reachable via the existing "Player Stats" link on /leaderboard.
+// All routes (/leagues, /leagues/[id], /stats) still resolve as deep
+// links so invite codes and bookmarks keep working.
 const mobileNavItems = [
   { href: "/dashboard", label: "Home", icon: LayoutDashboard },
   { href: "/matches", label: "Matches", icon: Swords },
   { href: "/leaderboard", label: "Board", icon: Trophy },
-  { href: "/leagues", label: "Leagues", icon: Users },
-  { href: "/stats", label: "Stats", icon: BarChart3 },
   { href: "/profile", label: "Profile", icon: User },
 ]
 
 const sidebarNavItems = [
   { href: "/dashboard", label: "Home", icon: LayoutDashboard },
   { href: "/matches", label: "Matches", icon: Swords },
-  { href: "/leagues", label: "Leagues", icon: Users },
   { href: "/leaderboard", label: "Board", icon: Trophy },
-  { href: "/stats", label: "Stats", icon: BarChart3 },
   { href: "/rules", label: "Rules", icon: BookOpen },
   { href: "/profile", label: "Profile", icon: User },
 ]
