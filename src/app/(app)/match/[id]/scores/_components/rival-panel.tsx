@@ -1,6 +1,7 @@
 "use client"
 
-import { useMemo } from "react"
+import { useMemo, useState, type ReactNode } from "react"
+import { ChevronRight } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import { cn } from "@/lib/utils"
 import { getInitials, getAvatarColor } from "@/lib/avatar"
@@ -10,7 +11,8 @@ import {
   computePointsInPlay,
   computeXiOverlap,
   generateInsight,
-  type HeadToHead,
+  type EdgeEntry,
+  type SharedEntry,
   type PlayerLite,
   type PlayerScore,
   type Selection,
@@ -39,11 +41,6 @@ type Props = {
   matchStatus: string
 }
 
-/**
- * Inline rival comparison panel — renders the head-to-head content as a
- * normal block-level subtree below an expanded standings row. Replaces
- * the previous modal/drawer wrapper. Page body scroll handles overflow.
- */
 export function RivalPanel({
   me, rival, mySelection, rivalSelection, psMap, rosterMap, matchStatus,
 }: Props) {
@@ -63,8 +60,7 @@ export function RivalPanel({
       overlapPct: overlap.pct,
       matchStatus,
     })
-    const roster = buildAlignedRoster(h2h)
-    return { h2h, captainDuel, insight, roster }
+    return { h2h, captainDuel, insight }
   }, [me, rival, mySelection, rivalSelection, psMap, rosterMap, matchStatus])
 
   if (!data || !me || !rival) {
@@ -99,16 +95,16 @@ export function RivalPanel({
         </div>
       )}
 
-      <RosterTable
-        rows={data.roster}
-        myTotal={me.total_points}
-        theirTotal={rival.total_points}
+      <EdgeRoster
+        myEdge={data.h2h.myEdge}
+        theirEdge={data.h2h.theirEdge}
+        shared={data.h2h.shared}
       />
     </div>
   )
 }
 
-// ─── Header pieces ──────────────────────────────────────────────────────
+// ─── Header pieces ───────────────────────────────────────────────────────
 
 function Side({ name, points, align, isMe }: { name: string; points: number; align: "left" | "right"; isMe?: boolean }) {
   return (
@@ -202,266 +198,215 @@ function CaptainSide({ slot, align }: { slot: CaptainSlot; align: "left" | "righ
   )
 }
 
-// ─── Aligned roster table ────────────────────────────────────────────────
+// ─── Edge Roster ─────────────────────────────────────────────────────────
 
-type RosterCell = {
-  name: string
-  role: string
-  mult: number
-  eff: number
-  basePoints: number
+function EdgeRoster({
+  myEdge,
+  theirEdge,
+  shared,
+}: {
+  myEdge: EdgeEntry[]
+  theirEdge: EdgeEntry[]
+  shared: SharedEntry[]
+}) {
+  const myTotal = Math.round(myEdge.reduce((sum, e) => sum + e.effective, 0) * 10) / 10
+  const theirTotal = Math.round(theirEdge.reduce((sum, e) => sum + e.effective, 0) * 10) / 10
+
+  return (
+    <div className="flex flex-col gap-2">
+      {myEdge.length > 0 && (
+        <EdgeSection title="EDGE" icon="▲" count={myEdge.length} netPoints={myTotal} tone="green">
+          {myEdge.map((e) => (
+            <PlayerEdgeRow
+              key={e.player_id}
+              name={e.player.name}
+              role={e.player.role}
+              isC={e.isC}
+              isVC={e.isVC}
+              effectivePts={e.effective}
+              tone="green"
+            />
+          ))}
+        </EdgeSection>
+      )}
+
+      {theirEdge.length > 0 && (
+        <EdgeSection title="NEGATIVE EDGE" icon="▼" count={theirEdge.length} netPoints={theirTotal} tone="red">
+          {theirEdge.map((e) => (
+            <PlayerEdgeRow
+              key={e.player_id}
+              name={e.player.name}
+              role={e.player.role}
+              isC={e.isC}
+              isVC={e.isVC}
+              effectivePts={e.effective}
+              tone="red"
+            />
+          ))}
+        </EdgeSection>
+      )}
+
+      {shared.length > 0 && (
+        <EdgeSection
+          title="SAME PICKS"
+          icon="="
+          count={shared.length}
+          netPoints={null}
+          tone="neutral"
+          collapsible
+          defaultCollapsed
+        >
+          {shared.map((e) => (
+            <PlayerEdgeRow
+              key={e.player_id}
+              name={e.player.name}
+              role={e.player.role}
+              isC={e.myMult === 2}
+              isVC={e.myMult === 1.5}
+              effectivePts={e.myEff}
+              tone="neutral"
+            />
+          ))}
+        </EdgeSection>
+      )}
+    </div>
+  )
 }
 
-type RosterRow = {
-  player_id: string
-  role: string
-  my: RosterCell | null
-  their: RosterCell | null
-  isCaptaincyEdge: boolean
-  isMyOnly: boolean
-  isTheirOnly: boolean
-}
+function EdgeSection({
+  title,
+  icon,
+  count,
+  netPoints,
+  tone,
+  collapsible = false,
+  defaultCollapsed = false,
+  children,
+}: {
+  title: string
+  icon: string
+  count: number
+  netPoints: number | null
+  tone: "green" | "red" | "neutral"
+  collapsible?: boolean
+  defaultCollapsed?: boolean
+  children: ReactNode
+}) {
+  const [collapsed, setCollapsed] = useState(defaultCollapsed)
 
-function buildAlignedRoster(h2h: HeadToHead): RosterRow[] {
-  const rows: RosterRow[] = []
+  const headerTone = {
+    green: "text-emerald-600 dark:text-emerald-400",
+    red: "text-rose-600 dark:text-rose-400",
+    neutral: "text-muted-foreground",
+  }[tone]
 
-  for (const s of h2h.shared) {
-    rows.push({
-      player_id: s.player_id,
-      role: s.player.role,
-      my: { name: s.player.name, role: s.player.role, mult: s.myMult, eff: s.myEff, basePoints: s.fantasyPoints },
-      their: { name: s.player.name, role: s.player.role, mult: s.theirMult, eff: s.theirEff, basePoints: s.fantasyPoints },
-      isCaptaincyEdge: false,
-      isMyOnly: false,
-      isTheirOnly: false,
-    })
-  }
+  const headerBg = {
+    green: "bg-emerald-500/10",
+    red: "bg-rose-500/10",
+    neutral: "bg-overlay-subtle/40",
+  }[tone]
 
-  for (const e of h2h.myEdge) {
-    if (e.isMultEdge) {
-      const myMult = e.isC ? 2 : e.isVC ? 1.5 : 1
-      const theirMult = e.theirIsC ? 2 : e.theirIsVC ? 1.5 : 1
-      rows.push({
-        player_id: e.player_id,
-        role: e.player.role,
-        my: { name: e.player.name, role: e.player.role, mult: myMult, eff: round2(e.fantasyPoints * myMult), basePoints: e.fantasyPoints },
-        their: { name: e.player.name, role: e.player.role, mult: theirMult, eff: round2(e.fantasyPoints * theirMult), basePoints: e.fantasyPoints },
-        isCaptaincyEdge: true,
-        isMyOnly: false,
-        isTheirOnly: false,
-      })
-    } else {
-      const mult = e.isC ? 2 : e.isVC ? 1.5 : 1
-      rows.push({
-        player_id: e.player_id,
-        role: e.player.role,
-        my: { name: e.player.name, role: e.player.role, mult, eff: e.effective, basePoints: e.fantasyPoints },
-        their: null,
-        isCaptaincyEdge: false,
-        isMyOnly: true,
-        isTheirOnly: false,
-      })
-    }
-  }
-
-  for (const e of h2h.theirEdge) {
-    if (e.isMultEdge) {
-      const myMult = e.myIsC ? 2 : e.myIsVC ? 1.5 : 1
-      const theirMult = e.isC ? 2 : e.isVC ? 1.5 : 1
-      rows.push({
-        player_id: e.player_id,
-        role: e.player.role,
-        my: { name: e.player.name, role: e.player.role, mult: myMult, eff: round2(e.fantasyPoints * myMult), basePoints: e.fantasyPoints },
-        their: { name: e.player.name, role: e.player.role, mult: theirMult, eff: round2(e.fantasyPoints * theirMult), basePoints: e.fantasyPoints },
-        isCaptaincyEdge: true,
-        isMyOnly: false,
-        isTheirOnly: false,
-      })
-    } else {
-      const mult = e.isC ? 2 : e.isVC ? 1.5 : 1
-      rows.push({
-        player_id: e.player_id,
-        role: e.player.role,
-        my: null,
-        their: { name: e.player.name, role: e.player.role, mult, eff: e.effective, basePoints: e.fantasyPoints },
-        isCaptaincyEdge: false,
-        isMyOnly: false,
-        isTheirOnly: true,
-      })
-    }
-  }
-
-  rows.sort((a, b) => {
-    const ta = tier(a)
-    const tb = tier(b)
-    if (ta !== tb) return ta - tb
-    const maxA = Math.max(a.my?.eff ?? -Infinity, a.their?.eff ?? -Infinity)
-    const maxB = Math.max(b.my?.eff ?? -Infinity, b.their?.eff ?? -Infinity)
-    return maxB - maxA
-  })
-
-  return rows
-}
-
-function tier(r: RosterRow): number {
-  if (r.isMyOnly) return 0
-  if (r.isTheirOnly) return 1
-  if (r.isCaptaincyEdge) {
-    return (r.my?.mult ?? 0) > (r.their?.mult ?? 0) ? 0 : 1
-  }
-  return 2
-}
-
-const TIER_LABEL: Record<number, string> = {
-  0: "My Edge",
-  1: "Their Edge",
-  2: "Common Players",
-}
-
-function RosterTable({
-  rows, myTotal, theirTotal,
-}: { rows: RosterRow[]; myTotal: number; theirTotal: number }) {
-  if (rows.length === 0) return null
-
-  const grouped: Array<{ tier: number; rows: RosterRow[] }> = []
-  let current: { tier: number; rows: RosterRow[] } | null = null
-  for (const r of rows) {
-    const t = tier(r)
-    if (!current || current.tier !== t) {
-      current = { tier: t, rows: [] }
-      grouped.push(current)
-    }
-    current.rows.push(r)
-  }
+  const inner = (
+    <>
+      <span className={cn("text-[10px] font-bold mr-1", headerTone)}>{icon}</span>
+      <span className={cn("text-[10px] font-semibold uppercase tracking-widest", headerTone)}>
+        {title}
+      </span>
+      <span className="text-[10px] text-muted-foreground/60 tabular-nums ml-1.5">{count}</span>
+      {netPoints !== null && (
+        <>
+          <span className="text-[10px] text-muted-foreground/40 mx-1.5">·</span>
+          <span className={cn("text-[11px] font-bold font-display tabular-nums", headerTone)}>
+            {tone === "green" && netPoints > 0 ? `+${netPoints}` : netPoints}
+          </span>
+          <span className={cn("text-[10px] ml-0.5", headerTone)}>pts</span>
+        </>
+      )}
+    </>
+  )
 
   return (
     <div className="rounded-xl border border-overlay-border overflow-hidden bg-background">
-      <div className="grid grid-cols-2 bg-overlay-subtle border-b border-overlay-border">
-        <HeaderCell label="ME" total={myTotal} align="left" />
-        <HeaderCell label="THEM" total={theirTotal} align="right" />
-      </div>
-
-      <div>
-        {grouped.map((group, idx) => {
-          // Per-section signed total from my perspective (sum of my.eff − their.eff)
-          // Mirrors the Captain Duel row's signed-delta convention.
-          const sectionDiff = group.rows.reduce(
-            (sum, r) => sum + ((r.my?.eff ?? 0) - (r.their?.eff ?? 0)),
-            0,
-          )
-          const diffRounded = Math.round(sectionDiff * 10) / 10
-          return (
-            <div key={group.tier} className={cn(idx > 0 && "border-t border-overlay-border")}>
-              <div className="flex items-baseline gap-1.5 px-3 py-1.5 bg-overlay-subtle/40 border-b border-overlay-border">
-                <span className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">
-                  {TIER_LABEL[group.tier]}
-                </span>
-                <span className="text-[10px] text-muted-foreground/60 tabular-nums">
-                  {group.rows.length}
-                </span>
-                <span className="text-[10px] text-muted-foreground/40">·</span>
-                <span className={cn(
-                  "text-[11px] font-bold font-display tabular-nums",
-                  diffRounded > 0 ? "text-[var(--tw-emerald-text)]" :
-                  diffRounded < 0 ? "text-[var(--tw-red-text)]" :
-                  "text-muted-foreground",
-                )}>
-                  {diffRounded > 0 ? `+${diffRounded}` : diffRounded < 0 ? `${diffRounded}` : "0"}
-                </span>
-              </div>
-              <div className="divide-y divide-overlay-border">
-                {group.rows.map((row) => (
-                  <Row key={row.player_id} row={row} />
-                ))}
-              </div>
-            </div>
-          )
-        })}
-      </div>
+      {collapsible ? (
+        <button
+          type="button"
+          className={cn("w-full flex items-center px-3 py-2 text-left", headerBg)}
+          onClick={() => setCollapsed((c) => !c)}
+        >
+          {inner}
+          <ChevronRight className={cn(
+            "ml-auto h-3.5 w-3.5 text-muted-foreground/50 transition-transform duration-200",
+            !collapsed && "rotate-90",
+          )} />
+        </button>
+      ) : (
+        <div className={cn("flex items-center px-3 py-2", headerBg)}>
+          {inner}
+        </div>
+      )}
+      {!collapsed && (
+        <div className="divide-y divide-overlay-border">
+          {children}
+        </div>
+      )}
     </div>
   )
 }
 
-function HeaderCell({ label, total, align }: { label: string; total: number; align: "left" | "right" }) {
-  return (
-    <div className={cn(
-      "flex items-baseline gap-2 px-3 py-2",
-      align === "right" && "flex-row-reverse text-right",
-    )}>
-      <span className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">{label}</span>
-      <span className="text-sm font-display font-bold tabular-nums">{total}</span>
-    </div>
-  )
-}
-
-function Row({ row }: { row: RosterRow }) {
-  const rowTint = row.isCaptaincyEdge ? "bg-amber-500/5" : null
-  return (
-    <div className={cn("grid grid-cols-2", rowTint)}>
-      <Cell
-        cell={row.my}
-        side="left"
-        edgeTint={row.isMyOnly ? "bg-emerald-500/5" : null}
-      />
-      <Cell
-        cell={row.their}
-        side="right"
-        edgeTint={row.isTheirOnly ? "bg-red-500/5" : null}
-      />
-    </div>
-  )
-}
-
-function Cell({ cell, side, edgeTint }: {
-  cell: RosterCell | null
-  side: "left" | "right"
-  edgeTint: string | null
+function PlayerEdgeRow({
+  name,
+  role,
+  isC,
+  isVC,
+  effectivePts,
+  tone,
+}: {
+  name: string
+  role: string
+  isC: boolean
+  isVC: boolean
+  effectivePts: number
+  tone: "green" | "red" | "neutral"
 }) {
-  const borderClass = side === "left" ? "border-r border-overlay-border" : null
+  const rowBg = {
+    green: "bg-emerald-500/5",
+    red: "bg-rose-500/5",
+    neutral: "",
+  }[tone]
 
-  if (!cell) {
-    return (
-      <div className={cn(
-        "flex items-center justify-center px-2 py-2 text-muted-foreground/30 text-xs min-h-[36px]",
-        borderClass,
-        edgeTint,
-      )}>
-        —
-      </div>
-    )
-  }
+  const ptsTone = {
+    green: "text-[var(--tw-emerald-text)]",
+    red: "text-[var(--tw-red-text)]",
+    neutral: "text-muted-foreground",
+  }[tone]
 
-  const captainChip = cell.mult === 2 ? "C" : cell.mult === 1.5 ? "VC" : null
+  const captainChip = isC ? "C" : isVC ? "VC" : null
+  const captainChipClass = isC
+    ? "bg-amber-500/15 text-amber-700 dark:text-amber-300 border-amber-500/30"
+    : "bg-sky-500/15 text-sky-700 dark:text-sky-300 border-sky-500/30"
 
   return (
-    <div className={cn(
-      "flex items-center gap-1.5 px-2 py-1.5 min-w-0 min-h-[36px]",
-      borderClass,
-      edgeTint,
-    )}>
+    <div className={cn("flex items-center gap-2 px-3 py-2.5 min-h-[44px]", rowBg)}>
       <Badge variant="outline" className={cn(
         "text-[8px] px-1 py-0 h-[14px] border leading-none shrink-0",
-        ROLE_COLORS[cell.role],
+        ROLE_COLORS[role],
       )}>
-        {cell.role}
+        {role}
       </Badge>
-      <span className="text-[11px] font-medium truncate flex-1 leading-tight">
-        {cell.name}
+      <span className="text-[13px] font-medium truncate flex-1 leading-tight">
+        {name}
       </span>
       {captainChip && (
-        <Badge variant="outline" className="shrink-0 text-[8px] px-1 py-0 h-[14px] bg-amber-500/15 text-amber-700 dark:text-amber-300 border-amber-500/30">
+        <Badge variant="outline" className={cn(
+          "shrink-0 text-[8px] px-1 py-0 h-[14px]",
+          captainChipClass,
+        )}>
           {captainChip}
         </Badge>
       )}
-      <span className="text-[11px] font-bold font-display tabular-nums shrink-0">
-        {cell.eff}
+      <span className={cn("text-sm font-bold font-display tabular-nums shrink-0", ptsTone)}>
+        {effectivePts}
       </span>
     </div>
   )
-}
-
-// ─── Util ────────────────────────────────────────────────────────────────
-
-function round2(n: number): number {
-  return Math.round(n * 100) / 100
 }
