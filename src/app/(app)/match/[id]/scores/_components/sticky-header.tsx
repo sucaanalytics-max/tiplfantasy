@@ -4,9 +4,7 @@ import Link from "next/link"
 import { ArrowLeft } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { CricketStrip } from "@/components/live/cricket-strip"
-import { FantasyHUD } from "@/components/live/fantasy-hud"
 
-type TeamInfo = { short_name: string; color: string; logo_url: string | null }
 type BallEvent = { ball: number; runs: number; four: boolean; six: boolean; wicket: boolean }
 
 type Props = {
@@ -17,30 +15,11 @@ type Props = {
     cricapi_match_id: string | null
     start_time: string
   }
-  home: TeamInfo
-  away: TeamInfo
   lastBalls: BallEvent[]
-  myRank: number | null
-  myPoints: number
-  totalUsers: number
-  leaderPoints: number
-  captainName: string | null
-  captainPoints: number
-  vcName: string | null
-  vcPoints: number
 }
 
-/**
- * Sticky live-state bar shown below the hero band:
- *   nav back + cricket strip (live balls / result) + my fantasy HUD.
- * The whole group is `position: sticky; top: 0` so during scroll the user
- * always sees their rank/pts and the live score.
- */
-export function StickyHeader({
-  match, home: _home, away: _away, lastBalls,
-  myRank, myPoints, totalUsers, leaderPoints,
-  captainName, captainPoints, vcName, vcPoints,
-}: Props) {
+/** Sticky nav + cricket strip only. Fantasy score is shown in MatchScoreBlock above. */
+export function StickyHeader({ match, lastBalls }: Props) {
   const isLive = match.status === "live"
 
   return (
@@ -76,22 +55,6 @@ export function StickyHeader({
         isLive={isLive}
         resultSummary={!isLive ? match.result_summary : null}
       />
-
-      {/* My strip — always rendered if user has any score */}
-      {myRank != null && (
-        <FantasyHUD
-          variant="compact"
-          rank={myRank}
-          totalPoints={myPoints}
-          captainName={captainName}
-          captainPoints={captainPoints}
-          vcName={vcName}
-          vcPoints={vcPoints}
-          leaderPoints={leaderPoints}
-          isLive={isLive}
-          totalUsers={totalUsers}
-        />
-      )}
     </div>
   )
 }

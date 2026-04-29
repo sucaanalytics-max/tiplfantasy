@@ -23,9 +23,11 @@ type SortDir = "asc" | "desc"
 interface Props {
   rows: LeaderboardRow[]
   currentUserId: string
+  /** Last-5 match scores per row, indexed same as rows. Each inner array is scores most-recent-last. */
+  formGuide?: number[][]
 }
 
-export function LeaderboardTable({ rows, currentUserId }: Props) {
+export function LeaderboardTable({ rows, currentUserId, formGuide }: Props) {
   const [sort, setSort] = useState<{ key: SortKey; dir: SortDir }>({ key: "rank", dir: "asc" })
 
   const sortedRows = useMemo(() => {
@@ -65,30 +67,37 @@ export function LeaderboardTable({ rows, currentUserId }: Props) {
   return (
     <div className="glass rounded-2xl overflow-hidden">
       {/* Header row — sortable */}
-      <div className="leaderboard-grid px-4 py-2 text-[10px] uppercase tracking-wider text-muted-foreground font-medium bg-overlay-subtle">
+      <div className={cn(formGuide ? "leaderboard-grid--form" : "leaderboard-grid", "px-4 py-2 text-[10px] uppercase tracking-wider text-muted-foreground font-medium bg-overlay-subtle")}>
         <SortHeader label="#" active={sort.key === "rank"} dir={sort.dir} onClick={() => toggleSort("rank")} align="center" />
         <span />
         <span>Player</span>
         <SortHeader label="W" active={sort.key === "wins"} dir={sort.dir} onClick={() => toggleSort("wins")} align="right" hide="lg" />
         <SortHeader label="Hi" active={sort.key === "highest"} dir={sort.dir} onClick={() => toggleSort("highest")} align="right" hide="lg" />
         <SortHeader label="Avg" active={sort.key === "avg"} dir={sort.dir} onClick={() => toggleSort("avg")} align="right" hide="md" />
+        {formGuide && <span className="hidden md:block text-right">Form</span>}
         <SortHeader label="Pts" active={sort.key === "total"} dir={sort.dir} onClick={() => toggleSort("total")} align="right" />
         <span className="text-right">Gap</span>
       </div>
 
       {/* Rows */}
       <div className="divide-y divide-overlay-border">
-        {sortedRows.map((row) => {
+        {sortedRows.map((row, sortedIdx) => {
           const isMe = row.user_id === currentUserId
           const gap = row.season_rank === 1 || leaderPoints === 0
             ? null
             : Number(row.total_points) - leaderPoints
 
+          // Resolve form guide for this user by matching user_id
+          const userForm = formGuide
+            ? formGuide[rows.findIndex((r) => r.user_id === row.user_id)]
+            : undefined
+
           return (
             <div
               key={row.user_id}
               className={cn(
-                "leaderboard-grid px-4 py-3 transition-colors",
+                formGuide ? "leaderboard-grid--form" : "leaderboard-grid",
+                "px-4 py-3 transition-colors",
                 isMe && "row-highlight-you"
               )}
             >
@@ -138,6 +147,29 @@ export function LeaderboardTable({ rows, currentUserId }: Props) {
               <span className="hidden md:block text-right tabular-nums text-xs text-muted-foreground">
                 {Number(row.avg_points).toFixed(0)}
               </span>
+
+              {/* Form guide */}
+              {formGuide && (
+                <div className="hidden md:flex items-center justify-end gap-0.5">
+                  {(userForm ?? [null, null, null, null, null]).slice(-5).map((score, i) => {
+                    const pct = score != null && row.highest_score > 0
+                      ? score / Number(row.highest_score)
+                      : null
+                    return (
+                      <div
+                        key={i}
+                        className={cn(
+                          "w-[7px] h-[7px] rounded-[2px]",
+                          pct == null ? "bg-overlay-muted/40" :
+                          pct > 0.8 ? "bg-[var(--captain-gold)]" :
+                          pct > 0.5 ? "bg-primary/70" :
+                          "bg-overlay-muted"
+                        )}
+                      />
+                    )
+                  })}
+                </div>
+              )}
 
               {/* Pts (gold) */}
               <span className="text-gold-stat text-base text-right">

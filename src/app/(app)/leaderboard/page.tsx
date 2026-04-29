@@ -10,10 +10,9 @@ import { MatchdayHistory, AwardTables } from "./leaderboard-sections"
 import { getInitials, getAvatarColor } from "@/lib/avatar"
 import { EmptyState } from "@/components/empty-state"
 import { PageTransition } from "@/components/page-transition"
-import { RaceChart } from "@/components/charts/race-chart"
 import { LeaderboardTable, type LeaderboardRow } from "@/components/leaderboard-table"
-import { PodiumCard, type PodiumEntry } from "@/components/podium-card"
-import { buildRaceData } from "@/lib/race-data"
+import { SeasonProgressTable, type ProgressRow } from "@/components/season-progress-table"
+import { cn } from "@/lib/utils"
 import type { LeagueMemberStats } from "@/lib/types"
 
 export default async function LeaderboardPage({
@@ -83,6 +82,39 @@ export default async function LeaderboardPage({
     }
   })
 
+  // Form guide: last-5 match scores per user, indexed same as leaderboardRows
+  const formGuide: number[][] = leaderboardRows.map((row) =>
+    matchScores
+      .filter((ms) => ms.user_id === row.user_id)
+      .sort((a, b) => a.match_number - b.match_number)
+      .slice(-5)
+      .map((ms) => ms.total_points)
+  )
+
+  // Season progress table: last 8 matches for all users
+  const allMatchNumbers = [...new Set(matchScores.map((ms) => ms.match_number))].sort((a, b) => a - b)
+  const progressMatchNumbers = allMatchNumbers.slice(-8)
+  const avgScore = matchScores.length > 0
+    ? matchScores.reduce((s, ms) => s + ms.total_points, 0) / matchScores.length
+    : 0
+  const progressRows: ProgressRow[] = leaderboardRows.map((row) => {
+    const userMatches = matchScores
+      .filter((ms) => ms.user_id === row.user_id)
+      .sort((a, b) => a.match_number - b.match_number)
+    return {
+      userId: row.user_id,
+      displayName: row.display_name,
+      seasonRank: row.season_rank,
+      matchScores: progressMatchNumbers
+        .map((mn) => {
+          const ms = userMatches.find((m) => m.match_number === mn)
+          if (!ms) return null
+          return { matchNumber: mn, points: ms.total_points, isWinner: ms.league_rank === 1 }
+        })
+        .filter((x): x is { matchNumber: number; points: number; isWinner: boolean } => x !== null),
+    }
+  })
+
   // Awards race — sort all members for each category
   const sortedByHighest = [...awards].sort((a, b) => Number(b.highest_score) - Number(a.highest_score))
   const sortedByWins = [...awards].sort((a, b) => b.matchday_wins - a.matchday_wins)
@@ -97,10 +129,9 @@ export default async function LeaderboardPage({
     consistent: sortedByConsistent[0],
   } : null
 
-  // Race chart: derived purely from data already fetched above
-  const raceData = buildRaceData(matchScores, leaderboard, user.id)
-
   const selectedLeague = myLeagues.find((l) => l.id === leagueId)
+
+  const MEDAL_EMOJIS = ["🥇", "🥈", "🥉"] as const
 
   return (
     <PageTransition>
@@ -120,8 +151,7 @@ export default async function LeaderboardPage({
         </Badge>
       )}
 
-      {/* Player Stats link (replaces /stats nav item — preserves direct
-          access to season aggregates while keeping the 4-tab nav clean) */}
+      {/* Player Stats link */}
       <Link
         href="/stats"
         className="flex items-center justify-center gap-2 py-2.5 px-4 rounded-lg glass-panel text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-overlay-subtle transition-colors"
@@ -142,12 +172,19 @@ export default async function LeaderboardPage({
             <p className="text-sm text-muted-foreground text-center">No scores yet</p>
           </div>
         ) : (
-          <LeaderboardTable rows={leaderboardRows} currentUserId={user.id} />
+          <LeaderboardTable rows={leaderboardRows} currentUserId={user.id} formGuide={formGuide} />
         )}
       </div>
 
       {/* ═══ SEASON RACE ═══ */}
-      {raceData && <RaceChart data={raceData} />}
+      {progressRows.length > 0 && progressMatchNumbers.length > 0 && (
+        <SeasonProgressTable
+          rows={progressRows}
+          currentUserId={user.id}
+          matchNumbers={progressMatchNumbers}
+          avgScore={avgScore}
+        />
+      )}
 
       {/* ═══ KEY STATS ═══ */}
       {awardLeaders && (
@@ -194,38 +231,44 @@ export default async function LeaderboardPage({
               { icon: TrophyIcon, label: "Matchday Wins", data: sortedByWins, getValue: (a: LeagueMemberStats) => a.matchday_wins, suffix: "wins" },
               { icon: Crown, label: "Best Captaincy", data: sortedByCaptain, getValue: (a: LeagueMemberStats) => Math.round(Number(a.total_captain_points)), suffix: "pts" },
               { icon: Target, label: "Most Consistent", data: sortedByConsistent, getValue: (a: LeagueMemberStats) => a.top2_finishes, suffix: "top-2s" },
-            ].map(({ icon: Icon, label, data, getValue, suffix }) => {
-              const podiumEntries: PodiumEntry[] = data.slice(0, 3).map((entry) => {
-                const value = getValue(entry)
-                return {
-                  user_id: entry.user_id,
-                  display_name: entry.display_name,
-                  total_points: value,
-                  displayValue: `${value} ${suffix}`,
-                }
-              })
-              return (
-                <div key={label} className="rounded-2xl glass overflow-hidden">
-                  <div className="px-3 py-2 border-b border-overlay-border flex items-center gap-2">
-                    <Icon className="h-3.5 w-3.5 text-muted-foreground" />
-                    <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">{label}</span>
-                  </div>
-                  {/* Visual podium for the leader trio — staggered heights, gold/silver/bronze */}
-                  <PodiumCard
-                    entries={podiumEntries}
-                    currentUserId={user.id}
-                    hideGap
-                    className="!rounded-none border-0"
-                  />
+            ].map(({ icon: Icon, label, data, getValue, suffix }) => (
+              <div key={label} className="rounded-2xl glass overflow-hidden">
+                <div className="px-3 py-2 border-b border-overlay-border flex items-center gap-2 bg-overlay-subtle">
+                  <Icon className="h-3.5 w-3.5 text-muted-foreground" />
+                  <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">{label}</span>
                 </div>
-              )
-            })}
+                <div className="divide-y divide-overlay-border">
+                  {data.slice(0, 3).map((entry, i) => {
+                    const isMe = entry.user_id === user.id
+                    const value = getValue(entry)
+                    return (
+                      <div
+                        key={entry.user_id}
+                        className={cn(
+                          "flex items-center gap-2.5 px-3 py-2.5",
+                          isMe && "bg-primary/[0.06] shadow-[inset_2px_0_0_var(--primary)]",
+                        )}
+                      >
+                        <span className="text-base leading-none w-6 shrink-0">{MEDAL_EMOJIS[i]}</span>
+                        <span className={cn("text-sm truncate flex-1", isMe ? "font-semibold text-primary" : "font-medium")}>
+                          {entry.display_name}
+                          {isMe && <span className="text-[10px] ml-1 font-normal opacity-70">(you)</span>}
+                        </span>
+                        <span className="text-gold-stat text-sm tabular-nums shrink-0">{value} {suffix}</span>
+                      </div>
+                    )
+                  })}
+                </div>
+              </div>
+            ))}
           </div>
         </div>
       )}
 
       {/* ═══ MATCHDAY HISTORY ═══ */}
-      {matchHistory.length > 0 && <MatchdayHistory matchHistory={matchHistory} />}
+      {matchHistory.length > 0 && (
+        <MatchdayHistory matchHistory={matchHistory} currentUserId={user.id} />
+      )}
 
       {/* ═══ AWARD TABLES ═══ */}
       {matchScores.length > 0 && <AwardTables awards={awards} matchScores={matchScores} />}

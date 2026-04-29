@@ -31,9 +31,12 @@ interface Props {
    *  Used on /scores live + recap surfaces. Pure presentation; touches
    *  no live data hooks. */
   cinematic?: boolean
+  /** Territory split variant — team color halves + stadium silhouette,
+   *  matches CinematicHero design language. 240px height. */
+  variant?: "cinema" | "territories"
 }
 
-export function MatchHeroBand({ match, compact = false, cinematic = false }: Props) {
+export function MatchHeroBand({ match, compact = false, cinematic = false, variant }: Props) {
   const home = match.team_home
   const away = match.team_away
   const isLive = match.status === "live"
@@ -42,6 +45,114 @@ export function MatchHeroBand({ match, compact = false, cinematic = false }: Pro
   const tag = isLive ? "live" : isCompleted ? "summary" : "preview"
   const homeFullName = home.name ?? home.short_name
   const awayFullName = away.name ?? away.short_name
+
+  if (variant === "territories") {
+    return (
+      <section
+        className="relative overflow-hidden"
+        style={
+          {
+            height: 240,
+            "--team-home-color": home.color,
+            "--team-away-color": away.color,
+          } as React.CSSProperties
+        }
+      >
+        {/* Layer 1 — color territories */}
+        <div className="absolute inset-0 cinema-bg-territories" aria-hidden />
+
+        {/* Layer 2 — stadium silhouettes */}
+        <StadiumSilhouette
+          className="absolute inset-x-0 bottom-10 w-full h-[38%] text-white/15 pointer-events-none"
+          style={{ animation: "team-art-zoom 800ms cubic-bezier(0.16, 1, 0.3, 1) 120ms backwards" }}
+        />
+        <StadiumSilhouette
+          className="absolute inset-x-0 bottom-6 w-full h-[28%] text-white/6 pointer-events-none"
+          style={{ animation: "team-art-zoom 900ms cubic-bezier(0.16, 1, 0.3, 1) 200ms backwards", transform: "scaleX(-1)" }}
+        />
+
+        {/* Layer 3 — bottom vignette */}
+        <div
+          className="absolute inset-x-0 bottom-0 h-3/5 pointer-events-none z-[2]"
+          style={{ background: "linear-gradient(to top, oklch(0 0 0 / 0.72) 0%, transparent 100%)" }}
+          aria-hidden
+        />
+
+        {/* Eyebrow */}
+        <div className="absolute inset-x-0 top-0 z-[3] flex items-start justify-between px-4 pt-3 pointer-events-none">
+          <span className="text-cinema-eyebrow text-white/80">
+            IPL 2026 · Match {match.match_number}
+          </span>
+          {isLive && (
+            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-status-live text-white text-[10px] font-display font-bold uppercase tracking-widest live-ring">
+              <span className="relative inline-flex h-1.5 w-1.5">
+                <span className="absolute inline-flex h-full w-full rounded-full bg-white opacity-75 animate-ping" />
+                <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-white" />
+              </span>
+              Live
+            </span>
+          )}
+        </div>
+
+        {/* Team identities — grid: home | VS | away */}
+        <div
+          className="absolute inset-x-0 z-[3] flex items-center justify-center pointer-events-none"
+          style={{ top: 32, bottom: 44 }}
+        >
+          <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-2 w-full">
+            <div className="flex flex-col items-center gap-1.5 px-3" style={{ animation: "slide-up 0.45s ease-out 700ms backwards" }}>
+              <div style={{ filter: `drop-shadow(0 0 16px ${home.color}cc)` }}>
+                <TeamLogo team={home} size="xl" />
+              </div>
+              <span className="text-lg font-display font-black text-white tracking-tight drop-shadow-[0_2px_10px_oklch(0_0_0_/_0.9)]">
+                {home.short_name}
+              </span>
+            </div>
+            <div
+              className="relative inline-flex items-center justify-center h-10 w-10 rounded-full bg-[var(--captain-gold)] text-[oklch(0.18_0.02_86)] font-display font-black text-xs shrink-0 ring-2 ring-white/20 shadow-[0_6px_20px_oklch(0_0_0_/_0.6)]"
+              style={{ animation: "vs-clash 0.48s cubic-bezier(0.16, 1, 0.3, 1) 540ms backwards" }}
+              aria-hidden
+            >
+              VS
+            </div>
+            <div className="flex flex-col items-center gap-1.5 px-3" style={{ animation: "slide-up 0.45s ease-out 760ms backwards" }}>
+              <div style={{ filter: `drop-shadow(0 0 16px ${away.color}cc)` }}>
+                <TeamLogo team={away} size="xl" />
+              </div>
+              <span className="text-lg font-display font-black text-white tracking-tight drop-shadow-[0_2px_10px_oklch(0_0_0_/_0.9)]">
+                {away.short_name}
+              </span>
+            </div>
+          </div>
+        </div>
+
+        {/* Status band */}
+        <div className="absolute inset-x-0 bottom-0 z-[4] h-11 flex items-center gap-2.5 px-4 bg-black/60 backdrop-blur-sm">
+          {isLive ? (
+            <>
+              <span className="relative inline-flex h-2 w-2 shrink-0">
+                <span className="absolute inline-flex h-full w-full rounded-full bg-status-live opacity-75 animate-ping" />
+                <span className="relative inline-flex h-2 w-2 rounded-full bg-status-live" />
+              </span>
+              <span className="text-[11px] font-bold text-white/90 tracking-wide">LIVE</span>
+              {match.result_summary && (
+                <span className="text-[11px] text-white/60 truncate">{match.result_summary}</span>
+              )}
+            </>
+          ) : isCompleted ? (
+            <>
+              <span className="px-2 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-widest" style={{ background: "var(--captain-gold)", color: "oklch(0.18 0.02 86)" }}>FINAL</span>
+              {match.result_summary && (
+                <span className="text-[11px] text-white/70 truncate">{match.result_summary}</span>
+              )}
+            </>
+          ) : (
+            <span className="text-[11px] text-white/60 truncate">{match.venue}</span>
+          )}
+        </div>
+      </section>
+    )
+  }
 
   if (compact) {
     return (

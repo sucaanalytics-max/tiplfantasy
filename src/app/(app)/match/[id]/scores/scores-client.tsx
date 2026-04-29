@@ -9,6 +9,7 @@ import { type PlayerLite, type PlayerScore, type Selection } from "@/lib/rivalry
 import { buildAnalysis } from "@/lib/match-analysis"
 
 import { MatchHeroBand } from "@/components/match-hero-band"
+import { MatchScoreBlock } from "@/components/live/match-score-block"
 import type { MatchStatus } from "@/lib/types"
 import { StickyHeader } from "./_components/sticky-header"
 import { StandingsTable } from "./_components/standings-table"
@@ -279,23 +280,28 @@ export function ScoresClient({
           team_home: home,
           team_away: away,
         }}
-        cinematic
+        variant="territories"
       />
 
-      <div className="max-w-3xl mx-auto">
-        <StickyHeader
-          match={match}
-          home={home}
-          away={away}
-          lastBalls={lastBalls}
-          myRank={myScore?.rank ?? null}
-          myPoints={myPoints}
-          totalUsers={userScores.length}
-          leaderPoints={leaderPoints}
+      {/* Your score — rank as dominant number, above the standings */}
+      {myScore && (
+        <MatchScoreBlock
+          rank={myScore.rank}
+          totalPlayers={userScores.length}
+          totalPoints={myPoints}
           captainName={captainName}
           captainPoints={captainPoints}
           vcName={vcName}
           vcPoints={vcPoints}
+          leaderPoints={leaderPoints}
+          isLive={isLive}
+        />
+      )}
+
+      <div className="max-w-3xl mx-auto">
+        <StickyHeader
+          match={match}
+          lastBalls={lastBalls}
         />
 
       {userScores.length === 0 ? (

@@ -27,18 +27,18 @@ type MatchWinner = {
   winnersCount: number
 }
 
-export function MatchdayHistory({ matchHistory }: { matchHistory: MatchWinner[] }) {
+export function MatchdayHistory({ matchHistory, currentUserId }: { matchHistory: MatchWinner[]; currentUserId: string }) {
   const [expandedUser, setExpandedUser] = useState<string | null>(null)
 
   const recent = matchHistory.slice(0, 3)
 
   // Per-user wins
-  const userWins = new Map<string, { name: string; matches: MatchWinner[] }>()
+  const userWins = new Map<string, { name: string; matches: MatchWinner[]; isMe: boolean }>()
   for (const match of matchHistory) {
     for (const w of match.winners) {
       const key = w.userId ?? w.name
       if (!userWins.has(key)) {
-        userWins.set(key, { name: w.name, matches: [] })
+        userWins.set(key, { name: w.name, matches: [], isMe: w.userId === currentUserId })
       }
       userWins.get(key)!.matches.push(match)
     }
@@ -50,37 +50,54 @@ export function MatchdayHistory({ matchHistory }: { matchHistory: MatchWinner[] 
       <p className="text-xs font-semibold text-muted-foreground uppercase tracking-widest mb-3">Matchday History</p>
 
       {/* Recent 3 */}
-      <div className="rounded-lg glass overflow-hidden divide-y divide-overlay-border mb-3">
-        {recent.map((match) => (
-          <div key={match.matchNumber} className="flex items-center justify-between px-4 py-3">
-            <div>
-              <span className="text-xs text-muted-foreground">Match #{match.matchNumber}</span>
-              <div className="flex items-center gap-1.5 mt-0.5">
-                <span className="text-sm">🏆</span>
-                <span className="text-sm font-medium">
-                  {match.winners.map((w) => w.name).join(" & ")}
-                </span>
+      <div className="rounded-2xl border border-white/[0.07] bg-[oklch(0_0_0/0.25)] overflow-hidden divide-y divide-overlay-border mb-3">
+        {recent.map((match) => {
+          const iWon = match.winners.some((w) => w.userId === currentUserId)
+          return (
+            <div
+              key={match.matchNumber}
+              className={`flex items-center justify-between px-4 py-3 transition-colors ${iWon ? "bg-primary/[0.06] shadow-[inset_2px_0_0_var(--primary)]" : ""}`}
+            >
+              <div>
+                <span className="text-xs text-muted-foreground">Match #{match.matchNumber}</span>
+                <div className="flex items-center gap-1.5 mt-0.5">
+                  {iWon ? (
+                    <span className="text-sm font-semibold text-primary">🎉 You won!</span>
+                  ) : (
+                    <>
+                      <span className="text-sm">🏆</span>
+                      <span className="text-sm font-medium">
+                        {match.winners.map((w) => w.name).join(" & ")}
+                      </span>
+                    </>
+                  )}
+                </div>
               </div>
+              <span
+                className="text-sm font-bold font-display tabular-nums"
+                style={{ color: "var(--captain-gold)" }}
+              >
+                {match.winners[0]?.points} pts
+              </span>
             </div>
-            <span className="text-sm font-bold font-display tabular-nums">{match.winners[0]?.points} pts</span>
-          </div>
-        ))}
+          )
+        })}
       </div>
 
       {/* Per-user dropdown */}
       {userWinsList.length > 0 && (
-        <div className="rounded-lg glass overflow-hidden divide-y divide-overlay-border">
+        <div className="rounded-2xl border border-white/[0.07] bg-[oklch(0_0_0/0.25)] overflow-hidden divide-y divide-overlay-border">
           {userWinsList.map(([key, data]) => {
             const isOpen = expandedUser === key
             return (
               <div key={key}>
                 <button
                   onClick={() => setExpandedUser(isOpen ? null : key)}
-                  className="w-full flex items-center justify-between px-4 py-2.5 hover:bg-overlay-subtle transition-colors"
+                  className={`w-full flex items-center justify-between px-4 py-2.5 hover:bg-overlay-subtle transition-colors ${data.isMe ? "bg-primary/[0.04]" : ""}`}
                 >
                   <div className="flex items-center gap-2 min-w-0">
                     <AvatarInitial name={data.name} />
-                    <span className="text-sm font-medium truncate">{data.name}</span>
+                    <span className={`text-sm font-medium truncate ${data.isMe ? "text-primary font-semibold" : ""}`}>{data.name}</span>
                   </div>
                   <div className="flex items-center gap-2 shrink-0">
                     <span className="text-xs text-muted-foreground">{data.matches.length} win{data.matches.length !== 1 ? "s" : ""}</span>
@@ -211,7 +228,7 @@ export function AwardTables({ awards, matchScores }: { awards: LeagueMemberStats
       <p className="text-xs font-semibold text-muted-foreground uppercase tracking-widest mb-3">Award Tables</p>
       <div className="space-y-4">
         {/* Captaincy */}
-        <div className="rounded-lg glass overflow-hidden">
+        <div className="rounded-2xl border border-white/[0.07] bg-[oklch(0_0_0/0.25)] overflow-hidden">
           <div className="px-3 py-2 border-b border-overlay-border flex items-center gap-2">
             <Crown className="h-3.5 w-3.5 text-amber-400" />
             <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">Captaincy</span>
@@ -244,7 +261,7 @@ export function AwardTables({ awards, matchScores }: { awards: LeagueMemberStats
         </div>
 
         {/* Highest Score */}
-        <div className="rounded-lg glass overflow-hidden">
+        <div className="rounded-2xl border border-white/[0.07] bg-[oklch(0_0_0/0.25)] overflow-hidden">
           <div className="px-3 py-2 border-b border-overlay-border flex items-center gap-2">
             <Zap className="h-3.5 w-3.5 text-orange-400" />
             <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">Highest Score</span>
@@ -265,7 +282,7 @@ export function AwardTables({ awards, matchScores }: { awards: LeagueMemberStats
         </div>
 
         {/* Matchday Wins */}
-        <div className="rounded-lg glass overflow-hidden">
+        <div className="rounded-2xl border border-white/[0.07] bg-[oklch(0_0_0/0.25)] overflow-hidden">
           <div className="px-3 py-2 border-b border-overlay-border flex items-center gap-2">
             <Trophy className="h-3.5 w-3.5 text-emerald-400" />
             <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">Matchday Wins</span>
@@ -288,7 +305,7 @@ export function AwardTables({ awards, matchScores }: { awards: LeagueMemberStats
         </div>
 
         {/* Consistency */}
-        <div className="rounded-lg glass overflow-hidden">
+        <div className="rounded-2xl border border-white/[0.07] bg-[oklch(0_0_0/0.25)] overflow-hidden">
           <div className="px-3 py-2 border-b border-overlay-border flex items-center gap-2">
             <Target className="h-3.5 w-3.5 text-sky-400" />
             <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">Consistency</span>

@@ -4,9 +4,6 @@ import { memo, useEffect, useMemo, useRef, useState, type ReactNode } from "reac
 import { ChevronDown } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { getInitials, getAvatarColor } from "@/lib/avatar"
-import { computeMomentumSeries } from "@/lib/rivalry"
-import { MomentumSparkline } from "./momentum-sparkline"
-
 type UserRow = {
   user_id: string
   display_name: string
@@ -61,18 +58,14 @@ export function StandingsTable({
         {rows.map((row) => {
           const isMe = row.user_id === currentUserId
           const isExpanded = expandedUserId === row.user_id
-          const series = computeMomentumSeries(row.user_id, snapshots)
           const delta = rankDeltas.get(row.user_id) ?? 0
-          const vMe = isMe ? null : Math.round((row.total_points - myPoints) * 10) / 10
           return (
             <div key={row.user_id} ref={isMe ? myRowRef : undefined}>
               <StandingsRow
                 row={row}
                 isMe={isMe}
                 isExpanded={isExpanded}
-                vMe={vMe}
                 delta={delta}
-                series={series}
                 onClick={() => onRowClick(row.user_id)}
               />
               {isExpanded && (
@@ -92,9 +85,7 @@ export function StandingsTable({
             row={myRow}
             isMe
             isExpanded={expandedUserId === myRow.user_id}
-            vMe={null}
             delta={rankDeltas.get(myRow.user_id) ?? 0}
-            series={computeMomentumSeries(myRow.user_id, snapshots)}
             onClick={() => onRowClick(myRow.user_id)}
             pinned
           />
@@ -110,26 +101,18 @@ type RowProps = {
   row: UserRow
   isMe: boolean
   isExpanded: boolean
-  vMe: number | null
   delta: number
-  series: ReturnType<typeof computeMomentumSeries>
   onClick: () => void
   pinned?: boolean
 }
 
+const MEDALS = ["🥇", "🥈", "🥉"] as const
+
 const StandingsRow = memo(function StandingsRow({
-  row, isMe, isExpanded, vMe, series, onClick, pinned,
+  row, isMe, isExpanded, delta, onClick, pinned,
 }: RowProps) {
   const rank = row.rank ?? 0
-  const podiumClass =
-    rank === 1 ? "text-[var(--tw-amber-text)]" :
-    rank === 2 ? "text-[var(--tw-slate-text,_#94a3b8)]" :
-    rank === 3 ? "text-[var(--tw-orange-text,_#fb923c)]" :
-    "text-muted-foreground"
 
-  // Score-tick on live update — when total_points changes between renders,
-  // animate the points cell with the score-tick keyframe (350ms slide+scale).
-  // Pure presentation; doesn't touch the live polling or rank delta hook.
   const prevPointsRef = useRef(row.total_points)
   const [pointsTick, setPointsTick] = useState(false)
   useEffect(() => {
@@ -141,78 +124,83 @@ const StandingsRow = memo(function StandingsRow({
     }
   }, [row.total_points])
 
+  const captainShort = row.captain_name
+    ? row.captain_name.split(" ").slice(-1)[0]
+    : null
+
   return (
     <button
       onClick={onClick}
       aria-expanded={isExpanded}
       className={cn(
-        "w-full grid grid-cols-[1.75rem_2rem_1fr_auto_1rem] items-start gap-2.5 px-3 py-2.5 text-left transition-colors",
-        isMe && !pinned && "bg-primary/10",
-        isMe && "border-l-[3px] border-primary",
+        "w-full grid grid-cols-[28px_32px_1fr_auto_auto_auto_16px] items-center gap-2 px-3 py-2.5 text-left transition-colors",
+        isMe && !pinned && "bg-primary/[0.04] ring-inset ring-1 ring-primary/40",
         !isMe && "hover:bg-overlay-subtle active:bg-overlay-muted",
         pinned && "bg-background",
         isExpanded && !pinned && "bg-overlay-subtle",
       )}
     >
-      <span className={cn("text-sm font-display font-bold tabular-nums leading-tight pt-0.5", podiumClass)}>
-        {row.rank ?? "—"}
-      </span>
+      {/* Rank / medal */}
+      <div className="flex items-center justify-center">
+        {rank >= 1 && rank <= 3 ? (
+          <span className="text-base leading-none">{MEDALS[rank - 1]}</span>
+        ) : (
+          <span className="text-sm font-display font-bold tabular-nums text-muted-foreground">
+            {row.rank ?? "—"}
+          </span>
+        )}
+      </div>
 
-      <div className={cn("h-7 w-7 rounded-full flex items-center justify-center shrink-0 mt-px", getAvatarColor(row.display_name))}>
+      {/* Avatar */}
+      <div className={cn("h-7 w-7 rounded-full flex items-center justify-center shrink-0", getAvatarColor(row.display_name))}>
         <span className="text-white text-[10px] font-semibold">{getInitials(row.display_name)}</span>
       </div>
 
-      <div className="min-w-0">
-        <p className={cn(
-          "text-[13px] leading-tight break-words",
-          isMe ? "font-semibold" : "font-medium",
+      {/* Name */}
+      <div className="min-w-0 overflow-hidden">
+        <span className={cn(
+          "text-[13px] leading-tight truncate block",
+          isMe ? "font-semibold text-primary" : "font-medium",
         )}>
           {row.display_name}
-          {isMe && <span className="text-primary text-[10px] ml-1 font-medium">(you)</span>}
-        </p>
-        <p className="text-[10px] leading-snug mt-1 text-muted-foreground break-words">
-          {row.captain_name ? (
-            <>
-              <span className="text-muted-foreground/60">C:</span>{" "}
-              <span className="text-foreground/80">{row.captain_name}</span>
-            </>
-          ) : (
-            <span className="text-muted-foreground/40">No captain</span>
-          )}
-          {row.vc_name && (
-            <>
-              <span className="text-muted-foreground/40 mx-1">·</span>
-              <span className="text-muted-foreground/60">VC:</span>{" "}
-              <span className="text-foreground/80">{row.vc_name}</span>
-            </>
-          )}
-        </p>
+          {isMe && <span className="text-[10px] ml-1 font-normal opacity-70">(you)</span>}
+        </span>
       </div>
 
-      <div className="text-right shrink-0 flex flex-col items-end gap-0.5 min-w-[3.75rem]">
-        <p
-          className="text-base font-bold font-display tabular-nums leading-tight"
+      {/* Captain (last name only) */}
+      <div className="text-right shrink-0">
+        {captainShort ? (
+          <span className="text-[9px] text-muted-foreground">
+            <span className="text-[var(--captain-gold)] font-bold">©</span> {captainShort}
+          </span>
+        ) : null}
+      </div>
+
+      {/* Rank delta */}
+      <div className="shrink-0 w-6 text-right">
+        {delta > 0 ? (
+          <span className="text-[10px] font-bold text-emerald-400">▲{delta}</span>
+        ) : delta < 0 ? (
+          <span className="text-[10px] font-bold text-rose-400">▼{Math.abs(delta)}</span>
+        ) : (
+          <span className="text-[10px] text-muted-foreground/30">—</span>
+        )}
+      </div>
+
+      {/* Points */}
+      <div className="text-right shrink-0 min-w-[2.75rem]">
+        <span
+          className="text-gold-stat text-base tabular-nums"
           style={pointsTick ? { animation: "score-tick 350ms ease-out" } : undefined}
         >
           {row.total_points}
-        </p>
-        <div className="flex items-center gap-1.5">
-          <span className={cn(
-            "text-[10px] tabular-nums font-medium leading-tight",
-            vMe == null ? "text-muted-foreground/40" :
-            vMe > 0 ? "text-[var(--tw-red-text)]" :
-            vMe < 0 ? "text-[var(--tw-emerald-text)]" :
-            "text-muted-foreground",
-          )}>
-            {vMe == null ? "—" : vMe > 0 ? `+${vMe}` : vMe < 0 ? `${vMe}` : "0"}
-          </span>
-          <MomentumSparkline series={series} width={32} height={12} />
-        </div>
+        </span>
       </div>
 
+      {/* Expand chevron */}
       <ChevronDown
         className={cn(
-          "h-4 w-4 mt-1 text-muted-foreground/40 transition-transform shrink-0",
+          "h-4 w-4 text-muted-foreground/40 transition-transform shrink-0",
           isExpanded && "rotate-180 text-muted-foreground",
         )}
       />

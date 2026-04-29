@@ -1004,6 +1004,25 @@
     }
   }
 
+  /* Variant with form guide column: inserted between Avg and Pts at md+ */
+  .leaderboard-grid--form {
+    display: grid;
+    grid-template-columns: 32px 32px minmax(0, 1fr) 36px 76px 64px;
+    gap: 0.6rem;
+    align-items: center;
+  }
+  @media (min-width: 768px) {
+    .leaderboard-grid--form {
+      grid-template-columns: 32px 32px minmax(0, 1fr) 44px 76px 44px 64px;
+    }
+  }
+  @media (min-width: 1024px) {
+    .leaderboard-grid--form {
+      grid-template-columns: 32px 32px minmax(0, 1fr) 36px 40px 44px 44px 80px 64px;
+      gap: 0.75rem;
+    }
+  }
+
   /* Hero VS badge — gold floating circle at the diagonal seam */
   .vs-badge-hero {
     display: inline-flex;
