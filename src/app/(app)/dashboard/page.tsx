@@ -4,8 +4,7 @@ import Link from "next/link"
 import Image from "next/image"
 import { format } from "date-fns"
 import { MatchCard } from "@/components/match-card"
-import { Users, ChevronRight } from "lucide-react"
-import { getMyLeagues } from "@/actions/leagues"
+import { ChevronRight } from "lucide-react"
 import { PageTransition } from "@/components/page-transition"
 import { CinematicHero } from "@/components/cinematic-hero"
 import { FormStrip } from "@/components/form-strip"
@@ -18,7 +17,7 @@ export default async function DashboardPage() {
   if (!user) redirect("/login")
 
   // Phase 1: independent queries in parallel
-  const [profileRes, myRankRes, allMatchesRes, top6Res, myLeagues] = await Promise.all([
+  const [profileRes, myRankRes, allMatchesRes, top6Res] = await Promise.all([
     supabase.from("profiles").select("display_name, avatar_url").eq("id", user.id).single(),
     supabase.from("season_leaderboard").select("*").eq("user_id", user.id).maybeSingle(),
     supabase
@@ -29,7 +28,6 @@ export default async function DashboardPage() {
       .order("start_time", { ascending: false })
       .limit(80),
     supabase.from("season_leaderboard").select("*").order("season_rank", { ascending: true }).limit(6),
-    getMyLeagues(),
   ])
 
   const profile = profileRes.data
@@ -251,32 +249,6 @@ export default async function DashboardPage() {
                 />
               </div>
 
-              {/* My Leagues */}
-              <div className="space-y-3">
-                <SectionHeader title="My Leagues" href="/leagues" linkLabel={myLeagues.length > 0 ? "View All" : "Join"} />
-
-                {/* end standings: my leagues follows */}
-                {myLeagues.length === 0 ? (
-                  <div className="glass rounded-2xl flex flex-col items-center py-8 gap-2">
-                    <Users className="h-10 w-10 text-muted-foreground/30" />
-                    <p className="text-sm text-muted-foreground text-center">No leagues yet. Create or join one.</p>
-                  </div>
-                ) : (
-                  <div className="glass rounded-2xl overflow-hidden divide-y divide-overlay-border">
-                    {myLeagues.slice(0, 3).map((league) => (
-                      <Link key={league.id} href={`/leagues/${league.id}`}>
-                        <div className="flex items-center justify-between px-4 py-3 glass-hover transition-colors">
-                          <div className="flex items-center gap-2.5">
-                            <Users className="h-4 w-4 text-primary" />
-                            <span className="text-sm font-medium">{league.name}</span>
-                          </div>
-                          <span className="text-2xs text-muted-foreground">{league.member_count} members</span>
-                        </div>
-                      </Link>
-                    ))}
-                  </div>
-                )}
-              </div>
             </div>
           </div>
         </div>
