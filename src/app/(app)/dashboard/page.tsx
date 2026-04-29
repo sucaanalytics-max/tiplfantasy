@@ -105,7 +105,7 @@ export default async function DashboardPage() {
     last3AllScoresRes,
     last3UserSelectionsRes,
     last3TopPerformersRes,
-    creditRangeRes,
+    lastMatchAllSelectionsRes,
   ] = await Promise.all([
     // Pick status for upcoming + live
     allUpcomingLiveIds.length > 0
@@ -127,13 +127,12 @@ export default async function DashboardPage() {
           .limit(2)
       : Promise.resolve({ data: [] as { match_id: string; total_points: number; rank: number | null }[] }),
 
-    // Hero featured players (top 2 per team, with images)
+    // Hero featured players (top 2 per team by credit — image_url can be null, PlayerHeadshot handles initials fallback)
     heroMatch
       ? supabase
           .from("players")
           .select("name, role, image_url, team:teams!players_team_id_fkey(short_name, color)")
           .eq("team_id", heroMatch.team_home_id)
-          .not("image_url", "is", null)
           .order("credit_cost", { ascending: false })
           .limit(2)
       : Promise.resolve(emptyPlayers),
@@ -143,7 +142,6 @@ export default async function DashboardPage() {
           .from("players")
           .select("name, role, image_url, team:teams!players_team_id_fkey(short_name, color)")
           .eq("team_id", heroMatch.team_away_id)
-          .not("image_url", "is", null)
           .order("credit_cost", { ascending: false })
           .limit(2)
       : Promise.resolve(emptyPlayers),
@@ -186,12 +184,12 @@ export default async function DashboardPage() {
           }[],
         }),
 
-    // Top performers: match_player_scores for last 3 matches (all, will partition in JS)
+    // Top performers: include player_id so we can cross-reference unique picks
     last3MatchIds.length > 0
       ? supabase
           .from("match_player_scores")
           .select(
-            "match_id, fantasy_points, player:players!match_player_scores_player_id_fkey(name, role, team:teams!players_team_id_fkey(short_name))"
+            "match_id, player_id, fantasy_points, player:players!match_player_scores_player_id_fkey(name, role, team:teams!players_team_id_fkey(short_name))"
           )
           .in("match_id", last3MatchIds)
           .order("fantasy_points", { ascending: false })
@@ -199,25 +197,30 @@ export default async function DashboardPage() {
       : Promise.resolve({
           data: [] as {
             match_id: string
+            player_id: string
             fantasy_points: number
             player: { name: string; role: string; team: { short_name: string } | null } | null
           }[],
         }),
 
-    // Credit range for Hidden Gem threshold
-    supabase
-      .from("players")
-      .select("credit_cost")
-      .order("credit_cost", { ascending: true })
-      .limit(1)
-      .then(async (minRes) => {
-        const maxRes = await supabase
-          .from("players")
-          .select("credit_cost")
-          .order("credit_cost", { ascending: false })
-          .limit(1)
-        return { min: minRes.data?.[0]?.credit_cost ?? 0, max: maxRes.data?.[0]?.credit_cost ?? 0 }
-      }),
+    // All users' selections for the last match (for Best Captain/VC award detail + unique picks)
+    lastMatchId
+      ? supabase
+          .from("selections")
+          .select(
+            "id, user_id, captain_id, vice_captain_id, captain:players!selections_captain_id_fkey(name), vc:players!selections_vice_captain_id_fkey(name)"
+          )
+          .eq("match_id", lastMatchId)
+      : Promise.resolve({
+          data: [] as {
+            id: string
+            user_id: string
+            captain_id: string | null
+            vice_captain_id: string | null
+            captain: { name: string } | null
+            vc: { name: string } | null
+          }[],
+        }),
   ])
 
   // ─── Derived data ─────────────────────────────────────────────────────────
@@ -251,10 +254,22 @@ export default async function DashboardPage() {
 
   type PerformerRow = {
     match_id: string
+    player_id: string
     fantasy_points: number
     player: { name: string; role: string; team: { short_name: string } | null } | null
   }
-  const allPerformers: PerformerRow[] = (last3TopPerformersRes.data ?? []) as PerformerRow[]
+  const allPerformers: PerformerRow[] = (last3TopPerformersRes.data ?? []) as unknown as PerformerRow[]
+
+  type LastMatchSelectionRow = {
+    id: string
+    user_id: string
+    captain_id: string | null
+    vice_captain_id: string | null
+    captain: { name: string } | null
+    vc: { name: string } | null
+  }
+  const lastMatchAllSelections: LastMatchSelectionRow[] =
+    (lastMatchAllSelectionsRes.data ?? []) as unknown as LastMatchSelectionRow[]
 
   // Group scores by match
   const scoresByMatch = new Map<string, ScoreRow[]>()
@@ -279,9 +294,33 @@ export default async function DashboardPage() {
     }
   }
 
+  // ─── Phase 3: unique picks for Hidden Gem (selection_players for last match) ──
+  type SpRow = { selection_id: string; player_id: string }
+  let selectionPlayers: SpRow[] = []
+  if (lastMatchAllSelections.length > 0) {
+    const selectionIds = lastMatchAllSelections.map((s) => s.id)
+    const spRes = await supabase
+      .from("selection_players")
+      .select("selection_id, player_id")
+      .in("selection_id", selectionIds)
+    selectionPlayers = (spRes.data ?? []) as SpRow[]
+  }
+
+  // Map selection_id → user_id (from lastMatchAllSelections)
+  const selectionIdToUserId = new Map<string, string>()
+  for (const s of lastMatchAllSelections) selectionIdToUserId.set(s.id, s.user_id)
+
+  // Count how many unique users picked each player in the last match
+  const playerPickerCount = new Map<string, Set<string>>() // player_id → Set of user_ids
+  for (const sp of selectionPlayers) {
+    const uid = selectionIdToUserId.get(sp.selection_id)
+    if (!uid) continue
+    if (!playerPickerCount.has(sp.player_id)) playerPickerCount.set(sp.player_id, new Set())
+    playerPickerCount.get(sp.player_id)!.add(uid)
+  }
+
   // Build MatchResultData for last 3 completed matches
-  // Phase 3: captain base points (from match_player_scores for each captain)
-  // Collect captain_ids we need
+  // Phase 3 (continued): captain base points
   const captainNeeded = userSelections.map((s) => ({ matchId: s.match_id, captainId: s.captain_id }))
 
   let captainPointsMap = new Map<string, number>() // `${matchId}-${captainId}` → base pts
@@ -370,35 +409,43 @@ export default async function DashboardPage() {
       })
     }
 
-    // Award: Best Captain Pick (max captain_points)
+    // Award: Best Captain Pick (max captain_points) — include player name from lastMatchAllSelections
     const bestCaptain = [...lastMatchScores].sort(
       (a, b) => Number(b.captain_points) - Number(a.captain_points)
     )[0]
     if (bestCaptain && Number(bestCaptain.captain_points) > 0) {
-      const name = (bestCaptain.user as unknown as { display_name: string } | null)?.display_name ?? "—"
+      const winnerName = (bestCaptain.user as unknown as { display_name: string } | null)?.display_name ?? "—"
+      const winnerSelection = lastMatchAllSelections.find((s) => s.user_id === bestCaptain.user_id)
+      const captainPlayerName = (winnerSelection?.captain as unknown as { name: string } | null)?.name ?? null
       awards.push({
         type: "best_captain",
-        winnerName: name,
-        detail: `${Math.round(Number(bestCaptain.captain_points))} pts captain contribution`,
+        winnerName,
+        detail: captainPlayerName
+          ? `© ${captainPlayerName} · ${Math.round(Number(bestCaptain.captain_points))} pts`
+          : `${Math.round(Number(bestCaptain.captain_points))} pts captain contribution`,
         isYou: bestCaptain.user_id === user.id,
       })
     }
 
-    // Award: Best VC Pick (max vc_points)
+    // Award: Best VC Pick (max vc_points) — include player name
     const bestVC = [...lastMatchScores].sort(
       (a, b) => Number(b.vc_points) - Number(a.vc_points)
     )[0]
     if (bestVC && Number(bestVC.vc_points) > 0) {
-      const name = (bestVC.user as unknown as { display_name: string } | null)?.display_name ?? "—"
+      const winnerName = (bestVC.user as unknown as { display_name: string } | null)?.display_name ?? "—"
+      const winnerSelection = lastMatchAllSelections.find((s) => s.user_id === bestVC.user_id)
+      const vcPlayerName = (winnerSelection?.vc as unknown as { name: string } | null)?.name ?? null
       awards.push({
         type: "best_vc",
-        winnerName: name,
-        detail: `${Math.round(Number(bestVC.vc_points))} pts VC contribution`,
+        winnerName,
+        detail: vcPlayerName
+          ? `VC ${vcPlayerName} · ${Math.round(Number(bestVC.vc_points))} pts`
+          : `${Math.round(Number(bestVC.vc_points))} pts VC contribution`,
         isYou: bestVC.user_id === user.id,
       })
     }
 
-    // Award: Biggest Mover (biggest improvement in match rank vs season rank)
+    // Award: Biggest Mover (best match rank vs season rank)
     const movers = lastMatchScores
       .map((s) => {
         const seasonEntry = allLeaderboard.find((e) => e.user_id === s.user_id)
@@ -421,33 +468,30 @@ export default async function DashboardPage() {
       })
     }
 
-    // Award: Hidden Gem (highest scorer in bottom 30% credit range)
-    const { min: creditMin, max: creditMax } = creditRangeRes
-    const gemThreshold = creditMin + 0.3 * (creditMax - creditMin)
-    if (gemThreshold > 0) {
-      const gemCandidatesRes = await supabase
-        .from("match_player_scores")
-        .select(
-          "fantasy_points, player:players!match_player_scores_player_id_fkey(name, credit_cost)"
-        )
-        .eq("match_id", lastMatch.id)
-        .order("fantasy_points", { ascending: false })
-        .limit(30)
+    // Award: Hidden Gem — unique pick (only one person chose this player) who scored well
+    // Find players picked by exactly 1 person, then find the highest scorer among them
+    const lastMatchPerformers = allPerformers.filter((p) => p.match_id === lastMatch.id)
+    const uniquePickCandidates = lastMatchPerformers.filter((p) => {
+      const pickers = playerPickerCount.get(p.player_id)
+      return pickers != null && pickers.size === 1
+    })
 
-      type GemRow = { fantasy_points: number; player: { name: string; credit_cost: number } | null }
-      const allGemRows = (gemCandidatesRes.data ?? []) as unknown as GemRow[]
-      // Filter in JS to bottom 30% credit range
-      const gem = allGemRows.find(
-        (r) => r.player != null && Number(r.player.credit_cost) <= gemThreshold
-      )
-      if (gem?.player) {
-        awards.push({
-          type: "hidden_gem",
-          winnerName: gem.player.name,
-          detail: `${Math.round(Number(gem.fantasy_points))} pts · credit ${gem.player.credit_cost}`,
-          isYou: false,
-        })
-      }
+    if (uniquePickCandidates.length > 0) {
+      // Already ordered by fantasy_points DESC (from the original query)
+      const gem = uniquePickCandidates[0]
+      const gemPickers = playerPickerCount.get(gem.player_id)!
+      const gemOwnerUserId = [...gemPickers][0]
+      const gemOwnerName =
+        lastMatchAllSelections.find((s) => s.user_id === gemOwnerUserId)
+          ? ((allLeaderboard.find((e) => e.user_id === gemOwnerUserId)?.display_name) ?? "—")
+          : "—"
+      const isYou = gemOwnerUserId === user.id
+      awards.push({
+        type: "hidden_gem",
+        winnerName: gemOwnerName,
+        detail: `${gem.player?.name ?? "?"} · unique pick · ${Math.round(Number(gem.fantasy_points))} pts`,
+        isYou,
+      })
     }
   }
 
@@ -508,10 +552,49 @@ export default async function DashboardPage() {
           </div>
         )}
 
-        {/* ── Content ────────────────────────────────────────── */}
+        {/* ── Content ─────────────────────────────────────── */}
         <div className="px-4 md:px-6 max-w-2xl lg:max-w-5xl mx-auto mt-5 space-y-6">
 
-          {/* Your Season section */}
+          {/* 1. Upcoming Matches */}
+          {carouselMatches.length > 0 && (
+            <div className="space-y-3">
+              <SectionHeader title="Upcoming Matches" href="/matches" linkLabel="See all ›" />
+              <UpcomingCarousel
+                matches={carouselMatches as unknown as Parameters<typeof UpcomingCarousel>[0]["matches"]}
+                pickedMatchIds={submittedMatchIds}
+              />
+            </div>
+          )}
+
+          {carouselMatches.length > 0 && <Divider />}
+
+          {/* 2. Championship Standings */}
+          <div className="space-y-3">
+            <SectionHeader title="Championship Standings" href="/leaderboard" linkLabel="Full table ›" />
+            <StandingsTable
+              entries={allLeaderboard.slice(0, 6) as unknown as Parameters<typeof StandingsTable>[0]["entries"]}
+              currentUserId={user.id}
+              myRank={myRank as unknown as Parameters<typeof StandingsTable>[0]["myRank"]}
+            />
+          </div>
+
+          <Divider />
+
+          {/* 3. Last 3 Match Results */}
+          {matchResultsData.length > 0 && (
+            <div className="space-y-3">
+              <SectionHeader title="Last 3 Match Results" />
+              <div className="space-y-3">
+                {matchResultsData.map((data) => (
+                  <MatchResultCard key={data.matchId} data={data} />
+                ))}
+              </div>
+            </div>
+          )}
+
+          {matchResultsData.length > 0 && <Divider />}
+
+          {/* 4. Your Season */}
           <div className="space-y-4">
             <SectionHeader title="Your Season" />
 
@@ -554,48 +637,9 @@ export default async function DashboardPage() {
             />
           </div>
 
-          <Divider />
+          {awards.length > 0 && <Divider />}
 
-          {/* Championship Standings */}
-          <div className="space-y-3">
-            <SectionHeader title="Championship Standings" href="/leaderboard" linkLabel="Full table ›" />
-            <StandingsTable
-              entries={allLeaderboard.slice(0, 6) as unknown as Parameters<typeof StandingsTable>[0]["entries"]}
-              currentUserId={user.id}
-              myRank={myRank as unknown as Parameters<typeof StandingsTable>[0]["myRank"]}
-            />
-          </div>
-
-          <Divider />
-
-          {/* Upcoming Matches */}
-          {carouselMatches.length > 0 && (
-            <div className="space-y-3">
-              <SectionHeader title="Upcoming Matches" href="/matches" linkLabel="See all ›" />
-              <UpcomingCarousel
-                matches={carouselMatches as unknown as Parameters<typeof UpcomingCarousel>[0]["matches"]}
-                pickedMatchIds={submittedMatchIds}
-              />
-            </div>
-          )}
-
-          {carouselMatches.length > 0 && <Divider />}
-
-          {/* Last 3 Match Results */}
-          {matchResultsData.length > 0 && (
-            <div className="space-y-3">
-              <SectionHeader title="Last 3 Match Results" />
-              <div className="space-y-3">
-                {matchResultsData.map((data) => (
-                  <MatchResultCard key={data.matchId} data={data} />
-                ))}
-              </div>
-            </div>
-          )}
-
-          {matchResultsData.length > 0 && awards.length > 0 && <Divider />}
-
-          {/* Match Awards */}
+          {/* 5. Last Match Awards */}
           {awards.length > 0 && lastMatch && (
             <div className="space-y-3">
               <SectionHeader

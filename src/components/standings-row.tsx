@@ -54,7 +54,7 @@ export function StandingsRow({
       </span>
 
       {/* Pts (gold) */}
-      <span className="text-gold-stat text-base text-right">{points.toLocaleString()}</span>
+      <span className="text-gold-stat text-sm tabular-nums text-right">{Math.round(points).toLocaleString()}</span>
 
       {/* Gap to leader */}
       <span

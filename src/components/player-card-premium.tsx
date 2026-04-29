@@ -98,8 +98,8 @@ export function PlayerCardPremium({
       )}
 
       <div className="p-3 pl-4 flex flex-col gap-2.5">
-        {/* Top row: headshot + name/meta + toggle */}
-        <div className="flex items-start gap-3">
+        {/* Top row: headshot + name/meta (toggle is absolute) */}
+        <div className="flex items-start gap-2 pr-9">
           {/* Headshot — clicking opens stats drawer */}
           <button
             type="button"
@@ -115,7 +115,7 @@ export function PlayerCardPremium({
           >
             <PlayerHeadshot
               player={player}
-              size="lg"
+              size="md"
               ring="team"
               shadow
               className={cn(ROLE_RING_CLS[role])}
@@ -132,7 +132,7 @@ export function PlayerCardPremium({
             className="min-w-0 flex-1 text-left"
           >
             <div className="flex items-center gap-1.5 min-w-0">
-              <span className="font-display font-bold text-[15px] leading-tight truncate">
+              <span className="font-display font-bold text-[15px] leading-tight line-clamp-2 break-words">
                 {player.name}
               </span>
               <FormIcon indicator={player.form_indicator} />
@@ -154,28 +154,28 @@ export function PlayerCardPremium({
               )}
             </p>
           </button>
-
-          {/* Toggle button — top-right */}
-          <button
-            type="button"
-            onClick={(e) => {
-              e.stopPropagation()
-              if (!isDisabled) onToggle()
-            }}
-            disabled={isDisabled}
-            aria-label={isSelected ? `Deselect ${player.name}` : `Select ${player.name}`}
-            className={cn(
-              "shrink-0 h-8 w-8 rounded-full flex items-center justify-center border-2 transition-all",
-              isSelected
-                ? "bg-primary border-primary text-white shadow-md shadow-primary/25"
-                : isDisabled
-                ? "border-border/30 text-muted-foreground/30 cursor-not-allowed"
-                : "border-overlay-border-hover text-muted-foreground hover:border-primary hover:text-primary hover:bg-primary/5"
-            )}
-          >
-            {isSelected ? <Check className="h-4 w-4" strokeWidth={3} /> : <Plus className="h-4 w-4" strokeWidth={2.5} />}
-          </button>
         </div>
+
+        {/* Toggle button — absolute top-right so it doesn't consume name space */}
+        <button
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation()
+            if (!isDisabled) onToggle()
+          }}
+          disabled={isDisabled}
+          aria-label={isSelected ? `Deselect ${player.name}` : `Select ${player.name}`}
+          className={cn(
+            "absolute top-3 right-3 h-8 w-8 rounded-full flex items-center justify-center border-2 transition-all",
+            isSelected
+              ? "bg-primary border-primary text-white shadow-md shadow-primary/25"
+              : isDisabled
+              ? "border-border/30 text-muted-foreground/30 cursor-not-allowed"
+              : "border-overlay-border-hover text-muted-foreground hover:border-primary hover:text-primary hover:bg-primary/5"
+          )}
+        >
+          {isSelected ? <Check className="h-4 w-4" strokeWidth={3} /> : <Plus className="h-4 w-4" strokeWidth={2.5} />}
+        </button>
 
         {/* Stat tiles row */}
         <div className="grid grid-cols-4 gap-1.5">

@@ -108,7 +108,7 @@ export function PlayerResearchTable({
   return (
     <div className="rounded-xl border border-overlay-border overflow-hidden bg-card">
       {/* Header */}
-      <div className="grid grid-cols-[1.5rem_2.5rem_1fr_2.2rem_2.5rem_3.5rem_2rem_1.8rem] md:grid-cols-[1.5rem_2.5rem_1fr_2.2rem_2.8rem_2.8rem_3.5rem_2rem_1.8rem_1.8rem] gap-1 items-center px-2.5 py-2 text-[9px] uppercase tracking-widest font-semibold text-muted-foreground border-b border-overlay-border bg-overlay-subtle">
+      <div className="grid grid-cols-[1.5rem_2.5rem_1fr_2.2rem_2.5rem_2.5rem_1.5rem_1.8rem] md:grid-cols-[1.5rem_2.5rem_1fr_2.2rem_2.8rem_2.8rem_3.5rem_2rem_1.8rem_1.8rem] gap-1 items-center px-2.5 py-2 text-[9px] uppercase tracking-widest font-semibold text-muted-foreground border-b border-overlay-border bg-overlay-subtle">
         <span aria-hidden />
         <span aria-hidden />
         <SortHeader label="Player" k="name" sortKey={sortKey} sortDir={sortDir} onClick={handleSort} align="left" />
@@ -136,7 +136,7 @@ export function PlayerResearchTable({
             <div
               key={player.id}
               className={cn(
-                "grid grid-cols-[1.5rem_2.5rem_1fr_2.2rem_2.5rem_3.5rem_2rem_1.8rem] md:grid-cols-[1.5rem_2.5rem_1fr_2.2rem_2.8rem_2.8rem_3.5rem_2rem_1.8rem_1.8rem] gap-1 items-center px-2.5 py-1.5 transition-colors text-sm",
+                "grid grid-cols-[1.5rem_2.5rem_1fr_2.2rem_2.5rem_2.5rem_1.5rem_1.8rem] md:grid-cols-[1.5rem_2.5rem_1fr_2.2rem_2.8rem_2.8rem_3.5rem_2rem_1.8rem_1.8rem] gap-1 items-center px-2.5 py-2 transition-colors text-sm",
                 isSelected && "bg-primary/[0.06]",
                 isDisabled && "opacity-40",
                 hasPlayingXI && !isInXI && "opacity-50",
@@ -167,7 +167,7 @@ export function PlayerResearchTable({
                 onClick={() => onShowStats(player.id)}
                 className="min-w-0 text-left"
               >
-                <div className="truncate font-medium text-[13px] leading-tight">{player.name}</div>
+                <div className="font-medium text-[13px] leading-tight">{player.name}</div>
                 <div className="text-[10px] uppercase tracking-wider truncate" style={{ color: player.team.color }}>
                   {player.team.short_name}
                 </div>

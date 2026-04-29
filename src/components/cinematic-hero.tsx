@@ -189,38 +189,28 @@ function PlayerMedallions({
 
   return (
     <div
-      className={`absolute z-[3] pointer-events-none ${positionClass} flex ${alignClass} flex-col`}
-      style={{ bottom: 56, animation: "team-art-zoom 700ms cubic-bezier(0.16, 1, 0.3, 1) 300ms backwards" } as React.CSSProperties}
+      className={`absolute z-[3] pointer-events-none ${positionClass}`}
+      style={{ bottom: 72, animation: "team-art-zoom 700ms cubic-bezier(0.16, 1, 0.3, 1) 300ms backwards" } as React.CSSProperties}
     >
-      {/* Medallion cluster */}
+      {/* Medallion cluster: captain (96px front) + second (64px behind, peeking out) */}
       <div className="relative" style={{ width: 96, height: 96 }}>
-        {/* Second player: 64px, behind and offset */}
+        {/* Second player: offset 28px outward so they peek from behind captain */}
         {second && (
           <div
             className="absolute"
             style={{
-              ...(isHome ? { right: -16 } : { left: -16 }),
-              bottom: 6,
+              ...(isHome ? { right: -28, bottom: 4 } : { left: -28, bottom: 4 }),
               zIndex: 1,
-              opacity: 0.82,
+              opacity: 0.80,
             }}
           >
-            <PlayerHeadshot
-              player={second}
-              size="lg"
-              ring="team"
-            />
+            <PlayerHeadshot player={second} size="lg" ring="team" />
           </div>
         )}
 
-        {/* Captain: 96px, front */}
+        {/* Captain: front */}
         <div className="relative" style={{ zIndex: 2 }}>
-          <PlayerHeadshot
-            player={captain}
-            size="xl"
-            ring="team"
-            shadow
-          />
+          <PlayerHeadshot player={captain} size="xl" ring="team" shadow />
           {/* Gold © crown badge */}
           <span
             className="absolute -top-1 -right-1 flex items-center justify-center w-5 h-5 rounded-full text-[8px] font-black shadow-md z-10"
@@ -230,13 +220,19 @@ function PlayerMedallions({
             ©
           </span>
         </div>
-      </div>
 
-      {/* Captain name */}
-      <p className="mt-1 text-[9px] font-bold text-white/90 leading-tight truncate drop-shadow-[0_1px_4px_oklch(0_0_0_/_0.9)]"
-        style={{ maxWidth: 96 }}>
-        {captain.name.split(" ").slice(-1)[0]}
-      </p>
+        {/* Name label: overlay at bottom of captain circle, no layout conflict */}
+        <div
+          className="absolute bottom-1 left-0 right-0 flex justify-center z-[3] pointer-events-none"
+        >
+          <span
+            className="text-[8px] font-bold text-white leading-none px-1.5 py-0.5 rounded-full truncate max-w-[80px]"
+            style={{ background: "rgba(0,0,0,0.52)", backdropFilter: "blur(2px)" }}
+          >
+            {captain.name.split(" ").slice(-1)[0]}
+          </span>
+        </div>
+      </div>
     </div>
   )
 }
