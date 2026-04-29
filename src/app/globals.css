@@ -704,6 +704,29 @@
     background-blend-mode: normal, normal, soft-light, normal;
   }
 
+  /* Color-territory split: home color owns left half, away owns right,
+     dark seam at center. No animation — the split is intentional/static.
+     Used only by CinematicHero dashboard hero (not match-hero-band). */
+  .cinema-bg-territories {
+    background-image:
+      var(--cinema-grain),
+      radial-gradient(ellipse 55% 60% at 25% 40%,
+        oklch(from var(--team-home-color, oklch(0.72 0.20 45)) 0.32 c h / 0.5) 0%,
+        transparent 70%),
+      radial-gradient(ellipse 55% 60% at 75% 40%,
+        oklch(from var(--team-away-color, oklch(0.78 0.17 86)) 0.32 c h / 0.5) 0%,
+        transparent 70%),
+      linear-gradient(90deg,
+        oklch(from var(--team-home-color, oklch(0.72 0.20 45)) 0.14 c h) 0%,
+        oklch(from var(--team-home-color, oklch(0.72 0.20 45)) 0.22 c h) 36%,
+        oklch(0.06 0.003 0) 46%,
+        oklch(0.06 0.003 0) 54%,
+        oklch(from var(--team-away-color, oklch(0.78 0.17 86)) 0.22 c h) 64%,
+        oklch(from var(--team-away-color, oklch(0.78 0.17 86)) 0.14 c h) 100%);
+    background-size: 200px 200px, 100% 100%, 100% 100%, 100% 100%;
+    background-blend-mode: soft-light, normal, normal, normal;
+  }
+
   /* Premium dark surface — replaces .glass on cinema screens.
      Inset highlight + deeper shadow + optional cinema gradient overlay
      (opacity 0.12 by default; consumers can override with --tile-tint). */

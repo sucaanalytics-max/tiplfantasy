@@ -74,9 +74,9 @@ export function CinematicHero({
           } as React.CSSProperties
         }
       >
-        {/* Layer 1 — cinema-bg (deep ink + team-color flanks + grain).
-            gradient-pan loop runs here. */}
-        <div className="absolute inset-0 cinema-bg" aria-hidden />
+        {/* Layer 1 — color territories: home owns left, away owns right,
+            dark seam in center. Static split, no pan animation. */}
+        <div className="absolute inset-0 cinema-bg-territories" aria-hidden />
 
         {/* Layer 2 — stadium silhouette doubled for depth */}
         <StadiumSilhouette
@@ -87,22 +87,6 @@ export function CinematicHero({
           className="absolute inset-x-0 bottom-8 w-full h-[36%] text-white/8 pointer-events-none"
           style={{ animation: "team-art-zoom 900ms cubic-bezier(0.16, 1, 0.3, 1) 200ms backwards", transform: "scaleX(-1)" }}
         />
-
-        {/* Layer 3 — giant team crests, opposite corners. team-art-zoom on mount. */}
-        <div
-          className="absolute -top-6 -left-4 md:-top-12 md:-left-12 w-44 h-44 md:w-72 md:h-72 opacity-25 pointer-events-none"
-          style={{ animation: "team-art-zoom 800ms cubic-bezier(0.16, 1, 0.3, 1) 280ms backwards" }}
-          aria-hidden
-        >
-          <TeamLogo team={home} size="2xl" className="w-full h-full" />
-        </div>
-        <div
-          className="absolute -bottom-8 -right-4 md:-bottom-16 md:-right-12 w-44 h-44 md:w-72 md:h-72 opacity-25 pointer-events-none"
-          style={{ animation: "team-art-zoom 800ms cubic-bezier(0.16, 1, 0.3, 1) 400ms backwards" }}
-          aria-hidden
-        >
-          <TeamLogo team={away} size="2xl" className="w-full h-full" />
-        </div>
 
         {/* Layer 3.5 — bottom vignette for info-ribbon readability */}
         <div
@@ -143,40 +127,40 @@ export function CinematicHero({
           )}
         </div>
 
-        {/* Centered seam: TEAM_HOME · VS · TEAM_AWAY — logo + name stacked */}
+        {/* Centered seam: TEAM_HOME · VS · TEAM_AWAY — logo + name in their color zone */}
         <div className="absolute inset-0 z-[3] flex items-center justify-center pointer-events-none">
-          <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-4 md:gap-8 px-6 w-full max-w-3xl">
-            {/* Home: crest + name, right-aligned */}
+          <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-2 md:gap-4 w-full">
+            {/* Home: crest + name, centered in its color territory */}
             <div
-              className="flex flex-col items-end gap-2"
+              className="flex flex-col items-center gap-2 px-4"
               style={{ animation: "slide-up 0.45s ease-out 700ms backwards" }}
             >
-              <div style={{ filter: `drop-shadow(0 0 24px ${home.color}99)` }}>
+              <div style={{ filter: `drop-shadow(0 0 28px ${home.color}cc)` }}>
                 <TeamLogo team={home} size="xl" />
               </div>
-              <span className="text-2xl md:text-4xl font-display font-bold text-white tracking-tight drop-shadow-[0_2px_12px_oklch(0_0_0_/_0.8)]">
+              <span className="text-xl md:text-3xl font-display font-bold text-white tracking-tight drop-shadow-[0_2px_12px_oklch(0_0_0_/_0.9)]">
                 {home.short_name}
               </span>
             </div>
 
-            {/* VS disc */}
+            {/* VS disc — sits at the dark seam */}
             <div
-              className="relative inline-flex items-center justify-center h-14 w-14 md:h-20 md:w-20 rounded-full bg-[var(--captain-gold)] text-[oklch(0.18_0.02_86)] font-display font-bold text-base md:text-xl shrink-0 ring-2 ring-white/30 shadow-[0_8px_24px_oklch(0_0_0_/_0.5)]"
+              className="relative inline-flex items-center justify-center h-12 w-12 md:h-16 md:w-16 rounded-full bg-[var(--captain-gold)] text-[oklch(0.18_0.02_86)] font-display font-bold text-sm md:text-base shrink-0 ring-2 ring-white/30 shadow-[0_8px_24px_oklch(0_0_0_/_0.6)]"
               style={{ animation: "vs-clash 0.48s cubic-bezier(0.16, 1, 0.3, 1) 540ms backwards" }}
               aria-hidden
             >
               VS
             </div>
 
-            {/* Away: crest + name, left-aligned */}
+            {/* Away: crest + name, centered in its color territory */}
             <div
-              className="flex flex-col items-start gap-2"
+              className="flex flex-col items-center gap-2 px-4"
               style={{ animation: "slide-up 0.45s ease-out 760ms backwards" }}
             >
-              <div style={{ filter: `drop-shadow(0 0 24px ${away.color}99)` }}>
+              <div style={{ filter: `drop-shadow(0 0 28px ${away.color}cc)` }}>
                 <TeamLogo team={away} size="xl" />
               </div>
-              <span className="text-2xl md:text-4xl font-display font-bold text-white tracking-tight drop-shadow-[0_2px_12px_oklch(0_0_0_/_0.8)]">
+              <span className="text-xl md:text-3xl font-display font-bold text-white tracking-tight drop-shadow-[0_2px_12px_oklch(0_0_0_/_0.9)]">
                 {away.short_name}
               </span>
             </div>
