@@ -3,12 +3,12 @@ import { CheckCircle2, ChevronRight, Pencil } from "lucide-react"
 import { CountdownTimer } from "@/components/countdown-timer"
 import { TeamLogo } from "@/components/team-logo"
 import { StadiumSilhouette } from "@/components/decor/stadium-silhouette"
-import { CameoFan } from "@/components/decor/cameo-fan"
+import { PlayerHeadshot } from "@/components/player-headshot"
 import { Bat } from "@/components/icons/cricket-icons"
 import type { HeroBandMatch } from "@/components/match-hero-band"
 import type { HeadshotPlayer } from "@/components/player-headshot"
 import type { MatchStatus } from "@/lib/types"
-import { cn, formatIST } from "@/lib/utils"
+import { formatIST } from "@/lib/utils"
 
 type HeroMatch = HeroBandMatch & { id: string }
 
@@ -16,36 +16,12 @@ type Props = {
   match: HeroMatch
   hasSubmitted: boolean
   liveScore?: { total_points: number; rank: number | null }
-  /** 0–3 home-team players whose headshots compose the home cameo fan. */
+  /** Top 2 home-team players for the player medallions */
   featuredHomePlayers: HeadshotPlayer[]
-  /** 0–3 away-team players for the away cameo fan. */
+  /** Top 2 away-team players for the player medallions */
   featuredAwayPlayers: HeadshotPlayer[]
 }
 
-/**
- * 70vh cinematic hero cover for the dashboard. Replaces HeroMatchBanner
- * on /dashboard.
- *
- * Layer stack (back to front):
- *   1. .cinema-bg — team-color flank gradient + radial spotlights +
- *      film grain, with gradient-pan 18s loop ("broadcast breathing")
- *   2. Doubled <StadiumSilhouette/> for depth
- *   3. Two giant team logos in opposite corners (team-art-zoom on mount)
- *   4. <CameoFan/> headshot composition per side (the photography
- *      substitute — we have no team / stadium / crowd imagery)
- *   5. Theatre typography: match-number eyebrow, team short_names in
- *      text-display-xl flanking a 96px gold VS disc with vs-clash
- *   6. Bottom info ribbon: venue + date + countdown
- *
- * The CTA pill (existing UrgencyCTA / submitted / live / completed
- * branches) floats over the hero's bottom edge with -28px margin so
- * it visually anchors to the cover.
- *
- * All entry motion is one-shot (CSS animations defined in globals.css).
- * The only always-on loop is gradient-pan, per the motion budget.
- * Respects prefers-reduced-motion via the universal guard at the
- * bottom of globals.css.
- */
 export function CinematicHero({
   match,
   hasSubmitted,
@@ -57,154 +33,217 @@ export function CinematicHero({
   const away = match.team_away
   const isLive = match.status === "live"
   const isCompleted = match.status === "completed" || match.status === "no_result"
-  const tag = isLive ? "LIVE" : isCompleted ? "RESULT" : "PREVIEW"
 
   return (
-    <section className="relative">
-      {/* ── 70vh cinematic cover ───────────────────────────────────── */}
+    <section
+      className="relative overflow-hidden"
+      style={
+        {
+          height: 296,
+          "--team-home-color": home.color,
+          "--team-away-color": away.color,
+        } as React.CSSProperties
+      }
+    >
+      {/* Layer 1 — color territories */}
+      <div className="absolute inset-0 cinema-bg-territories" aria-hidden />
+
+      {/* Layer 2 — stadium silhouettes for depth */}
+      <StadiumSilhouette
+        className="absolute inset-x-0 bottom-14 w-full h-[38%] text-white/15 pointer-events-none"
+        style={{ animation: "team-art-zoom 800ms cubic-bezier(0.16, 1, 0.3, 1) 120ms backwards" }}
+      />
+      <StadiumSilhouette
+        className="absolute inset-x-0 bottom-10 w-full h-[30%] text-white/6 pointer-events-none"
+        style={{
+          animation: "team-art-zoom 900ms cubic-bezier(0.16, 1, 0.3, 1) 200ms backwards",
+          transform: "scaleX(-1)",
+        }}
+      />
+
+      {/* Layer 3 — bottom vignette */}
       <div
-        className="relative w-full overflow-hidden"
-        style={
-          {
-            "--team-home-color": home.color,
-            "--team-away-color": away.color,
-            // 480px mobile (~70vh on iPhone 12), 560px desktop.
-            // Plain CSS so we don't need framer-motion for layout sizing.
-            height: "min(70vh, 480px)",
-          } as React.CSSProperties
-        }
-      >
-        {/* Layer 1 — color territories: home owns left, away owns right,
-            dark seam in center. Static split, no pan animation. */}
-        <div className="absolute inset-0 cinema-bg-territories" aria-hidden />
+        className="absolute inset-x-0 bottom-0 h-3/5 pointer-events-none z-[2]"
+        style={{ background: "linear-gradient(to top, oklch(0 0 0 / 0.72) 0%, transparent 100%)" }}
+        aria-hidden
+      />
 
-        {/* Layer 2 — stadium silhouette doubled for depth */}
-        <StadiumSilhouette
-          className="absolute inset-x-0 bottom-12 w-full h-[40%] text-white/20 pointer-events-none"
-          style={{ animation: "team-art-zoom 800ms cubic-bezier(0.16, 1, 0.3, 1) 120ms backwards" }}
-        />
-        <StadiumSilhouette
-          className="absolute inset-x-0 bottom-8 w-full h-[36%] text-white/8 pointer-events-none"
-          style={{ animation: "team-art-zoom 900ms cubic-bezier(0.16, 1, 0.3, 1) 200ms backwards", transform: "scaleX(-1)" }}
-        />
+      {/* Layer 4 — player medallions */}
+      {featuredHomePlayers.length > 0 && (
+        <PlayerMedallions players={featuredHomePlayers} side="home" teamColor={home.color} />
+      )}
+      {featuredAwayPlayers.length > 0 && (
+        <PlayerMedallions players={featuredAwayPlayers} side="away" teamColor={away.color} />
+      )}
 
-        {/* Layer 3.5 — bottom vignette for info-ribbon readability */}
-        <div
-          className="absolute inset-x-0 bottom-0 h-2/5 pointer-events-none z-[2]"
-          style={{ background: "linear-gradient(to top, oklch(0 0 0 / 0.65) 0%, transparent 100%)" }}
-          aria-hidden
-        />
-
-        {/* Layer 4 — cameo headshot fans (the photography substitute) */}
-        {featuredHomePlayers.length > 0 && (
-          <div className="absolute left-3 md:left-8 bottom-16 md:bottom-24 z-[2] pointer-events-none">
-            <CameoFan players={featuredHomePlayers} side="home" />
-          </div>
-        )}
-        {featuredAwayPlayers.length > 0 && (
-          <div className="absolute right-3 md:right-8 bottom-16 md:bottom-24 z-[2] pointer-events-none">
-            <CameoFan players={featuredAwayPlayers} side="away" />
-          </div>
-        )}
-
-        {/* Layer 5 — typography: eyebrow + team names flanking VS */}
-        <div className="absolute inset-x-0 top-0 z-[3] flex items-start justify-between px-4 pt-4 md:px-8 md:pt-8 pointer-events-none">
-          <span
-            className="text-cinema-eyebrow text-white/95"
-            style={{ animation: "slide-up 0.4s ease-out 700ms backwards" }}
-          >
-            Match · {match.match_number} · {tag}
-          </span>
-          {/* Status corner — LIVE badge or empty */}
-          {isLive && (
-            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-status-live text-white text-[10px] font-display font-bold uppercase tracking-widest live-ring">
-              <span className="relative inline-flex h-1.5 w-1.5">
-                <span className="absolute inline-flex h-full w-full rounded-full bg-white opacity-75 animate-ping" />
-                <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-white" />
-              </span>
-              Live
+      {/* Layer 5 — eyebrow + live badge */}
+      <div className="absolute inset-x-0 top-0 z-[3] flex items-start justify-between px-4 pt-3 pointer-events-none">
+        <span
+          className="text-cinema-eyebrow text-white/80"
+          style={{ animation: "slide-up 0.4s ease-out 700ms backwards" }}
+        >
+          IPL 2026 · Match {match.match_number}
+          {match.venue ? ` · ${match.venue.split(",")[0]}` : ""}
+        </span>
+        {isLive && (
+          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-status-live text-white text-[10px] font-display font-bold uppercase tracking-widest live-ring">
+            <span className="relative inline-flex h-1.5 w-1.5">
+              <span className="absolute inline-flex h-full w-full rounded-full bg-white opacity-75 animate-ping" />
+              <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-white" />
             </span>
-          )}
-        </div>
+            Live
+          </span>
+        )}
+      </div>
 
-        {/* Centered seam: TEAM_HOME · VS · TEAM_AWAY — logo + name in their color zone */}
-        <div className="absolute inset-0 z-[3] flex items-center justify-center pointer-events-none">
-          <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-2 md:gap-4 w-full">
-            {/* Home: crest + name, centered in its color territory */}
-            <div
-              className="flex flex-col items-center gap-2 px-4"
-              style={{ animation: "slide-up 0.45s ease-out 700ms backwards" }}
-            >
-              <div style={{ filter: `drop-shadow(0 0 28px ${home.color}cc)` }}>
-                <TeamLogo team={home} size="xl" />
-              </div>
-              <span className="text-xl md:text-3xl font-display font-bold text-white tracking-tight drop-shadow-[0_2px_12px_oklch(0_0_0_/_0.9)]">
-                {home.short_name}
-              </span>
+      {/* Layer 5b — match identity (teams + VS) — vertically centered in upper half */}
+      <div
+        className="absolute inset-x-0 z-[3] flex items-center justify-center pointer-events-none"
+        style={{ top: 36, bottom: 120 }}
+      >
+        <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-2 w-full">
+          {/* Home team */}
+          <div
+            className="flex flex-col items-center gap-1.5 px-3"
+            style={{ animation: "slide-up 0.45s ease-out 700ms backwards" }}
+          >
+            <div style={{ filter: `drop-shadow(0 0 20px ${home.color}cc)` }}>
+              <TeamLogo team={home} size="xl" />
             </div>
-
-            {/* VS disc — sits at the dark seam */}
-            <div
-              className="relative inline-flex items-center justify-center h-12 w-12 md:h-16 md:w-16 rounded-full bg-[var(--captain-gold)] text-[oklch(0.18_0.02_86)] font-display font-bold text-sm md:text-base shrink-0 ring-2 ring-white/30 shadow-[0_8px_24px_oklch(0_0_0_/_0.6)]"
-              style={{ animation: "vs-clash 0.48s cubic-bezier(0.16, 1, 0.3, 1) 540ms backwards" }}
-              aria-hidden
-            >
-              VS
-            </div>
-
-            {/* Away: crest + name, centered in its color territory */}
-            <div
-              className="flex flex-col items-center gap-2 px-4"
-              style={{ animation: "slide-up 0.45s ease-out 760ms backwards" }}
-            >
-              <div style={{ filter: `drop-shadow(0 0 28px ${away.color}cc)` }}>
-                <TeamLogo team={away} size="xl" />
-              </div>
-              <span className="text-xl md:text-3xl font-display font-bold text-white tracking-tight drop-shadow-[0_2px_12px_oklch(0_0_0_/_0.9)]">
-                {away.short_name}
-              </span>
-            </div>
+            <span className="text-lg font-display font-black text-white tracking-tight drop-shadow-[0_2px_10px_oklch(0_0_0_/_0.9)]">
+              {home.short_name}
+            </span>
           </div>
-        </div>
 
-        {/* Layer 6 — bottom ribbon (venue + date + countdown / live score) */}
-        <div className="absolute inset-x-0 bottom-0 z-[3] px-4 md:px-8 pb-4 pointer-events-none">
-          <div className="flex items-center justify-between gap-3 text-white/95 text-xs">
-            <div className="min-w-0 flex items-center gap-2">
-              <span className="truncate">📍 {match.venue}</span>
-              <span className="text-white/40">·</span>
-              <span className="shrink-0">{formatIST(match.start_time, "EEE, MMM d · h:mm a")}</span>
+          {/* VS disc */}
+          <div
+            className="relative inline-flex items-center justify-center h-11 w-11 rounded-full bg-[var(--captain-gold)] text-[oklch(0.18_0.02_86)] font-display font-black text-xs shrink-0 ring-2 ring-white/20 shadow-[0_6px_20px_oklch(0_0_0_/_0.6)]"
+            style={{ animation: "vs-clash 0.48s cubic-bezier(0.16, 1, 0.3, 1) 540ms backwards" }}
+            aria-hidden
+          >
+            VS
+          </div>
+
+          {/* Away team */}
+          <div
+            className="flex flex-col items-center gap-1.5 px-3"
+            style={{ animation: "slide-up 0.45s ease-out 760ms backwards" }}
+          >
+            <div style={{ filter: `drop-shadow(0 0 20px ${away.color}cc)` }}>
+              <TeamLogo team={away} size="xl" />
             </div>
-            {!isLive && !isCompleted && (
-              <div className="shrink-0 text-right">
-                <CountdownTimer targetTime={match.start_time} variant="compact" className="!text-white" />
-              </div>
-            )}
+            <span className="text-lg font-display font-black text-white tracking-tight drop-shadow-[0_2px_10px_oklch(0_0_0_/_0.9)]">
+              {away.short_name}
+            </span>
           </div>
         </div>
       </div>
 
-      {/* ── CTA pill — floats over the hero's bottom edge ─────────── */}
-      <div className="px-4 md:px-8 -mt-7 relative z-[4]">
-        <div className="max-w-2xl lg:max-w-5xl mx-auto">
-          <CinematicCTA
-            matchId={match.id}
-            matchStartTime={match.start_time}
-            status={match.status}
-            hasSubmitted={hasSubmitted}
-            liveScore={liveScore}
-          />
+      {/* Layer 6 — bottom info strip */}
+      <div className="absolute inset-x-0 z-[4] px-4" style={{ bottom: 60 }}>
+        <div className="flex items-center justify-between gap-2 text-white/80">
+          <span className="text-[10px] truncate">{match.venue}</span>
+          {!isLive && !isCompleted && (
+            <span className="text-[11px] font-bold shrink-0" style={{ color: "var(--captain-gold)" }}>
+              ⏱{" "}
+              <CountdownTimer targetTime={match.start_time} variant="compact" className="!text-current inline" />
+              {" "}to lock
+            </span>
+          )}
         </div>
+      </div>
+
+      {/* Layer 7 — state CTA strip pinned to hero bottom */}
+      <div className="absolute inset-x-0 bottom-0 z-[5]">
+        <CinematicCTAStrip
+          matchId={match.id}
+          matchStartTime={match.start_time}
+          status={match.status}
+          hasSubmitted={hasSubmitted}
+          liveScore={liveScore}
+        />
       </div>
     </section>
   )
 }
 
-// ─── CTA pill ─────────────────────────────────────────────────────────
-// Same state machine as HeroMatchBanner's HeroCTA, with cinematic styling
-// (taller, gold ring on urgent state, anchored to the hero edge).
+// ─── Player medallions ──────────────────────────────────────────────────────
+// Spec: captain 84px (front), #2 62px (behind + above). Team-color ring + glow.
 
-function CinematicCTA({
+function PlayerMedallions({
+  players,
+  side,
+  teamColor,
+}: {
+  players: HeadshotPlayer[]
+  side: "home" | "away"
+  teamColor: string
+}) {
+  const captain = players[0]
+  const second = players[1] ?? null
+
+  const isHome = side === "home"
+  // Home: left third, Away: right third
+  const positionClass = isHome ? "left-3 md:left-6" : "right-3 md:right-6"
+  const alignClass = isHome ? "items-start" : "items-end"
+
+  return (
+    <div
+      className={`absolute z-[3] pointer-events-none ${positionClass} flex ${alignClass} flex-col`}
+      style={{ bottom: 56, animation: "team-art-zoom 700ms cubic-bezier(0.16, 1, 0.3, 1) 300ms backwards" } as React.CSSProperties}
+    >
+      {/* Medallion cluster */}
+      <div className="relative" style={{ width: 96, height: 96 }}>
+        {/* Second player: 64px, behind and offset */}
+        {second && (
+          <div
+            className="absolute"
+            style={{
+              ...(isHome ? { right: -16 } : { left: -16 }),
+              bottom: 6,
+              zIndex: 1,
+              opacity: 0.82,
+            }}
+          >
+            <PlayerHeadshot
+              player={second}
+              size="lg"
+              ring="team"
+            />
+          </div>
+        )}
+
+        {/* Captain: 96px, front */}
+        <div className="relative" style={{ zIndex: 2 }}>
+          <PlayerHeadshot
+            player={captain}
+            size="xl"
+            ring="team"
+            shadow
+          />
+          {/* Gold © crown badge */}
+          <span
+            className="absolute -top-1 -right-1 flex items-center justify-center w-5 h-5 rounded-full text-[8px] font-black shadow-md z-10"
+            style={{ background: "var(--captain-gold)", color: "oklch(0.18 0.02 86)" }}
+            aria-label="Captain"
+          >
+            ©
+          </span>
+        </div>
+      </div>
+
+      {/* Captain name */}
+      <p className="mt-1 text-[9px] font-bold text-white/90 leading-tight truncate drop-shadow-[0_1px_4px_oklch(0_0_0_/_0.9)]"
+        style={{ maxWidth: 96 }}>
+        {captain.name.split(" ").slice(-1)[0]}
+      </p>
+    </div>
+  )
+}
+
+// ─── State CTA strip ────────────────────────────────────────────────────────
+
+function CinematicCTAStrip({
   matchId,
   matchStartTime,
   status,
@@ -220,21 +259,26 @@ function CinematicCTA({
   if (status === "live") {
     return (
       <Link href={`/match/${matchId}/scores`} className="block">
-        <div className="cta-pick-pill w-full h-16 rounded-2xl flex items-center justify-between px-5 text-white"
-          style={{ animation: "slide-up 0.4s ease-out 1000ms backwards" }}>
+        <div className="cta-pick-pill h-14 flex items-center justify-between px-5 text-white">
           <div className="flex items-center gap-3 min-w-0">
-            <span className="relative inline-flex h-2.5 w-2.5 shrink-0">
+            <span className="relative inline-flex h-2 w-2 shrink-0">
               <span className="absolute inline-flex h-full w-full rounded-full bg-white opacity-75 animate-ping" />
-              <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-white" />
+              <span className="relative inline-flex h-2 w-2 rounded-full bg-white" />
             </span>
             <div className="min-w-0">
-              <p className="font-display font-bold text-base leading-tight tracking-wide">LIVE SCORES</p>
-              <p className="text-xs text-white/75 leading-tight tabular-nums truncate">
-                {liveScore ? `${liveScore.total_points} pts${liveScore.rank ? ` · #${liveScore.rank}` : ""}` : "Tap to follow"}
+              <p className="font-display font-bold text-[15px] leading-tight tracking-wide">
+                LIVE ·{" "}
+                {liveScore ? (
+                  <span className="tabular-nums">
+                    {liveScore.total_points} pts{liveScore.rank ? ` · #${liveScore.rank}` : ""}
+                  </span>
+                ) : (
+                  "Scores updating"
+                )}
               </p>
             </div>
           </div>
-          <ChevronRight className="h-5 w-5 shrink-0 text-white/85" />
+          <ChevronRight className="h-5 w-5 shrink-0 text-white/80" />
         </div>
       </Link>
     )
@@ -243,14 +287,10 @@ function CinematicCTA({
   if (status === "completed" || status === "no_result") {
     return (
       <Link href={`/match/${matchId}/scores`} className="block">
-        <div className="cta-pick-pill-submitted w-full h-16 rounded-2xl flex items-center justify-between px-5"
-          style={{ animation: "slide-up 0.4s ease-out 1000ms backwards" }}>
+        <div className="cta-pick-pill-submitted h-14 flex items-center justify-between px-5">
           <div className="flex items-center gap-3 min-w-0">
             <CheckCircle2 className="h-5 w-5 text-accent shrink-0" />
-            <div className="min-w-0">
-              <p className="font-display font-bold text-base leading-tight tracking-wide">VIEW RESULT</p>
-              <p className="text-xs text-muted-foreground leading-tight">See match scorecard</p>
-            </div>
+            <p className="font-display font-bold text-[15px] leading-tight tracking-wide">VIEW RESULT</p>
           </div>
           <ChevronRight className="h-5 w-5 shrink-0 text-muted-foreground" />
         </div>
@@ -261,15 +301,17 @@ function CinematicCTA({
   if (hasSubmitted) {
     return (
       <Link href={`/match/${matchId}/pick`} className="block">
-        <div className="cta-pick-pill-submitted w-full h-16 rounded-2xl flex items-center justify-between px-5"
-          style={{ animation: "slide-up 0.4s ease-out 1000ms backwards" }}>
+        <div className="cta-pick-pill-submitted h-14 flex items-center justify-between px-5">
           <div className="flex items-center gap-3 min-w-0">
             <CheckCircle2 className="h-5 w-5 text-status-success shrink-0" />
             <div className="min-w-0">
-              <p className="font-display font-bold text-base leading-tight tracking-wide text-status-success">TEAM LOCKED IN</p>
+              <p className="font-display font-bold text-[15px] text-status-success leading-tight tracking-wide">
+                SQUAD LOCKED
+              </p>
               <p className="text-xs text-muted-foreground leading-tight flex items-center gap-1.5">
                 <Pencil className="h-3 w-3" />
-                Tap to edit · <CountdownTimer targetTime={matchStartTime} variant="compact" className="!text-muted-foreground" />
+                Edit ·{" "}
+                <CountdownTimer targetTime={matchStartTime} variant="compact" className="!text-muted-foreground inline" />
               </p>
             </div>
           </div>
@@ -279,32 +321,31 @@ function CinematicCTA({
     )
   }
 
-  // Default: pick your team — with urgency state
   const isUrgent = new Date(matchStartTime).getTime() - Date.now() < 2 * 60 * 60 * 1000
   return (
     <Link href={`/match/${matchId}/pick`} className="block">
       <div
         data-urgent={isUrgent || undefined}
-        className={cn(
-          "cta-pick-pill w-full h-16 rounded-2xl flex items-center justify-between px-5 text-white"
-        )}
-        style={{ animation: "slide-up 0.4s ease-out 1000ms backwards" }}
+        className="cta-pick-pill h-14 flex items-center justify-between px-5 text-white"
+        style={
+          !isUrgent
+            ? { boxShadow: "0 4px 22px oklch(from var(--primary) l c h / 0.38)" }
+            : undefined
+        }
       >
         <div className="flex items-center gap-3 min-w-0">
           <Bat className="h-5 w-5 shrink-0 text-white" />
           <div className="min-w-0">
-            <p className="font-display font-bold text-base leading-tight tracking-wide">
+            <p className="font-display font-bold text-[15px] leading-tight tracking-wide">
               {isUrgent ? "FINAL HOUR — PICK NOW" : "PICK YOUR XI"}
             </p>
-            <p className="text-xs text-white/80 leading-tight tabular-nums">
+            <p className="text-xs text-white/75 leading-tight tabular-nums">
               Locks in{" "}
-              {isUrgent ? (
-                <span className="shimmer-stroke inline">
-                  <CountdownTimer targetTime={matchStartTime} variant="compact" className="!text-current inline" />
-                </span>
-              ) : (
-                <CountdownTimer targetTime={matchStartTime} variant="compact" className="!text-white inline" />
-              )}
+              <CountdownTimer
+                targetTime={matchStartTime}
+                variant="compact"
+                className={isUrgent ? "!text-current inline shimmer-stroke" : "!text-white/75 inline"}
+              />
             </p>
           </div>
         </div>

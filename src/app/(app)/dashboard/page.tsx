@@ -1,74 +1,123 @@
 import { createClient, getAuthUser } from "@/lib/supabase/server"
 import { redirect } from "next/navigation"
 import Link from "next/link"
-import Image from "next/image"
-import { format } from "date-fns"
-import { MatchCard } from "@/components/match-card"
 import { ChevronRight } from "lucide-react"
 import { PageTransition } from "@/components/page-transition"
 import { CinematicHero } from "@/components/cinematic-hero"
-import { FormStrip } from "@/components/form-strip"
-import { RecentMatchRecap } from "@/components/recent-match-recap"
+import { RankBlock } from "@/components/rank-block"
+import { OnTheBubble } from "@/components/on-the-bubble"
+import { MatchWinCabinet } from "@/components/match-win-cabinet"
+import { UpcomingCarousel } from "@/components/upcoming-carousel"
 import { StandingsTable } from "@/components/standings-table"
-import { PodiumCard } from "@/components/podium-card"
+import { MatchResultCard } from "@/components/match-result-card"
+import { MatchAwards } from "@/components/match-awards"
+import type { MatchResultData, TopPerformer } from "@/components/match-result-card"
+import type { Award, AwardType } from "@/components/match-awards"
+import type { HeadshotPlayer } from "@/components/player-headshot"
 
 export default async function DashboardPage() {
   const [user, supabase] = await Promise.all([getAuthUser(), createClient()])
   if (!user) redirect("/login")
 
-  // Phase 1: independent queries in parallel
-  const [profileRes, myRankRes, allMatchesRes, top6Res] = await Promise.all([
-    supabase.from("profiles").select("display_name, avatar_url").eq("id", user.id).single(),
-    supabase.from("season_leaderboard").select("*").eq("user_id", user.id).maybeSingle(),
-    supabase
-      .from("matches")
-      .select(
-        "*, team_home:teams!matches_team_home_id_fkey(name, short_name, color, logo_url), team_away:teams!matches_team_away_id_fkey(name, short_name, color, logo_url)"
-      )
-      .order("start_time", { ascending: false })
-      .limit(80),
-    supabase.from("season_leaderboard").select("*").order("season_rank", { ascending: true }).limit(6),
-  ])
+  // ─── Phase 1: all queries that depend only on user.id ─────────────────────
+  const emptyPlayers = {
+    data: [] as Array<{
+      name: string
+      role: string
+      image_url: string | null
+      team: { short_name: string; color: string }
+    }>,
+  }
 
-  const profile = profileRes.data
+  const [profileRes, myRankRes, allMatchesRes, allLeaderboardRes, matchWinCabinetRes] =
+    await Promise.all([
+      supabase.from("profiles").select("display_name, avatar_url").eq("id", user.id).single(),
+      supabase.from("season_leaderboard").select("*").eq("user_id", user.id).maybeSingle(),
+      supabase
+        .from("matches")
+        .select(
+          "*, team_home:teams!matches_team_home_id_fkey(name, short_name, color, logo_url), team_away:teams!matches_team_away_id_fkey(name, short_name, color, logo_url)"
+        )
+        .order("start_time", { ascending: false })
+        .limit(80),
+      supabase
+        .from("season_leaderboard")
+        .select("*")
+        .order("season_rank", { ascending: true }),
+      supabase
+        .from("user_match_scores")
+        .select("match_id, match:matches!user_match_scores_match_id_fkey(match_number)")
+        .eq("user_id", user.id)
+        .eq("rank", 1)
+        .order("created_at", { ascending: false }),
+    ])
+
   const myRank = myRankRes.data
-  const top6 = top6Res.data
-
+  const allLeaderboard = allLeaderboardRes.data ?? []
   const allMatches = allMatchesRes.data ?? []
+
   const liveMatches = allMatches.filter((m) => m.status === "live")
   const upcomingMatches = allMatches
     .filter((m) => m.status === "upcoming")
     .sort((a, b) => new Date(a.start_time).getTime() - new Date(b.start_time).getTime())
     .slice(0, 5)
-  const lastMatch = allMatches.find((m) => m.status === "completed" || m.status === "no_result") ?? null
-  const completedMatches = allMatches.filter((m) => m.status === "completed" || m.status === "no_result")
+  const completedMatches = allMatches.filter(
+    (m) => m.status === "completed" || m.status === "no_result"
+  )
+  const last3CompletedMatches = completedMatches.slice(0, 3)
+  const lastMatch = last3CompletedMatches[0] ?? null
 
-  const nextMatch = upcomingMatches[0] ?? null
-  const moreMatches = upcomingMatches.slice(1)
+  const heroMatch = liveMatches[0] ?? upcomingMatches[0] ?? lastMatch
 
-  // Phase 2: queries that depend on Phase 1 IDs
-  const allRelevantMatchIds = [...upcomingMatches, ...liveMatches].map((m) => m.id)
-  const completedMatchIds = completedMatches.map((m) => m.id)
-  const [subsRes, lastScoreRes, streakRes, lastSelectionRes, liveScoresRes] = await Promise.all([
-    allRelevantMatchIds.length > 0
-      ? supabase.from("selections").select("match_id").eq("user_id", user.id).in("match_id", allRelevantMatchIds).limit(10)
-      : Promise.resolve({ data: [] as { match_id: string }[] }),
-    lastMatch
-      ? supabase.from("user_match_scores").select("total_points, rank").eq("user_id", user.id).eq("match_id", lastMatch.id).single()
-      : Promise.resolve({ data: null as { total_points: number; rank: number | null } | null }),
-    completedMatchIds.length > 0
-      ? supabase.from("selections").select("match_id").eq("user_id", user.id).in("match_id", completedMatchIds).limit(25)
-      : Promise.resolve({ data: [] as { match_id: string }[] }),
-    lastMatch
+  // Derive On the Bubble entries
+  const mySeasonRank = myRank?.season_rank ?? null
+  const totalPlayers = allLeaderboard.length
+  const bubbleTarget =
+    mySeasonRank != null && mySeasonRank > 1
+      ? (allLeaderboard.find((e) => Number(e.season_rank) === mySeasonRank - 1) ?? null)
+      : null
+  const bubbleThreat =
+    mySeasonRank != null
+      ? (allLeaderboard.find((e) => Number(e.season_rank) === mySeasonRank + 1) ?? null)
+      : null
+
+  // Win cabinet shape
+  type WinRow = { match_id: string; match: { match_number: number } | null }
+  const matchWins: WinRow[] = (matchWinCabinetRes.data ?? []) as unknown as WinRow[]
+
+  // Win rank: sort leaderboard by first_place_count DESC, find user's position
+  const sortedByWins = [...allLeaderboard].sort(
+    (a, b) => Number(b.first_place_count ?? 0) - Number(a.first_place_count ?? 0)
+  )
+  const winsRankIdx = sortedByWins.findIndex((e) => e.user_id === user.id)
+  const winsRank = winsRankIdx >= 0 ? winsRankIdx + 1 : null
+
+  // ─── Phase 2: depends on Phase 1 IDs ─────────────────────────────────────
+  const allUpcomingLiveIds = [...liveMatches, ...upcomingMatches].map((m) => m.id)
+  const last3MatchIds = last3CompletedMatches.map((m) => m.id)
+  const lastMatchId = lastMatch?.id ?? null
+
+  const [
+    subsRes,
+    liveScoresRes,
+    featuredHomePlayersRes,
+    featuredAwayPlayersRes,
+    last3AllScoresRes,
+    last3UserSelectionsRes,
+    last3TopPerformersRes,
+    creditRangeRes,
+  ] = await Promise.all([
+    // Pick status for upcoming + live
+    allUpcomingLiveIds.length > 0
       ? supabase
           .from("selections")
-          .select(
-            "captain_id, vice_captain_id, captain:players!selections_captain_id_fkey(name), vc:players!selections_vice_captain_id_fkey(name)"
-          )
+          .select("match_id")
           .eq("user_id", user.id)
-          .eq("match_id", lastMatch.id)
-          .maybeSingle()
-      : Promise.resolve({ data: null as null }),
+          .in("match_id", allUpcomingLiveIds)
+          .limit(10)
+      : Promise.resolve({ data: [] as { match_id: string }[] }),
+
+    // Live scores for hero CTA
     liveMatches.length > 0
       ? supabase
           .from("user_match_scores")
@@ -77,86 +126,373 @@ export default async function DashboardPage() {
           .in("match_id", liveMatches.map((m) => m.id))
           .limit(2)
       : Promise.resolve({ data: [] as { match_id: string; total_points: number; rank: number | null }[] }),
-  ])
 
-  const lastSelection = lastSelectionRes.data
-  const liveScoreMap = new Map<string, { total_points: number; rank: number | null }>()
-  for (const s of liveScoresRes.data ?? []) liveScoreMap.set(s.match_id, { total_points: s.total_points, rank: s.rank })
-  const lastCaptainName = (lastSelection?.captain as unknown as { name: string })?.name ?? null
-
-  // Hero featured players for the cinematic cameo fans (3 per side, only
-  // those with image_urls so the fan reads as photography rather than
-  // initials). Picks the 3 highest-credit players per team — proxy for
-  // "marquee" without needing a separate "is_star" column.
-  const heroMatchTmp = liveMatches[0] ?? upcomingMatches[0] ?? lastMatch
-  const emptyPlayers = { data: [] as Array<{ name: string; role: string; image_url: string | null; team: { short_name: string; color: string } }> }
-  const [featuredHomePlayersRes, featuredAwayPlayersRes] = await Promise.all([
-    heroMatchTmp
+    // Hero featured players (top 2 per team, with images)
+    heroMatch
       ? supabase
           .from("players")
-          .select("name, role, image_url, team_id, team:teams!players_team_id_fkey(short_name, color)")
-          .eq("team_id", heroMatchTmp.team_home_id)
+          .select("name, role, image_url, team:teams!players_team_id_fkey(short_name, color)")
+          .eq("team_id", heroMatch.team_home_id)
           .not("image_url", "is", null)
           .order("credit_cost", { ascending: false })
-          .limit(3)
+          .limit(2)
       : Promise.resolve(emptyPlayers),
-    heroMatchTmp
+
+    heroMatch
       ? supabase
           .from("players")
-          .select("name, role, image_url, team_id, team:teams!players_team_id_fkey(short_name, color)")
-          .eq("team_id", heroMatchTmp.team_away_id)
+          .select("name, role, image_url, team:teams!players_team_id_fkey(short_name, color)")
+          .eq("team_id", heroMatch.team_away_id)
           .not("image_url", "is", null)
           .order("credit_cost", { ascending: false })
-          .limit(3)
+          .limit(2)
       : Promise.resolve(emptyPlayers),
+
+    // All users' scores for last 3 completed matches (for winners, awards, H2H)
+    last3MatchIds.length > 0
+      ? supabase
+          .from("user_match_scores")
+          .select(
+            "user_id, match_id, total_points, rank, captain_points, vc_points, user:profiles!user_match_scores_user_id_fkey(display_name)"
+          )
+          .in("match_id", last3MatchIds)
+      : Promise.resolve({
+          data: [] as {
+            user_id: string
+            match_id: string
+            total_points: number
+            rank: number | null
+            captain_points: number
+            vc_points: number
+            user: { display_name: string } | null
+          }[],
+        }),
+
+    // User's captain/VC for last 3 completed matches
+    last3MatchIds.length > 0
+      ? supabase
+          .from("selections")
+          .select(
+            "match_id, captain_id, vice_captain_id, captain:players!selections_captain_id_fkey(name)"
+          )
+          .eq("user_id", user.id)
+          .in("match_id", last3MatchIds)
+      : Promise.resolve({
+          data: [] as {
+            match_id: string
+            captain_id: string
+            vice_captain_id: string | null
+            captain: { name: string } | null
+          }[],
+        }),
+
+    // Top performers: match_player_scores for last 3 matches (all, will partition in JS)
+    last3MatchIds.length > 0
+      ? supabase
+          .from("match_player_scores")
+          .select(
+            "match_id, fantasy_points, player:players!match_player_scores_player_id_fkey(name, role, team:teams!players_team_id_fkey(short_name))"
+          )
+          .in("match_id", last3MatchIds)
+          .order("fantasy_points", { ascending: false })
+          .limit(30)
+      : Promise.resolve({
+          data: [] as {
+            match_id: string
+            fantasy_points: number
+            player: { name: string; role: string; team: { short_name: string } | null } | null
+          }[],
+        }),
+
+    // Credit range for Hidden Gem threshold
+    supabase
+      .from("players")
+      .select("credit_cost")
+      .order("credit_cost", { ascending: true })
+      .limit(1)
+      .then(async (minRes) => {
+        const maxRes = await supabase
+          .from("players")
+          .select("credit_cost")
+          .order("credit_cost", { ascending: false })
+          .limit(1)
+        return { min: minRes.data?.[0]?.credit_cost ?? 0, max: maxRes.data?.[0]?.credit_cost ?? 0 }
+      }),
   ])
 
-  const featuredHomePlayers = (featuredHomePlayersRes.data ?? []).map((p) => ({
-    name: p.name,
-    role: p.role,
-    image_url: p.image_url,
-    team: p.team as unknown as { short_name: string; color: string },
-  }))
-  const featuredAwayPlayers = (featuredAwayPlayersRes.data ?? []).map((p) => ({
-    name: p.name,
-    role: p.role,
-    image_url: p.image_url,
-    team: p.team as unknown as { short_name: string; color: string },
-  }))
+  // ─── Derived data ─────────────────────────────────────────────────────────
 
   const submittedMatchIds = new Set<string>()
   for (const s of subsRes.data ?? []) submittedMatchIds.add(s.match_id)
 
-  const lastMatchScore: { total_points: number; rank: number | null } | null = lastScoreRes.data
+  const liveScoreMap = new Map<string, { total_points: number; rank: number | null }>()
+  for (const s of liveScoresRes.data ?? []) {
+    liveScoreMap.set(s.match_id, { total_points: s.total_points, rank: s.rank })
+  }
 
-  let streak = 0
-  if (completedMatches && completedMatches.length > 0) {
-    const selectionSet = new Set((streakRes.data ?? []).map((s) => s.match_id))
-    for (const m of completedMatches) {
-      if (selectionSet.has(m.id)) streak++
-      else break
+  type ScoreRow = {
+    user_id: string
+    match_id: string
+    total_points: number
+    rank: number | null
+    captain_points: number
+    vc_points: number
+    user: { display_name: string } | null
+  }
+  const allScores: ScoreRow[] = (last3AllScoresRes.data ?? []) as ScoreRow[]
+
+  type SelectionRow = {
+    match_id: string
+    captain_id: string
+    vice_captain_id: string | null
+    captain: { name: string } | null
+  }
+  const userSelections: SelectionRow[] = (last3UserSelectionsRes.data ?? []) as SelectionRow[]
+
+  type PerformerRow = {
+    match_id: string
+    fantasy_points: number
+    player: { name: string; role: string; team: { short_name: string } | null } | null
+  }
+  const allPerformers: PerformerRow[] = (last3TopPerformersRes.data ?? []) as PerformerRow[]
+
+  // Group scores by match
+  const scoresByMatch = new Map<string, ScoreRow[]>()
+  for (const s of allScores) {
+    if (!scoresByMatch.has(s.match_id)) scoresByMatch.set(s.match_id, [])
+    scoresByMatch.get(s.match_id)!.push(s)
+  }
+
+  // Top performers per match (already ordered by fantasy_points DESC, take first 3 per match)
+  const topPerformersByMatch = new Map<string, TopPerformer[]>()
+  for (const p of allPerformers) {
+    if (!p.player) continue
+    const list = topPerformersByMatch.get(p.match_id) ?? []
+    if (list.length < 3) {
+      list.push({
+        name: p.player.name,
+        role: p.player.role,
+        teamShortName: p.player.team?.short_name ?? "",
+        fantasyPoints: Number(p.fantasy_points),
+      })
+      topPerformersByMatch.set(p.match_id, list)
     }
   }
 
-  const firstName = profile?.display_name?.split(" ")[0] ?? "Player"
+  // Build MatchResultData for last 3 completed matches
+  // Phase 3: captain base points (from match_player_scores for each captain)
+  // Collect captain_ids we need
+  const captainNeeded = userSelections.map((s) => ({ matchId: s.match_id, captainId: s.captain_id }))
 
-  // Hero match: live takes priority, then next upcoming, then most recent completed
-  const heroMatch = liveMatches[0] ?? nextMatch ?? lastMatch
+  let captainPointsMap = new Map<string, number>() // `${matchId}-${captainId}` → base pts
+  if (captainNeeded.length > 0) {
+    const captainPlayerIds = [...new Set(captainNeeded.map((c) => c.captainId))]
+    const captainScoresRes = await supabase
+      .from("match_player_scores")
+      .select("match_id, player_id, fantasy_points")
+      .in("match_id", last3MatchIds)
+      .in("player_id", captainPlayerIds)
+
+    for (const row of captainScoresRes.data ?? []) {
+      captainPointsMap.set(`${row.match_id}-${row.player_id}`, Number(row.fantasy_points))
+    }
+  }
+
+  // H2H target: bubble target user's scores in last 3 matches
+  const h2hUserId = bubbleTarget?.user_id ?? bubbleThreat?.user_id ?? null
+  const h2hScoreMap = new Map<string, number>()
+  for (const s of allScores) {
+    if (s.user_id === h2hUserId) {
+      h2hScoreMap.set(s.match_id, Number(s.total_points))
+    }
+  }
+  const h2hDisplayName =
+    bubbleTarget?.display_name ?? bubbleThreat?.display_name ?? null
+
+  // Build match result cards data
+  const matchResultsData: MatchResultData[] = last3CompletedMatches.map((match) => {
+    const matchScores = scoresByMatch.get(match.id) ?? []
+    const myScore = matchScores.find((s) => s.user_id === user.id)
+    const winner = matchScores.find((s) => s.rank === 1)
+    const selectionForMatch = userSelections.find((s) => s.match_id === match.id)
+    const captainId = selectionForMatch?.captain_id
+    const captainBasePoints = captainId
+      ? (captainPointsMap.get(`${match.id}-${captainId}`) ?? null)
+      : null
+
+    const scores = matchScores.map((s) => Number(s.total_points)).filter(Boolean)
+    const avgScore = scores.length > 0 ? scores.reduce((a, b) => a + b, 0) / scores.length : null
+    const maxScore = scores.length > 0 ? Math.max(...scores) : null
+
+    const home = match.team_home as unknown as {
+      short_name: string; name?: string | null; color: string; logo_url?: string | null
+    }
+    const away = match.team_away as unknown as {
+      short_name: string; name?: string | null; color: string; logo_url?: string | null
+    }
+
+    return {
+      matchId: match.id,
+      matchNumber: match.match_number,
+      startTime: match.start_time,
+      teamHome: home,
+      teamAway: away,
+      winnerDisplayName: (winner?.user as unknown as { display_name: string } | null)?.display_name ?? null,
+      winnerPoints: winner ? Number(winner.total_points) : null,
+      userScore: myScore ? Number(myScore.total_points) : 0,
+      userRank: myScore?.rank ?? null,
+      captainName: (selectionForMatch?.captain as unknown as { name: string } | null)?.name ?? null,
+      captainBasePoints,
+      avgScore,
+      maxScore,
+      h2hTarget:
+        h2hDisplayName && h2hScoreMap.has(match.id)
+          ? { displayName: h2hDisplayName, score: h2hScoreMap.get(match.id)! }
+          : null,
+      topPerformers: topPerformersByMatch.get(match.id) ?? [],
+    }
+  })
+
+  // ─── Match Awards (most recent completed match) ────────────────────────────
+  const awards: Award[] = []
+  if (lastMatch && scoresByMatch.has(lastMatch.id)) {
+    const lastMatchScores = scoresByMatch.get(lastMatch.id)!
+
+    // Award: Match Winner
+    const matchWinner = lastMatchScores.find((s) => s.rank === 1)
+    if (matchWinner) {
+      const winnerName = (matchWinner.user as unknown as { display_name: string } | null)?.display_name ?? "—"
+      awards.push({
+        type: "winner",
+        winnerName,
+        detail: `${Math.round(Number(matchWinner.total_points))} pts`,
+        isYou: matchWinner.user_id === user.id,
+      })
+    }
+
+    // Award: Best Captain Pick (max captain_points)
+    const bestCaptain = [...lastMatchScores].sort(
+      (a, b) => Number(b.captain_points) - Number(a.captain_points)
+    )[0]
+    if (bestCaptain && Number(bestCaptain.captain_points) > 0) {
+      const name = (bestCaptain.user as unknown as { display_name: string } | null)?.display_name ?? "—"
+      awards.push({
+        type: "best_captain",
+        winnerName: name,
+        detail: `${Math.round(Number(bestCaptain.captain_points))} pts captain contribution`,
+        isYou: bestCaptain.user_id === user.id,
+      })
+    }
+
+    // Award: Best VC Pick (max vc_points)
+    const bestVC = [...lastMatchScores].sort(
+      (a, b) => Number(b.vc_points) - Number(a.vc_points)
+    )[0]
+    if (bestVC && Number(bestVC.vc_points) > 0) {
+      const name = (bestVC.user as unknown as { display_name: string } | null)?.display_name ?? "—"
+      awards.push({
+        type: "best_vc",
+        winnerName: name,
+        detail: `${Math.round(Number(bestVC.vc_points))} pts VC contribution`,
+        isYou: bestVC.user_id === user.id,
+      })
+    }
+
+    // Award: Biggest Mover (biggest improvement in match rank vs season rank)
+    const movers = lastMatchScores
+      .map((s) => {
+        const seasonEntry = allLeaderboard.find((e) => e.user_id === s.user_id)
+        const seasonRank = seasonEntry ? Number(seasonEntry.season_rank) : null
+        const matchRank = s.rank
+        if (seasonRank == null || matchRank == null) return null
+        return { ...s, movement: seasonRank - matchRank }
+      })
+      .filter(Boolean)
+      .sort((a, b) => b!.movement - a!.movement)
+
+    const biggestMover = movers[0]
+    if (biggestMover && biggestMover.movement > 0) {
+      const name = (biggestMover.user as unknown as { display_name: string } | null)?.display_name ?? "—"
+      awards.push({
+        type: "biggest_mover",
+        winnerName: name,
+        detail: `↑${biggestMover.movement} positions above season rank`,
+        isYou: biggestMover.user_id === user.id,
+      })
+    }
+
+    // Award: Hidden Gem (highest scorer in bottom 30% credit range)
+    const { min: creditMin, max: creditMax } = creditRangeRes
+    const gemThreshold = creditMin + 0.3 * (creditMax - creditMin)
+    if (gemThreshold > 0) {
+      const gemCandidatesRes = await supabase
+        .from("match_player_scores")
+        .select(
+          "fantasy_points, player:players!match_player_scores_player_id_fkey(name, credit_cost)"
+        )
+        .eq("match_id", lastMatch.id)
+        .order("fantasy_points", { ascending: false })
+        .limit(30)
+
+      type GemRow = { fantasy_points: number; player: { name: string; credit_cost: number } | null }
+      const allGemRows = (gemCandidatesRes.data ?? []) as unknown as GemRow[]
+      // Filter in JS to bottom 30% credit range
+      const gem = allGemRows.find(
+        (r) => r.player != null && Number(r.player.credit_cost) <= gemThreshold
+      )
+      if (gem?.player) {
+        awards.push({
+          type: "hidden_gem",
+          winnerName: gem.player.name,
+          detail: `${Math.round(Number(gem.fantasy_points))} pts · credit ${gem.player.credit_cost}`,
+          isYou: false,
+        })
+      }
+    }
+  }
+
+  // ─── Hero data ─────────────────────────────────────────────────────────────
+  const featuredHomePlayers = (featuredHomePlayersRes.data ?? []).map(
+    (p): HeadshotPlayer => ({
+      name: p.name,
+      role: p.role,
+      image_url: p.image_url,
+      team: p.team as unknown as { short_name: string; color: string },
+    })
+  )
+  const featuredAwayPlayers = (featuredAwayPlayersRes.data ?? []).map(
+    (p): HeadshotPlayer => ({
+      name: p.name,
+      role: p.role,
+      image_url: p.image_url,
+      team: p.team as unknown as { short_name: string; color: string },
+    })
+  )
+
   const heroSubmitted = heroMatch ? submittedMatchIds.has(heroMatch.id) : false
   const heroLiveScore = heroMatch ? liveScoreMap.get(heroMatch.id) : undefined
 
-  // Remaining upcoming matches for the carousel (exclude one already used as hero)
-  const isHeroLive = liveMatches.length > 0
-  const remainingMatches = [
-    ...liveMatches.slice(isHeroLive ? 1 : 0),
-    ...(isHeroLive ? upcomingMatches : moreMatches),
-  ]
+  // Carousel matches: first 5 upcoming + any live
+  const carouselMatches = [...liveMatches, ...upcomingMatches].slice(0, 5)
+
+  // Season stats
+  const gapToLead =
+    myRank && allLeaderboard[0]
+      ? Number(myRank.total_points) - Number(allLeaderboard[0].total_points)
+      : null
+
+  const lastMatchLabel = lastMatch
+    ? (() => {
+        const home = lastMatch.team_home as unknown as { short_name: string }
+        const away = lastMatch.team_away as unknown as { short_name: string }
+        return `${home.short_name} vs ${away.short_name} · M${lastMatch.match_number}`
+      })()
+    : ""
 
   return (
     <PageTransition>
-
-      <div className="space-y-6 pb-10">
-        {/* ── Cinematic Hero (70vh cover) ────────────────── */}
+      <div className="pb-10">
+        {/* ── Cinematic Hero (296px) ─────────────────────────── */}
         {heroMatch ? (
           <CinematicHero
             match={heroMatch as Parameters<typeof CinematicHero>[0]["match"]}
@@ -166,91 +502,113 @@ export default async function DashboardPage() {
             featuredAwayPlayers={featuredAwayPlayers}
           />
         ) : (
-          <section className="px-4 md:px-6 pt-8 pb-2">
-            <div className="max-w-2xl lg:max-w-5xl mx-auto flex items-center gap-3">
-              <Image src="/icons/icon-192.png" alt="TIPL" width={40} height={40} />
-              <div>
-                <h1 className="text-2xl font-bold font-display tracking-tight">Hey, {firstName} 🏏</h1>
-                <p className="text-sm text-muted-foreground">TIPL Fantasy 2026</p>
-              </div>
-            </div>
-          </section>
+          <div className="px-4 pt-8 pb-4">
+            <h1 className="text-2xl font-display font-bold">TIPL Fantasy 2026</h1>
+            <p className="text-sm text-muted-foreground mt-1">No matches scheduled</p>
+          </div>
         )}
 
-        {/* ── Padded content ────────────────────────────── */}
-        <div className="px-4 md:px-6 max-w-2xl lg:max-w-5xl mx-auto space-y-6">
-          {/* Form Strip */}
-          <FormStrip
-            rank={myRank?.season_rank ?? null}
-            points={myRank?.total_points ?? 0}
-            streak={streak}
-            avgPerMatch={(myRank as unknown as { avg_points?: number })?.avg_points ?? null}
-          />
+        {/* ── Content ────────────────────────────────────────── */}
+        <div className="px-4 md:px-6 max-w-2xl lg:max-w-5xl mx-auto mt-5 space-y-6">
 
-          {/* Two-column desktop grid */}
-          <div className="lg:grid lg:grid-cols-5 lg:gap-6">
-            {/* Left column */}
-            <div className="lg:col-span-3 space-y-6">
-              {/* Recent Match Recap */}
-              {lastMatch && lastMatchScore && (() => {
-                const home = lastMatch.team_home as unknown as { short_name: string; name?: string | null; color: string; logo_url?: string | null }
-                const away = lastMatch.team_away as unknown as { short_name: string; name?: string | null; color: string; logo_url?: string | null }
-                return (
-                  <RecentMatchRecap
-                    matchId={lastMatch.id}
-                    matchNumber={lastMatch.match_number}
-                    resultSummary={lastMatch.result_summary ?? format(new Date(lastMatch.start_time), "MMM d")}
-                    teamHome={home}
-                    teamAway={away}
-                    totalPoints={lastMatchScore.total_points}
-                    rank={lastMatchScore.rank}
-                    captainName={lastCaptainName}
-                  />
-                )
-              })()}
+          {/* Your Season section */}
+          <div className="space-y-4">
+            <SectionHeader title="Your Season" />
 
-              {/* Upcoming Matches Carousel */}
-              {remainingMatches.length > 0 && (
-                <div className="space-y-3">
-                  <SectionHeader title="Upcoming" href="/matches" linkLabel="See all" />
-                  <div className="flex gap-3 overflow-x-auto scrollbar-hide snap-x-mandatory pb-2 -mx-4 px-4">
-                    {remainingMatches.map((match) => (
-                      <MatchCard
-                        key={match.id}
-                        match={match as unknown as Parameters<typeof MatchCard>[0]["match"]}
-                        hasSubmitted={submittedMatchIds.has(match.id)}
-                        compact
-                      />
-                    ))}
-                  </div>
-                </div>
-              )}
-            </div>
+            <RankBlock
+              rank={myRank?.season_rank ?? null}
+              totalPlayers={totalPlayers}
+              points={Number(myRank?.total_points ?? 0)}
+              avgPerMatch={myRank ? Number((myRank as unknown as { avg_points?: number }).avg_points ?? 0) : null}
+              gapToLead={gapToLead}
+            />
 
-            {/* Right column */}
-            <div className="lg:col-span-2 space-y-6 mt-6 lg:mt-0">
-              {/* Season Standings */}
-              <div className="space-y-3">
-                <SectionHeader title="Season Standings" href="/leaderboard" linkLabel="Full Table" />
+            <OnTheBubble
+              target={
+                bubbleTarget
+                  ? {
+                      displayName: bubbleTarget.display_name,
+                      rank: Number(bubbleTarget.season_rank),
+                      gap: Number(myRank?.total_points ?? 0) - Number(bubbleTarget.total_points),
+                    }
+                  : null
+              }
+              threat={
+                bubbleThreat
+                  ? {
+                      displayName: bubbleThreat.display_name,
+                      rank: Number(bubbleThreat.season_rank),
+                      gap: Number(myRank?.total_points ?? 0) - Number(bubbleThreat.total_points),
+                    }
+                  : null
+              }
+            />
 
-                {/* Top-3 visual podium (hero) */}
-                {(top6?.length ?? 0) > 0 && (
-                  <PodiumCard
-                    entries={(top6 ?? []) as unknown as Parameters<typeof PodiumCard>[0]["entries"]}
-                    currentUserId={user.id}
-                  />
-                )}
-
-                {/* Full top-6 table (data) */}
-                <StandingsTable
-                  entries={(top6 ?? []) as unknown as Parameters<typeof StandingsTable>[0]["entries"]}
-                  currentUserId={user.id}
-                  myRank={myRank as unknown as Parameters<typeof StandingsTable>[0]["myRank"]}
-                />
-              </div>
-
-            </div>
+            <MatchWinCabinet
+              wins={matchWins.map((w) => ({
+                matchId: w.match_id,
+                matchNumber: (w.match as { match_number: number } | null)?.match_number ?? 0,
+              }))}
+              winsRank={winsRank}
+              totalMatches={completedMatches.length}
+            />
           </div>
+
+          <Divider />
+
+          {/* Championship Standings */}
+          <div className="space-y-3">
+            <SectionHeader title="Championship Standings" href="/leaderboard" linkLabel="Full table ›" />
+            <StandingsTable
+              entries={allLeaderboard.slice(0, 6) as unknown as Parameters<typeof StandingsTable>[0]["entries"]}
+              currentUserId={user.id}
+              myRank={myRank as unknown as Parameters<typeof StandingsTable>[0]["myRank"]}
+            />
+          </div>
+
+          <Divider />
+
+          {/* Upcoming Matches */}
+          {carouselMatches.length > 0 && (
+            <div className="space-y-3">
+              <SectionHeader title="Upcoming Matches" href="/matches" linkLabel="See all ›" />
+              <UpcomingCarousel
+                matches={carouselMatches as unknown as Parameters<typeof UpcomingCarousel>[0]["matches"]}
+                pickedMatchIds={submittedMatchIds}
+              />
+            </div>
+          )}
+
+          {carouselMatches.length > 0 && <Divider />}
+
+          {/* Last 3 Match Results */}
+          {matchResultsData.length > 0 && (
+            <div className="space-y-3">
+              <SectionHeader title="Last 3 Match Results" />
+              <div className="space-y-3">
+                {matchResultsData.map((data) => (
+                  <MatchResultCard key={data.matchId} data={data} />
+                ))}
+              </div>
+            </div>
+          )}
+
+          {matchResultsData.length > 0 && awards.length > 0 && <Divider />}
+
+          {/* Match Awards */}
+          {awards.length > 0 && lastMatch && (
+            <div className="space-y-3">
+              <SectionHeader
+                title={`Match ${lastMatch.match_number} Awards`}
+                subtitle={lastMatchLabel}
+              />
+              <MatchAwards
+                awards={awards}
+                matchLabel={lastMatchLabel}
+                matchId={lastMatch.id}
+              />
+            </div>
+          )}
         </div>
       </div>
     </PageTransition>
@@ -259,21 +617,28 @@ export default async function DashboardPage() {
 
 function SectionHeader({
   title,
+  subtitle,
   href,
-  linkLabel = "See all",
+  linkLabel,
 }: {
   title: string
+  subtitle?: string
   href?: string
   linkLabel?: string
 }) {
   return (
-    <div className="flex items-center justify-between">
-      <h2 className="flex items-center gap-2 text-[11px] font-display font-bold uppercase tracking-widest text-muted-foreground">
-        <span className="h-3.5 w-0.5 rounded-full bg-primary shrink-0" aria-hidden />
-        {title}
-      </h2>
-      {href && (
-        <Link href={href} className="text-xs text-primary font-semibold flex items-center gap-0.5">
+    <div className="flex items-start justify-between gap-2">
+      <div>
+        <h2 className="flex items-center gap-2 text-[11px] font-display font-bold uppercase tracking-widest text-muted-foreground">
+          <span className="h-3.5 w-0.5 rounded-full bg-primary shrink-0" aria-hidden />
+          {title}
+        </h2>
+        {subtitle && (
+          <p className="text-[10px] text-muted-foreground/60 mt-0.5 pl-[10px]">{subtitle}</p>
+        )}
+      </div>
+      {href && linkLabel && (
+        <Link href={href} className="text-xs text-primary font-semibold shrink-0 flex items-center gap-0.5">
           {linkLabel} <ChevronRight className="h-3 w-3" />
         </Link>
       )}
@@ -281,3 +646,6 @@ function SectionHeader({
   )
 }
 
+function Divider() {
+  return <div className="border-t border-white/[0.05]" />
+}
