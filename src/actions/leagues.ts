@@ -2,6 +2,7 @@
 
 import { createClient } from "@/lib/supabase/server"
 import { createAdminClient } from "@/lib/supabase/admin"
+import { unstable_cache } from "next/cache"
 import type { LeagueWithMemberCount, LeagueLeaderboardEntry, LeagueMemberStats, LeagueMatchScore } from "@/lib/types"
 import crypto from "crypto"
 
@@ -207,31 +208,41 @@ export async function getLeagueWithMembers(leagueId: string) {
   return { league, members: members ?? [], isCreator: league.creator_id === user.id }
 }
 
-export async function getLeagueLeaderboard(
-  leagueId: string
-): Promise<LeagueLeaderboardEntry[]> {
-  const admin = createAdminClient()
-  const { data, error } = await admin.rpc("get_league_leaderboard", {
-    p_league_id: leagueId,
-  })
-  if (error) return []
-  return (data ?? []) as LeagueLeaderboardEntry[]
-}
+export const getLeagueLeaderboard = unstable_cache(
+  async (leagueId: string): Promise<LeagueLeaderboardEntry[]> => {
+    const admin = createAdminClient()
+    const { data, error } = await admin.rpc("get_league_leaderboard", {
+      p_league_id: leagueId,
+    })
+    if (error) return []
+    return (data ?? []) as LeagueLeaderboardEntry[]
+  },
+  ["league-leaderboard"],
+  { tags: ["league-data"], revalidate: 60 }
+)
 
-export async function getLeagueAwards(leagueId: string): Promise<LeagueMemberStats[]> {
-  const admin = createAdminClient()
-  const { data, error } = await admin.rpc("get_league_awards", {
-    p_league_id: leagueId,
-  })
-  if (error) return []
-  return (data ?? []) as LeagueMemberStats[]
-}
+export const getLeagueAwards = unstable_cache(
+  async (leagueId: string): Promise<LeagueMemberStats[]> => {
+    const admin = createAdminClient()
+    const { data, error } = await admin.rpc("get_league_awards", {
+      p_league_id: leagueId,
+    })
+    if (error) return []
+    return (data ?? []) as LeagueMemberStats[]
+  },
+  ["league-awards"],
+  { tags: ["league-data"], revalidate: 60 }
+)
 
-export async function getLeagueMatchScores(leagueId: string): Promise<LeagueMatchScore[]> {
-  const admin = createAdminClient()
-  const { data, error } = await admin.rpc("get_league_match_scores", {
-    p_league_id: leagueId,
-  })
-  if (error) return []
-  return (data ?? []) as LeagueMatchScore[]
-}
+export const getLeagueMatchScores = unstable_cache(
+  async (leagueId: string): Promise<LeagueMatchScore[]> => {
+    const admin = createAdminClient()
+    const { data, error } = await admin.rpc("get_league_match_scores", {
+      p_league_id: leagueId,
+    })
+    if (error) return []
+    return (data ?? []) as LeagueMatchScore[]
+  },
+  ["league-match-scores"],
+  { tags: ["league-data"], revalidate: 60 }
+)

@@ -62,6 +62,7 @@ export async function savePlayerScores(
   const { error } = await admin.from("match_player_scores").insert(rows)
   if (error) return { error: error.message }
   revalidateTag("player-stats", "hours")
+  revalidateTag("league-data", "minutes")
   return { success: true }
 }
 
@@ -205,6 +206,8 @@ export async function calculateMatchPoints(matchId: string) {
   await admin.rpc("refresh_leaderboard")
   revalidateTag("player-stats", "hours")
   revalidateTag("matches", "minutes")
+  revalidateTag("leaderboard", "minutes")
+  revalidateTag("league-data", "minutes")
 
   // Fire-and-forget: update player stats tables (season/venue/vs-team)
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
@@ -399,6 +402,8 @@ export async function recalculateUserMatchScores(matchId: string) {
 
   await admin.rpc("refresh_leaderboard")
   revalidateTag("player-stats", "hours")
+  revalidateTag("leaderboard", "minutes")
+  revalidateTag("league-data", "minutes")
 }
 
 /**
@@ -485,6 +490,8 @@ export async function applyPotmBonus(matchId: string) {
   // Recalculate user scores with updated POTM
   await recalculateUserMatchScores(matchId)
   revalidateTag("player-stats", "hours")
+  revalidateTag("leaderboard", "minutes")
+  revalidateTag("league-data", "minutes")
 
   return { success: true, playerName: potmPlayer.name, bonus: potmPts }
 }

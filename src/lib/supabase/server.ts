@@ -8,6 +8,18 @@ export const getAuthUser = cache(async () => {
   return user
 })
 
+export const getMyProfile = cache(async () => {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return null
+  const { data } = await supabase
+    .from("profiles")
+    .select("display_name, avatar_url, is_admin")
+    .eq("id", user.id)
+    .single()
+  return data ?? null
+})
+
 export async function createClient() {
   const cookieStore = await cookies()
 

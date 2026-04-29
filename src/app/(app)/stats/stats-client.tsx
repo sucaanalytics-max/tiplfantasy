@@ -1,6 +1,7 @@
 "use client"
 
 import Link from "next/link"
+import Image from "next/image"
 import { ArrowLeft } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
@@ -39,8 +40,7 @@ function StatRow({ rank, player, stat, sub, accent }: { rank: number; player: Pl
         {rank}
       </span>
       {player.logoUrl ? (
-        // eslint-disable-next-line @next/next/no-img-element
-        <img src={player.logoUrl} alt={player.team} className="w-6 h-6 rounded-full object-contain shrink-0" />
+        <Image src={player.logoUrl} alt={player.team} width={24} height={24} className="rounded-full object-contain shrink-0" />
       ) : (
         <div
           className="w-6 h-6 rounded-full flex items-center justify-center text-[9px] font-bold text-white shrink-0"
@@ -199,8 +199,7 @@ export function StatsClient({ players, matchCount }: { players: PlayerAgg[]; mat
               {i + 1}
             </span>
             {p.logoUrl ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img src={p.logoUrl} alt={p.team} className="w-6 h-6 rounded-full object-contain shrink-0" />
+              <Image src={p.logoUrl} alt={p.team} width={24} height={24} className="rounded-full object-contain shrink-0" />
             ) : (
               <div
                 className="w-6 h-6 rounded-full flex items-center justify-center text-[9px] font-bold text-white shrink-0"

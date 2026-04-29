@@ -1,4 +1,6 @@
 import { createClient, getAuthUser } from "@/lib/supabase/server"
+import { createAdminClient } from "@/lib/supabase/admin"
+import { unstable_cache } from "next/cache"
 import { redirect } from "next/navigation"
 import Link from "next/link"
 import { ChevronRight } from "lucide-react"
@@ -15,11 +17,44 @@ import type { MatchResultData, TopPerformer } from "@/components/match-result-ca
 import type { Award, AwardType } from "@/components/match-awards"
 import type { HeadshotPlayer } from "@/components/player-headshot"
 
+// ─── Cached server-side queries (shared TTL with scoring invalidation) ────────
+
+const getCachedMatches = unstable_cache(
+  async () => {
+    const admin = createAdminClient()
+    const { data } = await admin
+      .from("matches")
+      .select(
+        "*, team_home:teams!matches_team_home_id_fkey(name, short_name, color, logo_url), team_away:teams!matches_team_away_id_fkey(name, short_name, color, logo_url)"
+      )
+      .order("start_time", { ascending: false })
+      .limit(80)
+    return data ?? []
+  },
+  ["dashboard-matches"],
+  { tags: ["matches"], revalidate: 60 }
+)
+
+const getCachedLeaderboard = unstable_cache(
+  async () => {
+    const admin = createAdminClient()
+    const { data } = await admin
+      .from("season_leaderboard")
+      .select("user_id, season_rank, total_points, display_name, avg_points, matches_played, first_place_count")
+      .order("season_rank", { ascending: true })
+    return data ?? []
+  },
+  ["dashboard-leaderboard"],
+  { tags: ["leaderboard"], revalidate: 60 }
+)
+
+// ─── Page ─────────────────────────────────────────────────────────────────────
+
 export default async function DashboardPage() {
   const [user, supabase] = await Promise.all([getAuthUser(), createClient()])
   if (!user) redirect("/login")
 
-  // ─── Phase 1: all queries that depend only on user.id ─────────────────────
+  // ─── Phase 1: cached public data + user-specific query in parallel ──────────
   const emptyPlayers = {
     data: [] as Array<{
       name: string
@@ -29,32 +64,18 @@ export default async function DashboardPage() {
     }>,
   }
 
-  const [profileRes, myRankRes, allMatchesRes, allLeaderboardRes, matchWinCabinetRes] =
-    await Promise.all([
-      supabase.from("profiles").select("display_name, avatar_url").eq("id", user.id).single(),
-      supabase.from("season_leaderboard").select("*").eq("user_id", user.id).maybeSingle(),
-      supabase
-        .from("matches")
-        .select(
-          "*, team_home:teams!matches_team_home_id_fkey(name, short_name, color, logo_url), team_away:teams!matches_team_away_id_fkey(name, short_name, color, logo_url)"
-        )
-        .order("start_time", { ascending: false })
-        .limit(80),
-      supabase
-        .from("season_leaderboard")
-        .select("*")
-        .order("season_rank", { ascending: true }),
-      supabase
-        .from("user_match_scores")
-        .select("match_id, match:matches!user_match_scores_match_id_fkey(match_number)")
-        .eq("user_id", user.id)
-        .eq("rank", 1)
-        .order("created_at", { ascending: false }),
-    ])
+  const [allMatches, allLeaderboard, matchWinCabinetRes] = await Promise.all([
+    getCachedMatches(),
+    getCachedLeaderboard(),
+    supabase
+      .from("user_match_scores")
+      .select("match_id, match:matches!user_match_scores_match_id_fkey(match_number)")
+      .eq("user_id", user.id)
+      .eq("rank", 1)
+      .order("created_at", { ascending: false }),
+  ])
 
-  const myRank = myRankRes.data
-  const allLeaderboard = allLeaderboardRes.data ?? []
-  const allMatches = allMatchesRes.data ?? []
+  const myRank = allLeaderboard.find((e) => e.user_id === user.id) ?? null
 
   const liveMatches = allMatches.filter((m) => m.status === "live")
   const upcomingMatches = allMatches
