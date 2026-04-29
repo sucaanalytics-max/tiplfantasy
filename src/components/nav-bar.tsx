@@ -11,6 +11,8 @@ import {
   Shield,
   LogOut,
   BookOpen,
+  PanelLeftOpen,
+  PanelLeftClose,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { createClient } from "@/lib/supabase/client"
@@ -39,7 +41,15 @@ const sidebarNavItems = [
 
 const adminItem = { href: "/admin", label: "Admin", icon: Shield }
 
-export function NavBar({ isAdmin = false }: { isAdmin?: boolean }) {
+export function NavBar({
+  isAdmin = false,
+  collapsed = false,
+  onToggle,
+}: {
+  isAdmin?: boolean
+  collapsed?: boolean
+  onToggle?: () => void
+}) {
   const pathname = usePathname()
   const router = useRouter()
 
@@ -83,19 +93,31 @@ export function NavBar({ isAdmin = false }: { isAdmin?: boolean }) {
       </nav>
 
       {/* Desktop sidebar */}
-      <aside aria-label="Sidebar navigation" className="hidden md:flex fixed left-0 top-0 bottom-0 z-40 w-56 flex-col glass-subtle border-r border-overlay-border">
-        <div className="p-4 pb-6 flex items-center gap-3">
+      <aside
+        aria-label="Sidebar navigation"
+        className={cn(
+          "hidden md:flex fixed left-0 top-0 bottom-0 z-40 flex-col glass-subtle border-r border-overlay-border transition-[width] duration-200",
+          collapsed ? "w-14" : "w-56"
+        )}
+      >
+        {/* Header: logo + branding */}
+        <div className={cn("flex items-center", collapsed ? "justify-center p-3 pb-5" : "gap-3 p-4 pb-6")}>
           <Image
             src="/icons/icon-192.png"
             alt="TIPL"
-            width={44}
-            height={44}
+            width={collapsed ? 32 : 44}
+            height={collapsed ? 32 : 44}
+            className="shrink-0"
           />
-          <div>
-            <h1 className="text-xl font-bold italic tracking-tight text-primary font-display">TIPL <span className="not-italic text-foreground/80">Fantasy</span></h1>
-            <p className="text-xs text-muted-foreground">Cricket 2026</p>
-          </div>
+          {!collapsed && (
+            <div>
+              <h1 className="text-xl font-bold italic tracking-tight text-primary font-display">TIPL <span className="not-italic text-foreground/80">Fantasy</span></h1>
+              <p className="text-xs text-muted-foreground">Cricket 2026</p>
+            </div>
+          )}
         </div>
+
+        {/* Nav items */}
         <nav className="flex-1 px-2 space-y-1">
           {sidebarNavItems.map((item) => {
             const Icon = item.icon
@@ -104,16 +126,20 @@ export function NavBar({ isAdmin = false }: { isAdmin?: boolean }) {
               <Link
                 key={item.href}
                 href={item.href}
+                title={collapsed ? item.label : undefined}
                 className={cn(
-                  "flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm transition-colors",
+                  "flex items-center rounded-lg py-2.5 text-sm transition-colors",
+                  collapsed ? "justify-center px-2" : "gap-3 px-3",
                   active
-                    ? "bg-primary/10 text-primary border border-primary/20 border-l-2 border-l-primary shadow-[0_0_16px_oklch(0.68_0.22_35/0.25)]"
+                    ? collapsed
+                      ? "bg-primary/10 text-primary border border-primary/20 shadow-[0_0_16px_oklch(0.68_0.22_35/0.25)]"
+                      : "bg-primary/10 text-primary border border-primary/20 border-l-2 border-l-primary shadow-[0_0_16px_oklch(0.68_0.22_35/0.25)]"
                     : "text-muted-foreground hover:bg-secondary hover:text-foreground"
                 )}
                 aria-current={active ? "page" : undefined}
               >
-                <Icon className="h-4 w-4" aria-hidden="true" />
-                {item.label}
+                <Icon className="h-4 w-4 shrink-0" aria-hidden="true" />
+                {!collapsed && item.label}
               </Link>
             )
           })}
@@ -121,31 +147,59 @@ export function NavBar({ isAdmin = false }: { isAdmin?: boolean }) {
           {/* Admin section — visually separated below the divider */}
           {isAdmin && (
             <>
-              <div className="my-2 mx-3 h-px bg-overlay-border" aria-hidden />
+              <div className={cn("h-px bg-overlay-border", collapsed ? "my-2 mx-1" : "my-2 mx-3")} aria-hidden />
               <Link
                 href={adminItem.href}
+                title={collapsed ? adminItem.label : undefined}
                 className={cn(
-                  "flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm transition-colors",
+                  "flex items-center rounded-lg py-2.5 text-sm transition-colors",
+                  collapsed ? "justify-center px-2" : "gap-3 px-3",
                   isActive(adminItem.href)
-                    ? "bg-primary/10 text-primary border border-primary/20 border-l-2 border-l-primary shadow-[0_0_16px_oklch(0.68_0.22_35/0.25)]"
+                    ? collapsed
+                      ? "bg-primary/10 text-primary border border-primary/20 shadow-[0_0_16px_oklch(0.68_0.22_35/0.25)]"
+                      : "bg-primary/10 text-primary border border-primary/20 border-l-2 border-l-primary shadow-[0_0_16px_oklch(0.68_0.22_35/0.25)]"
                     : "text-muted-foreground hover:bg-secondary hover:text-foreground"
                 )}
                 aria-current={isActive(adminItem.href) ? "page" : undefined}
               >
-                <adminItem.icon className="h-4 w-4" aria-hidden="true" />
-                {adminItem.label}
+                <adminItem.icon className="h-4 w-4 shrink-0" aria-hidden="true" />
+                {!collapsed && adminItem.label}
               </Link>
             </>
           )}
         </nav>
+
+        {/* Bottom actions */}
         <div className="p-2 border-t border-overlay-border space-y-1">
-          <ThemeToggle showLabel className="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm text-muted-foreground hover:bg-secondary hover:text-foreground transition-colors w-full" />
+          <ThemeToggle
+            showLabel={!collapsed}
+            className={cn(
+              "flex items-center rounded-lg py-2.5 text-sm text-muted-foreground hover:bg-secondary hover:text-foreground transition-colors w-full",
+              collapsed ? "justify-center px-2" : "gap-3 px-3"
+            )}
+            title={collapsed ? "Toggle theme" : undefined}
+          />
           <button
             onClick={handleSignOut}
-            className="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm text-muted-foreground hover:bg-destructive/10 hover:text-[var(--tw-red-text)] transition-colors w-full"
+            title={collapsed ? "Sign out" : undefined}
+            className={cn(
+              "flex items-center rounded-lg py-2.5 text-sm text-muted-foreground hover:bg-destructive/10 hover:text-[var(--tw-red-text)] transition-colors w-full",
+              collapsed ? "justify-center px-2" : "gap-3 px-3"
+            )}
           >
-            <LogOut className="h-4 w-4" />
-            Sign Out
+            <LogOut className="h-4 w-4 shrink-0" />
+            {!collapsed && "Sign Out"}
+          </button>
+          <button
+            onClick={onToggle}
+            title={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+            className={cn(
+              "flex items-center rounded-lg py-2.5 text-sm text-muted-foreground hover:bg-secondary hover:text-foreground transition-colors w-full",
+              collapsed ? "justify-center px-2" : "gap-3 px-3"
+            )}
+          >
+            {collapsed ? <PanelLeftOpen className="h-4 w-4 shrink-0" /> : <PanelLeftClose className="h-4 w-4 shrink-0" />}
+            {!collapsed && <span>Collapse</span>}
           </button>
         </div>
       </aside>

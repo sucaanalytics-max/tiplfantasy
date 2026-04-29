@@ -481,53 +481,87 @@ export function PickTeamClient({
       {/* ── Sticky picker context bar ─────────────────────────── */}
       <div className="sticky top-0 z-30 bg-background border-b border-overlay-border">
 
-        {/* Row 1: Picker pills (X/11 · team counts · countdown) */}
-        <div className="px-3 pt-3 pb-2 flex items-center gap-2 overflow-x-auto scrollbar-hide">
-          <button
-            onClick={() => router.back()}
-            className="shrink-0 h-8 w-8 rounded-full glass-panel flex items-center justify-center text-muted-foreground"
-            aria-label="Back"
-          >
-            <ChevronLeft className="h-4 w-4" />
-          </button>
+        {/* Row 1: Picker pills (X/11 · team counts · countdown) + mode toggle on desktop */}
+        <div className="px-3 pt-3 pb-2 flex items-center gap-2">
+          {/* Scrollable pills */}
+          <div className="flex items-center gap-2 overflow-x-auto scrollbar-hide flex-1 min-w-0">
+            <button
+              onClick={() => router.back()}
+              className="shrink-0 h-8 w-8 rounded-full glass-panel flex items-center justify-center text-muted-foreground"
+              aria-label="Back"
+            >
+              <ChevronLeft className="h-4 w-4" />
+            </button>
 
-          {/* Players X/11 pill */}
-          <div className="glass-panel rounded-full px-3 py-1.5 flex items-center gap-1.5 shrink-0">
-            <span className="text-2xs uppercase tracking-wider text-muted-foreground font-medium">Players</span>
-            <span className="text-gold-stat text-base leading-none">{selectedIds.size}<span className="text-muted-foreground text-xs">/11</span></span>
+            {/* Players X/11 pill */}
+            <div className="glass-panel rounded-full px-3 py-1.5 flex items-center gap-1.5 shrink-0">
+              <span className="text-2xs uppercase tracking-wider text-muted-foreground font-medium">Players</span>
+              <span className="text-gold-stat text-base leading-none">{selectedIds.size}<span className="text-muted-foreground text-xs">/11</span></span>
+            </div>
+
+            {/* Home team count pill */}
+            <div
+              className="glass-panel rounded-full px-3 py-1.5 flex items-center gap-1.5 shrink-0"
+              style={{ borderColor: `${match.team_home.color}55` }}
+            >
+              <TeamLogo team={match.team_home} size="sm" />
+              <span className="text-2xs font-bold" style={{ color: match.team_home.color }}>
+                {(match.team_home as unknown as { short_name: string }).short_name}
+              </span>
+              <span className="font-display font-bold text-sm tabular-nums">
+                {teamCount.get(match.team_home_id) ?? 0}
+              </span>
+            </div>
+
+            {/* Away team count pill */}
+            <div
+              className="glass-panel rounded-full px-3 py-1.5 flex items-center gap-1.5 shrink-0"
+              style={{ borderColor: `${match.team_away.color}55` }}
+            >
+              <TeamLogo team={match.team_away} size="sm" />
+              <span className="text-2xs font-bold" style={{ color: match.team_away.color }}>
+                {(match.team_away as unknown as { short_name: string }).short_name}
+              </span>
+              <span className="font-display font-bold text-sm tabular-nums">
+                {teamCount.get(match.team_away_id) ?? 0}
+              </span>
+            </div>
+
+            {/* Countdown pill */}
+            <div className="glass-panel rounded-full px-3 py-1.5 flex items-center gap-1.5 shrink-0 ml-auto">
+              <CountdownTimer targetTime={match.start_time} variant="compact" />
+            </div>
           </div>
 
-          {/* Home team count pill */}
-          <div
-            className="glass-panel rounded-full px-3 py-1.5 flex items-center gap-1.5 shrink-0"
-            style={{ borderColor: `${match.team_home.color}55` }}
-          >
-            <TeamLogo team={match.team_home} size="sm" />
-            <span className="text-2xs font-bold" style={{ color: match.team_home.color }}>
-              {(match.team_home as unknown as { short_name: string }).short_name}
-            </span>
-            <span className="font-display font-bold text-sm tabular-nums">
-              {teamCount.get(match.team_home_id) ?? 0}
-            </span>
-          </div>
-
-          {/* Away team count pill */}
-          <div
-            className="glass-panel rounded-full px-3 py-1.5 flex items-center gap-1.5 shrink-0"
-            style={{ borderColor: `${match.team_away.color}55` }}
-          >
-            <TeamLogo team={match.team_away} size="sm" />
-            <span className="text-2xs font-bold" style={{ color: match.team_away.color }}>
-              {(match.team_away as unknown as { short_name: string }).short_name}
-            </span>
-            <span className="font-display font-bold text-sm tabular-nums">
-              {teamCount.get(match.team_away_id) ?? 0}
-            </span>
-          </div>
-
-          {/* Countdown pill */}
-          <div className="glass-panel rounded-full px-3 py-1.5 flex items-center gap-1.5 shrink-0 ml-auto">
-            <CountdownTimer targetTime={match.start_time} variant="compact" />
+          {/* Mode toggle — desktop only, inline with pills row */}
+          <div role="tablist" aria-label="Pick view mode" className="hidden md:flex shrink-0 gap-1 p-0.5 rounded-lg bg-secondary/50 border border-overlay-border ml-2">
+            {(
+              [
+                { key: "list", label: "List", Icon: ListIcon },
+                { key: "pitch", label: "Pitch", Icon: MapIcon },
+                { key: "research", label: "Research", Icon: TableIcon },
+              ] as const
+            ).map(({ key, label, Icon }) => {
+              const active = pickMode === key
+              return (
+                <button
+                  key={key}
+                  type="button"
+                  role="tab"
+                  aria-selected={active}
+                  onClick={() => setPickMode(key)}
+                  className={cn(
+                    "px-3 py-1.5 rounded-md text-xs font-display font-bold uppercase tracking-wider transition-colors flex items-center gap-1.5",
+                    active
+                      ? "bg-card text-foreground shadow-sm"
+                      : "text-muted-foreground hover:text-foreground"
+                  )}
+                >
+                  <Icon className="h-3.5 w-3.5" />
+                  {label}
+                </button>
+              )
+            })}
           </div>
         </div>
 
@@ -550,11 +584,10 @@ export function PickTeamClient({
               )
             })}
           </div>
-          <p className="text-center text-[10px] text-muted-foreground mt-1">Max 7 from a team</p>
         </div>
 
-        {/* Mode toggle: List · Pitch · Research */}
-        <div className="px-3 pb-2">
+        {/* Mode toggle: List · Pitch · Research — mobile only */}
+        <div className="px-3 pb-2 md:hidden">
           <div role="tablist" aria-label="Pick view mode" className="flex gap-1 p-0.5 rounded-lg bg-secondary/50 border border-overlay-border w-fit mx-auto">
             {(
               [

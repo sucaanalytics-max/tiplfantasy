@@ -7,9 +7,11 @@ import { useEffect, useState } from "react"
 export function ThemeToggle({
   className,
   showLabel = false,
+  title,
 }: {
   className?: string
   showLabel?: boolean
+  title?: string
 }) {
   const { resolvedTheme, setTheme } = useTheme()
   const [mounted, setMounted] = useState(false)
@@ -18,7 +20,7 @@ export function ThemeToggle({
 
   if (!mounted) {
     return (
-      <button className={className} aria-label="Toggle theme">
+      <button className={className} title={title} aria-label="Toggle theme">
         <Sun className="h-4 w-4" />
         {showLabel && <span>Light Mode</span>}
       </button>
@@ -31,6 +33,7 @@ export function ThemeToggle({
     <button
       onClick={() => setTheme(isDark ? "light" : "dark")}
       className={className}
+      title={title}
       aria-label="Toggle theme"
     >
       {isDark ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
