@@ -21,7 +21,7 @@ export default async function ScoresPage({
   const admin = createAdminClient()
 
   // All queries in parallel
-  const [matchRes, playerScoresRes, userScoresRes, mySelectionRes, allSelectionsRes, captainPicksRes, vcPicksRes, banterRes, myLeaguesRes, snapshotsRes] = await Promise.all([
+  const [matchRes, playerScoresRes, userScoresRes, mySelectionRes, allSelectionsRes, banterRes, myLeaguesRes, snapshotsRes] = await Promise.all([
     admin
       .from("matches")
       .select("*, team_home:teams!matches_team_home_id_fkey(name, short_name, color, logo_url), team_away:teams!matches_team_away_id_fkey(name, short_name, color, logo_url)")
@@ -49,27 +49,15 @@ export default async function ScoresPage({
       .single(),
     admin
       .from("selections")
-      .select("user_id, captain_id, vice_captain_id, selection_players(player_id)")
+      .select("user_id, captain_id, vice_captain_id, captain:players!selections_captain_id_fkey(name), vc:players!selections_vice_captain_id_fkey(name), selection_players(player_id)")
       .eq("match_id", id)
-      .limit(200),
-    admin
-      .from("selections")
-      .select("user_id, captain_id, captain:players!selections_captain_id_fkey(name)")
-      .eq("match_id", id)
-      .not("captain_id", "is", null)
-      .limit(200),
-    admin
-      .from("selections")
-      .select("user_id, vice_captain_id, vc:players!selections_vice_captain_id_fkey(name)")
-      .eq("match_id", id)
-      .not("vice_captain_id", "is", null)
       .limit(200),
     admin
       .from("match_banter")
       .select("message, event_type")
       .eq("match_id", id)
       .order("created_at", { ascending: false })
-      .limit(200),
+      .limit(50),
     admin
       .from("league_members")
       .select("league_id, leagues(id, name)")
@@ -118,13 +106,10 @@ export default async function ScoresPage({
     : []
 
   const captainPicks: Record<string, { name: string }> = {}
-  for (const s of captainPicksRes.data ?? []) {
-    captainPicks[s.user_id] = { name: (s.captain as unknown as { name: string })?.name ?? "—" }
-  }
-
   const vcPicks: Record<string, { name: string }> = {}
-  for (const s of vcPicksRes.data ?? []) {
-    vcPicks[s.user_id] = { name: (s.vc as unknown as { name: string })?.name ?? "—" }
+  for (const s of allSelectionsRes.data ?? []) {
+    if (s.captain_id) captainPicks[s.user_id] = { name: (s.captain as unknown as { name: string })?.name ?? "—" }
+    if (s.vice_captain_id) vcPicks[s.user_id] = { name: (s.vc as unknown as { name: string })?.name ?? "—" }
   }
 
   // Build league filter data
