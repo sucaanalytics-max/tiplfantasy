@@ -359,3 +359,78 @@ export type LeagueMatchScore = {
 }
 
 // Season Predictions
+
+// ============================================================
+// Insights & Analytics types
+// ============================================================
+
+export type CaptainAnalyticsRow = {
+  user_id: string
+  display_name: string
+  total_captain_pts: number
+  total_optimal_pts: number
+  opportunity_cost: number  // total_optimal_pts - total_captain_pts
+  hit_rate_pct: number       // 0-100, captain base pts >= 50 counts as hit
+  matches_played: number
+}
+
+export type CaptainMatchHistoryRow = {
+  match_id: string
+  match_number: number
+  matchup: string             // "RCB vs SRH"
+  captain_id: string
+  captain_name: string
+  actual_pts: number
+  optimal_pts: number
+  optimal_player_name: string
+  gap: number                 // optimal_pts - actual_pts (0 = perfect pick)
+}
+
+export type CvPickRow = {
+  player_id: string
+  player_name: string
+  team_id: string
+  team_short_name: string
+  team_matches_played: number
+  picks: Record<string, { captain: number; vc: number }>  // keyed by user_id
+}
+
+export type FormStatsRow = {
+  user_id: string
+  display_name: string
+  total_points: number
+  season_avg: number
+  last5_avg: number
+  last5_scores: number[]      // up to 5 most recent scores, oldest first
+  consistency_stddev: number  // standard deviation of all match scores
+  current_rank: number
+  form: "hot" | "steady" | "cooling"  // hot: last5 > season+20, cooling: last5 < season-20
+}
+
+export type DifferentialPickRow = {
+  match_id: string
+  match_number: number
+  matchup: string
+  player_id: string
+  player_name: string
+  player_role: string
+  team_short_name: string
+  user_id: string
+  user_pts: number
+  ownership_count: number     // how many of the N league users picked this player (1-N)
+  total_users: number         // N (league size)
+  is_captain: boolean
+  is_vc: boolean
+  category: "gem" | "paid-off" | "backfired" | null
+  // gem: ownership<=2 && pts>=80
+  // paid-off: ownership<=3 && pts>=50 (and not gem)
+  // backfired: ownership<=2 && pts<30
+}
+
+export type DifferentialSummaryRow = {
+  user_id: string
+  display_name: string
+  unique_pick_pts: number     // total pts from picks where ownership <= 2
+  avg_ownership: number       // avg ownership count across all picks (lower = more contrarian)
+  differential_score: number  // SUM(pts) for ownership<=2 picks minus SUM(pts) for ownership<=2 busts (<30pts)
+}
