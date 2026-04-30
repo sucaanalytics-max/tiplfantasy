@@ -63,37 +63,84 @@ function DiffLeaderboard({ summary, currentUserId }: { summary: DifferentialSumm
   )
 }
 
-// ── Your unique picks table ─────────────────────────────────────────────────────
+// ── Category breakdown — all users, gem/paid/bust counts ──────────────────────
 
-function UniquePicksTable({ picks, currentUserId }: { picks: DifferentialPickRow[]; currentUserId: string }) {
-  const myUniquePicks = picks
-    .filter((p) => p.user_id === currentUserId && p.ownership_count <= 3)
-    .sort((a, b) => b.user_pts - a.user_pts)
-
-  if (myUniquePicks.length === 0) {
-    return <p className="text-xs text-muted-foreground py-2">No differential picks this season.</p>
+function CategoryBreakdown({ picks, summary, currentUserId }: { picks: DifferentialPickRow[]; summary: DifferentialSummaryRow[]; currentUserId: string }) {
+  const counts = new Map<string, { gem: number; paid: number; backfired: number }>()
+  for (const p of picks) {
+    if (!counts.has(p.user_id)) counts.set(p.user_id, { gem: 0, paid: 0, backfired: 0 })
+    const c = counts.get(p.user_id)!
+    if (p.category === "gem") c.gem++
+    else if (p.category === "paid-off") c.paid++
+    else if (p.category === "backfired") c.backfired++
   }
 
   return (
     <div className="glass rounded-2xl overflow-hidden">
       <div className="px-3 py-2 border-b border-overlay-border bg-overlay-subtle text-[10px] uppercase tracking-wider text-muted-foreground font-medium">
-        <div className="grid grid-cols-[auto_1fr_auto_auto_auto] gap-2">
-          <span>#</span>
+        <div className="grid grid-cols-[1fr_auto_auto_auto] gap-3">
           <span>Player</span>
-          <span className="text-right">Pts</span>
-          <span className="text-right">Owned</span>
-          <span className="text-right">Category</span>
+          <span className="text-right">💎 Gems</span>
+          <span className="text-right">✅ Paid</span>
+          <span className="text-right">❌ Busts</span>
         </div>
       </div>
       <div className="divide-y divide-overlay-border">
-        {myUniquePicks.map((pick, i) => {
-          const catCfg = pick.category ? CATEGORY_CONFIG[pick.category] : null
+        {summary.map((row) => {
+          const isMe = row.user_id === currentUserId
+          const c = counts.get(row.user_id) ?? { gem: 0, paid: 0, backfired: 0 }
           return (
             <div
-              key={`${pick.match_id}:${pick.player_id}`}
-              className="grid grid-cols-[auto_1fr_auto_auto_auto] gap-2 items-center px-3 py-2 text-xs"
+              key={row.user_id}
+              className={cn(
+                "grid grid-cols-[1fr_auto_auto_auto] gap-3 items-center px-3 py-2.5",
+                isMe && "bg-primary/[0.06] shadow-[inset_2px_0_0_var(--primary)]"
+              )}
             >
-              <span className="text-muted-foreground tabular-nums w-5">{i + 1}</span>
+              <div className="flex items-center gap-2 min-w-0">
+                <div className={cn("h-6 w-6 rounded-full flex items-center justify-center shrink-0 text-white text-[9px] font-bold", getAvatarColor(row.display_name))}>
+                  {getInitials(row.display_name)}
+                </div>
+                <span className={cn("text-sm truncate", isMe && "font-semibold")}>
+                  {row.display_name}{isMe && " (you)"}
+                </span>
+              </div>
+              <span className="text-right tabular-nums text-xs text-amber-500 font-semibold">{c.gem}</span>
+              <span className="text-right tabular-nums text-xs text-emerald-500 font-semibold">{c.paid}</span>
+              <span className="text-right tabular-nums text-xs text-rose-400">{c.backfired}</span>
+            </div>
+          )
+        })}
+      </div>
+    </div>
+  )
+}
+
+// ── Your top-10 unique picks ──────────────────────────────────────────────────
+
+function TopPicks({ picks, currentUserId }: { picks: DifferentialPickRow[]; currentUserId: string }) {
+  const myPicks = picks
+    .filter((p) => p.user_id === currentUserId && p.ownership_count <= 3)
+    .sort((a, b) => b.user_pts - a.user_pts)
+    .slice(0, 10)
+
+  if (myPicks.length === 0) return null
+
+  return (
+    <div className="glass rounded-2xl overflow-hidden">
+      <div className="px-3 py-2 border-b border-overlay-border bg-overlay-subtle text-[10px] uppercase tracking-wider text-muted-foreground font-medium">
+        <div className="grid grid-cols-[1fr_auto_auto_auto] gap-2">
+          <span>Player · Match</span>
+          <span className="text-right">Pts</span>
+          <span className="text-right">Owned</span>
+          <span className="text-right">Cat.</span>
+        </div>
+      </div>
+      <div className="divide-y divide-overlay-border">
+        {myPicks.map((pick) => {
+          const catCfg = pick.category ? CATEGORY_CONFIG[pick.category] : null
+          return (
+            <div key={`${pick.match_id}:${pick.player_id}`} className="grid grid-cols-[1fr_auto_auto_auto] gap-2 items-center px-3 py-2 text-xs">
               <div className="min-w-0">
                 <p className="font-medium truncate">
                   {pick.player_name}
@@ -105,11 +152,9 @@ function UniquePicksTable({ picks, currentUserId }: { picks: DifferentialPickRow
               <span className="tabular-nums text-right font-semibold">{pick.user_pts}</span>
               <span className="tabular-nums text-right text-muted-foreground">{pick.ownership_count}/{pick.total_users}</span>
               {catCfg ? (
-                <span className={cn("text-[9px] font-semibold px-1.5 py-0.5 rounded-full text-right", catCfg.className)}>
-                  {catCfg.label}
-                </span>
+                <span className={cn("text-[9px] font-semibold px-1.5 py-0.5 rounded-full", catCfg.className)}>{catCfg.label}</span>
               ) : (
-                <span className="text-muted-foreground/30 text-right">—</span>
+                <span className="text-muted-foreground/30">—</span>
               )}
             </div>
           )
@@ -122,10 +167,8 @@ function UniquePicksTable({ picks, currentUserId }: { picks: DifferentialPickRow
 // ── Herd traps ──────────────────────────────────────────────────────────────────
 
 function HerdTraps({ picks }: { picks: DifferentialPickRow[] }) {
-  // High ownership (ownership_count >= 4 of total) AND very low pts (<20)
   const traps = picks
     .filter((p, i, arr) => {
-      // Deduplicate: one row per match+player
       return (
         p.ownership_count >= Math.ceil(p.total_users * 0.6) &&
         p.user_pts < 20 &&
@@ -133,7 +176,7 @@ function HerdTraps({ picks }: { picks: DifferentialPickRow[] }) {
       )
     })
     .sort((a, b) => b.ownership_count - a.ownership_count || a.user_pts - b.user_pts)
-    .slice(0, 20)
+    .slice(0, 10)
 
   if (traps.length === 0) return null
 
@@ -179,14 +222,20 @@ export function DifferentialTab({ picks, summary, currentUserId, userNames }: Pr
     <div className="space-y-6">
       <div className="space-y-2">
         <p className="text-xs font-semibold text-muted-foreground uppercase tracking-widest">Differential Leaderboard</p>
-        <p className="text-[10px] text-muted-foreground">Diff Score = pts from unique picks (≤2/{Object.keys(userNames).length} owners) minus pts lost on unique busts. Avg Own. = average ownership of your picks (lower = more contrarian).</p>
+        <p className="text-[10px] text-muted-foreground">Diff Score = pts from unique picks (≤2/{Object.keys(userNames).length} owners) minus pts lost on unique busts. Avg Own. = average ownership across all picks (lower = more contrarian).</p>
         <DiffLeaderboard summary={summary} currentUserId={currentUserId} />
       </div>
 
       <div className="space-y-2">
-        <p className="text-xs font-semibold text-muted-foreground uppercase tracking-widest">Your Differential Picks</p>
-        <p className="text-[10px] text-muted-foreground">Picks where ≤3 of {Object.keys(userNames).length} users selected the player.</p>
-        <UniquePicksTable picks={picks} currentUserId={currentUserId} />
+        <p className="text-xs font-semibold text-muted-foreground uppercase tracking-widest">Differential Breakdown</p>
+        <p className="text-[10px] text-muted-foreground">💎 Gems (≤2/{Object.keys(userNames).length} owners, ≥80 pts) · ✅ Paid Off (≤3 owners, ≥50 pts) · ❌ Busts (≤2 owners, &lt;30 pts)</p>
+        <CategoryBreakdown picks={picks} summary={summary} currentUserId={currentUserId} />
+      </div>
+
+      <div className="space-y-2">
+        <p className="text-xs font-semibold text-muted-foreground uppercase tracking-widest">Your Top Unique Picks</p>
+        <p className="text-[10px] text-muted-foreground">Your best differential picks this season (≤3/{Object.keys(userNames).length} owners), sorted by points.</p>
+        <TopPicks picks={picks} currentUserId={currentUserId} />
       </div>
 
       <div className="space-y-2">
