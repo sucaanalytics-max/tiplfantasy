@@ -6,6 +6,7 @@ import { ScoresClient } from "./scores-client"
 import type { TeamInfo, PlayerScoreRow, UserScoreRow, SelectionRow } from "./scores-client"
 import { curateBanter } from "@/lib/banter-curation"
 import { MatchMomentsSection } from "@/components/match-moments-section"
+import { MatchGemCallout } from "@/components/match-gem-callout"
 
 export default async function ScoresPage({
   params,
@@ -147,6 +148,46 @@ export default async function ScoresPage({
     (banterRes.data ?? []).map((b) => ({ message: b.message, event_type: b.event_type }))
   )
 
+  // Find match gem: player with ownership <= 2 AND highest pts >= 80
+  let matchGem: { playerName: string; teamShortName: string; pts: number; ownershipCount: number; totalUsers: number } | null = null
+
+  if (match.status === "completed") {
+    // Build ownership count per player across all selections
+    const ownershipMap = new Map<string, number>()
+    for (const sel of allSelections) {
+      for (const pid of sel.player_ids) {
+        ownershipMap.set(pid, (ownershipMap.get(pid) ?? 0) + 1)
+      }
+    }
+    const totalUsers = allSelections.length
+
+    // Find the best gem: lowest ownership (<= 2) AND pts >= 80, highest score wins
+    let bestGem: { score: number; name: string; team: string; ownership: number } | null = null
+    for (const ps of playerScores) {
+      if (Number(ps.fantasy_points) < 80) continue
+      const pid = ps.player_id ?? ""
+      const ownership = ownershipMap.get(pid) ?? 0
+      if (ownership > 2 || ownership === 0) continue
+      if (!bestGem || Number(ps.fantasy_points) > bestGem.score) {
+        bestGem = {
+          score: Number(ps.fantasy_points),
+          name: ps.player?.name ?? "?",
+          team: ps.player?.team?.short_name ?? "?",
+          ownership,
+        }
+      }
+    }
+    if (bestGem) {
+      matchGem = {
+        playerName: bestGem.name,
+        teamShortName: bestGem.team,
+        pts: bestGem.score,
+        ownershipCount: bestGem.ownership,
+        totalUsers,
+      }
+    }
+  }
+
   return (
     <PageTransition>
       <ScoresClient
@@ -183,6 +224,17 @@ export default async function ScoresPage({
           team: p.team as unknown as { short_name: string; color: string },
         }))}
       />
+      {matchGem && (
+        <div className="px-4 pt-3 max-w-3xl mx-auto">
+          <MatchGemCallout
+            playerName={matchGem.playerName}
+            teamShortName={matchGem.teamShortName}
+            pts={matchGem.pts}
+            ownershipCount={matchGem.ownershipCount}
+            totalUsers={matchGem.totalUsers}
+          />
+        </div>
+      )}
       {match.status === "completed" && curatedBanter.length > 0 && (
         <div className="px-4 pb-6 max-w-3xl mx-auto">
           <MatchMomentsSection messages={curatedBanter} />
