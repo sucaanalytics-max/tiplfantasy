@@ -1,6 +1,7 @@
 "use server"
 
 import { createAdminClient } from "@/lib/supabase/admin"
+import { unstable_cache } from "next/cache"
 import type {
   CaptainAnalyticsRow,
   CaptainMatchHistoryRow,
@@ -16,15 +17,6 @@ import type {
 async function fetchInsightsBase(leagueId: string) {
   const admin = createAdminClient()
 
-  const { data: members } = await admin
-    .from("league_members")
-    .select("user_id, profiles(display_name)")
-    .eq("league_id", leagueId)
-    .limit(50)
-
-  const userIds = (members ?? []).map((m) => m.user_id)
-  if (userIds.length === 0) return null
-
   type MatchRow = {
     id: string
     match_number: number
@@ -33,19 +25,28 @@ async function fetchInsightsBase(leagueId: string) {
     team_away: { id: string; short_name: string } | null
   }
 
-  const { data: completedMatchesRaw } = await admin
-    .from("matches")
-    .select(
-      "id, match_number, start_time, " +
-      "team_home:teams!matches_team_home_id_fkey(id, short_name), " +
-      "team_away:teams!matches_team_away_id_fkey(id, short_name)"
-    )
-    .eq("status", "completed")
-    .order("start_time", { ascending: true })
-    .limit(100)
+  const [{ data: members }, { data: completedMatchesRaw }] = await Promise.all([
+    admin
+      .from("league_members")
+      .select("user_id, profiles(display_name)")
+      .eq("league_id", leagueId)
+      .limit(50),
+    admin
+      .from("matches")
+      .select(
+        "id, match_number, start_time, " +
+        "team_home:teams!matches_team_home_id_fkey(id, short_name), " +
+        "team_away:teams!matches_team_away_id_fkey(id, short_name)"
+      )
+      .eq("status", "completed")
+      .order("start_time", { ascending: true })
+      .limit(100),
+  ])
+
+  const userIds = (members ?? []).map((m) => m.user_id)
+  if (userIds.length === 0) return null
 
   const completedMatches = (completedMatchesRaw ?? []) as unknown as MatchRow[]
-
   const matchIds = completedMatches.map((m) => m.id)
   if (matchIds.length === 0) return null
 
