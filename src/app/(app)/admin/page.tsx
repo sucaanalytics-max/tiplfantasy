@@ -12,6 +12,8 @@ import {
   type AdminMatch,
   type AdminTeam,
 } from "./admin-parts"
+import { getDifferentialData } from "@/actions/insights"
+import { AdminDifferentialBreakdown } from "./admin-differential-breakdown"
 
 const TOOLS = [
   { href: "/admin/players", emoji: "\u{1F3CF}", title: "Players", subtitle: "Manage player roster" },
@@ -34,6 +36,49 @@ export default async function AdminPage() {
     .single()
 
   if (!profile?.is_admin) redirect("/")
+
+  // Get the first league for analytics
+  const { data: firstLeague } = await supabase
+    .from("league_members")
+    .select("leagues!inner(id)")
+    .eq("user_id", user.id)
+    .limit(1)
+    .single()
+
+  const analyticsLeagueId = (firstLeague?.leagues as unknown as { id: string })?.id ?? null
+
+  const [diffData, leagueMatchScoresRes] = await Promise.all([
+    analyticsLeagueId ? getDifferentialData(analyticsLeagueId) : Promise.resolve(null),
+    analyticsLeagueId
+      ? supabase
+          .from("user_match_scores")
+          .select("user_id, total_points, profile:profiles(display_name)")
+          .limit(5000)
+      : Promise.resolve({ data: null }),
+  ])
+
+  const REMAINING_MATCHES = 29
+  type ProjectedRow = { userId: string; name: string; currentTotal: number; avg: number; projected: number; projectedRank: number }
+  const projectedRows: ProjectedRow[] = []
+
+  if (leagueMatchScoresRes.data && leagueMatchScoresRes.data.length > 0) {
+    const userTotals = new Map<string, { name: string; total: number; count: number }>()
+    for (const row of leagueMatchScoresRes.data) {
+      const name = (row.profile as unknown as { display_name: string })?.display_name ?? "?"
+      const existing = userTotals.get(row.user_id) ?? { name, total: 0, count: 0 }
+      existing.total += Number(row.total_points)
+      existing.count++
+      userTotals.set(row.user_id, existing)
+    }
+    const rows = [...userTotals.entries()].map(([userId, { name, total, count }]) => {
+      const avg = count > 0 ? total / count : 0
+      const projected = total + avg * REMAINING_MATCHES
+      return { userId, name, currentTotal: Math.round(total), avg: Math.round(avg), projected: Math.round(projected), projectedRank: 0 }
+    })
+    rows.sort((a, b) => b.projected - a.projected)
+    rows.forEach((r, i) => { r.projectedRank = i + 1 })
+    projectedRows.push(...rows)
+  }
 
   const [matchesRes, teamsRes, selectionsRes] = await Promise.all([
     supabase
@@ -168,6 +213,48 @@ export default async function AdminPage() {
         <SectionHeader>Series import</SectionHeader>
         <SeriesImportClient />
       </div>
+
+      {/* ═══ PROJECTED STANDINGS ═══ */}
+      {projectedRows.length > 0 && (
+        <div className="space-y-3">
+          <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-widest">
+            📈 Projected Final Standings ({REMAINING_MATCHES} matches remaining)
+          </h2>
+          <div className="glass rounded-2xl overflow-hidden">
+            <table className="w-full text-xs">
+              <thead>
+                <tr className="border-b border-overlay-border bg-overlay-subtle text-[10px] uppercase tracking-wider text-muted-foreground">
+                  <th className="px-3 py-2 text-left font-medium">Proj #</th>
+                  <th className="px-3 py-2 text-left font-medium">Player</th>
+                  <th className="px-3 py-2 text-right font-medium">Current</th>
+                  <th className="px-3 py-2 text-right font-medium">Avg/Match</th>
+                  <th className="px-3 py-2 text-right font-medium">Projected Total</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-overlay-border">
+                {projectedRows.map((row) => (
+                  <tr key={row.userId} className="hover:bg-overlay-subtle/50">
+                    <td className="px-3 py-2 tabular-nums">{row.projectedRank}</td>
+                    <td className="px-3 py-2 font-medium">{row.name}</td>
+                    <td className="px-3 py-2 text-right tabular-nums text-muted-foreground">{row.currentTotal.toLocaleString()}</td>
+                    <td className="px-3 py-2 text-right tabular-nums text-muted-foreground">{row.avg.toLocaleString()}</td>
+                    <td className="px-3 py-2 text-right tabular-nums font-semibold text-gold-stat">{row.projected.toLocaleString()}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          <p className="text-[10px] text-muted-foreground px-1">Projection = current total + (season avg × {REMAINING_MATCHES} remaining). Update REMAINING_MATCHES in admin/page.tsx as matches complete.</p>
+        </div>
+      )}
+
+      {/* ═══ PER-USER DIFFERENTIAL BREAKDOWN ═══ */}
+      {diffData && diffData.picks.length > 0 && (
+        <AdminDifferentialBreakdown
+          picks={diffData.picks}
+          userNames={diffData.userNames}
+        />
+      )}
     </div>
   )
 }
