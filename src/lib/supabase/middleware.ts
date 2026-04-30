@@ -1,30 +1,15 @@
-import { createServerClient } from "@supabase/ssr"
 import { NextResponse, type NextRequest } from "next/server"
 
-export async function updateSession(request: NextRequest) {
-  let supabaseResponse = NextResponse.next({ request })
+// Supabase SSR stores the session in a cookie named sb-<project-ref>-auth-token
+// (or chunked as .0, .1, ... when the value exceeds cookie size limits)
+const PROJECT_REF = process.env.NEXT_PUBLIC_SUPABASE_URL
+  ? new URL(process.env.NEXT_PUBLIC_SUPABASE_URL).hostname.split(".")[0]
+  : ""
+const SESSION_COOKIE = `sb-${PROJECT_REF}-auth-token`
 
-  const supabase = createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    {
-      cookies: {
-        getAll() {
-          return request.cookies.getAll()
-        },
-        setAll(cookiesToSet: Array<{ name: string; value: string; options?: Record<string, unknown> }>) {
-          cookiesToSet.forEach(({ name, value }) =>
-            request.cookies.set(name, value)
-          )
-          supabaseResponse = NextResponse.next({ request })
-          cookiesToSet.forEach(({ name, value, options }) =>
-            supabaseResponse.cookies.set(name, value, options)
-          )
-        },
-      },
-    }
-  )
-
+// Synchronous, zero-network-call auth gate.
+// Token refresh happens in Server Components via getUser() in server.ts.
+export function updateSession(request: NextRequest) {
   // Handle PKCE code exchange — when Supabase redirects to Site URL with ?code=xxx
   // instead of /auth/callback, forward the code to the dedicated callback handler
   const code = request.nextUrl.searchParams.get("code")
@@ -34,14 +19,12 @@ export async function updateSession(request: NextRequest) {
     return NextResponse.redirect(callbackUrl)
   }
 
-  // Refresh the auth token
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
+  const isLoggedIn =
+    request.cookies.has(SESSION_COOKIE) ||
+    request.cookies.has(`${SESSION_COOKIE}.0`)
 
-  // Redirect unauthenticated users to /login (except for /login itself and auth callback)
   if (
-    !user &&
+    !isLoggedIn &&
     !request.nextUrl.pathname.startsWith("/login") &&
     !request.nextUrl.pathname.startsWith("/auth")
   ) {
@@ -50,27 +33,11 @@ export async function updateSession(request: NextRequest) {
     return NextResponse.redirect(url)
   }
 
-  // Redirect authenticated users away from /login
-  if (user && request.nextUrl.pathname.startsWith("/login")) {
+  if (isLoggedIn && request.nextUrl.pathname.startsWith("/login")) {
     const url = request.nextUrl.clone()
     url.pathname = "/"
     return NextResponse.redirect(url)
   }
 
-  // Block non-admin users from /admin routes
-  if (user && request.nextUrl.pathname.startsWith("/admin")) {
-    const { data: profile } = await supabase
-      .from("profiles")
-      .select("is_admin")
-      .eq("id", user.id)
-      .single()
-
-    if (!profile?.is_admin) {
-      const url = request.nextUrl.clone()
-      url.pathname = "/dashboard"
-      return NextResponse.redirect(url)
-    }
-  }
-
-  return supabaseResponse
+  return NextResponse.next({ request })
 }
