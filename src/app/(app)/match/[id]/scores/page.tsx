@@ -4,6 +4,8 @@ import { redirect } from "next/navigation"
 import { PageTransition } from "@/components/page-transition"
 import { ScoresClient } from "./scores-client"
 import type { TeamInfo, PlayerScoreRow, UserScoreRow, SelectionRow } from "./scores-client"
+import { curateBanter } from "@/lib/banter-curation"
+import { MatchMomentsSection } from "@/components/match-moments-section"
 
 export default async function ScoresPage({
   params,
@@ -66,7 +68,7 @@ export default async function ScoresPage({
       .select("message, event_type")
       .eq("match_id", id)
       .order("created_at", { ascending: false })
-      .limit(15),
+      .limit(200),
     admin
       .from("league_members")
       .select("league_id, leagues(id, name)")
@@ -141,6 +143,10 @@ export default async function ScoresPage({
     userLeagues = Array.from(leagueMap.values())
   }
 
+  const curatedBanter = curateBanter(
+    (banterRes.data ?? []).map((b) => ({ message: b.message, event_type: b.event_type }))
+  )
+
   return (
     <PageTransition>
       <ScoresClient
@@ -165,7 +171,7 @@ export default async function ScoresPage({
         captainPicks={captainPicks}
         vcPicks={vcPicks}
         currentUserId={user.id}
-        banter={(banterRes.data ?? []).map((b) => ({ message: b.message, event_type: b.event_type }))}
+        banter={curatedBanter}
         userLeagues={userLeagues}
         lastBalls={(match.last_balls as Array<{ ball: number; runs: number; four: boolean; six: boolean; wicket: boolean }>) ?? []}
         snapshots={(snapshotsRes.data ?? []) as Array<{ over_number: number; scores: Record<string, number> }>}
@@ -177,6 +183,11 @@ export default async function ScoresPage({
           team: p.team as unknown as { short_name: string; color: string },
         }))}
       />
+      {match.status === "completed" && curatedBanter.length > 0 && (
+        <div className="px-4 pb-6 max-w-3xl mx-auto">
+          <MatchMomentsSection messages={curatedBanter} />
+        </div>
+      )}
     </PageTransition>
   )
 }
