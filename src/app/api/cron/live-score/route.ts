@@ -1,5 +1,7 @@
 import { type NextRequest } from "next/server"
 import { createAdminClient } from "@/lib/supabase/admin"
+
+export const maxDuration = 60 // seconds — cron does external API calls + DB writes
 import { fetchMatchPoints, parseScorecardToStats, fuzzyMatchName, fetchMatchInfo } from "@/lib/api/sportmonks"
 import { loadScoringRules, calculatePlayerPoints, calculateUserMatchScore } from "@/lib/scoring"
 import { recalculateUserMatchScores } from "@/actions/scoring"

@@ -1,9 +1,10 @@
 "use client"
 
 import Image from "next/image"
+import { useState } from "react"
 import { createClient } from "@/lib/supabase/client"
 import { Button } from "@/components/ui/button"
-import { AlertCircle } from "lucide-react"
+import { AlertCircle, Loader2 } from "lucide-react"
 import { useSearchParams } from "next/navigation"
 import { Suspense } from "react"
 
@@ -35,17 +36,28 @@ function CricketFieldLines() {
 
 function LoginForm() {
   const searchParams = useSearchParams()
-  const error = searchParams.get("error")
+  const urlError = searchParams.get("error")
+  const [loading, setLoading] = useState(false)
+  const [loginError, setLoginError] = useState<string | null>(null)
 
   const handleGoogleLogin = async () => {
+    setLoading(true)
+    setLoginError(null)
     const supabase = createClient()
-    await supabase.auth.signInWithOAuth({
+    const { error } = await supabase.auth.signInWithOAuth({
       provider: "google",
       options: {
         redirectTo: `${window.location.origin}/auth/callback`,
       },
     })
+    if (error) {
+      setLoginError("Could not connect to Google. Please try again.")
+      setLoading(false)
+    }
+    // on success the browser redirects — loading stays true intentionally
   }
+
+  const error = urlError || loginError
 
   return (
     <div className="relative min-h-dvh flex flex-col items-center justify-center overflow-hidden bg-background">
@@ -111,8 +123,12 @@ function LoginForm() {
 
           <Button
             onClick={handleGoogleLogin}
-            className="h-12 w-full bg-white text-gray-900 hover:bg-gray-50 font-medium rounded-xl shadow-md"
+            disabled={loading}
+            className="h-12 w-full bg-white text-gray-900 hover:bg-gray-50 font-medium rounded-xl shadow-md disabled:opacity-70"
           >
+            {loading ? (
+              <Loader2 className="mr-2.5 h-5 w-5 shrink-0 animate-spin text-gray-600" />
+            ) : (
             <svg className="mr-2.5 h-5 w-5 shrink-0" viewBox="0 0 24 24">
               <path
                 d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 0 1-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z"
@@ -131,7 +147,8 @@ function LoginForm() {
                 fill="#EA4335"
               />
             </svg>
-            Continue with Google
+            )}
+            {loading ? "Connecting…" : "Continue with Google"}
           </Button>
         </div>
 
