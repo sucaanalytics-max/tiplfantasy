@@ -91,12 +91,13 @@ async function fetchInsightsBase(leagueId: string) {
 
 // ── Captain analytics ─────────────────────────────────────────────────────────
 
-export async function getCaptainAnalytics(leagueId: string): Promise<{
-  leaderboard: CaptainAnalyticsRow[]
-  matchHistory: Record<string, CaptainMatchHistoryRow[]>  // keyed by user_id
-  cvPicks: CvPickRow[]
-  userNames: Record<string, string>  // user_id -> display_name
-}> {
+export const getCaptainAnalytics = unstable_cache(
+  async (leagueId: string): Promise<{
+    leaderboard: CaptainAnalyticsRow[]
+    matchHistory: Record<string, CaptainMatchHistoryRow[]>
+    cvPicks: CvPickRow[]
+    userNames: Record<string, string>
+  }> => {
   const base = await fetchInsightsBase(leagueId)
   if (!base) return { leaderboard: [], matchHistory: {}, cvPicks: [], userNames: {} }
 
@@ -258,16 +259,20 @@ export async function getCaptainAnalytics(leagueId: string): Promise<{
 
   const userNames = Object.fromEntries(profileMap.entries())
 
-  return { leaderboard, matchHistory, cvPicks, userNames }
-}
+    return { leaderboard, matchHistory, cvPicks, userNames }
+  },
+  ["captain-analytics"],
+  { tags: ["league-data"], revalidate: 300 }
+)
 
 // ── Differential picks ─────────────────────────────────────────────────────────
 
-export async function getDifferentialData(leagueId: string): Promise<{
-  picks: DifferentialPickRow[]          // all picks with ownership context
-  summary: DifferentialSummaryRow[]     // per-user aggregate
-  userNames: Record<string, string>
-}> {
+export const getDifferentialData = unstable_cache(
+  async (leagueId: string): Promise<{
+    picks: DifferentialPickRow[]
+    summary: DifferentialSummaryRow[]
+    userNames: Record<string, string>
+  }> => {
   const base = await fetchInsightsBase(leagueId)
   if (!base) return { picks: [], summary: [], userNames: {} }
 
@@ -389,5 +394,8 @@ export async function getDifferentialData(leagueId: string): Promise<{
   }
   summary.sort((a, b) => b.differential_score - a.differential_score)
 
-  return { picks, summary, userNames: Object.fromEntries(profileMap.entries()) }
-}
+    return { picks, summary, userNames: Object.fromEntries(profileMap.entries()) }
+  },
+  ["differential-data"],
+  { tags: ["league-data"], revalidate: 300 }
+)
