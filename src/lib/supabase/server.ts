@@ -4,13 +4,14 @@ import { cache } from "react"
 
 export const getAuthUser = cache(async () => {
   const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  return user
+  const { data: { session } } = await supabase.auth.getSession()
+  return session?.user ?? null
 })
 
 export const getMyProfile = cache(async () => {
   const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
+  const { data: { session } } = await supabase.auth.getSession()
+  const user = session?.user ?? null
   if (!user) return null
   const { data } = await supabase
     .from("profiles")

@@ -2,6 +2,8 @@ import { createClient, getAuthUser } from "@/lib/supabase/server"
 import { createAdminClient } from "@/lib/supabase/admin"
 import { unstable_cache } from "next/cache"
 import { redirect } from "next/navigation"
+
+export const maxDuration = 60
 import Link from "next/link"
 import { ChevronRight } from "lucide-react"
 import { PageTransition } from "@/components/page-transition"
