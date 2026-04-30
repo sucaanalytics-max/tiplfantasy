@@ -55,7 +55,7 @@ async function fetchInsightsBase(leagueId: string) {
     .in("match_id", matchIds)
     .in("user_id", userIds)
     .not("locked_at", "is", null)
-    .limit(2000)
+    .limit(5000)
 
   const selectionIds = (selections ?? []).map((s) => s.id)
 
@@ -147,6 +147,7 @@ export async function getCaptainAnalytics(leagueId: string): Promise<{
   const userMatchHistoryMap = new Map<string, CaptainMatchHistoryRow[]>()
 
   for (const sel of selections) {
+    if (!sel.captain_id) continue
     const captainPts = scoreMap.get(`${sel.match_id}:${sel.captain_id}`) ?? 0
     const playerIds = selectionPlayerMap.get(sel.id) ?? []
 
