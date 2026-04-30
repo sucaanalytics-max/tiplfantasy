@@ -259,3 +259,134 @@ export async function getCaptainAnalytics(leagueId: string): Promise<{
 
   return { leaderboard, matchHistory, cvPicks, userNames }
 }
+
+// ── Differential picks ─────────────────────────────────────────────────────────
+
+export async function getDifferentialData(leagueId: string): Promise<{
+  picks: DifferentialPickRow[]          // all picks with ownership context
+  summary: DifferentialSummaryRow[]     // per-user aggregate
+  userNames: Record<string, string>
+}> {
+  const base = await fetchInsightsBase(leagueId)
+  if (!base) return { picks: [], summary: [], userNames: {} }
+
+  const { members, completedMatches, selections, selectionPlayers, matchScores, players, userIds } = base
+
+  const totalUsers = userIds.length
+
+  // Build lookup maps
+  const scoreMap = new Map<string, number>()
+  for (const s of matchScores) {
+    scoreMap.set(`${s.match_id}:${s.player_id}`, Number(s.fantasy_points))
+  }
+
+  const selectionPlayerMap = new Map<string, string[]>()
+  for (const sp of selectionPlayers) {
+    if (!selectionPlayerMap.has(sp.selection_id)) selectionPlayerMap.set(sp.selection_id, [])
+    selectionPlayerMap.get(sp.selection_id)!.push(sp.player_id)
+  }
+
+  type PlayerInfo = { name: string; team_short_name: string; role: string }
+  const playerMap = new Map<string, PlayerInfo>()
+  for (const p of players) {
+    playerMap.set(p.id, {
+      name: p.name,
+      team_short_name: (p.team as unknown as { short_name: string })?.short_name ?? "",
+      role: p.role as string,
+    })
+  }
+
+  const matchInfoMap = new Map<string, { match_number: number; matchup: string }>()
+  for (const m of completedMatches) {
+    const home = m.team_home?.short_name ?? ""
+    const away = m.team_away?.short_name ?? ""
+    matchInfoMap.set(m.id, { match_number: m.match_number, matchup: `${home} vs ${away}` })
+  }
+
+  const profileMap = new Map<string, string>()
+  for (const m of members) {
+    profileMap.set(m.user_id, (m.profiles as unknown as { display_name: string })?.display_name ?? "?")
+  }
+
+  // Count how many users picked each player per match
+  // "matchId:playerId" -> Set<userId>
+  const ownershipMap = new Map<string, Set<string>>()
+  for (const sel of selections) {
+    const playerIds = selectionPlayerMap.get(sel.id) ?? []
+    for (const pid of playerIds) {
+      const key = `${sel.match_id}:${pid}`
+      if (!ownershipMap.has(key)) ownershipMap.set(key, new Set())
+      ownershipMap.get(key)!.add(sel.user_id)
+    }
+  }
+
+  // Build per-pick rows
+  const picks: DifferentialPickRow[] = []
+  for (const sel of selections) {
+    const playerIds = selectionPlayerMap.get(sel.id) ?? []
+    const matchInfo = matchInfoMap.get(sel.match_id)
+    if (!matchInfo) continue
+
+    for (const pid of playerIds) {
+      const ownershipCount = ownershipMap.get(`${sel.match_id}:${pid}`)?.size ?? 1
+      const pts = scoreMap.get(`${sel.match_id}:${pid}`) ?? 0
+      const player = playerMap.get(pid)
+      if (!player) continue
+
+      let category: DifferentialPickRow["category"] = null
+      if (ownershipCount <= 2 && pts >= 80) category = "gem"
+      else if (ownershipCount <= 3 && pts >= 50) category = "paid-off"
+      else if (ownershipCount <= 2 && pts < 30) category = "backfired"
+
+      picks.push({
+        match_id: sel.match_id,
+        match_number: matchInfo.match_number,
+        matchup: matchInfo.matchup,
+        player_id: pid,
+        player_name: player.name,
+        player_role: player.role,
+        team_short_name: player.team_short_name,
+        user_id: sel.user_id,
+        user_pts: pts,
+        ownership_count: ownershipCount,
+        total_users: totalUsers,
+        is_captain: sel.captain_id === pid,
+        is_vc: sel.vice_captain_id === pid,
+        category,
+      })
+    }
+  }
+
+  // Per-user summary
+  type UserDiffAgg = { uniquePts: number; uniqueCount: number; totalOwnershipSum: number; totalPicks: number }
+  const userDiffAgg = new Map<string, UserDiffAgg>()
+
+  for (const pick of picks) {
+    const agg = userDiffAgg.get(pick.user_id) ?? { uniquePts: 0, uniqueCount: 0, totalOwnershipSum: 0, totalPicks: 0 }
+    if (pick.ownership_count <= 2) {
+      agg.uniquePts += pick.user_pts
+      agg.uniqueCount++
+    }
+    agg.totalOwnershipSum += pick.ownership_count
+    agg.totalPicks++
+    userDiffAgg.set(pick.user_id, agg)
+  }
+
+  const summary: DifferentialSummaryRow[] = []
+  for (const [userId, agg] of userDiffAgg) {
+    const backfiredPts = picks
+      .filter((p) => p.user_id === userId && p.category === "backfired")
+      .reduce((s, p) => s + p.user_pts, 0)
+
+    summary.push({
+      user_id: userId,
+      display_name: profileMap.get(userId) ?? "?",
+      unique_pick_pts: Math.round(agg.uniquePts),
+      avg_ownership: agg.totalPicks > 0 ? Math.round((agg.totalOwnershipSum / agg.totalPicks) * 10) / 10 : 0,
+      differential_score: Math.round(agg.uniquePts - backfiredPts),
+    })
+  }
+  summary.sort((a, b) => b.differential_score - a.differential_score)
+
+  return { picks, summary, userNames: Object.fromEntries(profileMap.entries()) }
+}
