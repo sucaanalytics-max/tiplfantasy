@@ -167,11 +167,19 @@ function HerdTraps({ picks }: { picks: DifferentialPickRow[] }) {
 // ── Main tab ────────────────────────────────────────────────────────────────────
 
 export function DifferentialTab({ picks, summary, currentUserId, userNames }: Props) {
+  if (summary.length === 0) {
+    return (
+      <div className="glass rounded-2xl p-8 text-center">
+        <p className="text-sm text-muted-foreground">No differential data yet — available after the first completed match.</p>
+      </div>
+    )
+  }
+
   return (
     <div className="space-y-6">
       <div className="space-y-2">
         <p className="text-xs font-semibold text-muted-foreground uppercase tracking-widest">Differential Leaderboard</p>
-        <p className="text-[10px] text-muted-foreground">Diff Score = pts from unique picks (≤2/6 owners) minus pts lost on unique busts. Avg Own. = average ownership of your picks (lower = more contrarian).</p>
+        <p className="text-[10px] text-muted-foreground">Diff Score = pts from unique picks (≤2/{Object.keys(userNames).length} owners) minus pts lost on unique busts. Avg Own. = average ownership of your picks (lower = more contrarian).</p>
         <DiffLeaderboard summary={summary} currentUserId={currentUserId} />
       </div>
 

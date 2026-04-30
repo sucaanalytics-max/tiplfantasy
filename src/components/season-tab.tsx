@@ -88,8 +88,8 @@ export function SeasonTab({ rows, currentUserId }: Props) {
                       key={i}
                       className={cn(
                         "text-[10px] tabular-nums px-1.5 py-0.5 rounded",
-                        score >= 900 ? "bg-amber-500/20 text-amber-500" :
-                        score >= 700 ? "bg-primary/15 text-primary" :
+                        score >= 90 ? "bg-amber-500/20 text-amber-500" :
+                        score >= 70 ? "bg-primary/15 text-primary" :
                         "bg-overlay-subtle text-muted-foreground"
                       )}
                     >

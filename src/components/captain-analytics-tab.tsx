@@ -213,6 +213,14 @@ function CaptainMatchHistory({ rows }: { rows: CaptainMatchHistoryRow[] }) {
 // ── Main tab component ──────────────────────────────────────────────────────────
 
 export function CaptainAnalyticsTab({ leaderboard, matchHistory, cvPicks, currentUserId, userNames }: Props) {
+  if (leaderboard.length === 0) {
+    return (
+      <div className="glass rounded-2xl p-8 text-center">
+        <p className="text-sm text-muted-foreground">No captain data yet — available after the first completed match.</p>
+      </div>
+    )
+  }
+
   const myHistory = matchHistory[currentUserId] ?? []
   const myRow = leaderboard.find((r) => r.user_id === currentUserId)
 
