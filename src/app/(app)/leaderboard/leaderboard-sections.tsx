@@ -50,7 +50,7 @@ export function MatchdayHistory({ matchHistory, currentUserId }: { matchHistory:
       <p className="text-xs font-semibold text-muted-foreground uppercase tracking-widest mb-3">Matchday History</p>
 
       {/* Recent 3 */}
-      <div className="rounded-2xl border border-white/[0.07] bg-[oklch(0_0_0/0.25)] overflow-hidden divide-y divide-overlay-border mb-3">
+      <div className="rounded-2xl border border-border bg-card overflow-hidden divide-y divide-overlay-border mb-3">
         {recent.map((match) => {
           const iWon = match.winners.some((w) => w.userId === currentUserId)
           return (
@@ -86,7 +86,7 @@ export function MatchdayHistory({ matchHistory, currentUserId }: { matchHistory:
 
       {/* Per-user dropdown */}
       {userWinsList.length > 0 && (
-        <div className="rounded-2xl border border-white/[0.07] bg-[oklch(0_0_0/0.25)] overflow-hidden divide-y divide-overlay-border">
+        <div className="rounded-2xl border border-border bg-card overflow-hidden divide-y divide-overlay-border">
           {userWinsList.map(([key, data]) => {
             const isOpen = expandedUser === key
             return (
@@ -228,7 +228,7 @@ export function AwardTables({ awards, matchScores }: { awards: LeagueMemberStats
       <p className="text-xs font-semibold text-muted-foreground uppercase tracking-widest mb-3">Award Tables</p>
       <div className="space-y-4">
         {/* Captaincy */}
-        <div className="rounded-2xl border border-white/[0.07] bg-[oklch(0_0_0/0.25)] overflow-hidden">
+        <div className="rounded-2xl border border-border bg-card overflow-hidden">
           <div className="px-3 py-2 border-b border-overlay-border flex items-center gap-2">
             <Crown className="h-3.5 w-3.5 text-amber-400" />
             <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">Captaincy</span>
@@ -261,7 +261,7 @@ export function AwardTables({ awards, matchScores }: { awards: LeagueMemberStats
         </div>
 
         {/* Highest Score */}
-        <div className="rounded-2xl border border-white/[0.07] bg-[oklch(0_0_0/0.25)] overflow-hidden">
+        <div className="rounded-2xl border border-border bg-card overflow-hidden">
           <div className="px-3 py-2 border-b border-overlay-border flex items-center gap-2">
             <Zap className="h-3.5 w-3.5 text-orange-400" />
             <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">Highest Score</span>
@@ -282,7 +282,7 @@ export function AwardTables({ awards, matchScores }: { awards: LeagueMemberStats
         </div>
 
         {/* Matchday Wins */}
-        <div className="rounded-2xl border border-white/[0.07] bg-[oklch(0_0_0/0.25)] overflow-hidden">
+        <div className="rounded-2xl border border-border bg-card overflow-hidden">
           <div className="px-3 py-2 border-b border-overlay-border flex items-center gap-2">
             <Trophy className="h-3.5 w-3.5 text-emerald-400" />
             <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">Matchday Wins</span>
@@ -305,7 +305,7 @@ export function AwardTables({ awards, matchScores }: { awards: LeagueMemberStats
         </div>
 
         {/* Consistency */}
-        <div className="rounded-2xl border border-white/[0.07] bg-[oklch(0_0_0/0.25)] overflow-hidden">
+        <div className="rounded-2xl border border-border bg-card overflow-hidden">
           <div className="px-3 py-2 border-b border-overlay-border flex items-center gap-2">
             <Target className="h-3.5 w-3.5 text-sky-400" />
             <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">Consistency</span>

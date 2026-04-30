@@ -25,14 +25,14 @@ const AWARD_META: Record<AwardType, { icon: string; label: string; iconColor: st
 
 export function MatchAwards({ awards, matchLabel, matchId }: Props) {
   return (
-    <div className="rounded-2xl border border-white/[0.07] overflow-hidden">
+    <div className="rounded-2xl border border-border bg-card overflow-hidden">
       {awards.map((award, i) => {
         const meta = AWARD_META[award.type]
         return (
           <div
             key={award.type}
             className={cn(
-              "flex items-center gap-3 px-4 py-3 border-b border-white/[0.05] last:border-b-0 transition-colors",
+              "flex items-center gap-3 px-4 py-3 border-b border-overlay-border last:border-b-0 transition-colors",
               award.isYou && "bg-primary/[0.06] border-l-2 border-l-primary"
             )}
           >

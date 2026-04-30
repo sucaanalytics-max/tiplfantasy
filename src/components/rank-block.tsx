@@ -75,7 +75,7 @@ export function RankBlock({ rank, totalPlayers, points, avgPerMatch, gapToLead }
 
 function StatPill({ label }: { label: string }) {
   return (
-    <span className="inline-flex items-center px-3 py-1 rounded-full text-[11px] font-medium text-muted-foreground bg-white/[0.04] border border-white/[0.06]">
+    <span className="inline-flex items-center px-3 py-1 rounded-full text-[11px] font-medium text-muted-foreground bg-overlay-subtle border border-overlay-border">
       {label}
     </span>
   )

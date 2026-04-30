@@ -49,9 +49,9 @@ export function MatchResultCard({ data }: { data: MatchResultData }) {
 
   return (
     <Link href={`/match/${matchId}/scores`} className="block group">
-      <div className="rounded-2xl border border-white/[0.07] bg-[oklch(0_0_0/0.25)] overflow-hidden">
+      <div className="rounded-2xl border border-border bg-card overflow-hidden">
         {/* Header */}
-        <div className="flex items-center justify-between px-4 pt-3 pb-2 border-b border-white/[0.05]">
+        <div className="flex items-center justify-between px-4 pt-3 pb-2 border-b border-overlay-border">
           <div className="flex items-center gap-2">
             <TeamLogo team={teamHome} size="sm" />
             <span className="text-xs text-muted-foreground font-medium">vs</span>

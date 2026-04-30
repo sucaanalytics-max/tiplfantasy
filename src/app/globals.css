@@ -78,33 +78,33 @@
 :root {
   --radius: 0.75rem;
 
-  /* Warm Paper — visibly warm ivory page, pure white cards create clear contrast */
-  --background: oklch(0.950 0.022 80);
-  --foreground: oklch(0.12 0.015 60);
+  /* Neutral — light gray page, pure white cards, no warm cast */
+  --background: oklch(0.940 0.000 0);
+  --foreground: oklch(0.12 0.000 0);
 
   /* Pure white cards — contrast against warm bg creates the elevation */
   --card: oklch(1.000 0.000 0);
-  --card-foreground: oklch(0.12 0.015 60);
+  --card-foreground: oklch(0.12 0.000 0);
   --popover: oklch(1.000 0.000 0);
-  --popover-foreground: oklch(0.12 0.015 60);
+  --popover-foreground: oklch(0.12 0.000 0);
 
   /* TIPL orange — the action/energy color from brand */
   --primary: oklch(0.55 0.20 35);
   --primary-foreground: oklch(0.99 0 0);
 
-  /* Warm tinted surfaces */
-  --secondary: oklch(0.936 0.018 80);
-  --secondary-foreground: oklch(0.18 0.015 60);
-  --muted: oklch(0.928 0.018 80);
-  --muted-foreground: oklch(0.44 0.022 60);
+  /* Neutral surfaces */
+  --secondary: oklch(0.920 0.000 0);
+  --secondary-foreground: oklch(0.18 0.000 0);
+  --muted: oklch(0.912 0.000 0);
+  --muted-foreground: oklch(0.44 0.000 0);
 
   /* TIPL gold — prestige/achievement */
   --accent: oklch(0.68 0.17 86);
   --accent-foreground: oklch(0.15 0.01 86);
 
   --destructive: oklch(0.55 0.245 27.325);
-  --border: oklch(0.902 0.020 80);
-  --input: oklch(0.902 0.020 80);
+  --border: oklch(0.868 0.000 0);
+  --input: oklch(0.868 0.000 0);
   --ring: oklch(0.55 0.20 35);
 
   --chart-1: oklch(0.52 0.22 35);
@@ -113,13 +113,13 @@
   --chart-4: oklch(0.70 0.18 84);
   --chart-5: oklch(0.60 0.20 304);
 
-  --sidebar: oklch(0.944 0.022 80);
-  --sidebar-foreground: oklch(0.12 0.015 60);
+  --sidebar: oklch(0.930 0.000 0);
+  --sidebar-foreground: oklch(0.12 0.000 0);
   --sidebar-primary: oklch(0.55 0.20 35);
   --sidebar-primary-foreground: oklch(0.99 0 0);
-  --sidebar-accent: oklch(0.928 0.018 80);
-  --sidebar-accent-foreground: oklch(0.18 0.015 60);
-  --sidebar-border: oklch(0.902 0.020 80);
+  --sidebar-accent: oklch(0.912 0.000 0);
+  --sidebar-accent-foreground: oklch(0.18 0.000 0);
+  --sidebar-border: oklch(0.868 0.000 0);
   --sidebar-ring: oklch(0.55 0.20 35);
 
   /* Semantic status tokens (light mode) — darker for readability */
@@ -143,27 +143,27 @@
   --role-bowl: oklch(0.45 0.14 304);
 
   /* Surface — between background and card */
-  --surface: oklch(0.942 0.020 80);
+  --surface: oklch(0.930 0.000 0);
 
-  /* Warm Paper glass/elevation — solid white cards, warm-tinted shadows */
+  /* Neutral glass/elevation — solid white cards, neutral gray shadows */
   --glass-bg: oklch(1.000 0.000 0);
-  --glass-bg-hover: oklch(0.992 0.004 80);
-  --glass-border: oklch(0.12 0.015 60 / 0.08);
-  --glass-border-hover: oklch(0.12 0.015 60 / 0.14);
-  --glass-shadow: 0 2px 8px oklch(0.25 0.05 60 / 0.10), 0 1px 2px oklch(0.25 0.05 60 / 0.06);
-  --glass-shadow-lg: 0 4px 16px oklch(0.25 0.05 60 / 0.12), 0 2px 4px oklch(0.25 0.05 60 / 0.06);
+  --glass-bg-hover: oklch(0.990 0.000 0);
+  --glass-border: oklch(0.12 0.000 0 / 0.10);
+  --glass-border-hover: oklch(0.12 0.000 0 / 0.16);
+  --glass-shadow: 0 2px 8px oklch(0.25 0.000 0 / 0.10), 0 1px 2px oklch(0.25 0.000 0 / 0.06);
+  --glass-shadow-lg: 0 4px 16px oklch(0.25 0.000 0 / 0.12), 0 2px 4px oklch(0.25 0.000 0 / 0.06);
   --glow-primary: 0 0 12px oklch(0.55 0.20 35 / 0.18);
   --glow-accent: 0 0 12px oklch(0.68 0.17 86 / 0.18);
 
   /* Theme-aware overlay colors */
-  --overlay-subtle: oklch(0.12 0.015 60 / 0.03);
-  --overlay-muted: oklch(0.12 0.015 60 / 0.05);
-  --overlay-border: oklch(0.12 0.015 60 / 0.07);
-  --overlay-border-hover: oklch(0.12 0.015 60 / 0.12);
+  --overlay-subtle: oklch(0.00 0.000 0 / 0.04);
+  --overlay-muted: oklch(0.00 0.000 0 / 0.06);
+  --overlay-border: oklch(0.00 0.000 0 / 0.08);
+  --overlay-border-hover: oklch(0.00 0.000 0 / 0.14);
 
-  /* Headshot drop shadow — warm-tinted, clearly visible */
-  --shadow-headshot: 0 2px 8px oklch(0.25 0.05 60 / 0.12), 0 8px 20px oklch(0.25 0.05 60 / 0.14);
-  --shadow-headshot-lg: 0 4px 14px oklch(0.25 0.05 60 / 0.14), 0 16px 32px oklch(0.25 0.05 60 / 0.18);
+  /* Headshot drop shadow — neutral gray, clearly visible */
+  --shadow-headshot: 0 2px 8px oklch(0.25 0.000 0 / 0.12), 0 8px 20px oklch(0.25 0.000 0 / 0.14);
+  --shadow-headshot-lg: 0 4px 14px oklch(0.25 0.000 0 / 0.14), 0 16px 32px oklch(0.25 0.000 0 / 0.18);
 
   /* Captain / VC accents (gold = captain, silver = vice) */
   --captain-gold: oklch(0.78 0.17 86);

@@ -57,11 +57,11 @@ function CarouselCard({
       style={{ scrollSnapAlign: "start" }}
     >
       <div
-        className="relative overflow-hidden rounded-2xl border bg-[oklch(0_0_0/0.35)] backdrop-blur-sm"
+        className="relative overflow-hidden rounded-2xl border bg-card dark:bg-[oklch(0_0_0/0.35)] dark:backdrop-blur-sm"
         style={{
           width: 155,
           minHeight: 110,
-          borderColor: isLive ? "var(--status-live)" : "oklch(1 0 0 / 0.08)",
+          borderColor: isLive ? "var(--status-live)" : "var(--border)",
           boxShadow: isLive ? "0 0 0 1px var(--status-live), 0 0 16px oklch(from var(--status-live) l c h / 0.25)" : undefined,
         }}
       >
