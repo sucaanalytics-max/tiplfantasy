@@ -176,32 +176,37 @@ function CvPicksTable({
 function CaptainMatchHistory({ rows }: { rows: CaptainMatchHistoryRow[] }) {
   return (
     <div className="glass rounded-2xl overflow-hidden">
-      <div className="px-3 py-2 border-b border-overlay-border bg-overlay-subtle">
-        <div className="grid grid-cols-[auto_1fr_auto_1fr_auto_auto] gap-2 text-[10px] uppercase tracking-wider text-muted-foreground font-medium">
+      <div className="px-3 py-2 border-b border-overlay-border bg-overlay-subtle text-[10px] uppercase tracking-wider text-muted-foreground font-medium">
+        <div className="grid grid-cols-[2.5rem_1fr_3.5rem_5rem] gap-2 items-center">
           <span>#</span>
-          <span>Match</span>
-          <span className="text-right">Your C</span>
-          <span className="text-right hidden sm:block">Best in 11</span>
-          <span className="text-right hidden sm:block">Their Pts</span>
-          <span className="text-right">Gap</span>
+          <span>Your Captain · Match</span>
+          <span className="text-right">C Pts</span>
+          <span className="text-right">vs Optimal</span>
         </div>
       </div>
       <div className="divide-y divide-overlay-border max-h-[400px] overflow-y-auto">
         {rows.map((row) => {
           const perfect = row.gap === 0
+          const bestSurname = row.optimal_player_name.split(" ").pop()
           return (
             <div
-              key={`${row.match_id}`}
-              className="grid grid-cols-[auto_1fr_auto_1fr_auto_auto] gap-2 items-center px-3 py-2 text-xs"
+              key={row.match_id}
+              className="grid grid-cols-[2.5rem_1fr_3.5rem_5rem] gap-2 items-center px-3 py-2.5"
             >
-              <span className="text-muted-foreground tabular-nums w-6">{row.match_number}</span>
-              <span className="truncate text-muted-foreground">{row.matchup}</span>
-              <span className="text-right font-medium tabular-nums">{row.captain_name.split(" ").pop()}</span>
-              <span className="hidden sm:block text-right text-muted-foreground truncate">{perfect ? "—" : row.optimal_player_name.split(" ").pop()}</span>
-              <span className="hidden sm:block text-right tabular-nums text-muted-foreground">{perfect ? "" : row.optimal_pts}</span>
-              <span className={cn("text-right tabular-nums font-medium", perfect ? "text-emerald-500" : "text-rose-400")}>
-                {perfect ? "✓" : `−${row.gap}`}
-              </span>
+              <span className="text-[10px] text-muted-foreground tabular-nums text-center">M{row.match_number}</span>
+              <div className="min-w-0">
+                <p className="text-xs font-medium truncate">{row.captain_name}</p>
+                <p className="text-[10px] text-muted-foreground truncate">{row.matchup}</p>
+              </div>
+              <span className="text-sm text-right tabular-nums font-semibold text-gold-stat">{row.actual_pts}</span>
+              {perfect ? (
+                <span className="text-right text-emerald-500 text-[10px] font-semibold">✓ Best pick</span>
+              ) : (
+                <div className="text-right">
+                  <p className="text-xs tabular-nums font-semibold text-rose-400">−{row.gap}</p>
+                  <p className="text-[10px] text-muted-foreground">{bestSurname} · {row.optimal_pts}</p>
+                </div>
+              )}
             </div>
           )
         })}
@@ -216,7 +221,7 @@ export function CaptainAnalyticsTab({ leaderboard, matchHistory, cvPicks, curren
   if (leaderboard.length === 0) {
     return (
       <div className="glass rounded-2xl p-8 text-center">
-        <p className="text-sm text-muted-foreground">No captain data yet — available after the first completed match.</p>
+        <p className="text-sm text-muted-foreground">No captain data yet — available after the first match is scored.</p>
       </div>
     )
   }

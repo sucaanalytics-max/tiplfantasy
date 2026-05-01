@@ -38,7 +38,7 @@ async function fetchInsightsBase(leagueId: string) {
         "team_home:teams!matches_team_home_id_fkey(id, short_name), " +
         "team_away:teams!matches_team_away_id_fkey(id, short_name)"
       )
-      .eq("status", "completed")
+      .in("status", ["completed", "no_result"])
       .order("start_time", { ascending: true })
       .limit(100),
   ])

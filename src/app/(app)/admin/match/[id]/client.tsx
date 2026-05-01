@@ -453,7 +453,7 @@ export function AdminMatchClient({
               📊 Live Points
             </Button>
           )}
-          {match.status === "live" && (
+          {(match.status === "live" || match.status === "upcoming") && (
             <Button
               variant="outline"
               size="sm"
