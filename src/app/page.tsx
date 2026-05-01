@@ -9,16 +9,15 @@ const PROJECT_REF = process.env.NEXT_PUBLIC_SUPABASE_URL
 export default async function RootPage() {
   const user = await getAuthUser()
   if (!user) {
-    // Self-heal: middleware checks cookie presence only. If the cookie is stale
-    // and getAuthUser() returns null, clear it so middleware stops bouncing
-    // /login back to / on the next request.
+    // If stale auth cookies are present, route via /auth/clear so a Route
+    // Handler can write Set-Cookie deletion headers (Server Components can't).
+    // This breaks the loop where middleware sees the cookie and redirects
+    // /login back to /.
     const cookieStore = await cookies()
-    for (const c of cookieStore.getAll()) {
-      if (c.name.startsWith(`sb-${PROJECT_REF}-auth-token`)) {
-        cookieStore.delete(c.name)
-      }
-    }
-    redirect("/login")
+    const hasStaleAuthCookies = cookieStore
+      .getAll()
+      .some((c) => c.name.startsWith(`sb-${PROJECT_REF}-auth-token`))
+    redirect(hasStaleAuthCookies ? "/auth/clear" : "/login")
   }
   redirect("/dashboard")
 }
