@@ -23,7 +23,7 @@ function DiffLeaderboard({ summary, currentUserId }: { summary: DifferentialSumm
   return (
     <div className="glass rounded-2xl overflow-hidden">
       <div className="px-3 py-2 border-b border-overlay-border bg-overlay-subtle text-[10px] uppercase tracking-wider text-muted-foreground font-medium">
-        <div className="grid grid-cols-[1fr_auto_auto_auto] gap-3">
+        <div className="grid grid-cols-[1fr_5rem_5rem_4rem] gap-3">
           <span>Player</span>
           <span className="text-right">Diff Score</span>
           <span className="text-right hidden sm:block">Unique Pts</span>
@@ -37,7 +37,7 @@ function DiffLeaderboard({ summary, currentUserId }: { summary: DifferentialSumm
             <div
               key={row.user_id}
               className={cn(
-                "grid grid-cols-[1fr_auto_auto_auto] gap-3 items-center px-3 py-2.5",
+                "grid grid-cols-[1fr_5rem_5rem_4rem] gap-3 items-center px-3 py-2.5",
                 isMe && "bg-primary/[0.06] shadow-[inset_2px_0_0_var(--primary)]"
               )}
             >
@@ -78,7 +78,7 @@ function CategoryBreakdown({ picks, summary, currentUserId }: { picks: Different
   return (
     <div className="glass rounded-2xl overflow-hidden">
       <div className="px-3 py-2 border-b border-overlay-border bg-overlay-subtle text-[10px] uppercase tracking-wider text-muted-foreground font-medium">
-        <div className="grid grid-cols-[1fr_auto_auto_auto] gap-3">
+        <div className="grid grid-cols-[1fr_4rem_4rem_4.5rem] gap-3">
           <span>Player</span>
           <span className="text-right">💎 Gems</span>
           <span className="text-right">✅ Paid</span>
@@ -93,7 +93,7 @@ function CategoryBreakdown({ picks, summary, currentUserId }: { picks: Different
             <div
               key={row.user_id}
               className={cn(
-                "grid grid-cols-[1fr_auto_auto_auto] gap-3 items-center px-3 py-2.5",
+                "grid grid-cols-[1fr_4rem_4rem_4.5rem] gap-3 items-center px-3 py-2.5",
                 isMe && "bg-primary/[0.06] shadow-[inset_2px_0_0_var(--primary)]"
               )}
             >
@@ -129,7 +129,7 @@ function TopPicks({ picks, currentUserId }: { picks: DifferentialPickRow[]; curr
   return (
     <div className="glass rounded-2xl overflow-hidden">
       <div className="px-3 py-2 border-b border-overlay-border bg-overlay-subtle text-[10px] uppercase tracking-wider text-muted-foreground font-medium">
-        <div className="grid grid-cols-[1fr_auto_auto_auto] gap-2">
+        <div className="grid grid-cols-[1fr_3rem_4rem_5rem] gap-2">
           <span>Player · Match</span>
           <span className="text-right">Pts</span>
           <span className="text-right">Owned</span>
@@ -140,7 +140,7 @@ function TopPicks({ picks, currentUserId }: { picks: DifferentialPickRow[]; curr
         {myPicks.map((pick) => {
           const catCfg = pick.category ? CATEGORY_CONFIG[pick.category] : null
           return (
-            <div key={`${pick.match_id}:${pick.player_id}`} className="grid grid-cols-[1fr_auto_auto_auto] gap-2 items-center px-3 py-2 text-xs">
+            <div key={`${pick.match_id}:${pick.player_id}`} className="grid grid-cols-[1fr_3rem_4rem_5rem] gap-2 items-center px-3 py-2 text-xs">
               <div className="min-w-0">
                 <p className="font-medium truncate">
                   {pick.player_name}
@@ -183,7 +183,7 @@ function HerdTraps({ picks }: { picks: DifferentialPickRow[] }) {
   return (
     <div className="glass rounded-2xl overflow-hidden">
       <div className="px-3 py-2 border-b border-overlay-border bg-overlay-subtle text-[10px] uppercase tracking-wider text-muted-foreground font-medium">
-        <div className="grid grid-cols-[auto_1fr_auto_auto] gap-3">
+        <div className="grid grid-cols-[1.5rem_1fr_4rem_3rem] gap-3">
           <span>#</span>
           <span>Player · Match</span>
           <span className="text-right">Owned</span>
@@ -192,7 +192,7 @@ function HerdTraps({ picks }: { picks: DifferentialPickRow[] }) {
       </div>
       <div className="divide-y divide-overlay-border">
         {traps.map((trap, i) => (
-          <div key={`${trap.match_id}:${trap.player_id}`} className="grid grid-cols-[auto_1fr_auto_auto] gap-3 items-center px-3 py-2 text-xs">
+          <div key={`${trap.match_id}:${trap.player_id}`} className="grid grid-cols-[1.5rem_1fr_4rem_3rem] gap-3 items-center px-3 py-2 text-xs">
             <span className="text-muted-foreground w-5">{i + 1}</span>
             <div>
               <p className="font-medium">{trap.player_name}</p>

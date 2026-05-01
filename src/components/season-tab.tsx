@@ -49,7 +49,7 @@ export function SeasonTab({ rows, currentUserId }: Props) {
   return (
     <div className="glass rounded-2xl overflow-hidden">
       {/* Header */}
-      <div className="grid grid-cols-[28px_32px_1fr_28px_auto_auto_auto_auto] gap-x-3 px-4 py-2 text-[10px] uppercase tracking-wider text-muted-foreground font-medium bg-overlay-subtle items-center">
+      <div className="grid grid-cols-[28px_32px_1fr_28px_3rem_3rem_3rem_5.5rem] gap-x-3 px-4 py-2 text-[10px] uppercase tracking-wider text-muted-foreground font-medium bg-overlay-subtle items-center">
         <SortHdr label="#"   skey="rank"  sort={sort} onSort={toggleSort} align="center" />
         <span />
         <span>Player</span>
@@ -69,7 +69,7 @@ export function SeasonTab({ rows, currentUserId }: Props) {
             <div
               key={row.user_id}
               className={cn(
-                "grid grid-cols-[28px_32px_1fr_28px_auto_auto_auto_auto] gap-x-3 px-4 py-3 items-center transition-colors",
+                "grid grid-cols-[28px_32px_1fr_28px_3rem_3rem_3rem_5.5rem] gap-x-3 px-4 py-3 items-center transition-colors",
                 isMe && "row-highlight-you"
               )}
             >
