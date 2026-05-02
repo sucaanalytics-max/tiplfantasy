@@ -211,7 +211,7 @@ export type UserDQS = {
 export type VenueTopPlayer = {
   playerId: string
   name: string
-  role: string
+  role: PlayerRole
   team: string
   avgFP: number
   matches: number
