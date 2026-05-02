@@ -1374,156 +1374,376 @@ function MatchupsTab({ venues, matchRows, paceSpinVenues, paceSpinTeams, globalR
 // Matchups: Venues Section
 // ============================================================
 
-function VenuesSection({ venues, matchRows }: { venues: VenueAnalytics[]; matchRows: MatchScoringRow[] }) {
-  const { sorted: sortedVenues, sortKey: vKey, sortDir: vDir, toggleSort: vToggle } = useSortableTable(venues, "avgTotalFP")
-  const { sorted: sortedMatches, sortKey: mKey, sortDir: mDir, toggleSort: mToggle } = useSortableTable(matchRows, "matchNumber", "asc")
+function abbreviateVenue(venue: string): { short: string; city: string } {
+  const parts = venue.split(",")
+  const city = parts[parts.length - 1]?.trim() ?? ""
+  const short = parts[0]
+    .replace(/\b(International|Stadium|Cricket Ground|Bharat Ratna Shri Atal Bihari Vajpayee)\b/gi, "")
+    .replace(/\s+/g, " ")
+    .trim()
+  return { short: short || parts[0].trim(), city }
+}
 
-  // Role x Venue matrix
-  const allRoles = ["WK", "BAT", "AR", "BOWL"]
+function VenuesSection({
+  venues,
+  matchRows,
+  globalRoleAvg,
+}: {
+  venues: VenueAnalytics[]
+  matchRows: MatchScoringRow[]
+  globalRoleAvg: Record<string, number>
+}) {
+  const [selectedIdx, setSelectedIdx] = useState(0)
+  const venue = venues[Math.min(selectedIdx, venues.length - 1)]
+
+  const venueMatches = useMemo(
+    () =>
+      matchRows
+        .filter((r) => r.venue === venue?.venue)
+        .sort((a, b) => b.matchNumber - a.matchNumber),
+    [matchRows, venue?.venue],
+  )
+
+  if (venues.length === 0) {
+    return (
+      <p className="text-sm text-muted-foreground py-8 text-center">
+        No venue data yet.
+      </p>
+    )
+  }
+
+  const batPct = venue.battingPct
+  const bowlPct = Math.round((100 - batPct) * 10) / 10
 
   return (
-    <div className="space-y-6 mt-4">
-      {/* Venue Stats */}
-      <Card>
-        <CardHeader className="pb-2">
-          <CardTitle className="text-sm">Venue Scoring Patterns</CardTitle>
-        </CardHeader>
-        <CardContent className="p-0">
-          <div className="overflow-x-auto">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead className="min-w-[160px]">Venue</TableHead>
-                  <SortHeader label="M" sortKey="matches" currentKey={vKey} currentDir={vDir} onSort={vToggle} />
-                  <SortHeader label="Avg FP" sortKey="avgTotalFP" currentKey={vKey} currentDir={vDir} onSort={vToggle} />
-                  <SortHeader label="Bat FP" sortKey="avgBattingFP" currentKey={vKey} currentDir={vDir} onSort={vToggle} />
-                  <SortHeader label="Bowl FP" sortKey="avgBowlingFP" currentKey={vKey} currentDir={vDir} onSort={vToggle} />
-                  <SortHeader label="Bat %" sortKey="battingPct" currentKey={vKey} currentDir={vDir} onSort={vToggle} />
-                  <TableHead>Type</TableHead>
-                  <TableHead>Best Role</TableHead>
-                  <TableHead>Top Player</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {sortedVenues.map((v) => (
-                  <TableRow key={v.venue}>
-                    <TableCell className="text-xs font-medium max-w-[200px] truncate">{v.venue}</TableCell>
-                    <TableCell className="tabular-nums text-xs">{v.matches}</TableCell>
-                    <TableCell className="tabular-nums text-xs font-bold">{v.avgTotalFP}</TableCell>
-                    <TableCell className="tabular-nums text-xs">{v.avgBattingFP}</TableCell>
-                    <TableCell className="tabular-nums text-xs">{v.avgBowlingFP}</TableCell>
-                    <TableCell className="tabular-nums text-xs">{v.battingPct}%</TableCell>
-                    <TableCell>
-                      <Badge variant="outline" className={cn("text-[9px] px-1.5 py-0 h-4", classificationColor(v.classification))}>
-                        {v.classification === "bat-friendly" ? "BAT" : v.classification === "bowl-friendly" ? "BOWL" : "BAL"}
-                      </Badge>
-                    </TableCell>
-                    <TableCell className="text-xs">{v.bestRole}</TableCell>
-                    <TableCell className="text-xs truncate max-w-[120px]">{v.topPerformer}</TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </div>
-        </CardContent>
-      </Card>
+    <div className="flex gap-4 mt-4" style={{ height: "calc(100vh - 220px)", minHeight: 600 }}>
 
-      {/* Role x Venue Matrix */}
-      {venues.length > 0 && (
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm">Role × Venue Matrix (Avg FP)</CardTitle>
-            <p className="text-xs text-muted-foreground">Green = above role average, Red = below</p>
-          </CardHeader>
-          <CardContent className="p-0">
-            <div className="overflow-x-auto">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead className="min-w-[160px]">Venue</TableHead>
-                    {allRoles.map((r) => (
-                      <TableHead key={r} className="text-center">
-                        <Badge variant="outline" className={cn("text-[9px]", ROLE_COLORS[r as PlayerRole])}>{r}</Badge>
-                      </TableHead>
-                    ))}
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {venues.map((v) => {
-                    // Compute role averages across all venues for comparison
-                    const globalRoleAvg: Record<string, number> = {}
-                    for (const r of allRoles) {
-                      const allVals = venues.map((vn) => vn.roleAvg[r] ?? 0).filter((x) => x > 0)
-                      globalRoleAvg[r] = allVals.length > 0 ? allVals.reduce((a, b) => a + b, 0) / allVals.length : 0
-                    }
-                    return (
-                      <TableRow key={v.venue}>
-                        <TableCell className="text-xs font-medium max-w-[200px] truncate">{v.venue}</TableCell>
-                        {allRoles.map((r) => {
-                          const val = v.roleAvg[r] ?? 0
-                          const avg = globalRoleAvg[r]
-                          const isAbove = val > avg
-                          return (
-                            <TableCell key={r} className="text-center">
-                              <span className={cn(
-                                "tabular-nums text-xs font-medium",
-                                val > 0 ? (isAbove ? "text-emerald-600 dark:text-emerald-400" : "text-red-500 dark:text-red-400") : "text-muted-foreground"
-                              )}>
-                                {val > 0 ? val : "—"}
-                              </span>
-                            </TableCell>
-                          )
-                        })}
-                      </TableRow>
-                    )
-                  })}
-                </TableBody>
-              </Table>
+      {/* ── Left: ranked venue list ── */}
+      <div className="w-64 flex-shrink-0 overflow-y-auto flex flex-col gap-1 pr-1">
+        <p className="text-[10px] font-semibold text-muted-foreground tracking-widest px-2 mb-1">
+          VENUES · AVG FP ↓
+        </p>
+        {venues.map((v, i) => {
+          const { short, city } = abbreviateVenue(v.venue)
+          const active = i === selectedIdx
+          return (
+            <button
+              key={v.venue}
+              onClick={() => setSelectedIdx(i)}
+              className={cn(
+                "w-full text-left rounded-lg px-2.5 py-2 border transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+                active
+                  ? "bg-muted border-orange-500"
+                  : "border-transparent hover:bg-muted/50",
+              )}
+            >
+              <div className="flex items-center gap-2 mb-1">
+                <span className="text-[11px] text-muted-foreground w-4 text-right flex-shrink-0">
+                  {i + 1}
+                </span>
+                <span className="text-xs font-medium truncate flex-1">{short}</span>
+                <span
+                  className={cn(
+                    "text-xs font-bold tabular-nums flex-shrink-0",
+                    active ? "text-orange-500" : "text-foreground",
+                  )}
+                >
+                  {v.avgTotalFP}
+                </span>
+              </div>
+              <div className="flex items-center gap-1.5 pl-6">
+                <div className="flex-1 h-1 rounded-full bg-muted overflow-hidden flex">
+                  <div className="bg-orange-500 h-full" style={{ width: `${v.battingPct}%` }} />
+                  <div className="bg-blue-500 h-full flex-1" />
+                </div>
+                <span className="text-[9px] text-muted-foreground whitespace-nowrap">
+                  {v.battingPct}% · {v.matches}M
+                </span>
+              </div>
+              {city && (
+                <span className="text-[9px] text-muted-foreground pl-6 block">{city}</span>
+              )}
+            </button>
+          )
+        })}
+      </div>
+
+      {/* ── Right: detail panel ── */}
+      <div className="flex-1 overflow-y-auto space-y-4 pr-1">
+
+        {/* Section 1 — Header */}
+        <Card className="border-l-2 border-l-orange-500">
+          <CardContent className="pt-4 pb-4">
+            <div className="flex items-start justify-between gap-2 mb-1">
+              <h3 className="text-sm font-bold">{venue.venue}</h3>
+              <Badge
+                variant="outline"
+                className={cn("text-[10px] shrink-0", classificationColor(venue.classification))}
+              >
+                {venue.classification === "bat-friendly"
+                  ? "BAT"
+                  : venue.classification === "bowl-friendly"
+                  ? "BOWL"
+                  : "BAL"}
+              </Badge>
+            </div>
+            <p className="text-xs text-muted-foreground mb-3">
+              {abbreviateVenue(venue.venue).city || "—"} · {venue.matches}{" "}
+              match{venue.matches !== 1 ? "es" : ""} played
+            </p>
+            <div className="grid grid-cols-4 gap-2 mb-3">
+              {(
+                [
+                  { label: "AVG TOTAL FP", value: venue.avgTotalFP, orange: true },
+                  { label: "AVG BAT FP", value: venue.avgBattingFP, orange: false },
+                  { label: "AVG BOWL FP", value: venue.avgBowlingFP, orange: false },
+                  { label: "BEST ROLE", value: venue.bestRole, orange: false },
+                ] as const
+              ).map(({ label, value, orange }) => (
+                <div key={label} className="bg-muted/50 rounded-md p-2 text-center">
+                  <div
+                    className={cn(
+                      "text-base font-extrabold tabular-nums",
+                      orange && "text-orange-500",
+                    )}
+                  >
+                    {value}
+                  </div>
+                  <div className="text-[8px] text-muted-foreground font-semibold tracking-wide mt-0.5">
+                    {label}
+                  </div>
+                </div>
+              ))}
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="text-[10px] font-semibold text-orange-500 tabular-nums w-8 text-right">
+                {batPct}%
+              </span>
+              <div className="flex-1 h-2.5 rounded-full bg-muted overflow-hidden flex">
+                <div className="bg-orange-500 h-full" style={{ width: `${batPct}%` }} />
+                <div className="bg-blue-500 h-full flex-1" />
+              </div>
+              <span className="text-[10px] font-semibold text-blue-500 tabular-nums w-8">
+                {bowlPct}%
+              </span>
+            </div>
+            <div className="flex justify-center gap-4 mt-1">
+              <span className="flex items-center gap-1 text-[10px] text-muted-foreground">
+                <span className="w-2 h-2 rounded-sm bg-orange-500 inline-block" />
+                Batting
+              </span>
+              <span className="flex items-center gap-1 text-[10px] text-muted-foreground">
+                <span className="w-2 h-2 rounded-sm bg-blue-500 inline-block" />
+                Bowling
+              </span>
             </div>
           </CardContent>
         </Card>
-      )}
 
-      {/* Match Scoring Table */}
-      <Card>
-        <CardHeader className="pb-2">
-          <CardTitle className="text-sm">Match Scoring History</CardTitle>
-        </CardHeader>
-        <CardContent className="p-0">
-          <div className="overflow-x-auto">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <SortHeader label="Match" sortKey="matchNumber" currentKey={mKey} currentDir={mDir} onSort={mToggle} />
-                  <TableHead>Teams</TableHead>
-                  <TableHead>Venue</TableHead>
-                  <SortHeader label="Total FP" sortKey="totalFP" currentKey={mKey} currentDir={mDir} onSort={mToggle} />
-                  <SortHeader label="Avg User" sortKey="avgUserScore" currentKey={mKey} currentDir={mDir} onSort={mToggle} />
-                  <SortHeader label="Top User" sortKey="topUserScore" currentKey={mKey} currentDir={mDir} onSort={mToggle} />
-                  <TableHead>Winner</TableHead>
-                  <SortHeader label="Best Player" sortKey="highestPlayerFP" currentKey={mKey} currentDir={mDir} onSort={mToggle} />
-                  <TableHead>Player</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {sortedMatches.map((m) => (
-                  <TableRow key={m.matchId}>
-                    <TableCell className="tabular-nums text-xs font-medium">M{m.matchNumber}</TableCell>
-                    <TableCell className="text-xs">{m.homeTeam} vs {m.awayTeam}</TableCell>
-                    <TableCell className="text-xs truncate max-w-[120px]">{m.venue}</TableCell>
-                    <TableCell className="tabular-nums text-xs font-bold">{m.totalFP}</TableCell>
-                    <TableCell className="tabular-nums text-xs">{m.avgUserScore}</TableCell>
-                    <TableCell className="tabular-nums text-xs font-medium">{m.topUserScore}</TableCell>
-                    <TableCell className="text-xs">{m.topUserName}</TableCell>
-                    <TableCell className="tabular-nums text-xs font-medium">{m.highestPlayerFP}</TableCell>
-                    <TableCell className="text-xs truncate max-w-[100px]">{m.highestPlayerName}</TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </div>
-        </CardContent>
-      </Card>
+        {/* Section 2 — Role Performance */}
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-xs">Role Performance at This Venue</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                {(["WK", "BAT", "AR", "BOWL"] as const).map((role) => {
+                  const val = venue.roleAvg[role] ?? 0
+                  const global = globalRoleAvg[role] ?? 0
+                  const delta = Math.round((val - global) * 10) / 10
+                  const maxVal = Math.max(
+                    ...["WK", "BAT", "AR", "BOWL"].map((r) => venue.roleAvg[r] ?? 0),
+                  )
+                  const pct = maxVal > 0 ? (val / maxVal) * 100 : 0
+                  return (
+                    <div key={role} className="flex items-center gap-2">
+                      <span className="text-[10px] font-bold text-muted-foreground w-8 text-right">
+                        {role}
+                      </span>
+                      <div className="flex-1 bg-muted rounded h-2 overflow-hidden">
+                        <div
+                          className={cn(
+                            "h-full rounded",
+                            val > 0 && delta > 0 ? "bg-orange-500" : "bg-blue-500",
+                          )}
+                          style={{ width: `${pct}%` }}
+                        />
+                      </div>
+                      <span className="text-xs font-semibold tabular-nums w-8 text-right">
+                        {val || "—"}
+                      </span>
+                      <span
+                        className={cn(
+                          "text-[10px] tabular-nums w-9 text-right",
+                          val > 0 ? deltaClass(delta) : "text-muted-foreground",
+                        )}
+                      >
+                        {val > 0 ? formatDelta(delta) : ""}
+                      </span>
+                    </div>
+                  )
+                })}
+              </div>
+              <div className="bg-muted/40 rounded-md p-3">
+                <p className="text-[10px] font-semibold text-muted-foreground tracking-wider mb-2">
+                  VS SEASON AVG
+                </p>
+                <div className="space-y-1.5">
+                  {(["WK", "BAT", "AR", "BOWL"] as const).map((role) => (
+                    <div key={role} className="flex justify-between text-xs">
+                      <span className="text-muted-foreground">{role} avg (season)</span>
+                      <span className="tabular-nums font-medium">
+                        {globalRoleAvg[role] ?? "—"}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+                {(() => {
+                  const bestDelta = (["WK", "BAT", "AR", "BOWL"] as const)
+                    .map((r) => ({
+                      role: r,
+                      delta: (venue.roleAvg[r] ?? 0) - (globalRoleAvg[r] ?? 0),
+                    }))
+                    .filter((x) => x.delta > 0)
+                    .sort((a, b) => b.delta - a.delta)[0]
+                  if (!bestDelta) return null
+                  const pct = Math.round(
+                    (bestDelta.delta / (globalRoleAvg[bestDelta.role] || 1)) * 100,
+                  )
+                  return (
+                    <p className="text-[10px] text-emerald-500 mt-2 border-t border-border pt-2">
+                      ↑ {bestDelta.role} scores +{pct}% above season avg here
+                    </p>
+                  )
+                })()}
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Section 3 — Top 5 Batsmen + Bowlers */}
+        <div className="grid grid-cols-2 gap-4">
+          {(
+            [
+              { title: "TOP 5 BATSMEN AT VENUE", players: venue.topBatsmen },
+              { title: "TOP 5 BOWLERS AT VENUE", players: venue.topBowlers },
+            ] as { title: string; players: VenueTopPlayer[] }[]
+          ).map(({ title, players }) => (
+            <Card key={title}>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-[10px] tracking-widest text-muted-foreground">
+                  {title}
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="p-0">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead className="w-6 pl-4">#</TableHead>
+                      <TableHead>Player</TableHead>
+                      <TableHead className="text-right pr-4">Avg FP</TableHead>
+                      <TableHead className="text-right pr-4">M</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {players.length === 0 ? (
+                      <TableRow>
+                        <TableCell
+                          colSpan={4}
+                          className="text-center text-xs text-muted-foreground py-4"
+                        >
+                          No data
+                        </TableCell>
+                      </TableRow>
+                    ) : (
+                      players.map((p, i) => (
+                        <TableRow key={p.playerId}>
+                          <TableCell className="pl-4 text-xs text-muted-foreground">
+                            {i === 0 ? "🥇" : i === 1 ? "🥈" : i === 2 ? "🥉" : i + 1}
+                          </TableCell>
+                          <TableCell>
+                            <div className="text-xs font-medium">{p.name}</div>
+                            <div className="text-[10px] text-muted-foreground">
+                              {p.team} · {p.role}
+                            </div>
+                          </TableCell>
+                          <TableCell className="text-right pr-4 tabular-nums text-xs font-bold">
+                            {p.avgFP}
+                          </TableCell>
+                          <TableCell className="text-right pr-4 tabular-nums text-xs text-muted-foreground">
+                            {p.matches}
+                          </TableCell>
+                        </TableRow>
+                      ))
+                    )}
+                  </TableBody>
+                </Table>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+
+        {/* Section 4 — Match History */}
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-xs">Match History at This Venue</CardTitle>
+          </CardHeader>
+          <CardContent className="p-0">
+            {venueMatches.length === 0 ? (
+              <p className="text-xs text-muted-foreground text-center py-4">
+                No matches recorded at this venue yet.
+              </p>
+            ) : (
+              <div className="overflow-x-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Match</TableHead>
+                      <TableHead>Teams</TableHead>
+                      <TableHead className="text-right">Total FP</TableHead>
+                      <TableHead className="text-right">Avg User</TableHead>
+                      <TableHead className="text-right">Top User</TableHead>
+                      <TableHead>Best Player</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {venueMatches.map((m) => (
+                      <TableRow key={m.matchId}>
+                        <TableCell className="text-xs font-medium tabular-nums">
+                          M{m.matchNumber}
+                        </TableCell>
+                        <TableCell className="text-xs">
+                          {m.homeTeam} vs {m.awayTeam}
+                        </TableCell>
+                        <TableCell className="text-right tabular-nums text-xs font-bold">
+                          {m.totalFP}
+                        </TableCell>
+                        <TableCell className="text-right tabular-nums text-xs">
+                          {m.avgUserScore}
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <div className="text-xs font-medium text-amber-500 tabular-nums">
+                            {m.topUserScore}
+                          </div>
+                          <div className="text-[10px] text-muted-foreground">{m.topUserName}</div>
+                        </TableCell>
+                        <TableCell>
+                          <div className="text-xs font-medium">{m.highestPlayerName}</div>
+                          <div className="text-[10px] text-muted-foreground tabular-nums">
+                            {m.highestPlayerFP} FP
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+      </div>
     </div>
   )
 }
