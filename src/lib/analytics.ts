@@ -208,6 +208,15 @@ export type UserDQS = {
   matches: number
 }
 
+export type VenueTopPlayer = {
+  playerId: string
+  name: string
+  role: string
+  team: string
+  avgFP: number
+  matches: number
+}
+
 export type VenueAnalytics = {
   venue: string
   matches: number
@@ -220,6 +229,8 @@ export type VenueAnalytics = {
   bestRole: string
   topPerformer: string
   roleAvg: Record<string, number>
+  topBatsmen: VenueTopPlayer[]
+  topBowlers: VenueTopPlayer[]
 }
 
 export type MatchScoringRow = {
