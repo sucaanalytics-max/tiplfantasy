@@ -14,6 +14,7 @@ import {
   computeVenueAnalytics,
   computeMatchScoringRows,
   computePaceSpinAnalysis,
+  computeGlobalRoleAvg,
   type RawPlayerScore,
   type RawSelection,
   type RawUserMatchScore,
@@ -246,6 +247,7 @@ export default async function AdminAnalyticsPage() {
   const matchScoringRows = computeMatchScoringRows(
     rawScores, rawUserScores, matchInfos, playerMap, profileMap, teamIdToName
   )
+  const globalRoleAvg = computeGlobalRoleAvg(rawScores, playerMap)
 
   // Tab 3: Match Preview
   let matchPreview: {
@@ -311,6 +313,7 @@ export default async function AdminAnalyticsPage() {
         dqsData={dqsData}
         venueData={venueData}
         matchScoringRows={matchScoringRows}
+        globalRoleAvg={globalRoleAvg}
         matchCount={matchIds.length}
         userCount={totalUsers}
         formCurves={top10Form}

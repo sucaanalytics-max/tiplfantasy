@@ -54,6 +54,7 @@ type Props = {
   dqsData: UserDQS[]
   venueData: VenueAnalytics[]
   matchScoringRows: MatchScoringRow[]
+  globalRoleAvg: Record<string, number>
   matchCount: number
   userCount: number
   formCurves: { id: string; name: string; color: string; rollingAvg: number[] }[]
@@ -318,6 +319,7 @@ export function AnalyticsClient({
   dqsData,
   venueData,
   matchScoringRows,
+  globalRoleAvg,
   matchCount,
   userCount,
   formCurves,
@@ -388,7 +390,7 @@ export function AnalyticsClient({
           <PlayersTab stats={filteredPlayerStats} ratings={filteredPowerRatings} benchmarks={roleBenchmarks} formCurves={formCurves} matchCount={matchCount} />
         </TabsContent>
         <TabsContent value="matchups">
-          <MatchupsTab venues={venueData} matchRows={matchScoringRows} paceSpinVenues={paceSpinVenues} paceSpinTeams={paceSpinTeams} />
+          <MatchupsTab venues={venueData} matchRows={matchScoringRows} paceSpinVenues={paceSpinVenues} paceSpinTeams={paceSpinTeams} globalRoleAvg={globalRoleAvg} />
         </TabsContent>
         <TabsContent value="users">
           <UsersTab
@@ -1353,13 +1355,14 @@ function UsersTab({
 // Tab: Matchups (Venues + Pace/Spin merged)
 // ============================================================
 
-function MatchupsTab({ venues, matchRows, paceSpinVenues, paceSpinTeams }: {
+function MatchupsTab({ venues, matchRows, paceSpinVenues, paceSpinTeams, globalRoleAvg }: {
   venues: VenueAnalytics[]; matchRows: MatchScoringRow[];
-  paceSpinVenues: PaceSpinVenueRow[]; paceSpinTeams: PaceSpinTeamRow[]
+  paceSpinVenues: PaceSpinVenueRow[]; paceSpinTeams: PaceSpinTeamRow[];
+  globalRoleAvg: Record<string, number>
 }) {
   return (
     <div className="space-y-6 mt-4">
-      <VenuesSection venues={venues} matchRows={matchRows} />
+      <VenuesSection venues={venues} matchRows={matchRows} globalRoleAvg={globalRoleAvg} />
       <Separator />
       <h3 className="text-sm font-semibold pt-2">Pace vs Spin Analysis</h3>
       <PaceSpinSection venues={paceSpinVenues} teams={paceSpinTeams} />
