@@ -1565,7 +1565,7 @@ function VenuesSection({
                         <div
                           className={cn(
                             "h-full rounded",
-                            val > 0 && delta > 0 ? "bg-orange-500" : "bg-blue-500",
+                            val > 0 && delta >= 0 ? "bg-orange-500" : "bg-blue-500",
                           )}
                           style={{ width: `${pct}%` }}
                         />
@@ -1660,7 +1660,11 @@ function VenuesSection({
                       players.map((p, i) => (
                         <TableRow key={p.playerId}>
                           <TableCell className="pl-4 text-xs text-muted-foreground">
-                            {i === 0 ? "🥇" : i === 1 ? "🥈" : i === 2 ? "🥉" : i + 1}
+                            {i < 3 ? (
+                              <span className="font-bold text-orange-500">{i + 1}</span>
+                            ) : (
+                              i + 1
+                            )}
                           </TableCell>
                           <TableCell>
                             <div className="text-xs font-medium">{p.name}</div>
