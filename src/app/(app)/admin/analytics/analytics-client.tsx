@@ -29,6 +29,7 @@ import type {
   OptimalTeam,
   UserDQS,
   VenueAnalytics,
+  VenueTopPlayer,
   MatchScoringRow,
   PaceSpinVenueRow,
   PaceSpinTeamRow,

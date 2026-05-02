@@ -987,6 +987,24 @@ export const computeDecisionQuality = (
 // 10. Venue & Match Analytics
 // ============================================================
 
+export const computeGlobalRoleAvg = (
+  scores: RawPlayerScore[],
+  playerMap: Map<string, PlayerInfo>,
+): Record<string, number> => {
+  const roleFPs: Record<string, number[]> = { WK: [], BAT: [], AR: [], BOWL: [] }
+  for (const s of scores) {
+    const role = playerMap.get(s.player_id)?.role
+    if (role && roleFPs[role]) {
+      roleFPs[role].push(Number(s.fantasy_points))
+    }
+  }
+  const result: Record<string, number> = {}
+  for (const [role, fps] of Object.entries(roleFPs)) {
+    result[role] = round1(mean(fps))
+  }
+  return result
+}
+
 export const computeVenueAnalytics = (
   scores: RawPlayerScore[],
   matches: MatchInfo[],
@@ -1014,6 +1032,8 @@ export const computeVenueAnalytics = (
     playerFPs: Map<string, number[]>
   }
   const venueAcc = new Map<string, VenueAcc>()
+  const BATSMAN_ROLES = new Set(["WK", "BAT"])
+  const BOWLER_ROLES = new Set(["BOWL", "AR"])
 
   for (const match of matches) {
     if (match.status !== "completed") continue
@@ -1087,10 +1107,49 @@ export const computeVenueAnalytics = (
       }
     }
 
+    const topBatsmen: VenueTopPlayer[] = [...acc.playerFPs.entries()]
+      .filter(([pid]) => {
+        const role = playerMap.get(pid)?.role
+        return role !== undefined && BATSMAN_ROLES.has(role)
+      })
+      .map(([pid, fps]) => {
+        const info = playerMap.get(pid)!
+        return {
+          playerId: pid,
+          name: info.name,
+          role: info.role,
+          team: info.team,
+          avgFP: round1(mean(fps)),
+          matches: fps.length,
+        }
+      })
+      .sort((a, b) => b.avgFP - a.avgFP)
+      .slice(0, 5)
+
+    const topBowlers: VenueTopPlayer[] = [...acc.playerFPs.entries()]
+      .filter(([pid]) => {
+        const role = playerMap.get(pid)?.role
+        return role !== undefined && BOWLER_ROLES.has(role)
+      })
+      .map(([pid, fps]) => {
+        const info = playerMap.get(pid)!
+        return {
+          playerId: pid,
+          name: info.name,
+          role: info.role,
+          team: info.team,
+          avgFP: round1(mean(fps)),
+          matches: fps.length,
+        }
+      })
+      .sort((a, b) => b.avgFP - a.avgFP)
+      .slice(0, 5)
+
     return {
       venue, matches: acc.matchCount, avgTotalFP: avgTotal,
       avgBattingFP: avgBatting, avgBowlingFP: avgBowling, avgFieldingFP: avgFielding,
       battingPct, classification, bestRole, topPerformer, roleAvg,
+      topBatsmen, topBowlers,
     }
   }).sort((a, b) => b.avgTotalFP - a.avgTotalFP)
 
