@@ -1107,43 +1107,19 @@ export const computeVenueAnalytics = (
       }
     }
 
-    const topBatsmen: VenueTopPlayer[] = [...acc.playerFPs.entries()]
-      .filter(([pid]) => {
-        const role = playerMap.get(pid)?.role
-        return role !== undefined && BATSMAN_ROLES.has(role)
-      })
-      .map(([pid, fps]) => {
-        const info = playerMap.get(pid)!
-        return {
-          playerId: pid,
-          name: info.name,
-          role: info.role,
-          team: info.team,
-          avgFP: round1(mean(fps)),
-          matches: fps.length,
-        }
-      })
-      .sort((a, b) => b.avgFP - a.avgFP)
-      .slice(0, 5)
+    const playerEntries = [...acc.playerFPs.entries()]
+    const buildTopPlayers = (roleSet: Set<string>): VenueTopPlayer[] =>
+      playerEntries
+        .flatMap(([pid, fps]) => {
+          const info = playerMap.get(pid)
+          if (!info || !roleSet.has(info.role)) return []
+          return [{ playerId: pid, name: info.name, role: info.role, team: info.team, avgFP: round1(mean(fps)), matches: fps.length }]
+        })
+        .sort((a, b) => b.avgFP - a.avgFP)
+        .slice(0, 5)
 
-    const topBowlers: VenueTopPlayer[] = [...acc.playerFPs.entries()]
-      .filter(([pid]) => {
-        const role = playerMap.get(pid)?.role
-        return role !== undefined && BOWLER_ROLES.has(role)
-      })
-      .map(([pid, fps]) => {
-        const info = playerMap.get(pid)!
-        return {
-          playerId: pid,
-          name: info.name,
-          role: info.role,
-          team: info.team,
-          avgFP: round1(mean(fps)),
-          matches: fps.length,
-        }
-      })
-      .sort((a, b) => b.avgFP - a.avgFP)
-      .slice(0, 5)
+    const topBatsmen = buildTopPlayers(BATSMAN_ROLES)
+    const topBowlers = buildTopPlayers(BOWLER_ROLES)
 
     return {
       venue, matches: acc.matchCount, avgTotalFP: avgTotal,
