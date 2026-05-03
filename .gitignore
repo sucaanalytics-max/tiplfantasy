@@ -33,3 +33,6 @@ next-env.d.ts
 supabase/.temp/
 .cricsheet-tmp/
 .playwright-mcp/
+
+# git worktrees
+.worktrees/
