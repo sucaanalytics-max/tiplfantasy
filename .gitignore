@@ -36,3 +36,6 @@ supabase/.temp/
 
 # git worktrees
 .worktrees/
+
+# local tool state
+.superpowers/
