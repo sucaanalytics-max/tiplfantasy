@@ -12,6 +12,7 @@ import { MatchHeroBand } from "@/components/match-hero-band"
 import { MatchScoreBlock } from "@/components/live/match-score-block"
 import type { MatchStatus } from "@/lib/types"
 import { StickyHeader } from "./_components/sticky-header"
+import { ScorecardTab } from "./_components/scorecard-tab"
 import { StandingsTable } from "./_components/standings-table"
 import { RivalPanel } from "./_components/rival-panel"
 import { MyXIPanel } from "./_components/my-xi-panel"
@@ -88,6 +89,8 @@ type Props = {
   snapshots?: Array<{ over_number: number; scores: Record<string, number> }>
   userNames?: Record<string, string>
   allPlayers?: Array<{ id: string; name: string; role: string; team: { short_name: string; color: string } }>
+  homeTeamId: string
+  awayTeamId: string
 }
 
 // ─── Component ──────────────────────────────────────────────────────────
@@ -97,7 +100,7 @@ export function ScoresClient({
   myPlayerIds, myCaptainId, myVcId, allSelections,
   captainPicks, vcPicks = {}, currentUserId,
   userLeagues = [], lastBalls = [], snapshots = [],
-  allPlayers = [],
+  allPlayers = [], homeTeamId, awayTeamId,
 }: Props) {
   const isLive = match.status === "live"
 
@@ -108,6 +111,8 @@ export function ScoresClient({
   // Single piece of expansion state — replaces the previous drawer-open
   // booleans. null when no row is expanded.
   const [expandedUserId, setExpandedUserId] = useState<string | null>(null)
+
+  const [activeTab, setActiveTab] = useState<"standings" | "scorecard">("standings")
 
   const myPoints = Number(myScore?.total_points ?? 0)
 
@@ -304,67 +309,97 @@ export function ScoresClient({
           lastBalls={lastBalls}
         />
 
-      {userScores.length === 0 ? (
-        <div className="px-4 pt-6">
-          <EmptyState
-            icon={Trophy}
-            title={isLive ? "Calculating live scores..." : "Scores not yet available"}
-            description={
-              isLive
-                ? "Fantasy points appear here within 5 minutes of the match starting. The page refreshes every 30s."
-                : "Check back after the match is completed and scores are published."
-            }
-            action={{ label: "Back to Matches", href: "/matches" }}
-          />
+        {/* Tab strip */}
+        <div className="flex border-b border-overlay-border">
+          {(["standings", "scorecard"] as const).map((tab) => (
+            <button
+              key={tab}
+              onClick={() => setActiveTab(tab)}
+              className={cn(
+                "flex-1 py-2.5 text-xs font-semibold tracking-wide capitalize transition-colors",
+                activeTab === tab
+                  ? "text-primary border-b-2 border-primary"
+                  : "text-muted-foreground hover:text-foreground"
+              )}
+            >
+              {tab === "standings" ? "Standings" : "Scorecard"}
+            </button>
+          ))}
         </div>
-      ) : (
+
+      {activeTab === "standings" ? (
         <>
-          {userLeagues.length > 0 && (
-            <div className="px-3 py-2 bg-background border-b border-overlay-border">
-              <div className="flex gap-1.5 overflow-x-auto scrollbar-hide">
-                <FilterPill active={!leagueFilter} onClick={() => setLeagueFilter(null)}>
-                  All ({userScores.length})
-                </FilterPill>
-                {userLeagues.map((league) => (
-                  <FilterPill
-                    key={league.id}
-                    active={leagueFilter === league.id}
-                    onClick={() => setLeagueFilter(league.id)}
-                  >
-                    {league.name} ({league.memberIds.length})
-                  </FilterPill>
-                ))}
-              </div>
+          {userScores.length === 0 ? (
+            <div className="px-4 pt-6">
+              <EmptyState
+                icon={Trophy}
+                title={isLive ? "Calculating live scores..." : "Scores not yet available"}
+                description={
+                  isLive
+                    ? "Fantasy points appear here within 5 minutes of the match starting. The page refreshes every 30s."
+                    : "Check back after the match is completed and scores are published."
+                }
+                action={{ label: "Back to Matches", href: "/matches" }}
+              />
             </div>
+          ) : (
+            <>
+              {userLeagues.length > 0 && (
+                <div className="px-3 py-2 bg-background border-b border-overlay-border">
+                  <div className="flex gap-1.5 overflow-x-auto scrollbar-hide">
+                    <FilterPill active={!leagueFilter} onClick={() => setLeagueFilter(null)}>
+                      All ({userScores.length})
+                    </FilterPill>
+                    {userLeagues.map((league) => (
+                      <FilterPill
+                        key={league.id}
+                        active={leagueFilter === league.id}
+                        onClick={() => setLeagueFilter(league.id)}
+                      >
+                        {league.name} ({league.memberIds.length})
+                      </FilterPill>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              <StandingsTable
+                rows={standingsRows}
+                currentUserId={currentUserId}
+                myPoints={myPoints}
+                rankDeltas={rankDeltas}
+                snapshots={snapshots}
+                onRowClick={onRowClick}
+                expandedUserId={expandedUserId}
+                renderPanel={renderPanel}
+              />
+
+              {filteredScores.length === 0 && (
+                <p className="text-sm text-muted-foreground text-center py-8">
+                  No one in this league has scored yet.
+                </p>
+              )}
+
+              <TopScorers
+                playerScores={playerScores}
+                myPlayerSet={myPlayerSet}
+                scopedSelections={scopedSelections}
+                userNamesById={userNamesById}
+                currentUserId={currentUserId}
+              />
+
+              {analysis && <OwnershipMatrix analysis={analysis} />}
+            </>
           )}
-
-          <StandingsTable
-            rows={standingsRows}
-            currentUserId={currentUserId}
-            myPoints={myPoints}
-            rankDeltas={rankDeltas}
-            snapshots={snapshots}
-            onRowClick={onRowClick}
-            expandedUserId={expandedUserId}
-            renderPanel={renderPanel}
-          />
-
-          {filteredScores.length === 0 && (
-            <p className="text-sm text-muted-foreground text-center py-8">
-              No one in this league has scored yet.
-            </p>
-          )}
-
-          <TopScorers
-            playerScores={playerScores}
-            myPlayerSet={myPlayerSet}
-            scopedSelections={scopedSelections}
-            userNamesById={userNamesById}
-            currentUserId={currentUserId}
-          />
-
-          {analysis && <OwnershipMatrix analysis={analysis} />}
         </>
+      ) : (
+        <ScorecardTab
+          playerScores={playerScores}
+          home={home}
+          away={away}
+          homeTeamId={homeTeamId}
+          awayTeamId={awayTeamId}
+        />
       )}
       </div>
     </div>

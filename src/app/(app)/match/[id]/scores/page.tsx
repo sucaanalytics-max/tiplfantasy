@@ -208,6 +208,8 @@ export default async function ScoresPage({
           role: p.role as string,
           team: p.team as unknown as { short_name: string; color: string },
         }))}
+        homeTeamId={match.team_home_id}
+        awayTeamId={match.team_away_id}
       />
       {matchGem && (
         <div className="px-4 pt-3 max-w-3xl mx-auto">
