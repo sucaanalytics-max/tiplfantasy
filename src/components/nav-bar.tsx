@@ -45,10 +45,12 @@ export function NavBar({
   isAdmin = false,
   collapsed = false,
   onToggle,
+  liveMatchId = null,
 }: {
   isAdmin?: boolean
   collapsed?: boolean
   onToggle?: () => void
+  liveMatchId?: string | null
 }) {
   const pathname = usePathname()
   const router = useRouter()
@@ -84,7 +86,14 @@ export function NavBar({
                 aria-label={item.label}
                 aria-current={active ? "page" : undefined}
               >
-                <Icon className={cn("h-5 w-5 transition-transform", active && "scale-110")} aria-hidden="true" />
+                <span className="relative">
+                  <Icon className={cn("h-5 w-5 transition-transform", active && "scale-110")} aria-hidden="true" />
+                  {item.href === "/matches" && liveMatchId && (
+                    <span className="absolute -top-0.5 -right-0.5 w-2 h-2 rounded-full bg-emerald-500">
+                      <span className="absolute inset-0 rounded-full bg-emerald-500 animate-ping opacity-75" />
+                    </span>
+                  )}
+                </span>
                 <span className={cn("text-[10px] leading-none", active && "font-semibold")}>{item.label}</span>
               </Link>
             )
@@ -138,7 +147,14 @@ export function NavBar({
                 )}
                 aria-current={active ? "page" : undefined}
               >
-                <Icon className="h-4 w-4 shrink-0" aria-hidden="true" />
+                <span className="relative shrink-0">
+                  <Icon className="h-4 w-4" aria-hidden="true" />
+                  {item.href === "/matches" && liveMatchId && (
+                    <span className="absolute -top-0.5 -right-0.5 w-1.5 h-1.5 rounded-full bg-emerald-500">
+                      <span className="absolute inset-0 rounded-full bg-emerald-500 animate-ping opacity-75" />
+                    </span>
+                  )}
+                </span>
                 {!collapsed && item.label}
               </Link>
             )

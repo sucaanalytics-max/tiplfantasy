@@ -6,7 +6,15 @@ import { NavBar } from "@/components/nav-bar"
 import { InstallPrompt } from "@/components/install-prompt"
 import { PushPrompt } from "@/components/push-prompt"
 
-export function AppShell({ isAdmin, children }: { isAdmin: boolean; children: React.ReactNode }) {
+export function AppShell({
+  isAdmin,
+  liveMatchId = null,
+  children,
+}: {
+  isAdmin: boolean
+  liveMatchId?: string | null
+  children: React.ReactNode
+}) {
   const [collapsed, setCollapsed] = useState(false)
 
   useEffect(() => {
@@ -22,7 +30,7 @@ export function AppShell({ isAdmin, children }: { isAdmin: boolean; children: Re
 
   return (
     <>
-      <NavBar isAdmin={isAdmin} collapsed={collapsed} onToggle={toggle} />
+      <NavBar isAdmin={isAdmin} collapsed={collapsed} onToggle={toggle} liveMatchId={liveMatchId} />
       <main
         className={cn(
           "min-h-dvh pb-[calc(3.5rem+env(safe-area-inset-bottom)+0.5rem)] pt-[env(safe-area-inset-top)] pl-[env(safe-area-inset-left)] pr-[env(safe-area-inset-right)] md:pb-0 transition-[padding] duration-200",
