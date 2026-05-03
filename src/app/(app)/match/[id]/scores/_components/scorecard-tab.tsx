@@ -94,6 +94,7 @@ function InningsSection({
               </tr>
             ) : (
               batters.map((ps) => {
+                // DNB = never assigned a batting position and had no batting activity
                 const dnb = ps.batting_position == null && ps.runs === 0 && ps.balls_faced === 0
                 return (
                   <tr
@@ -136,8 +137,8 @@ function InningsSection({
         </table>
       </div>
 
-      {/* Bowling table */}
-      {bowlers.length > 0 && (
+      {/* Bowling table — always render section, show placeholder row when no overs yet */}
+      {(
         <>
           <div className="mt-4 mb-1 px-3 py-1.5 flex items-center gap-2 border-b border-overlay-border">
             <span
@@ -160,7 +161,13 @@ function InningsSection({
                 </tr>
               </thead>
               <tbody>
-                {bowlers.map((ps) => (
+                {bowlers.length === 0 ? (
+                  <tr>
+                    <td colSpan={7} className="text-center text-muted-foreground py-4 pl-3">
+                      No bowling data yet
+                    </td>
+                  </tr>
+                ) : bowlers.map((ps) => (
                   <tr
                     key={ps.player_id}
                     onClick={() => onSelectRow(ps)}
