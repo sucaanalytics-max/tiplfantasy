@@ -5,6 +5,7 @@ import { ThemeProvider } from "@/components/theme-provider"
 import { ServiceWorkerRegistration } from "@/components/sw-register"
 import { Analytics } from "@vercel/analytics/next"
 import { AmbientGradient } from "@/components/ambient-gradient"
+import { Analytics } from "@vercel/analytics/next"
 import "./globals.css"
 
 const geistSans = Geist({
