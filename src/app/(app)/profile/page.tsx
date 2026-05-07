@@ -13,6 +13,7 @@ import { ProfileTabs } from "./profile-tabs"
 import type {
   ScoreTimelineEntry,
   RoleBreakdownData,
+  SquadDNARow,
   CaptainStatsData,
 } from "./profile-tabs"
 import type { MatchHistoryRow } from "./match-history-table"
@@ -226,6 +227,35 @@ export default async function ProfilePage() {
     roleBreakdown.captainBonus += ms.captain_points ?? 0
     roleBreakdown.vcBonus += ms.vc_points ?? 0
   }
+
+  // ── Squad DNA (pick bias + contribution per IPL team) ─────────────────
+  const teamContribMap = new Map<string, number>()
+  for (const sp of selPlayers) {
+    const teamId = sp.player?.team_id
+    if (!teamId) continue
+    const matchId = selIdToMatchId.get(sp.selection_id)
+    const pts = matchPlayerPts.get(`${matchId}:${sp.player_id}`) ?? 0
+    teamContribMap.set(teamId, (teamContribMap.get(teamId) ?? 0) + pts)
+  }
+  const squadDNA: SquadDNARow[] = Array.from(teamPickCounts.entries())
+    .map(([teamId, pickCount]) => {
+      const team = teamMap.get(teamId)
+      const contrib = teamContribMap.get(teamId) ?? 0
+      return {
+        teamId,
+        shortName: team?.short_name ?? "—",
+        color: team?.color ?? "#888",
+        logoUrl: team?.logo_url ?? null,
+        pickCount,
+        totalContribution: Math.round(contrib),
+        avgContribution: pickCount > 0 ? Math.round(contrib / pickCount) : 0,
+        pctOfTotal:
+          (rankEntry?.total_points ?? 0) > 0
+            ? Math.round((contrib / (rankEntry?.total_points ?? 1)) * 100)
+            : 0,
+      }
+    })
+    .sort((a, b) => b.totalContribution - a.totalContribution)
 
   // ── Captain stats ─────────────────────────────────────────────────────
   const matchScoreById = new Map<string, MatchScoreTyped>()
@@ -445,6 +475,7 @@ export default async function ProfilePage() {
           totalPoints={totalPoints}
           leagueSize={leagueSize}
           seasonAvg={seasonAvg}
+          squadDNA={squadDNA}
           captainStats={captainStats}
         />
 

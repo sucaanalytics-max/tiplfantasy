@@ -1,161 +1,17 @@
 'use client'
 
+import { useState, useMemo } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { LineChart } from "@/components/charts/line-chart"
-import { DonutChart } from "@/components/charts/donut-chart"
 import { MatchHistoryTable } from "./match-history-table"
 import type { MatchHistoryRow } from "./match-history-table"
 
-// ── Per-match bar chart ────────────────────────────────────────────────
-// Bars are colored amber (above league avg) or muted (below). A dashed
-// reference line sits at the league avg. Labels shown every ~7 matches.
-function MatchBarChart({
-  data,
-}: {
-  data: { userScore: number; leagueAvg: number; label: string }[]
-}) {
-  if (data.length === 0) return null
-
-  const W = 500
-  const H = 150
-  const padL = 34, padR = 14, padT = 10, padB = 22
-  const cW = W - padL - padR
-  const cH = H - padT - padB
-  const n = data.length
-
-  const scores = data.map((d) => d.userScore)
-  const maxScore = Math.max(...scores)
-  const minScore = Math.min(...scores)
-  const range = maxScore - minScore || 1
-
-  const avgLine = data.reduce((s, d) => s + d.leagueAvg, 0) / n
-
-  const slotW = cW / n
-  const barW = Math.max(2, slotW * 0.72)
-
-  const toBarH = (v: number) => ((v - minScore) / range) * cH
-  const toY = (v: number) => padT + cH - toBarH(v)
-  const toX = (i: number) => padL + i * slotW + (slotW - barW) / 2
-
-  const avgY = toY(avgLine)
-  const labelEvery = Math.max(1, Math.ceil(n / 7))
-
-  return (
-    <div>
-      <svg viewBox={`0 0 ${W} ${H}`} className="w-full h-auto">
-        {/* Floor */}
-        <line
-          x1={padL} y1={padT + cH}
-          x2={W - padR} y2={padT + cH}
-          stroke="currentColor" strokeOpacity={0.12} strokeWidth={0.5}
-        />
-
-        {/* Bars */}
-        {data.map((d, i) => {
-          const bH = Math.max(2, toBarH(d.userScore))
-          const above = d.userScore >= d.leagueAvg
-          return (
-            <rect
-              key={i}
-              x={toX(i)}
-              y={padT + cH - bH}
-              width={barW}
-              height={bH}
-              rx={1.5}
-              fill={above ? "oklch(0.72 0.16 86)" : "oklch(0.48 0.04 250)"}
-              opacity={above ? 0.95 : 0.6}
-            />
-          )
-        })}
-
-        {/* League avg dashed reference line */}
-        <line
-          x1={padL} y1={avgY}
-          x2={W - padR - 10} y2={avgY}
-          stroke="oklch(0.72 0.16 86)"
-          strokeOpacity={0.4}
-          strokeWidth={1.5}
-          strokeDasharray="4 3"
-        />
-        <text
-          x={W - padR}
-          y={avgY}
-          textAnchor="end"
-          dominantBaseline="central"
-          fontSize={6.5}
-          fill="oklch(0.72 0.16 86)"
-          opacity={0.6}
-        >
-          avg
-        </text>
-
-        {/* Y-axis: max and min */}
-        <text
-          x={padL - 4} y={padT}
-          textAnchor="end" dominantBaseline="hanging"
-          fontSize={7} fill="currentColor" opacity={0.4}
-        >
-          {Math.round(maxScore)}
-        </text>
-        <text
-          x={padL - 4} y={padT + cH}
-          textAnchor="end" dominantBaseline="auto"
-          fontSize={7} fill="currentColor" opacity={0.4}
-        >
-          {Math.round(minScore)}
-        </text>
-
-        {/* X-axis: sparse labels */}
-        {data.map((d, i) => {
-          if (i % labelEvery !== 0) return null
-          return (
-            <text
-              key={i}
-              x={toX(i) + barW / 2}
-              y={H - 4}
-              textAnchor="middle"
-              fontSize={7}
-              fill="currentColor"
-              opacity={0.45}
-            >
-              {d.label}
-            </text>
-          )
-        })}
-      </svg>
-
-      {/* Legend */}
-      <div className="flex items-center gap-5 mt-2 justify-center">
-        <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-          <span
-            className="inline-block w-2.5 h-2.5 rounded-sm"
-            style={{ backgroundColor: "oklch(0.72 0.16 86)" }}
-          />
-          Above avg
-        </div>
-        <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-          <span
-            className="inline-block w-2.5 h-2.5 rounded-sm opacity-60"
-            style={{ backgroundColor: "oklch(0.48 0.04 250)" }}
-          />
-          Below avg
-        </div>
-        <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-          <span className="inline-block w-5 h-px border-t border-dashed opacity-60" style={{ borderColor: "oklch(0.72 0.16 86)" }} />
-          League avg
-        </div>
-      </div>
-    </div>
-  )
-}
-
 export type ScoreTimelineEntry = {
   matchNumber: number
-  label: string      // "M1", "M2", …
+  label: string
   userScore: number
   leagueAvg: number
   rank: number
-  rolling3: number | null  // null for first 2 entries
+  rolling3: number | null
 }
 
 export type RoleBreakdownData = {
@@ -167,6 +23,36 @@ export type RoleBreakdownData = {
   vcBonus: number
 }
 
+export type SquadDNARow = {
+  teamId: string
+  shortName: string
+  color: string
+  logoUrl: string | null
+  pickCount: number
+  totalContribution: number
+  avgContribution: number
+  pctOfTotal: number
+}
+
+type StreakEntry = {
+  type: "Win" | "Dry"
+  startLabel: string
+  endLabel: string
+  length: number
+  scoreMin: number
+  scoreMax: number
+}
+
+type FixturePerf = {
+  fixture: string
+  homeColor: string
+  awayColor: string
+  played: number
+  wins: number
+  winPct: number
+  avgScore: number
+}
+
 type Props = {
   scoreTimeline: ScoreTimelineEntry[]
   roleBreakdown: RoleBreakdownData
@@ -174,6 +60,7 @@ type Props = {
   totalPoints: number
   leagueSize: number
   seasonAvg: number
+  squadDNA: SquadDNARow[]
 }
 
 function deriveFormBanner(timeline: ScoreTimelineEntry[], seasonAvg: number): string | null {
@@ -195,14 +82,164 @@ function isPositiveBanner(timeline: ScoreTimelineEntry[], seasonAvg: number): bo
   return avg3 >= seasonAvg
 }
 
+function computeStreaks(timeline: ScoreTimelineEntry[]): StreakEntry[] {
+  if (timeline.length === 0) return []
+  const streaks: StreakEntry[] = []
+  let i = 0
+  while (i < timeline.length) {
+    const isWin = timeline[i].rank === 1
+    let j = i
+    while (j < timeline.length && (timeline[j].rank === 1) === isWin) j++
+    const slice = timeline.slice(i, j)
+    const scores = slice.map((t) => t.userScore)
+    streaks.push({
+      type: isWin ? "Win" : "Dry",
+      startLabel: slice[0].label,
+      endLabel: slice[slice.length - 1].label,
+      length: slice.length,
+      scoreMin: Math.min(...scores),
+      scoreMax: Math.max(...scores),
+    })
+    i = j
+  }
+  return streaks
+}
+
+function computeFixturePerf(rows: MatchHistoryRow[]): FixturePerf[] {
+  const map = new Map<
+    string,
+    { homeColor: string; awayColor: string; scores: number[]; wins: number }
+  >()
+  for (const row of rows) {
+    const key = `${row.homeShortName} vs ${row.awayShortName}`
+    const entry = map.get(key) ?? {
+      homeColor: row.homeColor,
+      awayColor: row.awayColor,
+      scores: [],
+      wins: 0,
+    }
+    entry.scores.push(row.totalPoints)
+    if (row.rank === 1) entry.wins++
+    map.set(key, entry)
+  }
+  return Array.from(map.entries()).map(([fixture, v]) => ({
+    fixture,
+    homeColor: v.homeColor,
+    awayColor: v.awayColor,
+    played: v.scores.length,
+    wins: v.wins,
+    winPct: Math.round((v.wins / v.scores.length) * 100),
+    avgScore: Math.round(v.scores.reduce((a, b) => a + b, 0) / v.scores.length),
+  }))
+}
+
+function ColHeader({
+  label,
+  active,
+  asc,
+  onClick,
+}: {
+  label: string
+  active: boolean
+  asc: boolean
+  onClick: () => void
+}) {
+  return (
+    <th
+      className="px-3 py-2 text-left text-[10px] font-semibold text-muted-foreground uppercase tracking-wider cursor-pointer select-none whitespace-nowrap hover:text-foreground transition-colors"
+      onClick={onClick}
+    >
+      {label}
+      <span className="ml-1 opacity-50">{active ? (asc ? "↑" : "↓") : "↕"}</span>
+    </th>
+  )
+}
+
+function PlainHeader({ label }: { label: string }) {
+  return (
+    <th className="px-3 py-2 text-left text-[10px] font-semibold text-muted-foreground uppercase tracking-wider whitespace-nowrap">
+      {label}
+    </th>
+  )
+}
+
 export function SeasonArcTab({
   scoreTimeline,
-  roleBreakdown,
   matchHistoryRows,
-  totalPoints,
-  leagueSize,
   seasonAvg,
+  squadDNA,
 }: Props) {
+  const [streakSort, setStreakSort] = useState<{ col: "length" | "type"; asc: boolean }>({
+    col: "length",
+    asc: false,
+  })
+  const [fixtureSort, setFixtureSort] = useState<{
+    col: "winPct" | "avgScore" | "played"
+    asc: boolean
+  }>({ col: "winPct", asc: false })
+  const [dnaSort, setDnaSort] = useState<{ col: "total" | "avg" | "picks"; asc: boolean }>({
+    col: "total",
+    asc: false,
+  })
+
+  const formBanner = deriveFormBanner(scoreTimeline, seasonAvg)
+  const bannerPositive = isPositiveBanner(scoreTimeline, seasonAvg)
+
+  const streaks = useMemo(() => computeStreaks(scoreTimeline), [scoreTimeline])
+  const fixturePerf = useMemo(() => computeFixturePerf(matchHistoryRows), [matchHistoryRows])
+
+  const sortedStreaks = useMemo(() => {
+    const arr = [...streaks]
+    arr.sort((a, b) => {
+      const diff =
+        streakSort.col === "length"
+          ? a.length - b.length
+          : a.type.localeCompare(b.type)
+      return streakSort.asc ? diff : -diff
+    })
+    return arr.slice(0, 20)
+  }, [streaks, streakSort])
+
+  const sortedFixtures = useMemo(() => {
+    const arr = [...fixturePerf]
+    arr.sort((a, b) => {
+      let diff = 0
+      if (fixtureSort.col === "winPct") diff = a.winPct - b.winPct || a.avgScore - b.avgScore
+      else if (fixtureSort.col === "avgScore") diff = a.avgScore - b.avgScore
+      else diff = a.played - b.played
+      return fixtureSort.asc ? diff : -diff
+    })
+    return arr
+  }, [fixturePerf, fixtureSort])
+
+  const sortedDNA = useMemo(() => {
+    const arr = [...squadDNA]
+    arr.sort((a, b) => {
+      let diff = 0
+      if (dnaSort.col === "total") diff = a.totalContribution - b.totalContribution
+      else if (dnaSort.col === "avg") diff = a.avgContribution - b.avgContribution
+      else diff = a.pickCount - b.pickCount
+      return dnaSort.asc ? diff : -diff
+    })
+    return arr
+  }, [squadDNA, dnaSort])
+
+  function toggleStreak(col: "length" | "type") {
+    setStreakSort((prev) =>
+      prev.col === col ? { col, asc: !prev.asc } : { col, asc: false }
+    )
+  }
+  function toggleFixture(col: "winPct" | "avgScore" | "played") {
+    setFixtureSort((prev) =>
+      prev.col === col ? { col, asc: !prev.asc } : { col, asc: false }
+    )
+  }
+  function toggleDNA(col: "total" | "avg" | "picks") {
+    setDnaSort((prev) =>
+      prev.col === col ? { col, asc: !prev.asc } : { col, asc: false }
+    )
+  }
+
   if (scoreTimeline.length === 0) {
     return (
       <div className="text-center py-12 text-muted-foreground text-sm">
@@ -211,31 +248,8 @@ export function SeasonArcTab({
     )
   }
 
-  const formBanner = deriveFormBanner(scoreTimeline, seasonAvg)
-  const bannerPositive = isPositiveBanner(scoreTimeline, seasonAvg)
-
-  const rankData = scoreTimeline.map((t) => t.rank)
-
-  // Sparse rank labels — at most 7 visible regardless of match count
-  const n = scoreTimeline.length
-  const labelEvery = Math.max(1, Math.ceil(n / 7))
-  const sparseRankLabels = scoreTimeline.map((t, i) =>
-    i % labelEvery === 0 ? t.label : ""
-  )
-
-  // Role donut segments — only non-zero values
-  const donutSegments = [
-    { label: "Batting", value: Math.round(roleBreakdown.BAT), color: "oklch(0.72 0.18 86)" },
-    { label: "Bowling", value: Math.round(roleBreakdown.BOWL), color: "oklch(0.60 0.18 250)" },
-    { label: "All-Round", value: Math.round(roleBreakdown.AR), color: "oklch(0.68 0.16 160)" },
-    { label: "WK", value: Math.round(roleBreakdown.WK), color: "oklch(0.65 0.15 320)" },
-    { label: "Captain +", value: Math.round(roleBreakdown.captainBonus), color: "oklch(0.78 0.17 50)" },
-    { label: "VC +", value: Math.round(roleBreakdown.vcBonus), color: "oklch(0.68 0.12 45)" },
-  ].filter((s) => s.value > 0)
-
   return (
     <div className="space-y-5">
-      {/* Form banner */}
       {formBanner && (
         <div
           className={
@@ -248,62 +262,194 @@ export function SeasonArcTab({
         </div>
       )}
 
-      {/* Score Journey — per-match bars, amber = above league avg */}
-      <Card className="glass">
-        <CardHeader className="pb-1">
-          <CardTitle className="text-base">Score Journey</CardTitle>
-        </CardHeader>
-        <CardContent className="pt-0 pb-3">
-          <MatchBarChart
-            data={scoreTimeline.map((t) => ({
-              userScore: t.userScore,
-              leagueAvg: t.leagueAvg,
-              label: t.label,
-            }))}
-          />
-        </CardContent>
-      </Card>
-
-      {/* Rank Journey — line chart, inverted Y, sparse labels */}
-      {leagueSize > 1 && (
+      {/* ── Streak Log ── */}
+      {sortedStreaks.length > 0 && (
         <Card className="glass">
           <CardHeader className="pb-1">
-            <CardTitle className="text-base">
-              Rank Journey{" "}
-              <span className="text-xs text-muted-foreground font-normal">
-                (#1 = best)
-              </span>
-            </CardTitle>
+            <CardTitle className="text-base">Streak Log</CardTitle>
           </CardHeader>
-          <CardContent className="pt-0">
-            <div className="[&_svg]:!w-full [&_svg]:!h-auto">
-              <LineChart
-                series={[{ label: "Your Rank", values: rankData, color: "oklch(0.65 0.18 250)" }]}
-                xLabels={sparseRankLabels}
-                width={400}
-                height={130}
-                invertY
-                showDots={false}
-              />
-            </div>
+          <CardContent className="pt-0 pb-3 overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-border/40">
+                  <ColHeader
+                    label="Type"
+                    active={streakSort.col === "type"}
+                    asc={streakSort.asc}
+                    onClick={() => toggleStreak("type")}
+                  />
+                  <PlainHeader label="Matches" />
+                  <ColHeader
+                    label="Length"
+                    active={streakSort.col === "length"}
+                    asc={streakSort.asc}
+                    onClick={() => toggleStreak("length")}
+                  />
+                  <PlainHeader label="Score Range" />
+                </tr>
+              </thead>
+              <tbody>
+                {sortedStreaks.map((s, i) => (
+                  <tr
+                    key={i}
+                    className={`border-b border-border/20 last:border-0 ${
+                      s.type === "Win" ? "bg-amber-500/5" : ""
+                    }`}
+                  >
+                    <td className="px-3 py-2">
+                      <span
+                        className={`text-xs font-semibold ${
+                          s.type === "Win" ? "text-amber-400" : "text-muted-foreground"
+                        }`}
+                      >
+                        {s.type}
+                      </span>
+                    </td>
+                    <td className="px-3 py-2 text-xs text-muted-foreground">
+                      {s.startLabel === s.endLabel
+                        ? s.startLabel
+                        : `${s.startLabel}–${s.endLabel}`}
+                    </td>
+                    <td className="px-3 py-2 font-medium">{s.length}</td>
+                    <td className="px-3 py-2 text-xs text-muted-foreground tabular-nums">
+                      {s.length === 1 ? `${s.scoreMin}` : `${s.scoreMin}–${s.scoreMax}`}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </CardContent>
         </Card>
       )}
 
-      {/* Points by Source */}
-      {donutSegments.length > 0 && (
+      {/* ── Fixture Performance ── */}
+      {sortedFixtures.length > 0 && (
         <Card className="glass">
           <CardHeader className="pb-1">
-            <CardTitle className="text-base">Points by Source</CardTitle>
+            <CardTitle className="text-base">Fixture Performance</CardTitle>
           </CardHeader>
-          <CardContent className="flex justify-center pt-2 pb-4">
-            <DonutChart
-              segments={donutSegments}
-              size={148}
-              strokeWidth={14}
-              centerValue={totalPoints.toLocaleString()}
-              centerLabel="total pts"
-            />
+          <CardContent className="pt-0 pb-3 overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-border/40">
+                  <PlainHeader label="Fixture" />
+                  <ColHeader
+                    label="Played"
+                    active={fixtureSort.col === "played"}
+                    asc={fixtureSort.asc}
+                    onClick={() => toggleFixture("played")}
+                  />
+                  <PlainHeader label="Wins" />
+                  <ColHeader
+                    label="Win%"
+                    active={fixtureSort.col === "winPct"}
+                    asc={fixtureSort.asc}
+                    onClick={() => toggleFixture("winPct")}
+                  />
+                  <ColHeader
+                    label="Avg Pts"
+                    active={fixtureSort.col === "avgScore"}
+                    asc={fixtureSort.asc}
+                    onClick={() => toggleFixture("avgScore")}
+                  />
+                </tr>
+              </thead>
+              <tbody>
+                {sortedFixtures.map((f, i) => (
+                  <tr key={i} className="border-b border-border/20 last:border-0">
+                    <td className="px-3 py-2">
+                      <div className="flex items-center gap-1.5">
+                        <span
+                          className="inline-block w-2 h-2 rounded-full shrink-0"
+                          style={{ backgroundColor: f.homeColor }}
+                        />
+                        <span
+                          className="inline-block w-2 h-2 rounded-full shrink-0"
+                          style={{ backgroundColor: f.awayColor }}
+                        />
+                        <span className="text-xs">{f.fixture}</span>
+                      </div>
+                    </td>
+                    <td className="px-3 py-2 tabular-nums">{f.played}</td>
+                    <td className="px-3 py-2 tabular-nums">{f.wins}</td>
+                    <td className="px-3 py-2">
+                      <span
+                        className={`font-medium tabular-nums ${
+                          f.winPct === 100
+                            ? "text-amber-400"
+                            : f.winPct === 0
+                            ? "text-muted-foreground"
+                            : ""
+                        }`}
+                      >
+                        {f.winPct}%
+                      </span>
+                    </td>
+                    <td className="px-3 py-2 tabular-nums">{f.avgScore}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* ── Squad DNA ── */}
+      {sortedDNA.length > 0 && (
+        <Card className="glass">
+          <CardHeader className="pb-1">
+            <CardTitle className="text-base">Squad DNA</CardTitle>
+          </CardHeader>
+          <CardContent className="pt-0 pb-3 overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-border/40">
+                  <PlainHeader label="Team" />
+                  <ColHeader
+                    label="Picks"
+                    active={dnaSort.col === "picks"}
+                    asc={dnaSort.asc}
+                    onClick={() => toggleDNA("picks")}
+                  />
+                  <ColHeader
+                    label="Avg/Pick"
+                    active={dnaSort.col === "avg"}
+                    asc={dnaSort.asc}
+                    onClick={() => toggleDNA("avg")}
+                  />
+                  <ColHeader
+                    label="Total"
+                    active={dnaSort.col === "total"}
+                    asc={dnaSort.asc}
+                    onClick={() => toggleDNA("total")}
+                  />
+                  <PlainHeader label="% of Pts" />
+                </tr>
+              </thead>
+              <tbody>
+                {sortedDNA.map((d) => (
+                  <tr key={d.teamId} className="border-b border-border/20 last:border-0">
+                    <td className="px-3 py-2">
+                      <div className="flex items-center gap-2">
+                        <span
+                          className="inline-block w-2.5 h-2.5 rounded-full shrink-0"
+                          style={{ backgroundColor: d.color }}
+                        />
+                        <span className="text-xs font-medium">{d.shortName}</span>
+                      </div>
+                    </td>
+                    <td className="px-3 py-2 tabular-nums">{d.pickCount}</td>
+                    <td className="px-3 py-2 tabular-nums">{d.avgContribution}</td>
+                    <td className="px-3 py-2 font-medium tabular-nums">
+                      {d.totalContribution.toLocaleString()}
+                    </td>
+                    <td className="px-3 py-2 text-xs text-muted-foreground tabular-nums">
+                      {d.pctOfTotal}%
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </CardContent>
         </Card>
       )}

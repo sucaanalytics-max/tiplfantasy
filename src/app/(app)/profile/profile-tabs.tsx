@@ -5,13 +5,13 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { AutoPickToggle } from "./auto-pick-toggle"
 import { ThemeCard } from "./theme-card"
 import { SeasonArcTab } from "./season-arc-tab"
-import type { ScoreTimelineEntry, RoleBreakdownData } from "./season-arc-tab"
+import type { ScoreTimelineEntry, RoleBreakdownData, SquadDNARow } from "./season-arc-tab"
 import { CaptaincyTab } from "./captaincy-tab"
 import type { CaptainStatsData } from "./captaincy-tab"
 import type { MatchHistoryRow } from "./match-history-table"
 
 // Re-export for use by the parent server component
-export type { ScoreTimelineEntry, RoleBreakdownData, CaptainStatsData }
+export type { ScoreTimelineEntry, RoleBreakdownData, SquadDNARow, CaptainStatsData }
 
 type ProfileTabsProps = {
   // ── Overview ──
@@ -30,6 +30,7 @@ type ProfileTabsProps = {
   totalPoints: number
   leagueSize: number
   seasonAvg: number
+  squadDNA: SquadDNARow[]
   // ── Captaincy ──
   captainStats: CaptainStatsData
 }
@@ -130,6 +131,7 @@ export function ProfileTabs(props: ProfileTabsProps) {
           totalPoints={props.totalPoints}
           leagueSize={props.leagueSize}
           seasonAvg={props.seasonAvg}
+          squadDNA={props.squadDNA}
         />
       </TabsContent>
 
