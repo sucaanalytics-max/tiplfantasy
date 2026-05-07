@@ -230,12 +230,16 @@ export default async function ProfilePage() {
 
   // ── Squad DNA (pick bias + contribution per IPL team) ─────────────────
   const teamContribMap = new Map<string, number>()
+  const teamBestPickMap = new Map<string, number>()
   for (const sp of selPlayers) {
     const teamId = sp.player?.team_id
     if (!teamId) continue
     const matchId = selIdToMatchId.get(sp.selection_id)
     const pts = matchPlayerPts.get(`${matchId}:${sp.player_id}`) ?? 0
     teamContribMap.set(teamId, (teamContribMap.get(teamId) ?? 0) + pts)
+    if (pts > (teamBestPickMap.get(teamId) ?? 0)) {
+      teamBestPickMap.set(teamId, pts)
+    }
   }
   const squadDNA: SquadDNARow[] = Array.from(teamPickCounts.entries())
     .map(([teamId, pickCount]) => {
@@ -249,6 +253,7 @@ export default async function ProfilePage() {
         pickCount,
         totalContribution: Math.round(contrib),
         avgContribution: pickCount > 0 ? Math.round(contrib / pickCount) : 0,
+        bestPick: Math.round(teamBestPickMap.get(teamId) ?? 0),
         pctOfTotal:
           (rankEntry?.total_points ?? 0) > 0
             ? Math.round((contrib / (rankEntry?.total_points ?? 1)) * 100)

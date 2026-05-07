@@ -127,6 +127,7 @@ export function ProfileTabs(props: ProfileTabsProps) {
         <SeasonArcTab
           scoreTimeline={props.scoreTimeline}
           roleBreakdown={props.roleBreakdown}
+          roleCounts={props.roleCounts}
           matchHistoryRows={props.matchHistoryRows}
           totalPoints={props.totalPoints}
           leagueSize={props.leagueSize}
