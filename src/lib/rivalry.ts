@@ -376,6 +376,91 @@ export function computeMomentumSeries(
   return series
 }
 
+// ─── Race chart ──────────────────────────────────────────────────────────
+//
+// Multi-user analogue of the per-row momentum series. Powers the live-page
+// "rat race" chart that shows how the league table shifts over by over.
+
+export type RacePoint = { over: number; points: number; rank: number }
+export type RaceSeries = Record<string, RacePoint[]>
+
+type RaceSnapshot = { over_number: number; scores: Record<string, number> }
+
+/**
+ * Decide which users to draw in the race chart.
+ *
+ * - If a private league is active, draw all of its members (and ensure the
+ *   current user is included, even if they're not a member).
+ * - Otherwise, draw the global top-N by current points + the current user.
+ *
+ * Always dedupes; insertion order is preserved so colors/legend stay stable.
+ */
+export function pickRaceUserIds(args: {
+  userScores: Array<{ user_id: string; total_points: number | string }>
+  currentUserId: string
+  leagueMemberIds: string[] | null
+  fallbackTopN?: number
+}): string[] {
+  const { userScores, currentUserId, leagueMemberIds, fallbackTopN = 5 } = args
+
+  const seen = new Set<string>()
+  const out: string[] = []
+  const push = (id: string) => {
+    if (!seen.has(id)) { seen.add(id); out.push(id) }
+  }
+
+  if (leagueMemberIds && leagueMemberIds.length > 0) {
+    for (const id of leagueMemberIds) push(id)
+    push(currentUserId)
+    return out
+  }
+
+  const sorted = [...userScores].sort(
+    (a, b) => Number(b.total_points) - Number(a.total_points),
+  )
+  for (let i = 0; i < Math.min(fallbackTopN, sorted.length); i++) {
+    push(sorted[i].user_id)
+  }
+  push(currentUserId)
+  return out
+}
+
+/**
+ * Build per-user, per-over series with both points and rank-within-set.
+ *
+ * Rank is computed *only among the supplied userIds* — so in a 12-person
+ * league, ranks are 1..12, not the global rank. This makes the bump-chart
+ * lines actually cross within the chart's vertical extent.
+ *
+ * Stable tiebreak: equal points → lower userId string sorts first (rank 1).
+ */
+export function computeRaceSeries(
+  userIds: string[],
+  snapshots: RaceSnapshot[],
+): RaceSeries {
+  const out: RaceSeries = {}
+  for (const id of userIds) out[id] = []
+  if (!userIds.length || !snapshots.length) return out
+
+  const ordered = [...snapshots].sort((a, b) => a.over_number - b.over_number)
+
+  for (const snap of ordered) {
+    const ranked = userIds
+      .map((id) => ({ id, points: Number(snap.scores?.[id] ?? 0) }))
+      .sort((a, b) => (b.points - a.points) || a.id.localeCompare(b.id))
+
+    ranked.forEach((entry, idx) => {
+      out[entry.id].push({
+        over: snap.over_number,
+        points: entry.points,
+        rank: idx + 1,
+      })
+    })
+  }
+
+  return out
+}
+
 // ─── Util ─────────────────────────────────────────────────────────────────
 
 function round2(n: number): number {

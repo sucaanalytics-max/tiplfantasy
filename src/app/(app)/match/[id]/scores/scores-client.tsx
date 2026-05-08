@@ -5,7 +5,7 @@ import { Trophy } from "lucide-react"
 import { EmptyState } from "@/components/empty-state"
 import { LiveRefresher } from "@/components/live-refresher"
 import { cn } from "@/lib/utils"
-import { type PlayerLite, type PlayerScore, type Selection } from "@/lib/rivalry"
+import { type PlayerLite, type PlayerScore, type Selection, pickRaceUserIds } from "@/lib/rivalry"
 import { buildAnalysis } from "@/lib/match-analysis"
 
 import { MatchHeroBand } from "@/components/match-hero-band"
@@ -14,6 +14,7 @@ import type { MatchStatus } from "@/lib/types"
 import { StickyHeader } from "./_components/sticky-header"
 import { ScorecardTab } from "./_components/scorecard-tab"
 import { StandingsTable } from "./_components/standings-table"
+import { RaceSection } from "./_components/race-section"
 import { RivalPanel } from "./_components/rival-panel"
 import { MyXIPanel } from "./_components/my-xi-panel"
 import { OwnershipMatrix } from "./_components/ownership-matrix"
@@ -99,7 +100,7 @@ export function ScoresClient({
   match, home, away, playerScores, userScores, myScore,
   myPlayerIds, myCaptainId, myVcId, allSelections,
   captainPicks, vcPicks = {}, currentUserId,
-  userLeagues = [], lastBalls = [], snapshots = [],
+  userLeagues = [], lastBalls = [], snapshots = [], userNames = {},
   allPlayers = [], homeTeamId, awayTeamId,
 }: Props) {
   const isLive = match.status === "live"
@@ -158,6 +159,21 @@ export function ScoresClient({
   }, [userScores, leagueFilter, userLeagues])
 
   const rankDeltas = useRankDelta(filteredScores.map((s) => ({ user_id: s.user_id, rank: s.rank })))
+
+  // Race-chart line set — league members (if a league is filtered) else top-N + me.
+  const activeLeagueMemberIds = useMemo(() => {
+    if (!leagueFilter) return null
+    return userLeagues.find((l) => l.id === leagueFilter)?.memberIds ?? null
+  }, [leagueFilter, userLeagues])
+  const raceUserIds = useMemo(
+    () => pickRaceUserIds({
+      userScores: userScores.map((s) => ({ user_id: s.user_id, total_points: s.total_points })),
+      currentUserId,
+      leagueMemberIds: activeLeagueMemberIds,
+      fallbackTopN: 5,
+    }),
+    [userScores, currentUserId, activeLeagueMemberIds],
+  )
 
   // Selections scoped to active league filter — reused by TopScorers and analysis.
   const scopedSelections = useMemo(() => {
@@ -363,12 +379,20 @@ export function ScoresClient({
                 </div>
               )}
 
+              {snapshots.length > 0 && (
+                <RaceSection
+                  userIds={raceUserIds}
+                  snapshots={snapshots}
+                  userNames={userNames}
+                  currentUserId={currentUserId}
+                />
+              )}
+
               <StandingsTable
                 rows={standingsRows}
                 currentUserId={currentUserId}
                 myPoints={myPoints}
                 rankDeltas={rankDeltas}
-                snapshots={snapshots}
                 onRowClick={onRowClick}
                 expandedUserId={expandedUserId}
                 renderPanel={renderPanel}

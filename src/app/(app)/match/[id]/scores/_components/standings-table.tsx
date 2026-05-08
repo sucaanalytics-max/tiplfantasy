@@ -18,7 +18,6 @@ type Props = {
   currentUserId: string
   myPoints: number
   rankDeltas: Map<string, number>
-  snapshots: Array<{ over_number: number; scores: Record<string, number> }>
   onRowClick: (userId: string) => void
   expandedUserId: string | null
   renderPanel: (userId: string) => ReactNode
@@ -31,7 +30,7 @@ type Props = {
  * accommodate the expanded content.
  */
 export function StandingsTable({
-  rows, currentUserId, myPoints, rankDeltas, snapshots,
+  rows, currentUserId, myPoints, rankDeltas,
   onRowClick, expandedUserId, renderPanel,
 }: Props) {
   const myRow = useMemo(() => rows.find((r) => r.user_id === currentUserId), [rows, currentUserId])
