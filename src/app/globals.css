@@ -170,6 +170,20 @@
   --captain-gold-glow: oklch(0.78 0.17 86 / 0.40);
   --vice-silver: oklch(0.72 0.01 260);
   --vice-silver-glow: oklch(0.72 0.01 260 / 0.35);
+
+  /* Cinema palette — light-mode equivalents.
+     The cinema utilities below (.cinema-bg-territories etc.) consume
+     these so the cinematic hero reads cleanly on the warm light page
+     instead of collapsing to a dark gradient that washes out the
+     white-keyed graphics layered on top. */
+  --bg-cinema-deep: oklch(0.95 0.005 60);
+  --cinema-grain: none;
+  --cinema-territory-flank-l: 0.88;
+  --cinema-territory-mid-l: 0.92;
+  --cinema-seam: oklch(0.97 0.003 60);
+  --cinema-vignette: oklch(0.92 0.005 60 / 0.45);
+  --cinema-silhouette-color: oklch(0.45 0.01 240 / 0.18);
+  --cinema-silhouette-color-faint: oklch(0.45 0.01 240 / 0.07);
 }
 
 .dark {
@@ -275,6 +289,16 @@
 
   /* Subtle film-grain SVG (200x200, fractal noise, ~6% opacity) */
   --cinema-grain: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 200 200'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 0 0 0 0.06 0'/></filter><rect width='200' height='200' filter='url(%23n)'/></svg>");
+
+  /* Cinema territory tokens — dark-mode values (the original literals
+     used by .cinema-bg-territories). Consumed by the same utility so
+     light/dark share one rule. */
+  --cinema-territory-flank-l: 0.14;
+  --cinema-territory-mid-l: 0.22;
+  --cinema-seam: oklch(0.06 0.003 0);
+  --cinema-vignette: oklch(0 0 0 / 0.72);
+  --cinema-silhouette-color: oklch(1 0 0 / 0.15);
+  --cinema-silhouette-color-faint: oklch(1 0 0 / 0.06);
 }
 
 @layer base {
@@ -705,8 +729,9 @@
   }
 
   /* Color-territory split: home color owns left half, away owns right,
-     dark seam at center. No animation — the split is intentional/static.
-     Used only by CinematicHero dashboard hero (not match-hero-band). */
+     neutral seam at center. No animation — the split is intentional/static.
+     Used by CinematicHero (and match-hero-band) — theme-aware via the
+     --cinema-territory-* tokens (dark stops in .dark, light stops in :root). */
   .cinema-bg-territories {
     background-image:
       var(--cinema-grain),
@@ -717,12 +742,12 @@
         oklch(from var(--team-away-color, oklch(0.78 0.17 86)) 0.32 c h / 0.5) 0%,
         transparent 70%),
       linear-gradient(90deg,
-        oklch(from var(--team-home-color, oklch(0.72 0.20 45)) 0.14 c h) 0%,
-        oklch(from var(--team-home-color, oklch(0.72 0.20 45)) 0.22 c h) 36%,
-        oklch(0.06 0.003 0) 46%,
-        oklch(0.06 0.003 0) 54%,
-        oklch(from var(--team-away-color, oklch(0.78 0.17 86)) 0.22 c h) 64%,
-        oklch(from var(--team-away-color, oklch(0.78 0.17 86)) 0.14 c h) 100%);
+        oklch(from var(--team-home-color, oklch(0.72 0.20 45)) var(--cinema-territory-flank-l) c h) 0%,
+        oklch(from var(--team-home-color, oklch(0.72 0.20 45)) var(--cinema-territory-mid-l) c h) 36%,
+        var(--cinema-seam) 46%,
+        var(--cinema-seam) 54%,
+        oklch(from var(--team-away-color, oklch(0.78 0.17 86)) var(--cinema-territory-mid-l) c h) 64%,
+        oklch(from var(--team-away-color, oklch(0.78 0.17 86)) var(--cinema-territory-flank-l) c h) 100%);
     background-size: 200px 200px, 100% 100%, 100% 100%, 100% 100%;
     background-blend-mode: soft-light, normal, normal, normal;
   }

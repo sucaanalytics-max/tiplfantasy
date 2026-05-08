@@ -50,12 +50,16 @@ export function CinematicHero({
 
       {/* Layer 2 — stadium silhouettes for depth */}
       <StadiumSilhouette
-        className="absolute inset-x-0 bottom-14 w-full h-[38%] text-white/15 pointer-events-none"
-        style={{ animation: "team-art-zoom 800ms cubic-bezier(0.16, 1, 0.3, 1) 120ms backwards" }}
+        className="absolute inset-x-0 bottom-14 w-full h-[38%] pointer-events-none"
+        style={{
+          color: "var(--cinema-silhouette-color)",
+          animation: "team-art-zoom 800ms cubic-bezier(0.16, 1, 0.3, 1) 120ms backwards",
+        }}
       />
       <StadiumSilhouette
-        className="absolute inset-x-0 bottom-10 w-full h-[30%] text-white/6 pointer-events-none"
+        className="absolute inset-x-0 bottom-10 w-full h-[30%] pointer-events-none"
         style={{
+          color: "var(--cinema-silhouette-color-faint)",
           animation: "team-art-zoom 900ms cubic-bezier(0.16, 1, 0.3, 1) 200ms backwards",
           transform: "scaleX(-1)",
         }}
@@ -64,7 +68,7 @@ export function CinematicHero({
       {/* Layer 3 — bottom vignette */}
       <div
         className="absolute inset-x-0 bottom-0 h-3/5 pointer-events-none z-[2]"
-        style={{ background: "linear-gradient(to top, oklch(0 0 0 / 0.72) 0%, transparent 100%)" }}
+        style={{ background: "linear-gradient(to top, var(--cinema-vignette) 0%, transparent 100%)" }}
         aria-hidden
       />
 
@@ -79,7 +83,7 @@ export function CinematicHero({
       {/* Layer 5 — eyebrow + live badge */}
       <div className="absolute inset-x-0 top-0 z-[3] flex items-start justify-between px-4 pt-3 pointer-events-none">
         <span
-          className="text-cinema-eyebrow text-white/80"
+          className="text-cinema-eyebrow text-foreground/70 dark:text-white/80"
           style={{ animation: "slide-up 0.4s ease-out 700ms backwards" }}
         >
           IPL 2026 · Match {match.match_number}
@@ -110,14 +114,14 @@ export function CinematicHero({
             <div style={{ filter: `drop-shadow(0 0 20px ${home.color}cc)` }}>
               <TeamLogo team={home} size="xl" />
             </div>
-            <span className="text-lg font-display font-black text-white tracking-tight drop-shadow-[0_2px_10px_oklch(0_0_0_/_0.9)]">
+            <span className="text-lg font-display font-black text-foreground dark:text-white tracking-tight drop-shadow-[0_2px_8px_oklch(1_0_0_/_0.6)] dark:drop-shadow-[0_2px_10px_oklch(0_0_0_/_0.9)]">
               {home.short_name}
             </span>
           </div>
 
           {/* VS disc */}
           <div
-            className="relative inline-flex items-center justify-center h-11 w-11 rounded-full bg-[var(--captain-gold)] text-[oklch(0.18_0.02_86)] font-display font-black text-xs shrink-0 ring-2 ring-white/20 shadow-[0_6px_20px_oklch(0_0_0_/_0.6)]"
+            className="relative inline-flex items-center justify-center h-11 w-11 rounded-full bg-[var(--captain-gold)] text-[oklch(0.18_0.02_86)] font-display font-black text-xs shrink-0 ring-2 ring-foreground/15 dark:ring-white/20 shadow-[0_6px_20px_oklch(0_0_0_/_0.6)]"
             style={{ animation: "vs-clash 0.48s cubic-bezier(0.16, 1, 0.3, 1) 540ms backwards" }}
             aria-hidden
           >
@@ -132,7 +136,7 @@ export function CinematicHero({
             <div style={{ filter: `drop-shadow(0 0 20px ${away.color}cc)` }}>
               <TeamLogo team={away} size="xl" />
             </div>
-            <span className="text-lg font-display font-black text-white tracking-tight drop-shadow-[0_2px_10px_oklch(0_0_0_/_0.9)]">
+            <span className="text-lg font-display font-black text-foreground dark:text-white tracking-tight drop-shadow-[0_2px_8px_oklch(1_0_0_/_0.6)] dark:drop-shadow-[0_2px_10px_oklch(0_0_0_/_0.9)]">
               {away.short_name}
             </span>
           </div>
@@ -141,7 +145,7 @@ export function CinematicHero({
 
       {/* Layer 6 — bottom info strip */}
       <div className="absolute inset-x-0 z-[4] px-4" style={{ bottom: 60 }}>
-        <div className="flex items-center justify-between gap-2 text-white/80">
+        <div className="flex items-center justify-between gap-2 text-foreground/70 dark:text-white/80">
           <span className="text-[10px] truncate">{match.venue}</span>
           {!isLive && !isCompleted && (
             <span className="text-[11px] font-bold shrink-0" style={{ color: "var(--captain-gold)" }}>
