@@ -446,10 +446,16 @@ export type RegretRow = {
   player_name: string
   player_role: PlayerRole
   team_short_name: string
-  total_cost: number              // sum of marginal_cost across matches
-  matches_count: number           // # of matches that contributed cost
-  avg_points_when_skipped: number // raw avg fp on those days
+  // Marginal-cost view: vs the user's worst pick at the same role
+  total_cost: number
+  matches_count: number
+  avg_points_when_skipped: number
   worst_match: { match_number: number; cost: number; matchup: string } | null
+  // Absolute-miss view: raw points the player scored in matches the user didn't pick them
+  total_absolute_miss: number
+  absolute_matches_count: number
+  avg_points_in_miss: number
+  best_absolute_match: { match_number: number; points: number; matchup: string } | null
 }
 
 export type HeroRow = {
@@ -457,6 +463,8 @@ export type HeroRow = {
   player_name: string
   player_role: PlayerRole
   team_short_name: string
+  team_color: string
+  team_logo_url: string | null
   total_contribution: number      // sum of contribution in #1 matches (with C/VC multipliers)
   matches_count: number           // # of #1 matches the user picked them in
   captained_count: number

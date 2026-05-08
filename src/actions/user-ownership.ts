@@ -14,7 +14,7 @@ type PlayerRow = {
   name: string
   role: PlayerRole
   team_id: string
-  team: { short_name: string } | null
+  team: { short_name: string; color: string; logo_url: string | null } | null
 }
 
 type SelectionRow = {
@@ -108,7 +108,7 @@ async function loadRaw(userId: string) {
         .limit(10000),
       admin
         .from("players")
-        .select("id, name, role, team_id, team:teams(short_name)")
+        .select("id, name, role, team_id, team:teams(short_name, color, logo_url)")
         .limit(500),
     ])
 
@@ -161,12 +161,28 @@ function computeInsights(
 
   // Aggregators
   type RegretAcc = {
+    // Marginal-cost (vs worst pick at same role)
     totalCost: number
     matchesCount: number
     pointsSum: number
     worst: { match_number: number; cost: number; matchup: string } | null
+    // Absolute miss (raw points across matches the user didn't pick the player)
+    totalAbsoluteMiss: number
+    absMatchesCount: number
+    absPointsSum: number
+    bestAbs: { match_number: number; points: number; matchup: string } | null
   }
   const regretAgg = new Map<string, RegretAcc>()
+  const newRegretAcc = (): RegretAcc => ({
+    totalCost: 0,
+    matchesCount: 0,
+    pointsSum: 0,
+    worst: null,
+    totalAbsoluteMiss: 0,
+    absMatchesCount: 0,
+    absPointsSum: 0,
+    bestAbs: null,
+  })
 
   type HeroAcc = {
     totalContribution: number
@@ -209,22 +225,30 @@ function computeInsights(
       const pInfo = playerMap.get(s.player_id)
       if (!pInfo) continue
       const nonOwnedPts = Number(s.fantasy_points)
+      if (nonOwnedPts <= 0) continue
+
+      const acc = regretAgg.get(s.player_id) ?? newRegretAcc()
+
+      // Absolute miss — every non-picked match where the player scored
+      acc.totalAbsoluteMiss += nonOwnedPts
+      acc.absMatchesCount++
+      acc.absPointsSum += nonOwnedPts
+      if (!acc.bestAbs || nonOwnedPts > acc.bestAbs.points) {
+        acc.bestAbs = { match_number: match.match_number, points: nonOwnedPts, matchup }
+      }
+
+      // Marginal cost — only when non-owned beats the worst pick at same role
       const baseline = minPickedPtsByRole.get(pInfo.role) ?? minPickedPtsAny
       const cost = Math.max(0, nonOwnedPts - baseline)
-      if (cost <= 0) continue
+      if (cost > 0) {
+        acc.totalCost += cost
+        acc.matchesCount++
+        acc.pointsSum += nonOwnedPts
+        if (!acc.worst || cost > acc.worst.cost) {
+          acc.worst = { match_number: match.match_number, cost, matchup }
+        }
+      }
 
-      const acc = regretAgg.get(s.player_id) ?? {
-        totalCost: 0,
-        matchesCount: 0,
-        pointsSum: 0,
-        worst: null,
-      }
-      acc.totalCost += cost
-      acc.matchesCount++
-      acc.pointsSum += nonOwnedPts
-      if (!acc.worst || cost > acc.worst.cost) {
-        acc.worst = { match_number: match.match_number, cost, matchup }
-      }
       regretAgg.set(s.player_id, acc)
     }
 
@@ -280,10 +304,31 @@ function computeInsights(
       worst_match: acc.worst
         ? { ...acc.worst, cost: Math.round(acc.worst.cost) }
         : null,
+      total_absolute_miss: Math.round(acc.totalAbsoluteMiss),
+      absolute_matches_count: acc.absMatchesCount,
+      avg_points_in_miss:
+        acc.absMatchesCount > 0
+          ? Math.round((acc.absPointsSum / acc.absMatchesCount) * 10) / 10
+          : 0,
+      best_absolute_match: acc.bestAbs
+        ? { ...acc.bestAbs, points: Math.round(acc.bestAbs.points) }
+        : null,
     })
   }
-  regrets.sort((a, b) => b.total_cost - a.total_cost)
-  const topRegrets = regrets.slice(0, 15)
+  // Union the top performers by either metric so the client toggle has data either way
+  const topByCost = [...regrets]
+    .sort((a, b) => b.total_cost - a.total_cost)
+    .slice(0, 25)
+  const topByMiss = [...regrets]
+    .sort((a, b) => b.total_absolute_miss - a.total_absolute_miss)
+    .slice(0, 25)
+  const seen = new Set<string>()
+  const topRegrets: RegretRow[] = []
+  for (const r of [...topByCost, ...topByMiss]) {
+    if (seen.has(r.player_id)) continue
+    seen.add(r.player_id)
+    topRegrets.push(r)
+  }
   const totalCost = regrets.reduce((sum, r) => sum + r.total_cost, 0)
 
   const heroes: HeroRow[] = []
@@ -295,6 +340,8 @@ function computeInsights(
       player_name: p.name,
       player_role: p.role,
       team_short_name: p.team?.short_name ?? "—",
+      team_color: p.team?.color ?? "#888",
+      team_logo_url: p.team?.logo_url ?? null,
       total_contribution: Math.round(acc.totalContribution),
       matches_count: acc.matchesCount,
       captained_count: acc.captained,
