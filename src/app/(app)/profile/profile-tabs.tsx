@@ -9,6 +9,8 @@ import type { ScoreTimelineEntry, RoleBreakdownData, SquadDNARow } from "./seaso
 import { CaptaincyTab } from "./captaincy-tab"
 import type { CaptainStatsData } from "./captaincy-tab"
 import type { MatchHistoryRow } from "./match-history-table"
+import { OwnershipTab } from "./ownership-tab"
+import type { OwnershipInsights } from "@/lib/types"
 
 // Re-export for use by the parent server component
 export type { ScoreTimelineEntry, RoleBreakdownData, SquadDNARow, CaptainStatsData }
@@ -33,6 +35,8 @@ type ProfileTabsProps = {
   squadDNA: SquadDNARow[]
   // ── Captaincy ──
   captainStats: CaptainStatsData
+  // ── Ownership ──
+  ownership: OwnershipInsights
 }
 
 export function ProfileTabs(props: ProfileTabsProps) {
@@ -55,6 +59,9 @@ export function ProfileTabs(props: ProfileTabsProps) {
         </TabsTrigger>
         <TabsTrigger value="captaincy" className="flex-1">
           Captaincy
+        </TabsTrigger>
+        <TabsTrigger value="ownership" className="flex-1">
+          Ownership
         </TabsTrigger>
       </TabsList>
 
@@ -139,6 +146,11 @@ export function ProfileTabs(props: ProfileTabsProps) {
       {/* ── Captaincy ── */}
       <TabsContent value="captaincy">
         <CaptaincyTab stats={props.captainStats} />
+      </TabsContent>
+
+      {/* ── Ownership ── */}
+      <TabsContent value="ownership">
+        <OwnershipTab data={props.ownership} />
       </TabsContent>
     </Tabs>
   )

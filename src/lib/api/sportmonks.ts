@@ -223,6 +223,25 @@ export async function fetchSportmonksPlayer(sportmonksId: string | number): Prom
   }
 }
 
+// ─── Known Sportmonks data corrections ──────────────────────────────────
+//
+// Sportmonks occasionally attributes a wicket to the wrong fielder. When we confirm
+// against ESPNcricinfo/Cricbuzz, we record the correction here so re-fetches don't
+// silently undo manual fixes. Keyed by fixture ID, then by the dismissed batter's
+// Sportmonks player ID.
+type FieldingOverride = {
+  catch_stump_player_id?: number | null
+  runout_by_id?: number | null
+  bowling_player_id?: number | null
+}
+export const SPORTMONKS_FIELDING_OVERRIDES: Record<string, Record<number, FieldingOverride>> = {
+  // LSG vs RCB, Match 50, 2026-05-07. Sportmonks credited Patidar's catch to Kulkarni;
+  // ESPNcricinfo / Cricbuzz both record it as caught by Markram.
+  "69644": {
+    26027: { catch_stump_player_id: 66 }, // Patidar c Markram b Shahbaz Ahmed
+  },
+}
+
 // ─── SportMonks team ID → DB team short_name mapping ────────────────────
 
 export const SPORTMONKS_TEAM_MAP: Record<number, string> = {
@@ -316,7 +335,12 @@ export async function fetchMatchPoints(fixtureId: string): Promise<CricAPIMatchP
     const fixture: SMFixture = json.data
     if (!fixture) return null
 
-    const batting = fixture.batting ?? []
+    // Apply any fixture-level fielder overrides (Sportmonks misattribution corrections).
+    const overrides = SPORTMONKS_FIELDING_OVERRIDES[fixtureId] ?? {}
+    const batting = (fixture.batting ?? []).map((b) => {
+      const o = overrides[b.player_id]
+      return o ? { ...b, ...o } : b
+    })
     const bowling = fixture.bowling ?? []
     const lineup = fixture.lineup ?? []
 
@@ -344,11 +368,10 @@ export async function fetchMatchPoints(fixtureId: string): Promise<CricAPIMatchP
       if (b.runout_by_id) {
         addFielding(b.runout_by_id, "runouts")
       } else if (b.catch_stump_player_id) {
-        // If the catcher is also the wicketkeeper in lineup, count as stumping
-        const isWk = lineup.some(
-          (p) => p.id === b.catch_stump_player_id && p.lineup?.wicketkeeper
-        )
-        addFielding(b.catch_stump_player_id, isWk ? "stumpings" : "catches")
+        // Default to catch — wicketkeepers catch behind the wicket far more often than they stump.
+        // Sportmonks reuses catch_stump_player_id for both, with no distinguishing field we trust.
+        // Stumpings are rare and admin can manually toggle in the score-entry table.
+        addFielding(b.catch_stump_player_id, "catches")
       }
     }
 
@@ -377,7 +400,9 @@ export async function fetchMatchPoints(fixtureId: string): Promise<CricAPIMatchP
       if (bowler) {
         return `b ${lastName(bowler)}`
       }
-      return "out"
+      // Sportmonks set wicket_id but populated none of bowler/fielder/runout — typically means
+      // the batter retired, was timed out, or remained at the crease at innings end. Treat as not out.
+      return "not out"
     }
 
     const innings: CricAPIScorecard[] = [...scoreboards].sort().map((sb) => {

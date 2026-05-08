@@ -314,6 +314,12 @@ export function AdminMatchClient({
     ? players.filter((p) => playingXIIds.includes(p.id))
     : []
 
+  // Players whose Sportmonks dismissal came back without bowler/fielder/runout info.
+  // We store these as the catch-all "out" string — admin should manually verify catches/run-outs.
+  const incompleteDismissals = new Set(
+    existingScores.filter((s) => s.dismissal === "out").map((s) => s.player_id)
+  )
+
   // Group by team, sorted by role
   const ROLE_SORT = { WK: 0, BAT: 1, AR: 2, BOWL: 3 } as Record<string, number>
   const sortByRole = (a: PlayerWithTeam, b: PlayerWithTeam) => (ROLE_SORT[a.role] ?? 9) - (ROLE_SORT[b.role] ?? 9)
@@ -641,6 +647,14 @@ export function AdminMatchClient({
                             style={{ backgroundColor: player.team.color }}
                           />
                           <span className="truncate max-w-[100px]">{player.name}</span>
+                          {incompleteDismissals.has(player.id) && (
+                            <span
+                              className="text-status-warning text-xs"
+                              title="Sportmonks did not record bowler/fielder for this wicket — verify catches and run-outs manually."
+                            >
+                              ⚠️
+                            </span>
+                          )}
                         </div>
                       </td>
                       {statFields.map((f) => (

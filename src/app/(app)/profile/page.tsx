@@ -17,6 +17,7 @@ import type {
   CaptainStatsData,
 } from "./profile-tabs"
 import type { MatchHistoryRow } from "./match-history-table"
+import { getUserOwnershipInsights } from "@/actions/user-ownership"
 
 export default async function ProfilePage() {
   const supabase = await createClient()
@@ -33,6 +34,7 @@ export default async function ProfilePage() {
     teamsRes,
     selectionsRes,
     leagueScoresRes,
+    ownership,
   ] = await Promise.all([
     supabase.from("profiles").select("*").eq("id", user.id).single(),
     supabase
@@ -63,6 +65,7 @@ export default async function ProfilePage() {
       .from("user_match_scores")
       .select("match_id, total_points")
       .limit(2000),
+    getUserOwnershipInsights(user.id),
   ])
 
   const profile = profileRes.data
@@ -482,6 +485,7 @@ export default async function ProfilePage() {
           seasonAvg={seasonAvg}
           squadDNA={squadDNA}
           captainStats={captainStats}
+          ownership={ownership}
         />
 
         {/* ── Rules link + sign out ─────────────────────────────── */}

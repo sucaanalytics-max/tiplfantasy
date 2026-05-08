@@ -130,6 +130,8 @@ export type MatchPlayerScore = {
   run_outs: number
   fantasy_points: number
   breakdown: Record<string, number> | null
+  dismissal: string | null
+  batting_position: number | null
   created_at: string
 }
 
@@ -433,4 +435,39 @@ export type DifferentialSummaryRow = {
   unique_pick_pts: number     // total pts from picks where ownership <= 2
   avg_ownership: number       // avg ownership count across all picks (lower = more contrarian)
   differential_score: number  // SUM(pts) for ownership<=2 picks minus SUM(pts) for ownership<=2 busts (<30pts)
+}
+
+// ============================================================
+// Ownership Insights — personal "regrets & heroes" tab
+// ============================================================
+
+export type RegretRow = {
+  player_id: string
+  player_name: string
+  player_role: PlayerRole
+  team_short_name: string
+  total_cost: number              // sum of marginal_cost across matches
+  matches_count: number           // # of matches that contributed cost
+  avg_points_when_skipped: number // raw avg fp on those days
+  worst_match: { match_number: number; cost: number; matchup: string } | null
+}
+
+export type HeroRow = {
+  player_id: string
+  player_name: string
+  player_role: PlayerRole
+  team_short_name: string
+  total_contribution: number      // sum of contribution in #1 matches (with C/VC multipliers)
+  matches_count: number           // # of #1 matches the user picked them in
+  captained_count: number
+  vc_count: number
+  best_match: { match_number: number; contribution: number; matchup: string } | null
+}
+
+export type OwnershipInsights = {
+  regrets: RegretRow[]
+  heroes: HeroRow[]
+  rankOneMatchCount: number       // # of matches user finished outright #1
+  totalCost: number               // sum of total_cost across regrets
+  matchesAnalysed: number         // # of completed matches the user submitted picks for
 }
