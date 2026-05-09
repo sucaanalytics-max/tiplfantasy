@@ -28,7 +28,7 @@ export function SortHeader({
       type="button"
       onClick={onClick}
       className={cn(
-        "items-center gap-0.5 tabular-nums transition-colors",
+        "w-full items-center gap-0.5 tabular-nums transition-colors",
         hideClass,
         alignClass,
         active ? "text-foreground" : "text-muted-foreground hover:text-foreground",
