@@ -8,8 +8,6 @@ import { getAvatarHexColor } from "@/lib/avatar"
 import { computeRaceSeries, type RacePoint } from "@/lib/rivalry"
 
 export type RaceSnapshot = { stepNumber: number; scores: Record<string, number> }
-export type RaceMarker = { stepNumber: number; userId: string; kind: "winner" }
-export type RaceEmphasis = "me-only" | "leader-and-me"
 
 type Props = {
   userIds: string[]
@@ -17,9 +15,6 @@ type Props = {
   userNames: Record<string, string>
   currentUserId: string
   mode: "rank" | "points"
-  emphasis?: RaceEmphasis
-  leaderUserId?: string
-  markers?: RaceMarker[]
   xLabel?: string
   xFormatter?: (n: number) => string
   className?: string
@@ -37,9 +32,6 @@ export function RaceChart({
   userNames,
   currentUserId,
   mode,
-  emphasis = "me-only",
-  leaderUserId,
-  markers,
   xLabel = "Over",
   xFormatter = (n) => String(n),
   className,
@@ -104,29 +96,13 @@ export function RaceChart({
   const yFor = (p: RacePoint) =>
     mode === "rank" ? yForRank(p.rank) : yForPoints(p.points)
 
-  // Emphasis policy resolves color, width, and z-order priority per user
-  const resolveStyle = (id: string, name: string) => {
-    const isMe = id === currentUserId
-    const isLeader = emphasis === "leader-and-me" && id === leaderUserId
-    if (isMe) {
-      return { color: "var(--primary, #6366f1)", width: 2.75, opacity: 1, priority: 2 }
-    }
-    if (isLeader) {
-      return { color: "var(--captain-gold, #d4a017)", width: 2.75, opacity: 1, priority: 1 }
-    }
-    if (emphasis === "leader-and-me") {
-      return { color: "currentColor", width: 1, opacity: 0.5, priority: 0, muted: true as const }
-    }
-    return { color: getAvatarHexColor(name), width: 1.5, opacity: 1, priority: 0 }
-  }
-
   const paths = useMemo(() => {
-    if (width === 0) return [] as Array<{ userId: string; d: string; isMe: boolean; color: string; name: string; lastY: number; width: number; opacity: number; priority: number; muted: boolean }>
+    if (width === 0) return [] as Array<{ userId: string; d: string; isMe: boolean; color: string; name: string; lastY: number }>
     return userIds.map((id) => {
       const points = series[id] ?? []
       const name = userNames[id] ?? "?"
       const isMe = id === currentUserId
-      const style = resolveStyle(id, name)
+      const color = isMe ? "var(--primary, #6366f1)" : getAvatarHexColor(name)
       let d = ""
       let lastY = 0
       points.forEach((p, i) => {
@@ -135,21 +111,10 @@ export function RaceChart({
         d += `${i === 0 ? "M" : "L"}${x.toFixed(1)},${y.toFixed(1)} `
         lastY = y
       })
-      return {
-        userId: id,
-        d: d.trim(),
-        isMe,
-        color: style.color,
-        name,
-        lastY,
-        width: style.width,
-        opacity: style.opacity,
-        priority: style.priority,
-        muted: "muted" in style ? !!style.muted : false,
-      }
+      return { userId: id, d: d.trim(), isMe, color, name, lastY }
     })
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [userIds, series, userNames, currentUserId, mode, width, yMaxPoints, N, stepSpan, minStep, emphasis, leaderUserId])
+  }, [userIds, series, userNames, currentUserId, mode, width, yMaxPoints, N, stepSpan, minStep])
 
   const xTicks = useMemo(() => {
     if (!steps.length) return []
@@ -205,22 +170,14 @@ export function RaceChart({
         const p = (series[id] ?? []).find((q) => q.step === hoverStep)
         if (!p) return null
         const name = userNames[id] ?? "?"
-        const style = resolveStyle(id, name)
-        return {
-          id,
-          name,
-          points: p.points,
-          rank: p.rank,
-          isMe: id === currentUserId,
-          color: style.color,
-          muted: "muted" in style ? !!style.muted : false,
-        }
+        const isMe = id === currentUserId
+        const color = isMe ? "var(--primary, #6366f1)" : getAvatarHexColor(name)
+        return { id, name, points: p.points, rank: p.rank, isMe, color }
       })
-      .filter((r): r is { id: string; name: string; points: number; rank: number; isMe: boolean; color: string; muted: boolean } => r != null)
+      .filter((r): r is { id: string; name: string; points: number; rank: number; isMe: boolean; color: string } => r != null)
       .sort((a, b) => a.rank - b.rank)
     return { step: hoverStep, rows }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [hoverStep, userIds, series, userNames, currentUserId, emphasis, leaderUserId])
+  }, [hoverStep, userIds, series, userNames, currentUserId])
 
   const pathRefs = useRef<Map<string, SVGPathElement>>(new Map())
   const didAnimate = useRef(false)
@@ -334,11 +291,11 @@ export function RaceChart({
           />
         )}
 
-        {/* Paths — sorted so muted at bottom, leader/me on top */}
+        {/* Paths — me last so it sits on top */}
         {paths
           .slice()
-          .sort((a, b) => a.priority - b.priority)
-          .map(({ userId, d, color, width: w, opacity, muted }) => (
+          .sort((a, b) => Number(a.isMe) - Number(b.isMe))
+          .map(({ userId, d, isMe, color }) => (
             <path
               key={userId}
               ref={(el) => {
@@ -348,31 +305,12 @@ export function RaceChart({
               d={d}
               fill="none"
               stroke={color}
-              strokeWidth={w}
+              strokeWidth={isMe ? 2.75 : 1.5}
               strokeLinecap="round"
               strokeLinejoin="round"
-              className={muted ? "text-overlay-border" : undefined}
-              opacity={hoverStep != null && muted ? 0.3 : opacity}
+              opacity={hoverStep != null && !isMe ? 0.55 : 1}
             />
           ))}
-
-        {/* Winner markers */}
-        {markers && markers.map((m, i) => {
-          const p = (series[m.userId] ?? []).find((q) => q.step === m.stepNumber)
-          if (!p) return null
-          return (
-            <circle
-              key={`marker-${i}`}
-              cx={xFor(p.step)}
-              cy={yFor(p)}
-              r={3.5}
-              fill="var(--captain-gold, #d4a017)"
-              stroke="var(--background, #fff)"
-              strokeWidth={1.25}
-              pointerEvents="none"
-            />
-          )
-        })}
 
         {/* Hover dots on each line */}
         {hoverStep != null && paths.map(({ userId, color, isMe }) => {
@@ -401,10 +339,7 @@ export function RaceChart({
           <ul className="grid grid-cols-2 gap-x-3 gap-y-0.5">
             {tooltip.rows.slice(0, 12).map((r) => (
               <li key={r.id} className="flex items-center gap-1.5 min-w-0">
-                <span
-                  className={cn("h-1.5 w-1.5 rounded-full shrink-0", r.muted && "text-overlay-border")}
-                  style={r.muted ? undefined : { background: r.color }}
-                />
+                <span className="h-1.5 w-1.5 rounded-full shrink-0" style={{ background: r.color }} />
                 <span className={cn("truncate", r.isMe ? "font-semibold text-primary" : "text-foreground")}>
                   {firstName(r.name)}{r.isMe ? " (you)" : ""}
                 </span>
@@ -417,19 +352,16 @@ export function RaceChart({
         </div>
       )}
 
-      {/* Legend — only when not in leader-and-me mode (it would be too long) */}
-      {emphasis !== "leader-and-me" && (
-        <div className="mt-2 flex flex-wrap gap-x-3 gap-y-1 text-[10px] text-muted-foreground">
-          {paths.map(({ userId, name, color, isMe }) => (
-            <span key={`lg-${userId}`} className="inline-flex items-center gap-1.5 min-w-0 max-w-[40%]">
-              <span className="h-1.5 w-1.5 rounded-full shrink-0" style={{ background: color }} />
-              <span className={cn("truncate", isMe && "text-primary font-semibold")}>
-                {firstName(name)}{isMe ? " (you)" : ""}
-              </span>
+      <div className="mt-2 flex flex-wrap gap-x-3 gap-y-1 text-[10px] text-muted-foreground">
+        {paths.map(({ userId, name, color, isMe }) => (
+          <span key={`lg-${userId}`} className="inline-flex items-center gap-1.5 min-w-0 max-w-[40%]">
+            <span className="h-1.5 w-1.5 rounded-full shrink-0" style={{ background: color }} />
+            <span className={cn("truncate", isMe && "text-primary font-semibold")}>
+              {firstName(name)}{isMe ? " (you)" : ""}
             </span>
-          ))}
-        </div>
-      )}
+          </span>
+        ))}
+      </div>
     </div>
   )
 }

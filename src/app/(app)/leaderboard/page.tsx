@@ -17,7 +17,6 @@ import { EmptyState } from "@/components/empty-state"
 import { PageTransition } from "@/components/page-transition"
 import { LeaderboardTable, type LeaderboardRow } from "@/components/leaderboard-table"
 import { SeasonRaceChart } from "@/components/season-race-chart"
-import type { RaceMarker, RaceSnapshot } from "@/components/race-chart"
 import { cn } from "@/lib/utils"
 import type { LeagueMemberStats, FormStatsRow } from "@/lib/types"
 
@@ -135,30 +134,26 @@ export default async function LeaderboardPage({
     }
   })
 
-  // Season race chart: cumulative season standings per match for the bump chart
+  // Season race chart: build cumulative per-user totals indexed by match
   const allMatchNumbers = [...new Set(matchScores.map((ms) => ms.match_number))].sort((a, b) => a - b)
-  const cumulative = new Map<string, number>()
-  const matchSnapshots: RaceSnapshot[] = []
-  for (const mn of allMatchNumbers) {
-    const rows = matchScores.filter((ms) => ms.match_number === mn)
-    for (const r of rows) {
-      cumulative.set(r.user_id, (cumulative.get(r.user_id) ?? 0) + Number(r.total_points))
-    }
-    matchSnapshots.push({ stepNumber: mn, scores: Object.fromEntries(cumulative) })
-  }
-
-  const matchWinners: RaceMarker[] = allMatchNumbers
-    .map((mn) => {
-      const winner = matchScores.find((ms) => ms.match_number === mn && ms.league_rank === 1)
-      return winner ? { stepNumber: mn, userId: winner.user_id, kind: "winner" as const } : null
-    })
-    .filter((x): x is RaceMarker => x !== null)
-
   const raceUserIds = leaderboardRows.map((r) => r.user_id)
   const raceUserNames: Record<string, string> = Object.fromEntries(
     leaderboardRows.map((r) => [r.user_id, r.display_name]),
   )
   const leaderUserId = leaderboardRows[0]?.user_id ?? user.id
+
+  const cumulativeByUser: Record<string, number[]> = {}
+  for (const id of raceUserIds) cumulativeByUser[id] = []
+  const running = new Map<string, number>()
+  for (const mn of allMatchNumbers) {
+    const rows = matchScores.filter((ms) => ms.match_number === mn)
+    for (const r of rows) {
+      running.set(r.user_id, (running.get(r.user_id) ?? 0) + Number(r.total_points))
+    }
+    for (const id of raceUserIds) {
+      cumulativeByUser[id].push(running.get(id) ?? 0)
+    }
+  }
 
   // Awards race — sort all members for each category
   const sortedByHighest = [...awards].sort((a, b) => Number(b.highest_score) - Number(a.highest_score))
@@ -227,14 +222,14 @@ export default async function LeaderboardPage({
           </div>
 
           {/* ═══ SEASON RACE ═══ */}
-          {matchSnapshots.length > 1 && raceUserIds.length > 0 && (
+          {allMatchNumbers.length > 1 && raceUserIds.length > 0 && (
             <SeasonRaceChart
+              matchNumbers={allMatchNumbers}
               userIds={raceUserIds}
               userNames={raceUserNames}
-              currentUserId={user.id}
               leaderUserId={leaderUserId}
-              snapshots={matchSnapshots}
-              winners={matchWinners}
+              currentUserId={user.id}
+              cumulativeByUser={cumulativeByUser}
             />
           )}
 
