@@ -16,7 +16,8 @@ import { getInitials, getAvatarColor } from "@/lib/avatar"
 import { EmptyState } from "@/components/empty-state"
 import { PageTransition } from "@/components/page-transition"
 import { LeaderboardTable, type LeaderboardRow } from "@/components/leaderboard-table"
-import { SeasonProgressTable, type ProgressRow } from "@/components/season-progress-table"
+import { SeasonRaceChart } from "@/components/season-race-chart"
+import type { RaceMarker, RaceSnapshot } from "@/components/race-chart"
 import { cn } from "@/lib/utils"
 import type { LeagueMemberStats, FormStatsRow } from "@/lib/types"
 
@@ -134,29 +135,30 @@ export default async function LeaderboardPage({
     }
   })
 
-  // Season progress table: last 8 matches for all users
+  // Season race chart: cumulative season standings per match for the bump chart
   const allMatchNumbers = [...new Set(matchScores.map((ms) => ms.match_number))].sort((a, b) => a - b)
-  const progressMatchNumbers = allMatchNumbers.slice(-8)
-  const avgScore = matchScores.length > 0
-    ? matchScores.reduce((s, ms) => s + ms.total_points, 0) / matchScores.length
-    : 0
-  const progressRows: ProgressRow[] = leaderboardRows.map((row) => {
-    const userMatches = matchScores
-      .filter((ms) => ms.user_id === row.user_id)
-      .sort((a, b) => a.match_number - b.match_number)
-    return {
-      userId: row.user_id,
-      displayName: row.display_name,
-      seasonRank: row.season_rank,
-      matchScores: progressMatchNumbers
-        .map((mn) => {
-          const ms = userMatches.find((m) => m.match_number === mn)
-          if (!ms) return null
-          return { matchNumber: mn, points: ms.total_points, isWinner: ms.league_rank === 1 }
-        })
-        .filter((x): x is { matchNumber: number; points: number; isWinner: boolean } => x !== null),
+  const cumulative = new Map<string, number>()
+  const matchSnapshots: RaceSnapshot[] = []
+  for (const mn of allMatchNumbers) {
+    const rows = matchScores.filter((ms) => ms.match_number === mn)
+    for (const r of rows) {
+      cumulative.set(r.user_id, (cumulative.get(r.user_id) ?? 0) + Number(r.total_points))
     }
-  })
+    matchSnapshots.push({ stepNumber: mn, scores: Object.fromEntries(cumulative) })
+  }
+
+  const matchWinners: RaceMarker[] = allMatchNumbers
+    .map((mn) => {
+      const winner = matchScores.find((ms) => ms.match_number === mn && ms.league_rank === 1)
+      return winner ? { stepNumber: mn, userId: winner.user_id, kind: "winner" as const } : null
+    })
+    .filter((x): x is RaceMarker => x !== null)
+
+  const raceUserIds = leaderboardRows.map((r) => r.user_id)
+  const raceUserNames: Record<string, string> = Object.fromEntries(
+    leaderboardRows.map((r) => [r.user_id, r.display_name]),
+  )
+  const leaderUserId = leaderboardRows[0]?.user_id ?? user.id
 
   // Awards race — sort all members for each category
   const sortedByHighest = [...awards].sort((a, b) => Number(b.highest_score) - Number(a.highest_score))
@@ -225,12 +227,14 @@ export default async function LeaderboardPage({
           </div>
 
           {/* ═══ SEASON RACE ═══ */}
-          {progressRows.length > 0 && progressMatchNumbers.length > 0 && (
-            <SeasonProgressTable
-              rows={progressRows}
+          {matchSnapshots.length > 1 && raceUserIds.length > 0 && (
+            <SeasonRaceChart
+              userIds={raceUserIds}
+              userNames={raceUserNames}
               currentUserId={user.id}
-              matchNumbers={progressMatchNumbers}
-              avgScore={avgScore}
+              leaderUserId={leaderUserId}
+              snapshots={matchSnapshots}
+              winners={matchWinners}
             />
           )}
 

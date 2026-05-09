@@ -381,10 +381,10 @@ export function computeMomentumSeries(
 // Multi-user analogue of the per-row momentum series. Powers the live-page
 // "rat race" chart that shows how the league table shifts over by over.
 
-export type RacePoint = { over: number; points: number; rank: number }
+export type RacePoint = { step: number; points: number; rank: number }
 export type RaceSeries = Record<string, RacePoint[]>
 
-type RaceSnapshot = { over_number: number; scores: Record<string, number> }
+type RaceSnapshot = { stepNumber: number; scores: Record<string, number> }
 
 /**
  * Decide which users to draw in the race chart.
@@ -442,7 +442,7 @@ export function computeRaceSeries(
   for (const id of userIds) out[id] = []
   if (!userIds.length || !snapshots.length) return out
 
-  const ordered = [...snapshots].sort((a, b) => a.over_number - b.over_number)
+  const ordered = [...snapshots].sort((a, b) => a.stepNumber - b.stepNumber)
 
   for (const snap of ordered) {
     const ranked = userIds
@@ -451,7 +451,7 @@ export function computeRaceSeries(
 
     ranked.forEach((entry, idx) => {
       out[entry.id].push({
-        over: snap.over_number,
+        step: snap.stepNumber,
         points: entry.points,
         rank: idx + 1,
       })

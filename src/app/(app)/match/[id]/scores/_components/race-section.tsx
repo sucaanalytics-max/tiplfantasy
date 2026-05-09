@@ -1,9 +1,9 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useEffect, useMemo, useState } from "react"
 import { ChevronDown } from "lucide-react"
 import { cn } from "@/lib/utils"
-import { RaceChart } from "./race-chart"
+import { RaceChart } from "@/components/race-chart"
 
 type Snapshot = { over_number: number; scores: Record<string, number> }
 type Mode = "rank" | "points"
@@ -40,6 +40,11 @@ export function RaceSection({
   const overCount = new Set(snapshots.map((s) => s.over_number)).size
   const enoughData = overCount >= 2
   const userCount = userIds.length
+
+  const raceSnapshots = useMemo(
+    () => snapshots.map((s) => ({ stepNumber: s.over_number, scores: s.scores })),
+    [snapshots],
+  )
 
   return (
     <div className="border-b border-overlay-border bg-background">
@@ -79,7 +84,7 @@ export function RaceSection({
           </div>
           <RaceChart
             userIds={userIds}
-            snapshots={snapshots}
+            snapshots={raceSnapshots}
             userNames={userNames}
             currentUserId={currentUserId}
             mode={mode}

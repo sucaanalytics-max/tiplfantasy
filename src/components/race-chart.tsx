@@ -7,14 +7,21 @@ import { cn } from "@/lib/utils"
 import { getAvatarHexColor } from "@/lib/avatar"
 import { computeRaceSeries, type RacePoint } from "@/lib/rivalry"
 
-type Snapshot = { over_number: number; scores: Record<string, number> }
+export type RaceSnapshot = { stepNumber: number; scores: Record<string, number> }
+export type RaceMarker = { stepNumber: number; userId: string; kind: "winner" }
+export type RaceEmphasis = "me-only" | "leader-and-me"
 
 type Props = {
   userIds: string[]
-  snapshots: Snapshot[]
+  snapshots: RaceSnapshot[]
   userNames: Record<string, string>
   currentUserId: string
   mode: "rank" | "points"
+  emphasis?: RaceEmphasis
+  leaderUserId?: string
+  markers?: RaceMarker[]
+  xLabel?: string
+  xFormatter?: (n: number) => string
   className?: string
 }
 
@@ -25,22 +32,32 @@ const PAD_RIGHT = 12
 const HEIGHT = 320
 
 export function RaceChart({
-  userIds, snapshots, userNames, currentUserId, mode, className,
+  userIds,
+  snapshots,
+  userNames,
+  currentUserId,
+  mode,
+  emphasis = "me-only",
+  leaderUserId,
+  markers,
+  xLabel = "Over",
+  xFormatter = (n) => String(n),
+  className,
 }: Props) {
   const series = useMemo(
     () => computeRaceSeries(userIds, snapshots),
     [userIds, snapshots],
   )
 
-  const overs = useMemo(() => {
+  const steps = useMemo(() => {
     const set = new Set<number>()
-    for (const snap of snapshots) set.add(snap.over_number)
+    for (const snap of snapshots) set.add(snap.stepNumber)
     return [...set].sort((a, b) => a - b)
   }, [snapshots])
 
-  const minOver = overs[0] ?? 0
-  const maxOver = overs[overs.length - 1] ?? 0
-  const overSpan = Math.max(1, maxOver - minOver)
+  const minStep = steps[0] ?? 0
+  const maxStep = steps[steps.length - 1] ?? 0
+  const stepSpan = Math.max(1, maxStep - minStep)
   const N = userIds.length
 
   const maxPoints = useMemo(() => {
@@ -71,9 +88,8 @@ export function RaceChart({
   const innerW = Math.max(0, width - PAD_LEFT - PAD_RIGHT)
   const innerH = HEIGHT - PAD_TOP - PAD_BOTTOM
 
-  // Position helpers ─────────────────────────────────────────────────────
-  const xFor = (over: number) =>
-    PAD_LEFT + (overSpan === 0 ? 0 : ((over - minOver) / overSpan) * innerW)
+  const xFor = (step: number) =>
+    PAD_LEFT + (stepSpan === 0 ? 0 : ((step - minStep) / stepSpan) * innerW)
 
   const yForRank = (rank: number) =>
     N <= 1
@@ -88,39 +104,62 @@ export function RaceChart({
   const yFor = (p: RacePoint) =>
     mode === "rank" ? yForRank(p.rank) : yForPoints(p.points)
 
-  // Build paths once per (mode, series, width)
+  // Emphasis policy resolves color, width, and z-order priority per user
+  const resolveStyle = (id: string, name: string) => {
+    const isMe = id === currentUserId
+    const isLeader = emphasis === "leader-and-me" && id === leaderUserId
+    if (isMe) {
+      return { color: "var(--primary, #6366f1)", width: 2.75, opacity: 1, priority: 2 }
+    }
+    if (isLeader) {
+      return { color: "var(--captain-gold, #d4a017)", width: 2.75, opacity: 1, priority: 1 }
+    }
+    if (emphasis === "leader-and-me") {
+      return { color: "currentColor", width: 1, opacity: 0.5, priority: 0, muted: true as const }
+    }
+    return { color: getAvatarHexColor(name), width: 1.5, opacity: 1, priority: 0 }
+  }
+
   const paths = useMemo(() => {
-    if (width === 0) return [] as Array<{ userId: string; d: string; isMe: boolean; color: string; name: string; lastY: number }>
+    if (width === 0) return [] as Array<{ userId: string; d: string; isMe: boolean; color: string; name: string; lastY: number; width: number; opacity: number; priority: number; muted: boolean }>
     return userIds.map((id) => {
       const points = series[id] ?? []
       const name = userNames[id] ?? "?"
       const isMe = id === currentUserId
-      const color = isMe ? "var(--primary, #6366f1)" : getAvatarHexColor(name)
+      const style = resolveStyle(id, name)
       let d = ""
       let lastY = 0
       points.forEach((p, i) => {
-        const x = xFor(p.over)
+        const x = xFor(p.step)
         const y = yFor(p)
         d += `${i === 0 ? "M" : "L"}${x.toFixed(1)},${y.toFixed(1)} `
         lastY = y
       })
-      return { userId: id, d: d.trim(), isMe, color, name, lastY }
+      return {
+        userId: id,
+        d: d.trim(),
+        isMe,
+        color: style.color,
+        name,
+        lastY,
+        width: style.width,
+        opacity: style.opacity,
+        priority: style.priority,
+        muted: "muted" in style ? !!style.muted : false,
+      }
     })
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [userIds, series, userNames, currentUserId, mode, width, yMaxPoints, N, overSpan, minOver])
+  }, [userIds, series, userNames, currentUserId, mode, width, yMaxPoints, N, stepSpan, minStep, emphasis, leaderUserId])
 
-  // X-axis ticks every 5 overs (plus first/last)
   const xTicks = useMemo(() => {
-    if (!overs.length) return []
-    const ticks = new Set<number>([minOver, maxOver])
-    for (let o = Math.ceil(minOver / 5) * 5; o <= maxOver; o += 5) ticks.add(o)
+    if (!steps.length) return []
+    const ticks = new Set<number>([minStep, maxStep])
+    for (let s = Math.ceil(minStep / 5) * 5; s <= maxStep; s += 5) ticks.add(s)
     return [...ticks].sort((a, b) => a - b)
-  }, [overs, minOver, maxOver])
+  }, [steps, minStep, maxStep])
 
-  // Y-axis labels
   const yLabels = useMemo(() => {
     if (mode === "rank") {
-      // Show 1, mid, last (avoid clutter when N is large)
       if (N <= 1) return [{ y: yForRank(1), label: "1" }]
       const ranks = N <= 5
         ? Array.from({ length: N }, (_, i) => i + 1)
@@ -137,52 +176,52 @@ export function RaceChart({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [mode, N, yMaxPoints, innerH])
 
-  // Pointer interaction
-  const [hoverOver, setHoverOver] = useState<number | null>(null)
+  const [hoverStep, setHoverStep] = useState<number | null>(null)
 
   const onPointerMove = (e: React.PointerEvent<SVGSVGElement>) => {
-    if (!overs.length || width === 0) return
+    if (!steps.length || width === 0) return
     const rect = e.currentTarget.getBoundingClientRect()
     const x = e.clientX - rect.left
     if (x < PAD_LEFT - 8 || x > width - PAD_RIGHT + 8) {
-      setHoverOver(null)
+      setHoverStep(null)
       return
     }
-    // Snap to nearest available over
     const fx = (x - PAD_LEFT) / innerW
-    const rawOver = minOver + fx * overSpan
-    let nearest = overs[0]
-    let bestDist = Math.abs(rawOver - nearest)
-    for (const o of overs) {
-      const d = Math.abs(rawOver - o)
-      if (d < bestDist) { bestDist = d; nearest = o }
+    const rawStep = minStep + fx * stepSpan
+    let nearest = steps[0]
+    let bestDist = Math.abs(rawStep - nearest)
+    for (const s of steps) {
+      const d = Math.abs(rawStep - s)
+      if (d < bestDist) { bestDist = d; nearest = s }
     }
-    setHoverOver(nearest)
+    setHoverStep(nearest)
   }
-  const onPointerLeave = () => setHoverOver(null)
+  const onPointerLeave = () => setHoverStep(null)
 
-  // Tooltip data
   const tooltip = useMemo(() => {
-    if (hoverOver == null) return null
+    if (hoverStep == null) return null
     const rows = userIds
       .map((id) => {
-        const p = (series[id] ?? []).find((q) => q.over === hoverOver)
+        const p = (series[id] ?? []).find((q) => q.step === hoverStep)
         if (!p) return null
+        const name = userNames[id] ?? "?"
+        const style = resolveStyle(id, name)
         return {
           id,
-          name: userNames[id] ?? "?",
+          name,
           points: p.points,
           rank: p.rank,
           isMe: id === currentUserId,
-          color: id === currentUserId ? "var(--primary, #6366f1)" : getAvatarHexColor(userNames[id] ?? "?"),
+          color: style.color,
+          muted: "muted" in style ? !!style.muted : false,
         }
       })
-      .filter((r): r is { id: string; name: string; points: number; rank: number; isMe: boolean; color: string } => r != null)
+      .filter((r): r is { id: string; name: string; points: number; rank: number; isMe: boolean; color: string; muted: boolean } => r != null)
       .sort((a, b) => a.rank - b.rank)
-    return { over: hoverOver, rows }
-  }, [hoverOver, userIds, series, userNames, currentUserId])
+    return { step: hoverStep, rows }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [hoverStep, userIds, series, userNames, currentUserId, emphasis, leaderUserId])
 
-  // Animate the paths drawing in once
   const pathRefs = useRef<Map<string, SVGPathElement>>(new Map())
   const didAnimate = useRef(false)
   useEffect(() => {
@@ -200,8 +239,6 @@ export function RaceChart({
       void el.getBoundingClientRect()
       el.style.transition = "stroke-dashoffset 600ms ease-out"
       el.style.strokeDashoffset = "0"
-      // After the animation, clear the dasharray so subsequent path
-      // extensions (from new snapshots) render without truncation.
       const t = window.setTimeout(() => {
         el.style.transition = ""
         el.style.strokeDasharray = ""
@@ -212,12 +249,12 @@ export function RaceChart({
     return () => { for (const c of cleanups) c() }
   }, [paths, width])
 
-  if (snapshots.length < 2 || overs.length < 2) {
+  if (snapshots.length < 2 || steps.length < 2) {
     return (
       <EmptyState
         icon={Trophy}
-        title="Race begins after the first over"
-        description="As points are scored, your line and your league's lines will start drawing here."
+        title="Race begins after the first data point"
+        description="As scoring progresses, your line and your league's lines will start drawing here."
       />
     )
   }
@@ -235,7 +272,6 @@ export function RaceChart({
         onPointerLeave={onPointerLeave}
         className="touch-none"
       >
-        {/* Grid: horizontal lines aligned with y-labels */}
         {yLabels.map((t, i) => (
           <line
             key={`yg-${i}`}
@@ -248,7 +284,6 @@ export function RaceChart({
           />
         ))}
 
-        {/* Y-axis labels */}
         {yLabels.map((t, i) => (
           <text
             key={`yl-${i}`}
@@ -260,40 +295,37 @@ export function RaceChart({
           </text>
         ))}
 
-        {/* X-axis ticks + labels */}
-        {xTicks.map((o, i) => (
+        {xTicks.map((s, i) => (
           <g key={`xt-${i}`}>
             <line
-              x1={xFor(o)} x2={xFor(o)}
+              x1={xFor(s)} x2={xFor(s)}
               y1={HEIGHT - PAD_BOTTOM} y2={HEIGHT - PAD_BOTTOM + 4}
               stroke="currentColor"
               className="text-muted-foreground"
               opacity={0.5}
             />
             <text
-              x={xFor(o)} y={HEIGHT - PAD_BOTTOM + 16}
+              x={xFor(s)} y={HEIGHT - PAD_BOTTOM + 16}
               textAnchor="middle"
               className="fill-muted-foreground text-[10px] tabular-nums"
             >
-              {o}
+              {xFormatter(s)}
             </text>
           </g>
         ))}
 
-        {/* Axis title */}
         <text
           x={(PAD_LEFT + width - PAD_RIGHT) / 2}
           y={HEIGHT - 4}
           textAnchor="middle"
           className="fill-muted-foreground/70 text-[9px] uppercase tracking-wider"
         >
-          Over
+          {xLabel}
         </text>
 
-        {/* Hover guide */}
-        {hoverOver != null && (
+        {hoverStep != null && (
           <line
-            x1={xFor(hoverOver)} x2={xFor(hoverOver)}
+            x1={xFor(hoverStep)} x2={xFor(hoverStep)}
             y1={PAD_TOP} y2={HEIGHT - PAD_BOTTOM}
             stroke="currentColor"
             strokeWidth={1}
@@ -302,11 +334,11 @@ export function RaceChart({
           />
         )}
 
-        {/* Paths — me last so it sits on top */}
+        {/* Paths — sorted so muted at bottom, leader/me on top */}
         {paths
           .slice()
-          .sort((a, b) => Number(a.isMe) - Number(b.isMe))
-          .map(({ userId, d, isMe, color }) => (
+          .sort((a, b) => a.priority - b.priority)
+          .map(({ userId, d, color, width: w, opacity, muted }) => (
             <path
               key={userId}
               ref={(el) => {
@@ -316,21 +348,40 @@ export function RaceChart({
               d={d}
               fill="none"
               stroke={color}
-              strokeWidth={isMe ? 2.75 : 1.5}
+              strokeWidth={w}
               strokeLinecap="round"
               strokeLinejoin="round"
-              opacity={hoverOver != null && !isMe ? 0.55 : 1}
+              className={muted ? "text-overlay-border" : undefined}
+              opacity={hoverStep != null && muted ? 0.3 : opacity}
             />
           ))}
 
+        {/* Winner markers */}
+        {markers && markers.map((m, i) => {
+          const p = (series[m.userId] ?? []).find((q) => q.step === m.stepNumber)
+          if (!p) return null
+          return (
+            <circle
+              key={`marker-${i}`}
+              cx={xFor(p.step)}
+              cy={yFor(p)}
+              r={3.5}
+              fill="var(--captain-gold, #d4a017)"
+              stroke="var(--background, #fff)"
+              strokeWidth={1.25}
+              pointerEvents="none"
+            />
+          )
+        })}
+
         {/* Hover dots on each line */}
-        {hoverOver != null && paths.map(({ userId, isMe, color }) => {
-          const p = (series[userId] ?? []).find((q) => q.over === hoverOver)
+        {hoverStep != null && paths.map(({ userId, color, isMe }) => {
+          const p = (series[userId] ?? []).find((q) => q.step === hoverStep)
           if (!p) return null
           return (
             <circle
               key={`dot-${userId}`}
-              cx={xFor(p.over)}
+              cx={xFor(p.step)}
               cy={yFor(p)}
               r={isMe ? 3.5 : 2.5}
               fill={color}
@@ -341,17 +392,19 @@ export function RaceChart({
         })}
       </svg>
 
-      {/* Tooltip */}
       {tooltip && tooltip.rows.length > 0 && (
         <div className="mt-2 rounded-md border border-overlay-border bg-overlay-subtle/80 backdrop-blur-sm px-3 py-2 text-[11px]">
           <div className="flex items-center justify-between mb-1.5">
-            <span className="font-semibold text-foreground">After over {tooltip.over}</span>
+            <span className="font-semibold text-foreground">After {xLabel.toLowerCase()} {tooltip.step}</span>
             <span className="text-muted-foreground">{tooltip.rows.length} {tooltip.rows.length === 1 ? "user" : "users"}</span>
           </div>
           <ul className="grid grid-cols-2 gap-x-3 gap-y-0.5">
             {tooltip.rows.slice(0, 12).map((r) => (
               <li key={r.id} className="flex items-center gap-1.5 min-w-0">
-                <span className="h-1.5 w-1.5 rounded-full shrink-0" style={{ background: r.color }} />
+                <span
+                  className={cn("h-1.5 w-1.5 rounded-full shrink-0", r.muted && "text-overlay-border")}
+                  style={r.muted ? undefined : { background: r.color }}
+                />
                 <span className={cn("truncate", r.isMe ? "font-semibold text-primary" : "text-foreground")}>
                   {firstName(r.name)}{r.isMe ? " (you)" : ""}
                 </span>
@@ -364,17 +417,19 @@ export function RaceChart({
         </div>
       )}
 
-      {/* Legend */}
-      <div className="mt-2 flex flex-wrap gap-x-3 gap-y-1 text-[10px] text-muted-foreground">
-        {paths.map(({ userId, name, color, isMe }) => (
-          <span key={`lg-${userId}`} className="inline-flex items-center gap-1.5 min-w-0 max-w-[40%]">
-            <span className="h-1.5 w-1.5 rounded-full shrink-0" style={{ background: color }} />
-            <span className={cn("truncate", isMe && "text-primary font-semibold")}>
-              {firstName(name)}{isMe ? " (you)" : ""}
+      {/* Legend — only when not in leader-and-me mode (it would be too long) */}
+      {emphasis !== "leader-and-me" && (
+        <div className="mt-2 flex flex-wrap gap-x-3 gap-y-1 text-[10px] text-muted-foreground">
+          {paths.map(({ userId, name, color, isMe }) => (
+            <span key={`lg-${userId}`} className="inline-flex items-center gap-1.5 min-w-0 max-w-[40%]">
+              <span className="h-1.5 w-1.5 rounded-full shrink-0" style={{ background: color }} />
+              <span className={cn("truncate", isMe && "text-primary font-semibold")}>
+                {firstName(name)}{isMe ? " (you)" : ""}
+              </span>
             </span>
-          </span>
-        ))}
-      </div>
+          ))}
+        </div>
+      )}
     </div>
   )
 }
