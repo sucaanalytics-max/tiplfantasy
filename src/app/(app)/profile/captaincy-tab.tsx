@@ -31,9 +31,22 @@ export type CaptainStatsData = {
   bestMatchVcBonus: number
 }
 
-type SortKey = "name" | "cCount" | "cBonus" | "vcCount" | "vcBonus" | "total"
+type DerivedRow = CaptaincyRow & { avg: number; impactPct: number }
+
+type SortKey =
+  | "name"
+  | "cCount"
+  | "cBonus"
+  | "vcCount"
+  | "vcBonus"
+  | "avg"
+  | "total"
+  | "impact"
 
 const ROLES = ["BAT", "BOWL", "AR", "WK"] as const
+
+const fmtInt = (n: number) => Math.round(n).toLocaleString()
+const fmtPct = (n: number) => `${n.toFixed(1)}%`
 
 export function CaptaincyTab({ stats }: { stats: CaptainStatsData }) {
   const [sort, setSort] = useState<{ key: SortKey; dir: SortDir }>({ key: "total", dir: "desc" })
@@ -41,14 +54,26 @@ export function CaptaincyTab({ stats }: { stats: CaptainStatsData }) {
   const [roleFilter, setRoleFilter] = useState("")
   const [minPicks, setMinPicks] = useState(1)
 
+  const derived = useMemo<DerivedRow[]>(() => {
+    const totalBonus = stats.rows.reduce((s, r) => s + r.total, 0)
+    return stats.rows.map((r) => {
+      const picks = r.cCount + r.vcCount
+      return {
+        ...r,
+        avg: picks > 0 ? r.total / picks : 0,
+        impactPct: totalBonus > 0 ? (r.total / totalBonus) * 100 : 0,
+      }
+    })
+  }, [stats.rows])
+
   const filtered = useMemo(() => {
-    return stats.rows.filter((r) => {
+    return derived.filter((r) => {
       if (teamFilter && r.team_id !== teamFilter) return false
       if (roleFilter && r.role !== roleFilter) return false
       if (r.cCount + r.vcCount < minPicks) return false
       return true
     })
-  }, [stats.rows, teamFilter, roleFilter, minPicks])
+  }, [derived, teamFilter, roleFilter, minPicks])
 
   const sortedRows = useMemo(() => {
     const list = [...filtered]
@@ -65,8 +90,12 @@ export function CaptaincyTab({ stats }: { stats: CaptainStatsData }) {
           return (a.vcCount - b.vcCount) * dir
         case "vcBonus":
           return (a.vcBonus - b.vcBonus) * dir
+        case "avg":
+          return (a.avg - b.avg) * dir
         case "total":
           return (a.total - b.total) * dir
+        case "impact":
+          return (a.impactPct - b.impactPct) * dir
       }
     })
     return list
@@ -209,10 +238,10 @@ export function CaptaincyTab({ stats }: { stats: CaptainStatsData }) {
               </div>
             ) : (
               <div className="overflow-x-auto" data-vaul-no-drag>
-                <table className="w-full text-[12px]">
+                <table className="w-full table-fixed text-[12px] min-w-[520px]">
                   <thead>
                     <tr className="border-b border-border/50 text-[10px] uppercase tracking-wider text-muted-foreground">
-                      <th className="text-left py-2 px-3 font-medium min-w-[110px]">
+                      <th className="w-[32%] text-left py-2 px-3 font-medium">
                         <SortHeader
                           label="Player"
                           active={sort.key === "name"}
@@ -221,7 +250,7 @@ export function CaptaincyTab({ stats }: { stats: CaptainStatsData }) {
                           align="left"
                         />
                       </th>
-                      <th className="text-right py-2 px-2 font-medium">
+                      <th className="w-[7%] text-right py-2 px-2 font-medium">
                         <SortHeader
                           label="C×"
                           active={sort.key === "cCount"}
@@ -230,7 +259,7 @@ export function CaptaincyTab({ stats }: { stats: CaptainStatsData }) {
                           align="right"
                         />
                       </th>
-                      <th className="text-right py-2 px-2 font-medium">
+                      <th className="w-[11%] text-right py-2 px-2 font-medium">
                         <SortHeader
                           label="C Pts"
                           active={sort.key === "cBonus"}
@@ -239,7 +268,7 @@ export function CaptaincyTab({ stats }: { stats: CaptainStatsData }) {
                           align="right"
                         />
                       </th>
-                      <th className="text-right py-2 px-2 font-medium">
+                      <th className="w-[7%] text-right py-2 px-2 font-medium">
                         <SortHeader
                           label="VC×"
                           active={sort.key === "vcCount"}
@@ -248,7 +277,7 @@ export function CaptaincyTab({ stats }: { stats: CaptainStatsData }) {
                           align="right"
                         />
                       </th>
-                      <th className="text-right py-2 px-2 font-medium">
+                      <th className="w-[11%] text-right py-2 px-2 font-medium">
                         <SortHeader
                           label="VC Pts"
                           active={sort.key === "vcBonus"}
@@ -257,12 +286,30 @@ export function CaptaincyTab({ stats }: { stats: CaptainStatsData }) {
                           align="right"
                         />
                       </th>
-                      <th className="text-right py-2 px-3 font-medium">
+                      <th className="w-[9%] text-right py-2 px-2 font-medium">
+                        <SortHeader
+                          label="Avg"
+                          active={sort.key === "avg"}
+                          dir={sort.dir}
+                          onClick={() => toggleSort("avg")}
+                          align="right"
+                        />
+                      </th>
+                      <th className="w-[12%] text-right py-2 px-2 font-medium">
                         <SortHeader
                           label="Total"
                           active={sort.key === "total"}
                           dir={sort.dir}
                           onClick={() => toggleSort("total")}
+                          align="right"
+                        />
+                      </th>
+                      <th className="w-[11%] text-right py-2 px-3 font-medium">
+                        <SortHeader
+                          label="Impact"
+                          active={sort.key === "impact"}
+                          dir={sort.dir}
+                          onClick={() => toggleSort("impact")}
                           align="right"
                         />
                       </th>
@@ -278,7 +325,7 @@ export function CaptaincyTab({ stats }: { stats: CaptainStatsData }) {
                         )}
                       >
                         <td className="py-2.5 px-3 font-medium">
-                          <span className="inline-flex items-center gap-1.5 max-w-[14ch]">
+                          <span className="flex items-center gap-1.5 min-w-0">
                             {i === 0 && (
                               <span className="text-amber-400 shrink-0" aria-hidden>
                                 ★
@@ -286,7 +333,7 @@ export function CaptaincyTab({ stats }: { stats: CaptainStatsData }) {
                             )}
                             <span className="truncate">{row.name}</span>
                             {row.role && (
-                              <span className="ml-1 text-[9px] uppercase tracking-wide text-muted-foreground/80 shrink-0">
+                              <span className="ml-auto pl-1 text-[9px] uppercase tracking-wide text-muted-foreground/80 shrink-0">
                                 {row.role}
                               </span>
                             )}
@@ -296,16 +343,22 @@ export function CaptaincyTab({ stats }: { stats: CaptainStatsData }) {
                           {row.cCount || "—"}
                         </td>
                         <td className="py-2.5 px-2 text-right tabular-nums text-amber-300/90">
-                          {row.cBonus ? Math.round(row.cBonus) : "—"}
+                          {row.cBonus ? fmtInt(row.cBonus) : "—"}
                         </td>
                         <td className="py-2.5 px-2 text-right text-muted-foreground tabular-nums">
                           {row.vcCount || "—"}
                         </td>
                         <td className="py-2.5 px-2 text-right tabular-nums text-primary/90">
-                          {row.vcBonus ? Math.round(row.vcBonus) : "—"}
+                          {row.vcBonus ? fmtInt(row.vcBonus) : "—"}
                         </td>
-                        <td className="py-2.5 px-3 text-right font-display font-bold text-accent tabular-nums">
-                          {Math.round(row.total)}
+                        <td className="py-2.5 px-2 text-right tabular-nums text-muted-foreground">
+                          {row.cCount + row.vcCount > 0 ? fmtInt(row.avg) : "—"}
+                        </td>
+                        <td className="py-2.5 px-2 text-right font-display font-bold text-accent tabular-nums">
+                          {fmtInt(row.total)}
+                        </td>
+                        <td className="py-2.5 px-3 text-right tabular-nums text-muted-foreground">
+                          {row.total > 0 ? fmtPct(row.impactPct) : "—"}
                         </td>
                       </tr>
                     ))}
