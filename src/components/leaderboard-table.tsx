@@ -1,10 +1,10 @@
 "use client"
 
 import { useState, useMemo } from "react"
-import { ArrowUp, ArrowDown } from "lucide-react"
 import { Crown } from "@/components/icons/cricket-icons"
 import { getInitials, getAvatarColor } from "@/lib/avatar"
 import { cn } from "@/lib/utils"
+import { SortHeader, type SortDir } from "@/components/sort-header"
 
 export interface LeaderboardRow {
   user_id: string
@@ -18,7 +18,6 @@ export interface LeaderboardRow {
 }
 
 type SortKey = "rank" | "total" | "avg" | "wins" | "highest"
-type SortDir = "asc" | "desc"
 
 interface Props {
   rows: LeaderboardRow[]
@@ -193,36 +192,3 @@ export function LeaderboardTable({ rows, currentUserId, formGuide }: Props) {
   )
 }
 
-function SortHeader({
-  label,
-  active,
-  dir,
-  onClick,
-  align = "left",
-  hide,
-}: {
-  label: string
-  active: boolean
-  dir: SortDir
-  onClick: () => void
-  align?: "left" | "right" | "center"
-  hide?: "md" | "lg"
-}) {
-  const alignClass = align === "right" ? "justify-end" : align === "center" ? "justify-center" : "justify-start"
-  const hideClass = hide === "md" ? "hidden md:flex" : hide === "lg" ? "hidden lg:flex" : "flex"
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      className={cn(
-        "items-center gap-0.5 tabular-nums transition-colors",
-        hideClass,
-        alignClass,
-        active ? "text-foreground" : "text-muted-foreground hover:text-foreground"
-      )}
-    >
-      <span>{label}</span>
-      {active && (dir === "asc" ? <ArrowUp className="h-2.5 w-2.5" /> : <ArrowDown className="h-2.5 w-2.5" />)}
-    </button>
-  )
-}

@@ -1,31 +1,88 @@
 'use client'
 
+import { useMemo, useState } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { StatCard } from "@/components/stat-card"
-import { Star, Zap, Bot, Trophy } from "lucide-react"
+import { Star, Zap, Trophy, Award } from "lucide-react"
 import { cn } from "@/lib/utils"
+import { SortHeader, type SortDir } from "@/components/sort-header"
 
-export type CaptainPickRow = {
-  id: string
+export type CaptaincyRow = {
+  player_id: string
   name: string
-  count: number
-  totalBonus: number
-  avgBonus: number
+  role: string
+  team_id: string | null
+  cCount: number
+  cBonus: number
+  vcCount: number
+  vcBonus: number
+  total: number
 }
 
 export type CaptainStatsData = {
-  perCaptain: CaptainPickRow[]
+  rows: CaptaincyRow[]
+  teams: Array<{ id: string; short_name: string; color: string | null }>
   autoPickCount: number
   avgManualScore: number
   avgAutoPickScore: number
   totalCaptainBonus: number
   totalVcBonus: number
   bestMatchCaptainBonus: number
+  bestMatchVcBonus: number
 }
 
+type SortKey = "name" | "cCount" | "cBonus" | "vcCount" | "vcBonus" | "total"
+
+const ROLES = ["BAT", "BOWL", "AR", "WK"] as const
+
 export function CaptaincyTab({ stats }: { stats: CaptainStatsData }) {
+  const [sort, setSort] = useState<{ key: SortKey; dir: SortDir }>({ key: "total", dir: "desc" })
+  const [teamFilter, setTeamFilter] = useState("")
+  const [roleFilter, setRoleFilter] = useState("")
+  const [minPicks, setMinPicks] = useState(1)
+
+  const filtered = useMemo(() => {
+    return stats.rows.filter((r) => {
+      if (teamFilter && r.team_id !== teamFilter) return false
+      if (roleFilter && r.role !== roleFilter) return false
+      if (r.cCount + r.vcCount < minPicks) return false
+      return true
+    })
+  }, [stats.rows, teamFilter, roleFilter, minPicks])
+
+  const sortedRows = useMemo(() => {
+    const list = [...filtered]
+    const dir = sort.dir === "asc" ? 1 : -1
+    list.sort((a, b) => {
+      switch (sort.key) {
+        case "name":
+          return a.name.localeCompare(b.name) * dir
+        case "cCount":
+          return (a.cCount - b.cCount) * dir
+        case "cBonus":
+          return (a.cBonus - b.cBonus) * dir
+        case "vcCount":
+          return (a.vcCount - b.vcCount) * dir
+        case "vcBonus":
+          return (a.vcBonus - b.vcBonus) * dir
+        case "total":
+          return (a.total - b.total) * dir
+      }
+    })
+    return list
+  }, [filtered, sort])
+
+  function toggleSort(key: SortKey) {
+    setSort((prev) => {
+      if (prev.key !== key) return { key, dir: key === "name" ? "asc" : "desc" }
+      return { key, dir: prev.dir === "asc" ? "desc" : "asc" }
+    })
+  }
+
   const showAutoPickNote =
     stats.autoPickCount > 0 && (stats.avgManualScore > 0 || stats.avgAutoPickScore > 0)
+
+  const filtersActive = teamFilter !== "" || roleFilter !== "" || minPicks > 1
 
   return (
     <div className="space-y-6">
@@ -53,11 +110,11 @@ export function CaptaincyTab({ stats }: { stats: CaptainStatsData }) {
           iconColor="bg-green-500/15 text-green-400"
         />
         <StatCard
-          icon={Bot}
-          value={String(stats.autoPickCount)}
-          label="Auto-picks"
-          gradient="from-muted/10"
-          iconColor="bg-muted/40 text-muted-foreground"
+          icon={Award}
+          value={Math.round(stats.bestMatchVcBonus)}
+          label="Best VC Match"
+          gradient="from-sky-500/10"
+          iconColor="bg-sky-500/15 text-sky-400"
         />
       </div>
 
@@ -87,59 +144,207 @@ export function CaptaincyTab({ stats }: { stats: CaptainStatsData }) {
         </Card>
       )}
 
-      {/* Captain picks table */}
-      {stats.perCaptain.length > 0 ? (
-        <Card className="glass">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-base">Captain Picks</CardTitle>
-          </CardHeader>
-          <CardContent className="p-0">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-border/50 text-xs text-muted-foreground">
-                  <th className="text-left py-2 px-4 font-medium">Player</th>
-                  <th className="text-right py-2 px-3 font-medium">Times</th>
-                  <th className="text-right py-2 px-3 font-medium">Bonus</th>
-                  <th className="text-right py-2 px-4 font-medium">Avg</th>
-                </tr>
-              </thead>
-              <tbody>
-                {stats.perCaptain.map((row, i) => (
-                  <tr
-                    key={row.id}
-                    className={cn(
-                      "border-b border-border/30 last:border-0",
-                      i === 0 && "bg-amber-500/5"
-                    )}
-                  >
-                    <td className="py-2.5 px-4 font-medium">
-                      {i === 0 && (
-                        <span className="mr-1.5 text-amber-400" aria-hidden>
-                          ★
-                        </span>
-                      )}
-                      {row.name}
-                    </td>
-                    <td className="py-2.5 px-3 text-right text-muted-foreground">
-                      {row.count}
-                    </td>
-                    <td className="py-2.5 px-3 text-right font-display font-bold text-accent">
-                      {Math.round(row.totalBonus)}
-                    </td>
-                    <td className="py-2.5 px-4 text-right text-muted-foreground">
-                      {row.avgBonus.toFixed(0)}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </CardContent>
-        </Card>
-      ) : (
+      {/* Captain & VC table */}
+      {stats.rows.length === 0 ? (
         <div className="text-center py-12 text-muted-foreground text-sm">
           No matches played yet
         </div>
+      ) : (
+        <Card className="glass">
+          <CardHeader className="pb-2">
+            <div className="flex items-center justify-between gap-3 flex-wrap">
+              <CardTitle className="text-base">Captain &amp; VC Picks</CardTitle>
+              <span className="text-[11px] text-muted-foreground tabular-nums">
+                Showing {sortedRows.length} of {stats.rows.length}
+              </span>
+            </div>
+            <div className="flex flex-wrap gap-2 pt-2">
+              <FilterSelect
+                label="Team"
+                value={teamFilter}
+                onChange={setTeamFilter}
+                options={[
+                  { value: "", label: "All teams" },
+                  ...stats.teams.map((t) => ({ value: t.id, label: t.short_name })),
+                ]}
+              />
+              <FilterSelect
+                label="Role"
+                value={roleFilter}
+                onChange={setRoleFilter}
+                options={[
+                  { value: "", label: "All roles" },
+                  ...ROLES.map((r) => ({ value: r, label: r })),
+                ]}
+              />
+              <FilterSelect
+                label="Min picks"
+                value={String(minPicks)}
+                onChange={(v) => setMinPicks(Number(v))}
+                options={Array.from({ length: 10 }, (_, i) => ({
+                  value: String(i + 1),
+                  label: `≥ ${i + 1}`,
+                }))}
+              />
+              {filtersActive && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setTeamFilter("")
+                    setRoleFilter("")
+                    setMinPicks(1)
+                  }}
+                  className="text-[11px] px-2 py-1 rounded-md text-muted-foreground hover:text-foreground hover:bg-overlay-subtle transition-colors"
+                >
+                  Reset
+                </button>
+              )}
+            </div>
+          </CardHeader>
+
+          <CardContent className="p-0">
+            {sortedRows.length === 0 ? (
+              <div className="px-4 py-10 text-center text-sm text-muted-foreground">
+                No players match these filters.
+              </div>
+            ) : (
+              <div className="overflow-x-auto" data-vaul-no-drag>
+                <table className="w-full text-[12px]">
+                  <thead>
+                    <tr className="border-b border-border/50 text-[10px] uppercase tracking-wider text-muted-foreground">
+                      <th className="text-left py-2 px-3 font-medium min-w-[110px]">
+                        <SortHeader
+                          label="Player"
+                          active={sort.key === "name"}
+                          dir={sort.dir}
+                          onClick={() => toggleSort("name")}
+                          align="left"
+                        />
+                      </th>
+                      <th className="text-right py-2 px-2 font-medium">
+                        <SortHeader
+                          label="C×"
+                          active={sort.key === "cCount"}
+                          dir={sort.dir}
+                          onClick={() => toggleSort("cCount")}
+                          align="right"
+                        />
+                      </th>
+                      <th className="text-right py-2 px-2 font-medium">
+                        <SortHeader
+                          label="C Pts"
+                          active={sort.key === "cBonus"}
+                          dir={sort.dir}
+                          onClick={() => toggleSort("cBonus")}
+                          align="right"
+                        />
+                      </th>
+                      <th className="text-right py-2 px-2 font-medium">
+                        <SortHeader
+                          label="VC×"
+                          active={sort.key === "vcCount"}
+                          dir={sort.dir}
+                          onClick={() => toggleSort("vcCount")}
+                          align="right"
+                        />
+                      </th>
+                      <th className="text-right py-2 px-2 font-medium">
+                        <SortHeader
+                          label="VC Pts"
+                          active={sort.key === "vcBonus"}
+                          dir={sort.dir}
+                          onClick={() => toggleSort("vcBonus")}
+                          align="right"
+                        />
+                      </th>
+                      <th className="text-right py-2 px-3 font-medium">
+                        <SortHeader
+                          label="Total"
+                          active={sort.key === "total"}
+                          dir={sort.dir}
+                          onClick={() => toggleSort("total")}
+                          align="right"
+                        />
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {sortedRows.map((row, i) => (
+                      <tr
+                        key={row.player_id}
+                        className={cn(
+                          "border-b border-border/30 last:border-0",
+                          i === 0 && "bg-amber-500/5"
+                        )}
+                      >
+                        <td className="py-2.5 px-3 font-medium">
+                          <span className="inline-flex items-center gap-1.5 max-w-[14ch]">
+                            {i === 0 && (
+                              <span className="text-amber-400 shrink-0" aria-hidden>
+                                ★
+                              </span>
+                            )}
+                            <span className="truncate">{row.name}</span>
+                            {row.role && (
+                              <span className="ml-1 text-[9px] uppercase tracking-wide text-muted-foreground/80 shrink-0">
+                                {row.role}
+                              </span>
+                            )}
+                          </span>
+                        </td>
+                        <td className="py-2.5 px-2 text-right text-muted-foreground tabular-nums">
+                          {row.cCount || "—"}
+                        </td>
+                        <td className="py-2.5 px-2 text-right tabular-nums text-amber-300/90">
+                          {row.cBonus ? Math.round(row.cBonus) : "—"}
+                        </td>
+                        <td className="py-2.5 px-2 text-right text-muted-foreground tabular-nums">
+                          {row.vcCount || "—"}
+                        </td>
+                        <td className="py-2.5 px-2 text-right tabular-nums text-primary/90">
+                          {row.vcBonus ? Math.round(row.vcBonus) : "—"}
+                        </td>
+                        <td className="py-2.5 px-3 text-right font-display font-bold text-accent tabular-nums">
+                          {Math.round(row.total)}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </CardContent>
+        </Card>
       )}
     </div>
+  )
+}
+
+function FilterSelect({
+  label,
+  value,
+  onChange,
+  options,
+}: {
+  label: string
+  value: string
+  onChange: (v: string) => void
+  options: Array<{ value: string; label: string }>
+}) {
+  return (
+    <label className="inline-flex items-center gap-1.5 text-[11px] text-muted-foreground">
+      <span className="uppercase tracking-wide">{label}</span>
+      <select
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        className="rounded-md border border-overlay-border bg-overlay-subtle px-2 py-1 text-[11px] text-foreground tabular-nums focus:outline-none focus:ring-1 focus:ring-primary"
+      >
+        {options.map((opt) => (
+          <option key={opt.value} value={opt.value}>
+            {opt.label}
+          </option>
+        ))}
+      </select>
+    </label>
   )
 }

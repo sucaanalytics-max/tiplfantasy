@@ -56,7 +56,7 @@ export default async function ProfilePage() {
     supabase
       .from("selections")
       .select(
-        "id, match_id, captain_id, vice_captain_id, is_auto_pick, captain:players!selections_captain_id_fkey(name), vc:players!selections_vice_captain_id_fkey(name)"
+        "id, match_id, captain_id, vice_captain_id, is_auto_pick, captain:players!selections_captain_id_fkey(name, role, team_id), vc:players!selections_vice_captain_id_fkey(name, role, team_id)"
       )
       .eq("user_id", user.id)
       .limit(200),
@@ -271,31 +271,63 @@ export default async function ProfilePage() {
     matchScoreById.set(ms.match_id, ms)
   }
 
-  const captainAggMap = new Map<
-    string,
-    { name: string; count: number; totalBonus: number }
-  >()
+  type CaptaincyAgg = {
+    player_id: string
+    name: string
+    role: string
+    team_id: string | null
+    cCount: number
+    cBonus: number
+    vcCount: number
+    vcBonus: number
+  }
+  const byPlayer = new Map<string, CaptaincyAgg>()
   for (const s of selectionsData ?? []) {
-    if (!s.captain_id) continue
-    const name = (s.captain as unknown as { name: string })?.name ?? "Unknown"
-    const bonus = matchScoreById.get(s.match_id)?.captain_points ?? 0
-    const existing = captainAggMap.get(s.captain_id)
-    if (existing) {
-      existing.count++
-      existing.totalBonus += bonus
-    } else {
-      captainAggMap.set(s.captain_id, { name, count: 1, totalBonus: bonus })
+    const ms = matchScoreById.get(s.match_id)
+    const cBonus = ms?.captain_points ?? 0
+    const vcBonus = ms?.vc_points ?? 0
+    if (s.captain_id) {
+      const cap = s.captain as unknown as
+        | { name: string; role: string; team_id: string | null }
+        | null
+      const row =
+        byPlayer.get(s.captain_id) ?? {
+          player_id: s.captain_id,
+          name: cap?.name ?? "Unknown",
+          role: cap?.role ?? "",
+          team_id: cap?.team_id ?? null,
+          cCount: 0,
+          cBonus: 0,
+          vcCount: 0,
+          vcBonus: 0,
+        }
+      row.cCount++
+      row.cBonus += cBonus
+      byPlayer.set(s.captain_id, row)
+    }
+    if (s.vice_captain_id) {
+      const vc = s.vc as unknown as
+        | { name: string; role: string; team_id: string | null }
+        | null
+      const row =
+        byPlayer.get(s.vice_captain_id) ?? {
+          player_id: s.vice_captain_id,
+          name: vc?.name ?? "Unknown",
+          role: vc?.role ?? "",
+          team_id: vc?.team_id ?? null,
+          cCount: 0,
+          cBonus: 0,
+          vcCount: 0,
+          vcBonus: 0,
+        }
+      row.vcCount++
+      row.vcBonus += vcBonus
+      byPlayer.set(s.vice_captain_id, row)
     }
   }
-  const perCaptain = Array.from(captainAggMap.entries())
-    .map(([id, v]) => ({
-      id,
-      name: v.name,
-      count: v.count,
-      totalBonus: v.totalBonus,
-      avgBonus: v.count > 0 ? v.totalBonus / v.count : 0,
-    }))
-    .sort((a, b) => b.totalBonus - a.totalBonus)
+  const captaincyRows = Array.from(byPlayer.values())
+    .map((r) => ({ ...r, total: r.cBonus + r.vcBonus }))
+    .sort((a, b) => b.total - a.total)
 
   const autoPickSels = (selectionsData ?? []).filter((s) => s.is_auto_pick)
   const manualSels = (selectionsData ?? []).filter((s) => !s.is_auto_pick)
@@ -315,8 +347,15 @@ export default async function ProfilePage() {
         ) / manualSels.length
       : 0
 
+  const teamsForFilter = (teamsRes.data ?? []).map((t) => ({
+    id: t.id,
+    short_name: t.short_name,
+    color: t.color ?? null,
+  }))
+
   const captainStats: CaptainStatsData = {
-    perCaptain,
+    rows: captaincyRows,
+    teams: teamsForFilter,
     autoPickCount,
     avgManualScore,
     avgAutoPickScore,
@@ -330,6 +369,10 @@ export default async function ProfilePage() {
     ),
     bestMatchCaptainBonus: typedMatchScores.reduce(
       (max, ms) => Math.max(max, ms.captain_points ?? 0),
+      0
+    ),
+    bestMatchVcBonus: typedMatchScores.reduce(
+      (max, ms) => Math.max(max, ms.vc_points ?? 0),
       0
     ),
   }
