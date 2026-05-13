@@ -1014,8 +1014,9 @@ export function PickTeamClient({
                             </p>
                           </div>
 
-                          {/* C / VC pills — bigger, animated, color-tied to overlay tokens */}
-                          <div className="flex items-center gap-1.5 shrink-0">
+                          {/* C / VC pills — 44px tap target, no transform so the
+                              button doesn't move under the user's finger. */}
+                          <div className="flex items-center gap-2 shrink-0">
                             <button
                               type="button"
                               onClick={() => {
@@ -1024,14 +1025,15 @@ export function PickTeamClient({
                               }}
                               aria-label={isCaptain ? "Remove captain" : "Set as captain"}
                               aria-pressed={isCaptain}
+                              style={{ touchAction: "manipulation" }}
                               className={cn(
-                                "relative h-9 w-9 rounded-full flex items-center justify-center font-display font-bold text-xs transition-all border-2",
+                                "relative h-11 w-11 rounded-full flex items-center justify-center font-display font-bold text-xs border-2 select-none",
                                 isCaptain
-                                  ? "bg-[var(--captain-gold)] border-[var(--captain-gold)] text-[oklch(0.18_0.02_86)] shadow-[0_0_14px_var(--captain-gold-glow)] scale-105"
-                                  : "border-overlay-border-hover text-muted-foreground hover:border-[var(--captain-gold)]/60 hover:text-[var(--captain-gold)]"
+                                  ? "bg-[var(--captain-gold)] border-[var(--captain-gold)] text-[oklch(0.18_0.02_86)] shadow-[0_0_14px_var(--captain-gold-glow)]"
+                                  : "border-overlay-border-hover text-muted-foreground"
                               )}
                             >
-                              <Crown className={cn("h-4 w-4", isCaptain && "fill-current")} />
+                              <Crown className={cn("h-5 w-5", isCaptain && "fill-current")} />
                             </button>
                             <button
                               type="button"
@@ -1041,44 +1043,53 @@ export function PickTeamClient({
                               }}
                               aria-label={isVC ? "Remove vice-captain" : "Set as vice-captain"}
                               aria-pressed={isVC}
+                              style={{ touchAction: "manipulation" }}
                               className={cn(
-                                "relative h-9 w-9 rounded-full flex items-center justify-center font-display font-bold text-xs transition-all border-2",
+                                "relative h-11 w-11 rounded-full flex items-center justify-center font-display font-bold text-xs border-2 select-none",
                                 isVC
-                                  ? "bg-[var(--vice-silver)] border-[var(--vice-silver)] text-[oklch(0.15_0.01_60)] shadow-[0_0_14px_var(--vice-silver-glow)] scale-105"
-                                  : "border-overlay-border-hover text-muted-foreground hover:border-[var(--vice-silver)]/60 hover:text-foreground"
+                                  ? "bg-[var(--vice-silver)] border-[var(--vice-silver)] text-[oklch(0.15_0.01_60)] shadow-[0_0_14px_var(--vice-silver-glow)]"
+                                  : "border-overlay-border-hover text-muted-foreground"
                               )}
                             >
-                              <Star className={cn("h-4 w-4", isVC && "fill-current")} />
+                              <Star className={cn("h-5 w-5", isVC && "fill-current")} />
                             </button>
                           </div>
                         </div>
                       )
                     })}
                 </div>
-                {captainId && viceCaptainId && (
-                  <div className="px-4 pb-[max(1rem,env(safe-area-inset-bottom))] pt-3 border-t border-border flex gap-3 bg-background sticky bottom-0" data-vaul-no-drag>
-                    <DrawerClose asChild>
-                      <Button variant="outline" className="flex-1">
-                        Done
-                      </Button>
-                    </DrawerClose>
-                    <DrawerClose asChild>
-                      <Button
-                        className="flex-1 bg-primary hover:bg-primary/90 text-white font-semibold glow-card"
-                        onClick={handleSubmit}
-                        disabled={!validation.valid || isPending}
-                      >
-                        {!validation.valid
-                        ? "Fix team first"
-                        : isPending
-                          ? "Saving…"
-                          : initialSelectedIds.length > 0
-                            ? "Update"
-                            : "Submit"}
-                      </Button>
-                    </DrawerClose>
-                  </div>
-                )}
+                {/* Action bar — always rendered to keep drawer height stable.
+                    Buttons disable until both C & VC are picked. Avoids the
+                    layout shift that made the popup "jump" on tap. */}
+                <div className="px-4 pb-[max(1rem,env(safe-area-inset-bottom))] pt-3 border-t border-border flex gap-3 bg-background sticky bottom-0" data-vaul-no-drag>
+                  <DrawerClose asChild>
+                    <Button variant="outline" className="flex-1">
+                      Done
+                    </Button>
+                  </DrawerClose>
+                  <DrawerClose asChild>
+                    <Button
+                      className={cn(
+                        "flex-1 font-semibold",
+                        captainId && viceCaptainId && validation.valid && !isPending
+                          ? "bg-primary hover:bg-primary/90 text-white glow-card"
+                          : ""
+                      )}
+                      onClick={handleSubmit}
+                      disabled={!captainId || !viceCaptainId || !validation.valid || isPending}
+                    >
+                      {!captainId || !viceCaptainId
+                        ? "Pick C & VC"
+                        : !validation.valid
+                          ? "Fix team first"
+                          : isPending
+                            ? "Saving…"
+                            : initialSelectedIds.length > 0
+                              ? "Update"
+                              : "Submit"}
+                    </Button>
+                  </DrawerClose>
+                </div>
               </DrawerContent>
             </Drawer>
 
