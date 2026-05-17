@@ -1,6 +1,7 @@
 "use server"
 
 import { createAdminClient } from "@/lib/supabase/admin"
+import { fetchAllIn, PAGE_SIZE } from "@/lib/supabase/paginated"
 import { unstable_cache } from "next/cache"
 import type {
   CaptainAnalyticsRow,
@@ -50,27 +51,46 @@ async function fetchInsightsBase(leagueId: string) {
   const matchIds = completedMatches.map((m) => m.id)
   if (matchIds.length === 0) return null
 
-  const { data: selections } = await admin
-    .from("selections")
-    .select("id, user_id, match_id, captain_id, vice_captain_id")
-    .in("match_id", matchIds)
-    .in("user_id", userIds)
-    .not("locked_at", "is", null)
-    .limit(5000)
-
-  const selectionIds = (selections ?? []).map((s) => s.id)
-
-  const [{ data: selectionPlayers }, { data: matchScores }, { data: players }] = await Promise.all([
-    admin
-      .from("selection_players")
-      .select("selection_id, player_id")
-      .in("selection_id", selectionIds)
-      .limit(20000),
-    admin
-      .from("match_player_scores")
-      .select("player_id, match_id, fantasy_points")
+  // Paginate selections: a 50-user league × full season can exceed Supabase's
+  // 1000-row hard cap. Multi-filter chain, so paginate inline.
+  type SelectionRow = { id: string; user_id: string; match_id: string; captain_id: string | null; vice_captain_id: string | null }
+  const selections: SelectionRow[] = []
+  let selFrom = 0
+  while (true) {
+    const { data, error } = await admin
+      .from("selections")
+      .select("id, user_id, match_id, captain_id, vice_captain_id")
       .in("match_id", matchIds)
-      .limit(5000),
+      .in("user_id", userIds)
+      .not("locked_at", "is", null)
+      .order("id")
+      .range(selFrom, selFrom + PAGE_SIZE - 1)
+    if (error) throw error
+    if (!data || data.length === 0) break
+    selections.push(...(data as SelectionRow[]))
+    if (data.length < PAGE_SIZE) break
+    selFrom += PAGE_SIZE
+  }
+
+  const selectionIds = selections.map((s) => s.id)
+
+  type SelPlayerRow = { id: string; selection_id: string; player_id: string }
+  type MatchScoreRow = { id: string; player_id: string; match_id: string; fantasy_points: number | string }
+  const [selectionPlayers, matchScores, { data: players }] = await Promise.all([
+    fetchAllIn<SelPlayerRow>(
+      admin,
+      "selection_players",
+      "id, selection_id, player_id",
+      "selection_id",
+      selectionIds
+    ),
+    fetchAllIn<MatchScoreRow>(
+      admin,
+      "match_player_scores",
+      "id, player_id, match_id, fantasy_points",
+      "match_id",
+      matchIds
+    ),
     admin
       .from("players")
       .select("id, name, role, team_id, team:teams(id, short_name)")
@@ -80,9 +100,9 @@ async function fetchInsightsBase(leagueId: string) {
   return {
     members: members ?? [],
     completedMatches: completedMatches ?? [],
-    selections: selections ?? [],
-    selectionPlayers: selectionPlayers ?? [],
-    matchScores: matchScores ?? [],
+    selections,
+    selectionPlayers,
+    matchScores,
     players: players ?? [],
     userIds,
     matchIds,

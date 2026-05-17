@@ -1,5 +1,6 @@
 import { createAdminClient } from "@/lib/supabase/admin"
 import { createClient } from "@/lib/supabase/server"
+import { fetchAllIn } from "@/lib/supabase/paginated"
 import { redirect } from "next/navigation"
 import { PageTransition } from "@/components/page-transition"
 import { AnalyticsClient } from "./analytics-client"
@@ -72,33 +73,81 @@ export default async function AdminAnalyticsPage() {
   }
 
   // Phase 2: All parallel queries
+  // The three .in("match_id", matchIds) queries are paginated because they
+  // can each exceed Supabase's hard 1000-row response cap once the season
+  // grows past ~45 matches.
+  type ScoreRow = {
+    id: string
+    player_id: string
+    match_id: string
+    runs: number
+    balls_faced: number
+    fours: number
+    sixes: number
+    wickets: number
+    overs_bowled: number | string
+    runs_conceded: number
+    maidens: number
+    catches: number
+    stumpings: number
+    run_outs: number
+    fantasy_points: number | string
+    breakdown: unknown
+  }
+  type SelectionRow = {
+    id: string
+    user_id: string
+    match_id: string
+    captain_id: string | null
+    vice_captain_id: string | null
+    is_auto_pick: boolean
+    selection_players: { player_id: string }[]
+  }
+  type UserMatchScoreRow = {
+    id: string
+    user_id: string
+    match_id: string
+    total_points: number | string
+    rank: number | null
+    captain_points: number | string
+    vc_points: number | string
+  }
   const [
-    scoresRes,
+    scoresList,
     playersRes,
-    selectionsRes,
-    userScoresRes,
+    selectionsList,
+    userScoresList,
     profilesRes,
     venueStatsRes,
     vsTeamStatsRes,
     teamsRes,
     playingXIRes,
   ] = await Promise.all([
-    admin
-      .from("match_player_scores")
-      .select("player_id, match_id, runs, balls_faced, fours, sixes, wickets, overs_bowled, runs_conceded, maidens, catches, stumpings, run_outs, fantasy_points, breakdown")
-      .in("match_id", matchIds),
+    fetchAllIn<ScoreRow>(
+      admin,
+      "match_player_scores",
+      "id, player_id, match_id, runs, balls_faced, fours, sixes, wickets, overs_bowled, runs_conceded, maidens, catches, stumpings, run_outs, fantasy_points, breakdown",
+      "match_id",
+      matchIds
+    ),
     admin
       .from("players")
       .select("id, name, role, team_id, team:teams(id, short_name, color)")
       .eq("is_active", true),
-    admin
-      .from("selections")
-      .select("user_id, match_id, captain_id, vice_captain_id, is_auto_pick, selection_players(player_id)")
-      .in("match_id", matchIds),
-    admin
-      .from("user_match_scores")
-      .select("user_id, match_id, total_points, rank, captain_points, vc_points")
-      .in("match_id", matchIds),
+    fetchAllIn<SelectionRow>(
+      admin,
+      "selections",
+      "id, user_id, match_id, captain_id, vice_captain_id, is_auto_pick, selection_players(player_id)",
+      "match_id",
+      matchIds
+    ),
+    fetchAllIn<UserMatchScoreRow>(
+      admin,
+      "user_match_scores",
+      "id, user_id, match_id, total_points, rank, captain_points, vc_points",
+      "match_id",
+      matchIds
+    ),
     admin.from("profiles").select("id, display_name"),
     admin.from("player_venue_stats").select("*"),
     admin.from("player_vs_team_stats").select("*"),
@@ -145,7 +194,7 @@ export default async function AdminAnalyticsPage() {
   }
 
   // Transform raw data
-  const rawScores: RawPlayerScore[] = (scoresRes.data ?? []).map((s) => ({
+  const rawScores: RawPlayerScore[] = scoresList.map((s) => ({
     player_id: s.player_id,
     match_id: s.match_id,
     runs: s.runs,
@@ -163,16 +212,16 @@ export default async function AdminAnalyticsPage() {
     breakdown: s.breakdown as Record<string, number> | null,
   }))
 
-  const rawSelections: RawSelection[] = (selectionsRes.data ?? []).map((s) => ({
+  const rawSelections: RawSelection[] = selectionsList.map((s) => ({
     user_id: s.user_id,
     match_id: s.match_id,
     captain_id: s.captain_id,
     vice_captain_id: s.vice_captain_id,
     is_auto_pick: s.is_auto_pick,
-    players: (s.selection_players as { player_id: string }[]).map((sp) => sp.player_id),
+    players: s.selection_players.map((sp) => sp.player_id),
   }))
 
-  const rawUserScores: RawUserMatchScore[] = (userScoresRes.data ?? []).map((s) => ({
+  const rawUserScores: RawUserMatchScore[] = userScoresList.map((s) => ({
     user_id: s.user_id,
     match_id: s.match_id,
     total_points: Number(s.total_points),

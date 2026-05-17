@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/server"
+import { PAGE_SIZE } from "@/lib/supabase/paginated"
 import { redirect } from "next/navigation"
 import Link from "next/link"
 import { Card, CardContent } from "@/components/ui/card"
@@ -60,11 +61,25 @@ export default async function ProfilePage() {
       )
       .eq("user_id", user.id)
       .limit(200),
-    // All users' scores — used to compute league avg per match
-    supabase
-      .from("user_match_scores")
-      .select("match_id, total_points")
-      .limit(2000),
+    // All users' scores — used to compute league avg per match. Paginated:
+    // supabase caps single-response at 1000 rows, and this is 100+ users × 60+ matches.
+    (async () => {
+      const all: { match_id: string; total_points: number }[] = []
+      let from = 0
+      while (true) {
+        const { data, error } = await supabase
+          .from("user_match_scores")
+          .select("match_id, total_points")
+          .order("id")
+          .range(from, from + PAGE_SIZE - 1)
+        if (error) throw error
+        if (!data || data.length === 0) break
+        all.push(...(data as { match_id: string; total_points: number }[]))
+        if (data.length < PAGE_SIZE) break
+        from += PAGE_SIZE
+      }
+      return { data: all }
+    })(),
     getUserOwnershipInsights(user.id),
   ])
 

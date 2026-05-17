@@ -1,6 +1,7 @@
 "use server"
 
 import { createAdminClient } from "@/lib/supabase/admin"
+import { fetchAllIn } from "@/lib/supabase/paginated"
 import { unstable_cache } from "next/cache"
 import type {
   HeroRow,
@@ -94,18 +95,23 @@ async function loadRaw(userId: string) {
     return null
   }
 
-  const [{ data: selPlayersRaw }, { data: scoresRaw }, { data: playersRaw }] =
+  // match_player_scores across all completed matches can exceed Supabase's
+  // 1000-row hard cap (~74 matches × 22 players ≈ 1628). Paginate.
+  // selection_players for one user stays under 1000 (~74 × 11 = 814).
+  const [{ data: selPlayersRaw }, scoresPaged, { data: playersRaw }] =
     await Promise.all([
       admin
         .from("selection_players")
         .select("selection_id, player_id")
         .in("selection_id", selectionIds)
         .limit(5000),
-      admin
-        .from("match_player_scores")
-        .select("match_id, player_id, fantasy_points")
-        .in("match_id", matchIds)
-        .limit(10000),
+      fetchAllIn<ScoreRow & { id: string }>(
+        admin,
+        "match_player_scores",
+        "id, match_id, player_id, fantasy_points",
+        "match_id",
+        matchIds
+      ),
       admin
         .from("players")
         .select("id, name, role, team_id, team:teams(short_name, color, logo_url)")
@@ -117,7 +123,7 @@ async function loadRaw(userId: string) {
     selections,
     userScores,
     selectionPlayers: (selPlayersRaw ?? []) as SelectionPlayerRow[],
-    scores: (scoresRaw ?? []) as ScoreRow[],
+    scores: scoresPaged as ScoreRow[],
     players: (playersRaw ?? []) as unknown as PlayerRow[],
   }
 }

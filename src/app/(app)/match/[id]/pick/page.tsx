@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation"
 import { createClient } from "@/lib/supabase/server"
 import { createAdminClient } from "@/lib/supabase/admin"
+import { fetchAllIn } from "@/lib/supabase/paginated"
 import type { PlayerWithTeam, MatchWithTeams, PlayerVenueStats, PlayerVsTeamStats, TiplMatchEntry, TiplSeasonAggregates } from "@/lib/types"
 import { PickTeamClient } from "./pick-team-client"
 
@@ -156,18 +157,39 @@ export default async function PickTeamPage({
   }
 
   // Phase 2: All stats queries in parallel (depend on playerIds from Phase 1)
+  // tiplScoresRaw is paginated — Supabase caps single-response at 1000 rows,
+  // and a full season exceeds that (74 matches × ~22 players ≈ 1600+ rows).
+  type ScoreRow = {
+    player_id: string
+    match_id: string
+    runs: number
+    balls_faced: number
+    fours: number
+    sixes: number
+    wickets: number
+    overs_bowled: number | string
+    runs_conceded: number
+    maidens: number
+    catches: number
+    stumpings: number
+    run_outs: number
+    fantasy_points: number | string
+    breakdown: unknown
+    dismissal: string | null
+  }
   const [
-    { data: tiplScoresRaw },
+    tiplScoresRaw,
     { data: venueStatsRaw },
     { data: vsTeamStatsRaw },
   ] = await Promise.all([
     // Full TIPL season scores — ALL players for rank computation
-    allCompletedMatchIds.length > 0
-      ? supabase
-          .from("match_player_scores")
-          .select("player_id, match_id, runs, balls_faced, fours, sixes, wickets, overs_bowled, runs_conceded, maidens, catches, stumpings, run_outs, fantasy_points, breakdown, dismissal")
-          .in("match_id", allCompletedMatchIds)
-      : Promise.resolve({ data: [] as never[] }),
+    fetchAllIn<ScoreRow>(
+      supabase,
+      "match_player_scores",
+      "id, player_id, match_id, runs, balls_faced, fours, sixes, wickets, overs_bowled, runs_conceded, maidens, catches, stumpings, run_outs, fantasy_points, breakdown, dismissal",
+      "match_id",
+      allCompletedMatchIds
+    ),
 
     // Venue stats for this match's venue
     supabase

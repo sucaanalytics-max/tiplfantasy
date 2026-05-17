@@ -1,6 +1,7 @@
 import { unstable_cache } from "next/cache"
 import { createAdminClient } from "@/lib/supabase/admin"
 import { createClient } from "@/lib/supabase/server"
+import { fetchAllIn } from "@/lib/supabase/paginated"
 import { redirect } from "next/navigation"
 import { PageTransition } from "@/components/page-transition"
 import { StatsClient } from "./stats-client"
@@ -42,12 +43,33 @@ const getPlayerStatsData = unstable_cache(
     const matchIds = (completedMatches ?? []).map((m) => m.id)
     if (matchIds.length === 0) return { allPlayers: [], matchCount: 0 }
 
-    const { data: allScores } = await admin
-      .from("match_player_scores")
-      .select("player_id, match_id, runs, balls_faced, fours, sixes, wickets, overs_bowled, runs_conceded, maidens, catches, stumpings, run_outs, fantasy_points, breakdown")
-      .in("match_id", matchIds)
+    type ScoreRow = {
+      id: string
+      player_id: string
+      match_id: string
+      runs: number
+      balls_faced: number
+      fours: number
+      sixes: number
+      wickets: number
+      overs_bowled: number | string
+      runs_conceded: number
+      maidens: number
+      catches: number
+      stumpings: number
+      run_outs: number
+      fantasy_points: number | string
+      breakdown: unknown
+    }
+    const allScores = await fetchAllIn<ScoreRow>(
+      admin,
+      "match_player_scores",
+      "id, player_id, match_id, runs, balls_faced, fours, sixes, wickets, overs_bowled, runs_conceded, maidens, catches, stumpings, run_outs, fantasy_points, breakdown",
+      "match_id",
+      matchIds
+    )
 
-    const playerIds = [...new Set((allScores ?? []).map((s) => s.player_id))]
+    const playerIds = [...new Set(allScores.map((s) => s.player_id))]
     const { data: players } = await admin
       .from("players")
       .select("id, name, role, team:teams(short_name, color, logo_url)")
