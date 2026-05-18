@@ -122,11 +122,18 @@ export function calculateUserMatchScore(
   let captainPoints = 0
   let vcPoints = 0
 
+  // Apply C/VC bonus whenever the row has C/VC set — presence of a captain/VC
+  // means the user (or admin acting for them) made a manual choice, even if the
+  // is_auto_pick flag wasn't flipped back to false. Guards against the historical
+  // adminUpdateCaptainVc bug that left is_auto_pick=true on manually-edited rows.
+  const hasManualCvc = selection.captainId != null || selection.viceCaptainId != null
+  const applyCvcBonus = !selection.isAutoPick || hasManualCvc
+
   for (const playerId of selection.playerIds) {
     const base = playerScores.get(playerId) ?? 0
     let multiplier = 1
 
-    if (!selection.isAutoPick) {
+    if (applyCvcBonus) {
       if (playerId === selection.captainId) {
         multiplier = 2
         captainPoints = base

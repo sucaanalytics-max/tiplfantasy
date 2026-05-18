@@ -153,6 +153,7 @@ export async function adminUpdateCaptainVc(
     .update({
       captain_id: captainId,
       vice_captain_id: viceCaptainId,
+      is_auto_pick: false,
       updated_at: new Date().toISOString(),
     })
     .eq("match_id", matchId)
