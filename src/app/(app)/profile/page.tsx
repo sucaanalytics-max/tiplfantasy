@@ -19,13 +19,31 @@ import type {
 } from "./profile-tabs"
 import type { MatchHistoryRow } from "./match-history-table"
 import { getUserOwnershipInsights } from "@/actions/user-ownership"
+import { compareTwoUsersSeason, listProfilesForH2H } from "@/actions/h2h-compare"
 
-export default async function ProfilePage() {
+// Defaults for the "vs" tab. If the current user is one of these, the other is used.
+const DEFAULT_VS_PRIMARY = "a6e15917-4a91-409a-9ae7-555df837320d" // JVB
+const DEFAULT_VS_FALLBACK = "1fceb6c7-ecfa-4eec-bdea-e0c2b93c587c" // Sidd K
+
+export default async function ProfilePage({
+  searchParams,
+}: {
+  searchParams: Promise<{ vs?: string; tab?: string }>
+}) {
   const supabase = await createClient()
   const {
     data: { user },
   } = await supabase.auth.getUser()
   if (!user) redirect("/login")
+
+  const params = await searchParams
+  const opponentId =
+    params.vs && params.vs !== user.id
+      ? params.vs
+      : user.id === DEFAULT_VS_PRIMARY
+      ? DEFAULT_VS_FALLBACK
+      : DEFAULT_VS_PRIMARY
+  const defaultTab = params.tab
 
   // ── Phase 1: all independent queries in parallel ──────────────────────
   const [
@@ -36,6 +54,8 @@ export default async function ProfilePage() {
     selectionsRes,
     leagueScoresRes,
     ownership,
+    h2hResult,
+    h2hProfiles,
   ] = await Promise.all([
     supabase.from("profiles").select("*").eq("id", user.id).single(),
     supabase
@@ -81,6 +101,8 @@ export default async function ProfilePage() {
       return { data: all }
     })(),
     getUserOwnershipInsights(user.id),
+    compareTwoUsersSeason(user.id, opponentId),
+    listProfilesForH2H(),
   ])
 
   const profile = profileRes.data
@@ -544,6 +566,11 @@ export default async function ProfilePage() {
           squadDNA={squadDNA}
           captainStats={captainStats}
           ownership={ownership}
+          h2h={h2hResult}
+          h2hProfiles={h2hProfiles}
+          currentUserId={user.id}
+          opponentId={opponentId}
+          defaultTab={defaultTab}
         />
 
         {/* ── Rules link + sign out ─────────────────────────────── */}

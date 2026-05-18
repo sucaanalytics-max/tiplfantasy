@@ -25,20 +25,19 @@ type SortKey =
   | "b_contribution"
   | "net_edge"
 
-export function H2HClient({
+export function H2HTab({
   result,
   profiles,
-  aId,
-  bId,
+  currentUserId,
+  opponentId,
 }: {
   result: H2HCompareResult
   profiles: ProfileOption[]
-  aId: string
-  bId: string
+  currentUserId: string
+  opponentId: string
 }) {
   const router = useRouter()
-  const [a, setA] = useState(aId)
-  const [b, setB] = useState(bId)
+  const [vs, setVs] = useState(opponentId)
 
   const [sortKey, setSortKey] = useState<SortKey>("net_edge")
   const [sortDir, setSortDir] = useState<SortDir>("desc")
@@ -67,46 +66,50 @@ export function H2HClient({
     return rows
   }, [result.players, sortKey, sortDir])
 
-  function applyCompare() {
-    if (!a || !b || a === b) return
-    router.push(`/admin/h2h?a=${a}&b=${b}`)
+  function applyCompare(newVs: string) {
+    setVs(newVs)
+    if (!newVs || newVs === currentUserId) return
+    router.push(`/profile?tab=vs&vs=${newVs}`, { scroll: false })
   }
 
   const gap = result.a_user.season_total - result.b_user.season_total
   const sumEdge = result.total_edge
   const sanityDelta = sumEdge - gap
 
+  const opponentOptions = profiles.filter((p) => p.id !== currentUserId)
+
   return (
-    <div className="p-4 md:p-6 space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold tracking-tight">Head-to-Head</h1>
-        <p className="text-xs text-muted-foreground mt-1">
-          Per-player edge between two users across the season. Captain/VC
+    <div className="space-y-4">
+      {/* ── Opponent picker ───────────────────────────────────── */}
+      <div className="glass rounded-2xl p-3 flex flex-wrap items-end gap-3">
+        <label className="text-xs flex flex-col gap-1">
+          <span className="text-muted-foreground uppercase tracking-wider text-[10px]">
+            Compare against
+          </span>
+          <select
+            value={vs}
+            onChange={(e) => applyCompare(e.target.value)}
+            className="bg-overlay-subtle border border-overlay-border rounded-md px-2 py-1.5 text-sm min-w-[180px]"
+          >
+            {opponentOptions.map((o) => (
+              <option key={o.id} value={o.id}>
+                {o.display_name}
+              </option>
+            ))}
+          </select>
+        </label>
+        <p className="text-[10px] text-muted-foreground ml-auto max-w-xs">
+          Per-player edge across the season. Captain (×2) and VC (×1.5)
           multipliers rolled into each player's contribution.
         </p>
-      </div>
-
-      {/* ── Selectors ─────────────────────────────────────────── */}
-      <div className="glass rounded-2xl p-3 flex flex-wrap items-end gap-3">
-        <UserSelect label="User A" value={a} onChange={setA} options={profiles} />
-        <span className="text-muted-foreground pb-2">vs</span>
-        <UserSelect label="User B" value={b} onChange={setB} options={profiles} />
-        <button
-          type="button"
-          onClick={applyCompare}
-          disabled={!a || !b || a === b || (a === aId && b === bId)}
-          className="ml-auto text-xs font-medium px-3 py-1.5 rounded-md bg-foreground text-background disabled:opacity-40 disabled:cursor-not-allowed hover:opacity-90 transition-opacity"
-        >
-          Compare
-        </button>
       </div>
 
       {/* ── Summary cards ─────────────────────────────────────── */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         <SummaryCard
-          label={result.a_user.display_name}
+          label="You"
           value={result.a_user.season_total.toLocaleString()}
-          sub="season total"
+          sub={result.a_user.display_name}
         />
         <SummaryCard
           label={result.b_user.display_name}
@@ -114,7 +117,7 @@ export function H2HClient({
           sub="season total"
         />
         <SummaryCard
-          label="Gap (A − B)"
+          label="Gap"
           value={signed(gap)}
           sub={`${result.matches_compared} matches compared`}
           tone={gap > 0 ? "good" : gap < 0 ? "bad" : "neutral"}
@@ -125,9 +128,9 @@ export function H2HClient({
           sub={
             sanityDelta === 0
               ? "matches gap exactly"
-              : `off by ${signed(sanityDelta)}`
+              : `off by ${signed(sanityDelta)} (rounding)`
           }
-          tone={sanityDelta === 0 ? "good" : "warn"}
+          tone={Math.abs(sanityDelta) <= 30 ? "good" : "warn"}
         />
       </div>
 
@@ -154,8 +157,8 @@ export function H2HClient({
                     onClick={() => toggleSort("matches_on_scorecard")}
                   />
                 </th>
-                <ColGroup label={`${result.a_user.display_name} (A)`} span={5} />
-                <ColGroup label={`${result.b_user.display_name} (B)`} span={5} />
+                <ColGroup label="You" span={5} />
+                <ColGroup label={result.b_user.display_name} span={5} />
                 <th className="px-2 py-2 text-right font-medium">
                   <SortHeader
                     label="Net Edge"
@@ -189,7 +192,7 @@ export function H2HClient({
               {sortedRows.length === 0 && (
                 <tr>
                   <td colSpan={13} className="px-3 py-8 text-center text-muted-foreground">
-                    No data — pick two different users with selections.
+                    No comparison data yet — pick an opponent with selections.
                   </td>
                 </tr>
               )}
@@ -199,40 +202,11 @@ export function H2HClient({
       </div>
 
       <p className="text-[10px] text-muted-foreground px-1">
-        EO% = (Σ multiplier across matches the player appeared in) / appearances ×
-        100. A player captained every appearance is 200%. Net Edge = A's
-        contribution − B's contribution, with C=2×, VC=1.5×.
+        EO% = (Σ multiplier across matches the player appeared in) /
+        appearances × 100. Net Edge = your contribution − opponent's
+        contribution, with C×2 and VC×1.5.
       </p>
     </div>
-  )
-}
-
-function UserSelect({
-  label,
-  value,
-  onChange,
-  options,
-}: {
-  label: string
-  value: string
-  onChange: (v: string) => void
-  options: ProfileOption[]
-}) {
-  return (
-    <label className="text-xs flex flex-col gap-1">
-      <span className="text-muted-foreground uppercase tracking-wider text-[10px]">{label}</span>
-      <select
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        className="bg-overlay-subtle border border-overlay-border rounded-md px-2 py-1.5 text-sm min-w-[160px]"
-      >
-        {options.map((o) => (
-          <option key={o.id} value={o.id}>
-            {o.display_name}
-          </option>
-        ))}
-      </select>
-    </label>
   )
 }
 
@@ -259,7 +233,7 @@ function SummaryCard({
     <div className="glass rounded-2xl p-3">
       <p className="text-[10px] uppercase tracking-wider text-muted-foreground truncate">{label}</p>
       <p className={cn("text-xl font-semibold tabular-nums mt-1", valueTone)}>{value}</p>
-      {sub && <p className="text-[10px] text-muted-foreground mt-0.5">{sub}</p>}
+      {sub && <p className="text-[10px] text-muted-foreground mt-0.5 truncate">{sub}</p>}
     </div>
   )
 }

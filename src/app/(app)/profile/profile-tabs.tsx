@@ -10,7 +10,9 @@ import { CaptaincyTab } from "./captaincy-tab"
 import type { CaptainStatsData } from "./captaincy-tab"
 import type { MatchHistoryRow } from "./match-history-table"
 import { OwnershipTab } from "./ownership-tab"
+import { H2HTab } from "./h2h-tab"
 import type { OwnershipInsights } from "@/lib/types"
+import type { H2HCompareResult, ProfileOption } from "@/actions/h2h-compare"
 
 // Re-export for use by the parent server component
 export type { ScoreTimelineEntry, RoleBreakdownData, SquadDNARow, CaptainStatsData }
@@ -37,6 +39,12 @@ type ProfileTabsProps = {
   captainStats: CaptainStatsData
   // ── Ownership ──
   ownership: OwnershipInsights
+  // ── H2H ──
+  h2h: H2HCompareResult
+  h2hProfiles: ProfileOption[]
+  currentUserId: string
+  opponentId: string
+  defaultTab?: string
 }
 
 export function ProfileTabs(props: ProfileTabsProps) {
@@ -49,7 +57,7 @@ export function ProfileTabs(props: ProfileTabsProps) {
   } as const
 
   return (
-    <Tabs defaultValue="overview">
+    <Tabs defaultValue={props.defaultTab ?? "overview"}>
       <TabsList className="w-full mb-4">
         <TabsTrigger value="overview" className="flex-1">
           Overview
@@ -62,6 +70,9 @@ export function ProfileTabs(props: ProfileTabsProps) {
         </TabsTrigger>
         <TabsTrigger value="ownership" className="flex-1">
           Ownership
+        </TabsTrigger>
+        <TabsTrigger value="vs" className="flex-1">
+          vs
         </TabsTrigger>
       </TabsList>
 
@@ -151,6 +162,16 @@ export function ProfileTabs(props: ProfileTabsProps) {
       {/* ── Ownership ── */}
       <TabsContent value="ownership">
         <OwnershipTab data={props.ownership} />
+      </TabsContent>
+
+      {/* ── Head-to-head ── */}
+      <TabsContent value="vs">
+        <H2HTab
+          result={props.h2h}
+          profiles={props.h2hProfiles}
+          currentUserId={props.currentUserId}
+          opponentId={props.opponentId}
+        />
       </TabsContent>
     </Tabs>
   )

@@ -20,7 +20,6 @@ const TOOLS = [
   { href: "/admin/players/sync-images", emoji: "\u{1F5BC}\u{FE0F}", title: "Sync Images", subtitle: "Fetch player headshots from Sportmonks" },
   { href: "/admin/analytics", emoji: "\u{1F4CA}", title: "Analytics", subtitle: "Stats, ratings, predictions" },
   { href: "/admin/preferences", emoji: "\u{1F5D2}\u{FE0F}", title: "Preferences", subtitle: "User pick bias & captaincy" },
-  { href: "/admin/h2h", emoji: "\u{2694}\u{FE0F}", title: "Head-to-Head", subtitle: "Pairwise per-player edge" },
 ] as const
 
 const COMPLETED_DEFAULT = 10
