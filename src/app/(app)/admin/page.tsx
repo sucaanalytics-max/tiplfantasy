@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/server"
+import { PAGE_SIZE } from "@/lib/supabase/paginated"
 import { redirect } from "next/navigation"
 import Link from "next/link"
 import { Card, CardContent } from "@/components/ui/card"
@@ -47,14 +48,37 @@ export default async function AdminPage() {
 
   const analyticsLeagueId = (firstLeague?.leagues as unknown as { id: string })?.id ?? null
 
+  // Paginate user_match_scores — Supabase caps single-response at 1000 rows
+  // and a full 100-user season can produce ~7000 rows. The projected-standings
+  // calculation sums per-user totals, so truncation silently drops late-season matches.
+  type LeagueMatchScoreRow = {
+    user_id: string
+    total_points: number
+    profile: { display_name: string } | { display_name: string }[] | null
+  }
+  const fetchAllLeagueMatchScores = async (): Promise<{ data: LeagueMatchScoreRow[] }> => {
+    const all: LeagueMatchScoreRow[] = []
+    let from = 0
+    while (true) {
+      const { data, error } = await supabase
+        .from("user_match_scores")
+        .select("user_id, total_points, profile:profiles(display_name)")
+        .order("id")
+        .range(from, from + PAGE_SIZE - 1)
+      if (error) throw error
+      if (!data || data.length === 0) break
+      all.push(...(data as unknown as LeagueMatchScoreRow[]))
+      if (data.length < PAGE_SIZE) break
+      from += PAGE_SIZE
+    }
+    return { data: all }
+  }
+
   const [diffData, leagueMatchScoresRes] = await Promise.all([
     analyticsLeagueId ? getDifferentialData(analyticsLeagueId) : Promise.resolve(null),
     analyticsLeagueId
-      ? supabase
-          .from("user_match_scores")
-          .select("user_id, total_points, profile:profiles(display_name)")
-          .limit(5000)
-      : Promise.resolve({ data: null }),
+      ? fetchAllLeagueMatchScores()
+      : Promise.resolve({ data: null as LeagueMatchScoreRow[] | null }),
   ])
 
   const REMAINING_MATCHES = 29
@@ -80,6 +104,26 @@ export default async function AdminPage() {
     projectedRows.push(...rows)
   }
 
+  // Paginate `selections` — same reason as above; ~7000 rows at full scale.
+  // We only need match_id to count submissions per match.
+  const fetchAllSelectionMatchIds = async (): Promise<{ data: { match_id: string }[] }> => {
+    const all: { match_id: string }[] = []
+    let from = 0
+    while (true) {
+      const { data, error } = await supabase
+        .from("selections")
+        .select("match_id")
+        .order("id")
+        .range(from, from + PAGE_SIZE - 1)
+      if (error) throw error
+      if (!data || data.length === 0) break
+      all.push(...data)
+      if (data.length < PAGE_SIZE) break
+      from += PAGE_SIZE
+    }
+    return { data: all }
+  }
+
   const [matchesRes, teamsRes, selectionsRes] = await Promise.all([
     supabase
       .from("matches")
@@ -87,7 +131,7 @@ export default async function AdminPage() {
       .order("start_time", { ascending: true })
       .limit(200),
     supabase.from("teams").select("id, short_name, color").limit(20),
-    supabase.from("selections").select("match_id").limit(20000),
+    fetchAllSelectionMatchIds(),
   ])
 
   const matches = (matchesRes.data ?? []) as AdminMatch[]

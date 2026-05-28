@@ -1,5 +1,6 @@
 import { createAdminClient } from "@/lib/supabase/admin"
 import { createClient } from "@/lib/supabase/server"
+import { fetchAllIn, PAGE_SIZE } from "@/lib/supabase/paginated"
 import { redirect } from "next/navigation"
 import { PageTransition } from "@/components/page-transition"
 import {
@@ -24,11 +25,37 @@ export default async function AdminPreferencesPage() {
 
   const admin = createAdminClient()
 
-  const [selectionsRes, playersRes, profilesRes, teamsRes, matchesRes] = await Promise.all([
-    admin
-      .from("selections")
-      .select("user_id, match_id, captain_id, vice_captain_id, is_auto_pick, selection_players(player_id)")
-      .limit(20000),
+  // Paginate `selections` directly — Supabase caps single-response at 1000 rows,
+  // and a 100-user × ~70-match season produces ~7000 rows. Embedded relations
+  // can't be paginated, so we fetch selection_players separately via fetchAllIn.
+  type SelectionRow = {
+    id: string
+    user_id: string
+    match_id: string
+    captain_id: string | null
+    vice_captain_id: string | null
+    is_auto_pick: boolean
+  }
+  const fetchAllSelections = async (): Promise<SelectionRow[]> => {
+    const all: SelectionRow[] = []
+    let from = 0
+    while (true) {
+      const { data, error } = await admin
+        .from("selections")
+        .select("id, user_id, match_id, captain_id, vice_captain_id, is_auto_pick")
+        .order("id")
+        .range(from, from + PAGE_SIZE - 1)
+      if (error) throw error
+      if (!data || data.length === 0) break
+      all.push(...(data as SelectionRow[]))
+      if (data.length < PAGE_SIZE) break
+      from += PAGE_SIZE
+    }
+    return all
+  }
+
+  const [selections, playersRes, profilesRes, teamsRes, matchesRes] = await Promise.all([
+    fetchAllSelections(),
     admin
       .from("players")
       .select("id, name, role, team_id, team:teams(id, short_name, color)")
@@ -37,6 +64,21 @@ export default async function AdminPreferencesPage() {
     admin.from("teams").select("id, short_name, color").order("short_name", { ascending: true }),
     admin.from("matches").select("id, team_home_id, team_away_id").limit(200),
   ])
+
+  // Phase 2: selection_players for the fetched selections (paginated by selection_id).
+  const spRows = await fetchAllIn<{ selection_id: string; player_id: string }>(
+    admin,
+    "selection_players",
+    "selection_id, player_id",
+    "selection_id",
+    selections.map((s) => s.id)
+  )
+  const spBySel = new Map<string, string[]>()
+  for (const sp of spRows) {
+    const arr = spBySel.get(sp.selection_id) ?? []
+    arr.push(sp.player_id)
+    spBySel.set(sp.selection_id, arr)
+  }
 
   const matchTeams = new Map<string, [string, string]>()
   for (const m of matchesRes.data ?? []) {
@@ -64,13 +106,13 @@ export default async function AdminPreferencesPage() {
   const profileMap = new Map<string, string>()
   for (const p of profilesRes.data ?? []) profileMap.set(p.id, p.display_name)
 
-  const rawSelections: RawSelection[] = (selectionsRes.data ?? []).map((s) => ({
+  const rawSelections: RawSelection[] = selections.map((s) => ({
     user_id: s.user_id,
     match_id: s.match_id,
     captain_id: s.captain_id,
     vice_captain_id: s.vice_captain_id,
     is_auto_pick: s.is_auto_pick,
-    players: (s.selection_players as { player_id: string }[]).map((sp) => sp.player_id),
+    players: spBySel.get(s.id) ?? [],
   }))
 
   const preferences = computeUserPreferences(rawSelections, playerMap, profileMap, teamIdToShort, matchTeams)

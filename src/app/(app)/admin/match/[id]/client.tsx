@@ -13,6 +13,7 @@ import type { PlayerStats } from "@/lib/scoring"
 import { lockMatch, markNoResult, fetchPlayingXI, fetchMatchScorecard, autoScoreMatch, testMatchPoints, getMatchMemo, generateMatchBanter, getPreMatchAnalysis, pauseMatchRelay, resumeMatchRelay } from "@/actions/matches"
 import { savePlayerScores, calculateMatchPoints, calculateLiveMatchPoints, applyPotmBonus } from "@/actions/scoring"
 import { adminUpdateCaptainVc } from "@/actions/selections"
+import { randomBackfillAutoPick } from "@/actions/admin-auto-pick"
 import { formatMatchMessage } from "@/lib/whatsapp"
 
 type UserScoreRow = {
@@ -164,6 +165,23 @@ export function AdminMatchClient({
       else {
         showMsg("success", "Marked no result")
         router.refresh()
+      }
+    })
+  }
+
+  function handleAutoPickMissing() {
+    if (!confirm("Auto-pick random 11 from Playing XI for every user with no selection?")) return
+    startTransition(async () => {
+      try {
+        const res = await randomBackfillAutoPick(match.id)
+        if (res.failed > 0) {
+          showMsg("error", `Filled ${res.succeeded}/${res.processed}. Failures: ${res.errors.join(" | ")}`)
+        } else {
+          showMsg("success", `Auto-picked ${res.succeeded} user${res.succeeded === 1 ? "" : "s"}`)
+        }
+        router.refresh()
+      } catch (e) {
+        showMsg("error", e instanceof Error ? e.message : "Auto-pick failed")
       }
     })
   }
@@ -407,6 +425,14 @@ export function AdminMatchClient({
             disabled={isPending || match.status === "completed"}
           >
             No Result
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleAutoPickMissing}
+            disabled={isPending || match.status === "completed"}
+          >
+            Auto-Pick Missing
           </Button>
           <Button
             size="sm"

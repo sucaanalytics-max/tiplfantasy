@@ -222,6 +222,35 @@ Deno.serve(async (req) => {
       }
     }
 
+    // --- Update ipl_recent_scores (best-effort: failure does not abort the response) ---
+    try {
+      let recentScoresUpdated = 0
+      for (const pid of playerIds) {
+        const { data: last5 } = await supabase
+          .from("match_player_scores")
+          .select("fantasy_points, matches!inner(match_number, status)")
+          .eq("player_id", pid)
+          .eq("matches.status", "completed")
+          .order("matches(match_number)", { ascending: false })
+          .limit(5)
+
+        if (last5 && last5.length > 0) {
+          // Reverse so array is chronological (oldest → newest) for the bar chart
+          const chronological = [...last5].reverse().map(
+            (r: { fantasy_points: number | string }) => Math.round(Number(r.fantasy_points))
+          )
+          await supabase
+            .from("players")
+            .update({ ipl_recent_scores: chronological })
+            .eq("id", pid)
+          recentScoresUpdated++
+        }
+      }
+      console.log(`ipl_recent_scores updated for ${recentScoresUpdated}/${playerIds.length} players`)
+    } catch (recentErr) {
+      console.error("ipl_recent_scores update failed (non-fatal):", String(recentErr))
+    }
+
     return new Response(
       JSON.stringify({
         success: true,

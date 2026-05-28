@@ -1,4 +1,5 @@
 import { createAdminClient } from "@/lib/supabase/admin"
+import { fetchAllIn } from "@/lib/supabase/paginated"
 import type { PlayerWithTeam } from "./types"
 
 export type AutoPickResult = {
@@ -218,13 +219,17 @@ async function getMostPopularPicks(
 
   if (!selections || selections.length === 0) return null
 
+  // Paginate — 100 users × 11 = 1100 rows for one match exceeds the 1000-row
+  // server cap, which would skew the "most popular players" frequency counts
+  // and produce worse auto-picks.
   const selIds = selections.map((s) => s.id)
-  const { data: picks } = await admin
-    .from("selection_players")
-    .select("player_id")
-    .in("selection_id", selIds)
-
-  if (!picks) return null
+  const picks = await fetchAllIn<{ player_id: string }>(
+    admin,
+    "selection_players",
+    "player_id",
+    "selection_id",
+    selIds,
+  )
 
   // Count frequency
   const freq = new Map<string, number>()
@@ -244,7 +249,7 @@ async function getMostPopularPicks(
  * Greedy algorithm to build a composition-valid 11 from sorted candidates.
  * Respects: 1-4 WK, 3-5 BAT, 1-3 AR, 3-5 BOWL, max 7 per team.
  */
-function buildValidTeam(candidates: PlayerWithTeam[]): string[] | null {
+export function buildValidTeam(candidates: PlayerWithTeam[]): string[] | null {
   const limits = {
     WK: { min: 1, max: 4 },
     BAT: { min: 3, max: 5 },

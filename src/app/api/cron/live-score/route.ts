@@ -1,5 +1,6 @@
 import { type NextRequest } from "next/server"
 import { createAdminClient } from "@/lib/supabase/admin"
+import { fetchAllIn } from "@/lib/supabase/paginated"
 
 export const maxDuration = 60 // seconds — cron does external API calls + DB writes
 import { fetchMatchPoints, parseScorecardToStats, fuzzyMatchName, fetchMatchInfo } from "@/lib/api/sportmonks"
@@ -248,16 +249,20 @@ export async function GET(req: NextRequest) {
         continue
       }
 
-      // 9. Load selection players
+      // 9. Load selection players — paginated to avoid Supabase 1000-row cap
+      //    (100 users × 11 players = 1100 rows exceeds default cap).
       const selectionIds = selections.map((s) => s.id)
-      const { data: selPlayers } = await admin
-        .from("selection_players")
-        .select("selection_id, player_id")
-        .in("selection_id", selectionIds)
-        .limit(2200)
-
-      if (!selPlayers) {
-        errors.push({ matchId: match.id, error: "Failed to load selection players" })
+      let selPlayers: Array<{ selection_id: string; player_id: string }>
+      try {
+        selPlayers = await fetchAllIn<{ selection_id: string; player_id: string }>(
+          admin,
+          "selection_players",
+          "selection_id, player_id",
+          "selection_id",
+          selectionIds
+        )
+      } catch (e) {
+        errors.push({ matchId: match.id, error: `Failed to load selection players: ${String(e)}` })
         continue
       }
 

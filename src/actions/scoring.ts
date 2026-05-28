@@ -3,6 +3,7 @@
 import { revalidateTag } from "next/cache"
 import { createClient } from "@/lib/supabase/server"
 import { createAdminClient } from "@/lib/supabase/admin"
+import { fetchAllIn } from "@/lib/supabase/paginated"
 import { loadScoringRules, calculatePlayerPoints, calculateUserMatchScore } from "@/lib/scoring"
 import { fetchMatchInfo } from "@/lib/api/sportmonks"
 import type { PlayerStats } from "@/lib/scoring"
@@ -130,15 +131,16 @@ export async function calculateMatchPoints(matchId: string) {
     return { error: "No selections found for this match" }
   }
 
-  // Get selection players (100 users × 11 players = 1100 rows, exceeds Supabase 1000 default)
+  // Get selection players — paginate to avoid Supabase 1000-row server cap
+  // (100 users × 11 players = 1100 rows; .limit() above 1000 is silently capped).
   const selectionIds = selections.map((s) => s.id)
-  const { data: selPlayers } = await admin
-    .from("selection_players")
-    .select("selection_id, player_id")
-    .in("selection_id", selectionIds)
-    .limit(2200)
-
-  if (!selPlayers) return { error: "Failed to load selection players" }
+  const selPlayers = await fetchAllIn<{ selection_id: string; player_id: string }>(
+    admin,
+    "selection_players",
+    "selection_id, player_id",
+    "selection_id",
+    selectionIds
+  )
 
   // Group players by selection
   const playersBySelection = new Map<string, string[]>()
@@ -258,14 +260,15 @@ export async function calculateLiveMatchPoints(matchId: string) {
     return { error: "No selections found for this match" }
   }
 
+  // Paginate selection_players — Supabase caps single-response at 1000 rows.
   const selectionIds = selections.map((s) => s.id)
-  const { data: selPlayers } = await admin
-    .from("selection_players")
-    .select("selection_id, player_id")
-    .in("selection_id", selectionIds)
-    .limit(2200)
-
-  if (!selPlayers) return { error: "Failed to load selection players" }
+  const selPlayers = await fetchAllIn<{ selection_id: string; player_id: string }>(
+    admin,
+    "selection_players",
+    "selection_id, player_id",
+    "selection_id",
+    selectionIds
+  )
 
   const playersBySelection = new Map<string, string[]>()
   for (const sp of selPlayers) {
@@ -343,14 +346,15 @@ export async function recalculateUserMatchScores(matchId: string) {
 
   if (!selections || selections.length === 0) return
 
+  // Paginate selection_players — Supabase caps single-response at 1000 rows.
   const selectionIds = selections.map((s) => s.id)
-  const { data: selPlayers } = await admin
-    .from("selection_players")
-    .select("selection_id, player_id")
-    .in("selection_id", selectionIds)
-    .limit(2200)
-
-  if (!selPlayers) return
+  const selPlayers = await fetchAllIn<{ selection_id: string; player_id: string }>(
+    admin,
+    "selection_players",
+    "selection_id, player_id",
+    "selection_id",
+    selectionIds
+  )
 
   const playersBySelection = new Map<string, string[]>()
   for (const sp of selPlayers) {

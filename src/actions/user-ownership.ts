@@ -95,34 +95,36 @@ async function loadRaw(userId: string) {
     return null
   }
 
-  // match_player_scores across all completed matches can exceed Supabase's
-  // 1000-row hard cap (~74 matches × 22 players ≈ 1628). Paginate.
-  // selection_players for one user stays under 1000 (~74 × 11 = 814).
-  const [{ data: selPlayersRaw }, scoresPaged, { data: playersRaw }] =
-    await Promise.all([
-      admin
-        .from("selection_players")
-        .select("selection_id, player_id")
-        .in("selection_id", selectionIds)
-        .limit(5000),
-      fetchAllIn<ScoreRow & { id: string }>(
-        admin,
-        "match_player_scores",
-        "id, match_id, player_id, fantasy_points",
-        "match_id",
-        matchIds
-      ),
-      admin
-        .from("players")
-        .select("id, name, role, team_id, team:teams(short_name, color, logo_url)")
-        .limit(500),
-    ])
+  // Both child queries paginated via fetchAllIn — selection_players for one user
+  // (~74 × 11 = 814 today) stays under cap now, but the misleading .limit(5000)
+  // would silently truncate past ~90 matches. match_player_scores across all
+  // completed matches exceeds the 1000-row cap (~74 × 22 ≈ 1628).
+  const [selPlayersPaged, scoresPaged, { data: playersRaw }] = await Promise.all([
+    fetchAllIn<SelectionPlayerRow>(
+      admin,
+      "selection_players",
+      "selection_id, player_id",
+      "selection_id",
+      selectionIds,
+    ),
+    fetchAllIn<ScoreRow & { id: string }>(
+      admin,
+      "match_player_scores",
+      "id, match_id, player_id, fantasy_points",
+      "match_id",
+      matchIds
+    ),
+    admin
+      .from("players")
+      .select("id, name, role, team_id, team:teams(short_name, color, logo_url)")
+      .limit(500),
+  ])
 
   return {
     matches,
     selections,
     userScores,
-    selectionPlayers: (selPlayersRaw ?? []) as SelectionPlayerRow[],
+    selectionPlayers: selPlayersPaged,
     scores: scoresPaged as ScoreRow[],
     players: (playersRaw ?? []) as unknown as PlayerRow[],
   }

@@ -94,12 +94,24 @@ export default async function PickTeamPage({
       .select("id", { count: "exact", head: true })
       .eq("match_id", matchId),
 
-    // All selection_players for this match — now runs in parallel (was Waterfall B)
-    supabase
-      .from("selection_players")
-      .select("player_id, selection:selections!inner(match_id)")
-      .eq("selection.match_id", matchId)
-      .limit(200),
+    // All selection_players for this match — fetched via two-step paginated read
+    // because a single match (100 users × 11 = 1100 rows) exceeds Supabase's
+    // 1000-row server cap and would silently understate pick percentages.
+    (async () => {
+      const { data: matchSels } = await supabase
+        .from("selections")
+        .select("id")
+        .eq("match_id", matchId)
+      const selIds = (matchSels ?? []).map((s) => s.id)
+      const rows = await fetchAllIn<{ player_id: string }>(
+        supabase,
+        "selection_players",
+        "player_id",
+        "selection_id",
+        selIds,
+      )
+      return { data: rows }
+    })(),
 
     // All completed matches (for season stats + match log)
     supabase

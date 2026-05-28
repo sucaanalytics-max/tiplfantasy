@@ -1,5 +1,6 @@
 import { createClient, getAuthUser } from "@/lib/supabase/server"
 import { createAdminClient } from "@/lib/supabase/admin"
+import { fetchAllIn } from "@/lib/supabase/paginated"
 import { unstable_cache } from "next/cache"
 import { redirect } from "next/navigation"
 
@@ -318,15 +319,19 @@ export default async function DashboardPage() {
   }
 
   // ─── Phase 3: unique picks for Hidden Gem (selection_players for last match) ──
+  // Paginate: 100 users × 11 players = 1100 rows for one match exceeds Supabase's
+  // 1000-row server cap, so the "Hidden Gem" picker counts would be silently wrong.
   type SpRow = { selection_id: string; player_id: string }
   let selectionPlayers: SpRow[] = []
   if (lastMatchAllSelections.length > 0) {
     const selectionIds = lastMatchAllSelections.map((s) => s.id)
-    const spRes = await supabase
-      .from("selection_players")
-      .select("selection_id, player_id")
-      .in("selection_id", selectionIds)
-    selectionPlayers = (spRes.data ?? []) as SpRow[]
+    selectionPlayers = await fetchAllIn<SpRow>(
+      supabase,
+      "selection_players",
+      "selection_id, player_id",
+      "selection_id",
+      selectionIds,
+    )
   }
 
   // Map selection_id → user_id (from lastMatchAllSelections)

@@ -6,8 +6,10 @@
  *   - player_venue_stats
  *   - player_vs_team_stats
  *
- * Usage: npx tsx scripts/seed-cricsheet.ts
+ * Usage: npx tsx scripts/seed-cricsheet.ts [--reset]
  * Env: NEXT_PUBLIC_SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY (from .env.local)
+ *
+ * --reset  Truncates the three stat tables before seeding (idempotent re-run).
  */
 
 import { createClient } from "@supabase/supabase-js"
@@ -21,7 +23,9 @@ const envContent = fs.readFileSync(envPath, "utf-8")
 for (const line of envContent.split("\n")) {
   const [key, ...rest] = line.split("=")
   if (key && !key.startsWith("#")) {
-    process.env[key.trim()] = rest.join("=").trim()
+    const raw = rest.join("=").trim()
+    const unquoted = raw.replace(/^"(.*)"$/, "$1").replace(/^'(.*)'$/, "$1")
+    process.env[key.trim()] = unquoted
   }
 }
 
@@ -36,6 +40,21 @@ const nameMap: Record<string, string> = JSON.parse(
 
 // Cache: our DB player name → UUID
 let playerUuidMap: Record<string, string> = {}
+
+// Built once after playerUuidMap is populated
+// key: "<first-initial-lower>.<surname-lower>" → DB player name
+let initialsIndex: Record<string, string> = {}
+// key: "<surname-lower>" → DB player name, or "AMBIGUOUS"
+let surnameIndex: Record<string, string | "AMBIGUOUS"> = {}
+
+// Resolution stats
+const resolutionCounts = { strategy1: 0, strategy2: 0, strategy3: 0, strategy4: 0 }
+
+// In-memory cache for resolved fuzzy lookups (avoid re-parsing every delivery)
+const resolveCache = new Map<string, string | null>()
+
+// Unresolved names: raw Cricsheet name → delivery count
+const unresolved = new Map<string, number>()
 
 // IPL team short names used by Cricsheet → normalized
 const TEAM_SHORT: Record<string, string> = {
@@ -122,9 +141,106 @@ function getOrCreate(map: Map<string, PlayerMatchStats>, key: string): PlayerMat
   return s
 }
 
+// Build initialsIndex and surnameIndex from playerUuidMap keys (DB player names).
+// Called once after loadPlayerUuids() populates playerUuidMap.
+function buildLookupIndexes() {
+  const surnameCounts: Record<string, number> = {}
+
+  for (const dbName of Object.keys(playerUuidMap)) {
+    const words = dbName.trim().split(/\s+/)
+    if (words.length < 2) continue
+
+    const firstInitial = words[0][0].toLowerCase()
+    const surname = words[words.length - 1].toLowerCase()
+    const initialsKey = `${firstInitial}.${surname}`
+
+    // initialsIndex: only store if key is unique (don't clobber with a second match)
+    if (!initialsIndex[initialsKey]) {
+      initialsIndex[initialsKey] = dbName
+    } else {
+      // Two DB names produce the same initials key — mark ambiguous
+      initialsIndex[initialsKey] = "AMBIGUOUS"
+    }
+
+    // Count surnames
+    surnameCounts[surname] = (surnameCounts[surname] || 0) + 1
+  }
+
+  // Build surnameIndex
+  for (const dbName of Object.keys(playerUuidMap)) {
+    const words = dbName.trim().split(/\s+/)
+    if (words.length < 2) continue
+    const surname = words[words.length - 1].toLowerCase()
+    if (surnameCounts[surname] > 1) {
+      surnameIndex[surname] = "AMBIGUOUS"
+    } else {
+      surnameIndex[surname] = dbName
+    }
+  }
+
+  console.log(
+    `Built lookup indexes: ${Object.keys(initialsIndex).length} initials keys, ` +
+    `${Object.keys(surnameIndex).length} surname keys`
+  )
+}
+
+// Multi-strategy resolver. Resolution order:
+//   1. nameMap exact hit
+//   2. playerUuidMap exact hit
+//   3. Initials+surname normalization (e.g. "SS Iyer" → "s.iyer" → "Shreyas Iyer")
+//   4. Surname-only fallback (unique surnames only)
 function resolvePlayerName(cricsheetName: string): string | null {
-  if (nameMap[cricsheetName]) return nameMap[cricsheetName]
-  if (playerUuidMap[cricsheetName]) return cricsheetName
+  // Strategy 1: static name map
+  const mapped = nameMap[cricsheetName]
+  if (mapped) {
+    resolutionCounts.strategy1++
+    return mapped
+  }
+
+  // Strategy 2: direct DB name hit
+  if (playerUuidMap[cricsheetName]) {
+    resolutionCounts.strategy2++
+    return cricsheetName
+  }
+
+  // Check in-memory cache for fuzzy paths (strategies 3+4)
+  if (resolveCache.has(cricsheetName)) {
+    const cached = resolveCache.get(cricsheetName)!
+    if (cached !== null) return cached
+    unresolved.set(cricsheetName, (unresolved.get(cricsheetName) || 0) + 1)
+    return null
+  }
+
+  // Strategy 3: parse as "<INITIALS> <SURNAME>" and look up in initialsIndex
+  // Cricsheet format: "SS Iyer", "RG Sharma", "JJ Bumrah", "ABD Villiers"
+  const initialsMatch = cricsheetName.match(/^([A-Z]{1,4})\s+([A-Z][a-zA-Z'-]+)$/)
+  if (initialsMatch) {
+    const firstInitial = initialsMatch[1][0].toLowerCase()
+    const surname = initialsMatch[2].toLowerCase()
+    const key = `${firstInitial}.${surname}`
+    const candidate = initialsIndex[key]
+    if (candidate && candidate !== "AMBIGUOUS") {
+      resolutionCounts.strategy3++
+      resolveCache.set(cricsheetName, candidate)
+      return candidate
+    }
+  }
+
+  // Strategy 4: surname-only fallback (last word of cricsheet name)
+  const words = cricsheetName.trim().split(/\s+/)
+  if (words.length >= 1) {
+    const surname = words[words.length - 1].toLowerCase()
+    const candidate = surnameIndex[surname]
+    if (candidate && candidate !== "AMBIGUOUS") {
+      resolutionCounts.strategy4++
+      resolveCache.set(cricsheetName, candidate)
+      return candidate
+    }
+  }
+
+  // Unresolved
+  resolveCache.set(cricsheetName, null)
+  unresolved.set(cricsheetName, (unresolved.get(cricsheetName) || 0) + 1)
   return null
 }
 
@@ -331,6 +447,7 @@ async function loadPlayerUuids() {
     playerUuidMap[p.name] = p.id
   }
   console.log(`Loaded ${Object.keys(playerUuidMap).length} players from DB`)
+  buildLookupIndexes()
 }
 
 async function downloadAndExtract(): Promise<string> {
@@ -492,15 +609,53 @@ async function upsertStats() {
   console.log(`  Upserted ${vsRows} vs-team stat rows`)
 }
 
-async function main() {
+function printUnresolvedReport() {
+  console.log("\n=== Resolution strategy summary ===")
+  console.log(`  Strategy 1 (nameMap exact):       ${resolutionCounts.strategy1}`)
+  console.log(`  Strategy 2 (DB name exact):        ${resolutionCounts.strategy2}`)
+  console.log(`  Strategy 3 (initials+surname):     ${resolutionCounts.strategy3}`)
+  console.log(`  Strategy 4 (unique surname):       ${resolutionCounts.strategy4}`)
+
+  if (unresolved.size === 0) {
+    console.log("\nAll Cricsheet names resolved successfully.")
+    return
+  }
+
+  const sorted = Array.from(unresolved.entries())
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 50)
+
+  console.log(`\n=== Unresolved Cricsheet names (top 50 by delivery count) ===`)
+  for (const [name, count] of sorted) {
+    console.log(`  ${name}: ${count}`)
+  }
+}
+
+async function seedCricsheet() {
   console.log("=== Cricsheet IPL Data Seed ===\n")
 
   await loadPlayerUuids()
+
+  // --reset flag: clear the three stat tables before seeding
+  if (process.argv.includes("--reset")) {
+    console.log("Reset flag set — clearing player_venue_stats, player_vs_team_stats, player_season_stats...")
+    const sentinel = "00000000-0000-0000-0000-000000000000"
+    const { error: e1 } = await supabase.from("player_venue_stats").delete().neq("player_id", sentinel)
+    if (e1) console.error("Reset error (venue stats):", e1.message)
+    const { error: e2 } = await supabase.from("player_vs_team_stats").delete().neq("player_id", sentinel)
+    if (e2) console.error("Reset error (vs-team stats):", e2.message)
+    const { error: e3 } = await supabase.from("player_season_stats").delete().neq("player_id", sentinel)
+    if (e3) console.error("Reset error (season stats):", e3.message)
+    console.log("Tables cleared.\n")
+  }
+
   const matchDir = await downloadAndExtract()
   await processAllMatches(matchDir)
   await upsertStats()
 
+  printUnresolvedReport()
+
   console.log("\nDone!")
 }
 
-main().catch(console.error)
+seedCricsheet().catch(console.error)
